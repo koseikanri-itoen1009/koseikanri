@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2013/06/11    1.21  SCSK S.Niki      [障害E_本稼動_10819]   エラー有りデータのソート順変更
  *  2014/09/17    1.22  SCSK S.Niki      [障害E_本稼動_12185]   パフォーマンス改善対応
  *  2020/12/21    1.23  SCSK N.Abe       [障害E_本稼動_16860]   支払ステータス「自動繰越」の表示条件対応
+ *  2021/04/21    1.24  SCSK H.Futamura  [障害E_本稼動_16946]   残高一覧へ税区分追加
  *
  *****************************************************************************************/
   -- ===============================================
@@ -199,6 +200,9 @@ AS
   cv_flag_y                  CONSTANT VARCHAR2(1)   := 'Y';
   -- 参照タイプ
   cv_lookup_type_bm_kbn      CONSTANT VARCHAR2(20)  := 'XXCMM_BM_PAYMENT_KBN';
+-- Ver.1.24 ADD START
+  cv_lookup_type_bm_tax_kbn  CONSTANT VARCHAR2(20)  := 'XXCSO1_BM_TAX_KBN';
+-- Ver.1.24 ADD END
 -- 2010/01/27 Ver.1.11 [障害E_本稼動_01176] SCS K.Kiriu START
 --  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
   cv_lookup_type_bank        CONSTANT VARCHAR2(16)  := 'XXCSO1_KOZA_TYPE';
@@ -241,6 +245,9 @@ AS
   ct_electricity_type2       CONSTANT xxcso_sp_decision_headers.electricity_type%TYPE  := '2';  -- 変動電気代
   cv_ja                      CONSTANT VARCHAR2(2)  := 'JA'; -- 日本語
 -- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
+-- Ver.1.24 ADD START
+  cv_tax_included            CONSTANT VARCHAR2(1)  := '1';  -- 税込み
+-- Ver.1.24 ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -320,6 +327,9 @@ AS
   gt_payment_date_bk         xxcok_rep_bm_balance.payment_date%TYPE               DEFAULT NULL; -- 支払日
   gt_closing_date_bk         xxcok_rep_bm_balance.closing_date%TYPE               DEFAULT NULL; -- 締め日
   gt_section_code_bk         xxcok_rep_bm_balance.selling_base_section_code%TYPE  DEFAULT NULL; -- 地区コード
+-- Ver.1.24 ADD START
+  gt_bm_tax_kbn_name_bk      xxcok_rep_bm_balance.bm_tax_kbn_name%TYPE            DEFAULT NULL; -- BM税区分名
+-- Ver.1.24 ADD END
   -- 集計用
   gt_unpaid_last_month_sum xxcok_rep_bm_balance.unpaid_last_month%TYPE          DEFAULT 0;  -- 前月までの未払
   gt_bm_this_month_sum     xxcok_rep_bm_balance.bm_this_month%TYPE              DEFAULT 0;  -- 当月BM
@@ -375,6 +385,9 @@ AS
    ,PAYMENT_DATE                 DATE          -- 支払日
    ,CLOSING_DATE                 DATE          -- 締め日
    ,SELLING_BASE_SECTION_CODE    VARCHAR2(5)   -- 地区コード（売上計上拠点）
+-- Ver.1.24 ADD START
+   ,BM_TAX_KBN_NAME              VARCHAR2(80)  -- BM税区分名
+-- Ver.1.24 ADD END
   );
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki ADD START
   TYPE g_target_rtype IS RECORD(
@@ -1281,6 +1294,9 @@ AS
     , payment_date                    -- 支払日
     , closing_date                    -- 締め日
     , selling_base_section_code       -- 地区コード（売上計上拠点）
+-- Ver.1.24 ADD START
+    , bm_tax_kbn_name                 -- BM税区分名
+-- Ver.1.24 ADD END
     , no_data_message                 -- 0件メッセージ
     , created_by                      -- 作成者
     , creation_date                   -- 作成日
@@ -1351,6 +1367,9 @@ AS
     , g_bm_balance_ttype(in_index).PAYMENT_DATE              -- 支払日
     , g_bm_balance_ttype(in_index).CLOSING_DATE              -- 締め日
     , g_bm_balance_ttype(in_index).SELLING_BASE_SECTION_CODE -- 地区コード（売上計上拠点）
+-- Ver.1.24 ADD START
+    , g_bm_balance_ttype(in_index).BM_TAX_KBN_NAME           -- BM税区分名
+-- Ver.1.24 ADD END
     , gv_no_data_msg                                         -- 0件メッセージ
     , cn_created_by                                          -- created_by
     , SYSDATE                                                -- creation_date
@@ -1763,6 +1782,9 @@ AS
       g_bm_balance_ttype( gn_index ).PAYMENT_DATE                := NULL;  -- 支払日
       g_bm_balance_ttype( gn_index ).CLOSING_DATE                := NULL;  -- 締め日
       g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE   := NULL;  -- 地区コード
+-- Ver.1.24 ADD START
+      g_bm_balance_ttype( gn_index ).BM_TAX_KBN_NAME             := NULL;  -- BM税区分名
+-- Ver.1.24 ADD END
 --
       -- ===============================================
       -- 対象データなしメッセージ取得
@@ -1851,6 +1873,9 @@ AS
   , it_party_name              IN  hz_parties.party_name%TYPE                        DEFAULT NULL -- 顧客名
   , it_address3                IN  hz_locations.address3%TYPE                        DEFAULT NULL -- 地区コード
   , in_error_count             IN  NUMBER                                            DEFAULT 0    -- 販手エラー件数
+-- Ver.1.24 ADD START
+  , iv_bm_tax_kbn_name         IN  VARCHAR2                                          DEFAULT NULL -- BM税区分名
+-- Ver.1.24 ADD END
   )
   IS
     -- ===============================================
@@ -1921,6 +1946,9 @@ AS
         gt_payment_date_bk        := NULL;
         gt_closing_date_bk        := NULL;
         gt_section_code_bk        := NULL;
+-- Ver.1.24 ADD START
+        gt_bm_tax_kbn_name_bk     := NULL;
+-- Ver.1.24 ADD END
       ELSE
 -- 2009/05/20 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
         IF ( gt_unpaid_last_month_sum <> 0 )
@@ -1984,6 +2012,9 @@ AS
           g_bm_balance_ttype( gn_index ).PAYMENT_DATE              := gt_payment_date_bk;        -- 支払日
           g_bm_balance_ttype( gn_index ).CLOSING_DATE              := gt_closing_date_bk;        -- 締め日
           g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE := gt_section_code_bk;        -- 地区コード
+-- Ver.1.24 ADD START
+          g_bm_balance_ttype( gn_index ).BM_TAX_KBN_NAME           := gt_bm_tax_kbn_name_bk;     -- BM税区分名
+-- Ver.1.24 ADD END
 -- Ver.1.22 DEL START
 --          -- 対象件数変数に件数を設定
 --          gn_target_cnt             := gn_index;
@@ -2019,6 +2050,9 @@ AS
         gt_payment_date_bk        := NULL;
         gt_closing_date_bk        := NULL;
         gt_section_code_bk        := NULL;
+-- Ver.1.24 ADD START
+        gt_bm_tax_kbn_name_bk     := NULL;
+-- Ver.1.24 ADD END
       END IF;
     END IF;
     ----------------------------
@@ -2137,6 +2171,9 @@ AS
     gt_payment_date_bk              := i_target_rec.expect_payment_date; -- 支払日
     gt_closing_date_bk              := i_target_rec.closing_date;        -- 締め日
     gt_section_code_bk              := it_address3;                      -- 地区コード（売上計上拠点）
+-- Ver.1.24 ADD START
+    gt_bm_tax_kbn_name_bk           := iv_bm_tax_kbn_name;               -- BM税区分名
+-- Ver.1.24 ADD END
 --
   EXCEPTION
     -- *** 共通関数OTHERS例外 ***
@@ -2240,6 +2277,9 @@ AS
   , ov_bk_account_type         OUT xxcok_lookups_v.lookup_code%TYPE                   -- 口座種別
   , ov_bk_account_type_nm      OUT xxcok_lookups_v.meaning%TYPE                       -- 口座種別名
 -- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
+-- Ver.1.24 ADD START
+  , ov_bm_tax_kbn_name         OUT xxcok_lookups_v.meaning%TYPE                       -- BM税区分名
+-- Ver.1.24 ADD END
   )
   IS
     -- ===============================================
@@ -2254,6 +2294,7 @@ AS
     lv_errmsg   VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
     lv_outmsg   VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
     lb_retcode  BOOLEAN        DEFAULT TRUE;              -- メッセージ出力関数戻り値
+    lt_bm_tax_kbn  po_vendor_sites_all.attribute6%TYPE;   -- DFF6(BM税区分)
     -- 例外ハンドラ
     no_data_expt            EXCEPTION; -- データ取得エラー
 --
@@ -2262,6 +2303,9 @@ AS
     -- ステータス初期化
     -- ===============================================
     ov_retcode := cv_status_normal;
+-- Ver.1.24 ADD START
+    lt_bm_tax_kbn := NULL;
+-- Ver.1.24 ADD END
     -- ===============================================
     -- 仕入先・銀行情報
     -- ===============================================
@@ -2283,6 +2327,9 @@ AS
             ,bank_data.bank_num                -- 銀行支店番号
             ,bank_data.bank_branch_name        -- 銀行支店名
             ,hca.account_name                  -- 略称（アカウント名）
+-- Ver.1.24 ADD START
+            ,pvsa.attribute6                   -- DFF6(BM税区分)
+-- Ver.1.24 ADD END
       INTO   ov_vendor_name
             ,ov_bank_charge_bearer
             ,ov_hold_all_payments_flag
@@ -2296,6 +2343,9 @@ AS
             ,ov_bank_num
             ,ov_bank_branch_name
             ,ov_account_name
+-- Ver.1.24 ADD START
+            ,lt_bm_tax_kbn
+-- Ver.1.24 ADD END
       FROM   po_vendors          pv       -- 仕入先マスタ
             ,po_vendor_sites_all pvsa     -- 仕入先サイト
             ,hz_cust_accounts       hca   -- 顧客マスタ
@@ -2363,6 +2413,9 @@ AS
         ov_bank_branch_name         := NULL;
         ov_account_name             := NULL;
 -- Ver.1.22 MOD END
+-- Ver.1.24 ADD START
+        lt_bm_tax_kbn               := NULL;
+-- Ver.1.24 ADD END
       -- 仕入・銀行情報複数件エラー
       WHEN TOO_MANY_ROWS THEN
         lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -2456,6 +2509,39 @@ AS
       ov_bk_account_type    := NULL;
       ov_bk_account_type_nm := NULL;
     END IF;
+-- Ver.1.24 ADD START
+    -- ===============================================
+    -- BM税区分情報
+    -- ===============================================
+    IF lt_bm_tax_kbn IS NULL THEN
+      lt_bm_tax_kbn         := cv_tax_included;
+    END IF;
+    BEGIN
+      SELECT xlv.meaning      -- BM税区分名
+      INTO   ov_bm_tax_kbn_name
+      FROM   xxcok_lookups_v xlv
+      WHERE  xlv.lookup_type = cv_lookup_type_bm_tax_kbn
+      AND    xlv.lookup_code = lt_bm_tax_kbn
+      AND    NVL(xlv.start_date_active, TRUNC(SYSDATE)) <= TRUNC(SYSDATE)
+      AND    NVL(xlv.end_date_active,   TRUNC(SYSDATE)) >= TRUNC(SYSDATE)
+      ;
+    EXCEPTION
+      -- BM税区分情報取得エラー
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_00015
+                      , iv_token_name1  => cv_token_lookup_value_set
+                      , iv_token_value1 => cv_lookup_type_bm_tax_kbn
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.LOG
+                      , iv_message  => lv_errmsg
+                      , in_new_line => cn_number_0
+                      );
+        RAISE no_data_expt;
+    END;
+-- Ver.1.24 ADD END
 --
   EXCEPTION
     -- *** データ取得例外 ***
@@ -2700,6 +2786,9 @@ AS
     lv_bk_account_type          VARCHAR2(1)                                       DEFAULT NULL; -- 口座種別
     ln_error_count              NUMBER                                            DEFAULT 0;    -- 販手エラー件数
     ln_loop_cnt                 NUMBER                                            DEFAULT 0;    -- ループカウント
+-- Ver.1.24 ADD START
+    lv_bm_tax_kbn_name          VARCHAR2(30)                                      DEFAULT NULL; -- BM税区分名
+-- Ver.1.24 ADD END
 --
   BEGIN
     -- ===============================================
@@ -2797,6 +2886,9 @@ AS
             , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
             , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
             , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+-- Ver.1.24 ADD START
+            , ov_bm_tax_kbn_name         => lv_bm_tax_kbn_name              -- BM税区分名
+-- Ver.1.24 ADD END
           );
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
@@ -2854,6 +2946,9 @@ AS
           , it_party_name              => lt_party_name              -- 顧客名
           , it_address3                => lt_address3                -- 地区コード
           , in_error_count             => ln_error_count             -- 販手エラー件数
+-- Ver.1.24 ADD START
+          , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
+-- Ver.1.24 ADD END
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -2948,6 +3043,9 @@ AS
             , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
             , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
             , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+-- Ver.1.24 ADD START
+            , ov_bm_tax_kbn_name         => lv_bm_tax_kbn_name              -- BM税区分名
+-- Ver.1.24 ADD END
           );
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
@@ -3005,6 +3103,9 @@ AS
           , it_party_name              => lt_party_name              -- 顧客名
           , it_address3                => lt_address3                -- 地区コード
           , in_error_count             => ln_error_count             -- 販手エラー件数
+-- Ver.1.24 ADD START
+          , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
+-- Ver.1.24 ADD END
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -3090,6 +3191,9 @@ AS
             , ov_bm_kbn_nm               => lv_bm_kbn_nm                    -- BM支払区分名
             , ov_bk_account_type         => lv_bk_account_type              -- 口座種別
             , ov_bk_account_type_nm      => lv_bk_account_type_nm           -- 口座種別名
+-- Ver.1.24 ADD START
+            , ov_bm_tax_kbn_name         => lv_bm_tax_kbn_name              -- BM税区分名
+-- Ver.1.24 ADD END
           );
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
@@ -3144,6 +3248,9 @@ AS
           , it_party_name              => lt_party_name              -- 顧客名
           , it_address3                => lt_address3                -- 地区コード
           , in_error_count             => ln_error_count             -- 販手エラー件数
+-- Ver.1.24 ADD START
+          , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
+-- Ver.1.24 ADD END
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -3328,6 +3435,9 @@ AS
       , it_party_name              => lt_party_name              -- 顧客名
       , it_address3                => lt_address3                -- 地区コード
       , in_error_count             => ln_error_count             -- 販手エラー件数
+-- Ver.1.24 ADD START
+      , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
+-- Ver.1.24 ADD END
     );
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
@@ -3380,6 +3490,9 @@ AS
       g_bm_balance_ttype( gn_index ).PAYMENT_DATE              := NULL;
       g_bm_balance_ttype( gn_index ).CLOSING_DATE              := NULL;
       g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE := NULL;
+-- Ver.1.24 ADD START
+      g_bm_balance_ttype( gn_index ).BM_TAX_KBN_NAME           := NULL;
+-- Ver.1.24 ADD END
       -- ===============================================
       -- 対象データなしメッセージ取得
       -- ===============================================
