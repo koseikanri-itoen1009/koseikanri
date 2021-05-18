@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2018/05/16    1.16  Y.Shoji          [E_本稼動_14989]ＳＰ項目追加
  *  2020/10/28    1.17  Y.Sasaki         [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
  *  2020/11/12    1.18  Y.Sasaki         [E_本稼動_15904]第三弾 定価換算率算出変更
+ *  2021/04/16    1.19  T.Nishikawa      [E_本稼動_17052]定価換算率算出方法見直し
 *****************************************************************************************/
 --
   -- ===============================
@@ -1220,8 +1221,15 @@ AS
     -- ===============================
     cv_apl_name                  CONSTANT VARCHAR2(5)     := 'XXCSO';
     cv_excluding_tax_kbn         CONSTANT VARCHAR2(1)     := '2';   -- ＢＭ税区分（税抜き）
+-- E_本稼動_17052 Add Start
+    cv_free_tax_kbn              CONSTANT VARCHAR2(1)     := '3';   -- ＢＭ税区分（非課税）
+-- E_本稼動_17052 Add End
     cv_flag_y                    CONSTANT VARCHAR2(1)     := 'Y';
     cv_prf_calc_sales_tax_code   CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_SALES_TAX_CODE';
+-- E_本稼動_17052 Add Start
+    cv_prf_calc_sales_tax_code_2 CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_SALES_TAX_CODE_2';
+    cv_prf_calc_quantity         CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_QUANTITY';
+-- E_本稼動_17052 Add End
     cv_prf_bks_id                CONSTANT VARCHAR2(100)   := 'GL_SET_OF_BKS_ID';
     cv_msg_xxcso1_00913          CONSTANT VARCHAR2(100)   := 'APP-XXCSO1-00913';  -- 計算用税コード取得エラー
 -- E_本稼動_15904 Add End
@@ -1248,13 +1256,19 @@ AS
     ln_bm1_amount                     NUMBER;       -- BM1金額
     ln_bm2_amount                     NUMBER;       -- BM2金額
     ln_bm3_amount                     NUMBER;       -- BM3金額
-    ln_bm1_tax_rate                   NUMBER;       -- BM1売上税率
-    ln_bm2_tax_rate                   NUMBER;       -- BM2売上税率
-    ln_bm3_tax_rate                   NUMBER;       -- BM3売上税率
-    lv_tax_code                       VARCHAR2(10); -- 税コード
+    ln_bm1_tax_rate                   NUMBER;       -- BM1支払税率
+    ln_bm2_tax_rate                   NUMBER;       -- BM2支払税率
+    ln_bm3_tax_rate                   NUMBER;       -- BM3支払税率
+    lv_tax_code                       VARCHAR2(10); -- 支払税コード
     lv_bks_id                         VARCHAR2(50); -- 会計帳簿ID
     lt_tax_rate                       ar_vat_tax_all_b.tax_rate%TYPE;
 -- E_本稼動_15904 Add End
+-- E_本稼動_17052 Add Start
+    lv_tax_code_2                     VARCHAR2(10); -- 売上税コード
+    lt_tax_rate_2                     ar_vat_tax_all_b.tax_rate%TYPE;  -- 売上税率
+    ln_calc_quantity                  NUMBER;       -- 計算用数量
+    ln_bm_summary                     NUMBER;       -- 手数料合計
+-- E_本稼動_17052 Add End
   BEGIN
     -- 初期化
     ov_retcode := xxcso_common_pkg.gv_status_normal;
@@ -1277,8 +1291,14 @@ AS
     -- ********************************
     -- * プロファイルを取得
     -- ********************************
-    -- 計算用売上税コードを取得
+    -- 計算用支払税コードを取得
     lv_tax_code := FND_PROFILE.VALUE( cv_prf_calc_sales_tax_code );
+-- E_本稼動_17052 Add Start
+    -- 計算用売上税コードを取得
+    lv_tax_code_2 := FND_PROFILE.VALUE( cv_prf_calc_sales_tax_code_2 );
+    -- 計算用数量を取得
+    ln_calc_quantity := TO_NUMBER ( FND_PROFILE.VALUE( cv_prf_calc_quantity ) );
+-- E_本稼動_17052 Add End
     -- 会計帳簿IDを取得
     lv_bks_id   := FND_PROFILE.VALUE( cv_prf_bks_id );
 --
@@ -1317,16 +1337,37 @@ AS
 --
 -- E_本稼動_15904 Add Start
 --
-    -- 売上税率の取得
+-- E_本稼動_17052 Add Start
+    BEGIN
+      -- 売上税率を取得
+      SELECT avtab.tax_rate           -- 消費税率
+      INTO   lt_tax_rate_2
+      FROM   ar_vat_tax_all_b avtab   -- AR消費税マスタ
+      WHERE  avtab.tax_code = lv_tax_code_2
+      AND    avtab.set_of_books_id = TO_NUMBER( lv_bks_id )
+      AND    NVL( avtab.start_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND    NVL( avtab.end_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND    avtab.enabled_flag = cv_flag_y
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ov_retcode := xxcso_common_pkg.gv_status_error;
+        ov_errmsg  := xxccp_common_pkg.get_msg(
+                         cv_apl_name
+                        ,cv_msg_xxcso1_00913
+                      );
+        ov_errbuf  := ov_errmsg;
+    END;
+-- E_本稼動_17052 Add End
     -- 税抜きのＢＭ税区分がひとつでもある場合
     IF   ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn )
       OR ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn )
       OR ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn )
     THEN
       BEGIN
-        -- 税率を取得
+        -- 支払税率を取得
         SELECT avtab.tax_rate           -- 消費税率
-        INTO   lt_tax_rate 
+        INTO   lt_tax_rate
         FROM   ar_vat_tax_all_b avtab   -- AR消費税マスタ
         WHERE  avtab.tax_code = lv_tax_code
         AND    avtab.set_of_books_id = TO_NUMBER( lv_bks_id )
@@ -1343,7 +1384,7 @@ AS
                         );
           ov_errbuf  := ov_errmsg;
       END;
-      -- 税区分が2:税抜きの場合、取得した税率を売上税率とする
+      -- 税区分が2:税抜きの場合、取得した税率を支払税率とする
       -- BM1
       IF ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
         ln_bm1_tax_rate := lt_tax_rate;
@@ -1357,7 +1398,8 @@ AS
         ln_bm3_tax_rate := lt_tax_rate;
       END IF;
     END IF;
---
+-- E_本稼動_17052 Del Start
+/*
     -- 基準での計算 式１
     ln_criteria_conv_rate
       -- (定価－売価)÷定価
@@ -1410,6 +1452,45 @@ AS
           ) * 100
     ;
 -- E_本稼動_15904 mod End
+*/
+-- E_本稼動_17052 Del End
+--
+-- E_本稼動_17052 Add Start
+    -- 税区分に応じてBM手数料を計算する。
+    -- 税区分が2:税抜きおよび3:非課税の場合
+    IF ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn ) OR ( NVL(iv_bm1_tax_kbn, '1') = cv_free_tax_kbn ) THEN
+      ln_bm1_r_conv_rate := on_sales_price * ln_calc_quantity * 100 / (100 + lt_tax_rate_2) * ln_bm1_rate / 100 * 
+                            (100 + ln_bm1_tax_rate ) / 100;
+      ln_bm1_a_conv_rate := ln_bm1_amount  * ln_calc_quantity * (100 + ln_bm1_tax_rate) / 100;
+    -- 税区分が1:税込みの場合
+    ELSE
+      ln_bm1_r_conv_rate := on_sales_price * ln_calc_quantity * ln_bm1_rate / 100;
+      ln_bm1_a_conv_rate := ln_bm1_amount  * ln_calc_quantity;
+    END IF;
+    -- BM2もBM1と同様の計算
+    IF ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn ) OR ( NVL(iv_bm2_tax_kbn, '1') = cv_free_tax_kbn ) THEN
+      ln_bm2_r_conv_rate := on_sales_price * ln_calc_quantity * 100 / (100 + lt_tax_rate_2) * ln_bm2_rate / 100 * 
+                            (100 + ln_bm2_tax_rate ) / 100;
+      ln_bm2_a_conv_rate := ln_bm2_amount  * ln_calc_quantity * (100 + ln_bm2_tax_rate) / 100;
+    ELSE
+      ln_bm2_r_conv_rate := on_sales_price * ln_calc_quantity * ln_bm2_rate / 100;
+      ln_bm2_a_conv_rate := ln_bm2_amount  * ln_calc_quantity;
+    END IF;
+    -- BM3もBM1と同様の計算
+    IF ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn ) OR ( NVL(iv_bm3_tax_kbn, '1') = cv_free_tax_kbn ) THEN
+      ln_bm3_r_conv_rate := on_sales_price * ln_calc_quantity * 100 / (100 + lt_tax_rate_2) * ln_bm3_rate / 100 * 
+                            (100 + ln_bm3_tax_rate ) / 100;
+      ln_bm3_a_conv_rate := ln_bm3_amount  * ln_calc_quantity * (100 + ln_bm3_tax_rate) / 100;
+    ELSE
+      ln_bm3_r_conv_rate := on_sales_price * ln_calc_quantity * ln_bm3_rate / 100;
+      ln_bm3_a_conv_rate := ln_bm3_amount  * ln_calc_quantity;
+    END IF;
+    ln_bm_summary := ln_bm1_r_conv_rate + ln_bm1_a_conv_rate + ln_bm2_r_conv_rate + ln_bm2_a_conv_rate + ln_bm3_r_conv_rate + ln_bm3_a_conv_rate;
+--
+    -- 定価換算率を計算
+    ln_bm_conv_rate := (  1 - ( on_sales_price * ln_calc_quantity - ln_bm_summary ) / ( ln_fixed_price * ln_calc_quantity ) ) * 100;
+--
+-- E_本稼動_17052 Add End
 --
     -- 返却値を設定
     ov_bm_rate      := TO_CHAR(ln_bm_rate, 'FM999G999G999G999G990D90');
@@ -1464,8 +1545,15 @@ AS
     -- ===============================
     cv_apl_name                  CONSTANT VARCHAR2(5)     := 'XXCSO';
     cv_excluding_tax_kbn         CONSTANT VARCHAR2(1)     := '2';   -- ＢＭ税区分（税抜き）
+-- E_本稼動_17052 Add Start
+    cv_free_tax_kbn              CONSTANT VARCHAR2(1)     := '3';   -- ＢＭ税区分（非課税）
+-- E_本稼動_17052 Add End
     cv_flag_y                    CONSTANT VARCHAR2(1)     := 'Y';
     cv_prf_calc_sales_tax_code   CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_SALES_TAX_CODE';
+-- E_本稼動_17052 Add Start
+    cv_prf_calc_sales_tax_code_2 CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_SALES_TAX_CODE_2';
+    cv_prf_calc_quantity         CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_QUANTITY';
+-- E_本稼動_17052 Add End
     cv_prf_bks_id                CONSTANT VARCHAR2(100)   := 'GL_SET_OF_BKS_ID';
     cv_msg_xxcso1_00913          CONSTANT VARCHAR2(100)   := 'APP-XXCSO1-00913';  -- 計算用税コード取得エラー
 -- E_本稼動_15904 Add End
@@ -1493,13 +1581,19 @@ AS
     ln_bm1_amount                     NUMBER;       -- BM1金額
     ln_bm2_amount                     NUMBER;       -- BM2金額
     ln_bm3_amount                     NUMBER;       -- BM3金額
-    ln_bm1_tax_rate                   NUMBER;       -- BM1売上税率
-    ln_bm2_tax_rate                   NUMBER;       -- BM2売上税率
-    ln_bm3_tax_rate                   NUMBER;       -- BM3売上税率
+    ln_bm1_tax_rate                   NUMBER;       -- BM1支払税率
+    ln_bm2_tax_rate                   NUMBER;       -- BM2支払税率
+    ln_bm3_tax_rate                   NUMBER;       -- BM3支払税率
     lv_tax_code                       VARCHAR2(10); -- 税コード
     lv_bks_id                         VARCHAR2(50); -- 会計帳簿ID
     lt_tax_rate                       ar_vat_tax_all_b.tax_rate%TYPE;
 -- E_本稼動_15904 Add End
+-- E_本稼動_17052 Add Start
+    lv_tax_code_2                     VARCHAR2(10); -- 売上税コード
+    lt_tax_rate_2                     ar_vat_tax_all_b.tax_rate%TYPE;  -- 売上税率
+    ln_calc_quantity                  NUMBER;       -- 計算用数量
+    ln_bm_summary                     NUMBER;       -- 手数料合計
+-- E_本稼動_17052 Add End
   BEGIN
     -- 初期化
     ov_retcode := xxcso_common_pkg.gv_status_normal;
@@ -1524,6 +1618,12 @@ AS
     -- ********************************
     -- 計算用売上税コードを取得
     lv_tax_code := FND_PROFILE.VALUE( cv_prf_calc_sales_tax_code );
+-- E_本稼動_17052 Add Start
+    -- 計算用売上税コードを取得
+    lv_tax_code_2 := FND_PROFILE.VALUE( cv_prf_calc_sales_tax_code_2 );
+    -- 計算用数量を取得
+    ln_calc_quantity := TO_NUMBER ( FND_PROFILE.VALUE( cv_prf_calc_quantity ) );
+-- E_本稼動_17052 Add End
     -- 会計帳簿IDを取得
     lv_bks_id   := FND_PROFILE.VALUE( cv_prf_bks_id );
 --
@@ -1567,14 +1667,35 @@ AS
                     TO_NUMBER(NVL(REPLACE(iv_bm3_bm_amt, ',', ''), '0'));
 -- E_本稼動_15904 Add Start
 --
-    -- 売上税率の取得
+-- E_本稼動_17052 Add Start
+    BEGIN
+      -- 売上税率を取得
+      SELECT avtab.tax_rate           -- 消費税率
+      INTO   lt_tax_rate_2
+      FROM   ar_vat_tax_all_b avtab   -- AR消費税マスタ
+      WHERE  avtab.tax_code = lv_tax_code_2
+      AND    avtab.set_of_books_id = TO_NUMBER( lv_bks_id )
+      AND    NVL( avtab.start_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND    NVL( avtab.end_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND    avtab.enabled_flag = cv_flag_y
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ov_retcode := xxcso_common_pkg.gv_status_error;
+        ov_errmsg  := xxccp_common_pkg.get_msg(
+                         cv_apl_name
+                        ,cv_msg_xxcso1_00913
+                      );
+        ov_errbuf  := ov_errmsg;
+    END;
+-- E_本稼動_17052 Add End
     -- 税抜きのＢＭ税区分がひとつでもある場合
     IF   ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn )
       OR ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn )
       OR ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn )
     THEN
       BEGIN
-        -- 税率を取得
+        -- 支払税率を取得
         SELECT avtab.tax_rate           -- 消費税率
         INTO   lt_tax_rate 
         FROM   ar_vat_tax_all_b avtab   -- AR消費税マスタ
@@ -1593,7 +1714,7 @@ AS
                         );
           ov_errbuf  := ov_errmsg;
       END;
-      -- 税区分が2:税抜きの場合、取得した税率を売上税率とする
+      -- 税区分が2:税抜きの場合、取得した税率を支払税率とする
       -- BM1
       IF ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
         ln_bm1_tax_rate := lt_tax_rate;
@@ -1608,6 +1729,8 @@ AS
       END IF;
     END IF;
 --
+-- E_本稼動_17052 Del Start
+/*
     -- 基準での計算 式１
     ln_criteria_conv_rate
       -- (定価－売価)÷定価
@@ -1661,7 +1784,45 @@ AS
           ) * 100
     ;
 -- E_本稼動_15904 mod End
+*/
+-- E_本稼動_17052 Del End
 --
+-- E_本稼動_17052 Add Start
+    -- 税区分に応じてBM手数料を計算する。
+    -- 税区分が2:税抜きおよび3:非課税の場合
+    IF ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn ) OR ( NVL(iv_bm1_tax_kbn, '1') = cv_free_tax_kbn ) THEN
+      ln_bm1_r_conv_rate := on_sales_price * ln_calc_quantity * 100 / (100 + lt_tax_rate_2) * ln_bm1_rate / 100 * 
+                            (100 + ln_bm1_tax_rate ) / 100;
+      ln_bm1_a_conv_rate := ln_bm1_amount  * ln_calc_quantity * (100 + ln_bm1_tax_rate) / 100;
+    -- 税区分が1:税込みの場合
+    ELSE
+      ln_bm1_r_conv_rate := on_sales_price * ln_calc_quantity * ln_bm1_rate / 100;
+      ln_bm1_a_conv_rate := ln_bm1_amount  * ln_calc_quantity;
+    END IF;
+    -- BM2もBM1と同様の計算
+    IF ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn ) OR ( NVL(iv_bm2_tax_kbn, '1') = cv_free_tax_kbn ) THEN
+      ln_bm2_r_conv_rate := on_sales_price * ln_calc_quantity * 100 / (100 + lt_tax_rate_2) * ln_bm2_rate / 100 * 
+                            (100 + ln_bm2_tax_rate ) / 100;
+      ln_bm2_a_conv_rate := ln_bm2_amount  * ln_calc_quantity * (100 + ln_bm2_tax_rate) / 100;
+    ELSE
+      ln_bm2_r_conv_rate := on_sales_price * ln_calc_quantity * ln_bm2_rate / 100;
+      ln_bm2_a_conv_rate := ln_bm2_amount  * ln_calc_quantity;
+    END IF;
+    -- BM3もBM1と同様の計算
+    IF ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn ) OR ( NVL(iv_bm3_tax_kbn, '1') = cv_free_tax_kbn ) THEN
+      ln_bm3_r_conv_rate := on_sales_price * ln_calc_quantity * 100 / (100 + lt_tax_rate_2) * ln_bm3_rate / 100 * 
+                            (100 + ln_bm3_tax_rate ) / 100;
+      ln_bm3_a_conv_rate := ln_bm3_amount  * ln_calc_quantity * (100 + ln_bm3_tax_rate) / 100;
+    ELSE
+      ln_bm3_r_conv_rate := on_sales_price * ln_calc_quantity * ln_bm3_rate / 100;
+      ln_bm3_a_conv_rate := ln_bm3_amount  * ln_calc_quantity;
+    END IF;
+    ln_bm_summary := ln_bm1_r_conv_rate + ln_bm1_a_conv_rate + ln_bm2_r_conv_rate + ln_bm2_a_conv_rate + ln_bm3_r_conv_rate + ln_bm3_a_conv_rate;
+--
+    -- 定価換算率を計算
+    ln_bm_conv_rate := (  1 - ( on_sales_price * ln_calc_quantity - ln_bm_summary ) / ( ln_fixed_price * ln_calc_quantity ) ) * 100;
+--
+-- E_本稼動_17052 Add End
     -- 返却値を設定
     ov_bm_rate      := TO_CHAR(ln_bm_rate, 'FM999G999G999G999G990D90');
     ov_bm_amount    := TO_CHAR(ln_bm_amount, 'FM999G999G999G999G990D90');
