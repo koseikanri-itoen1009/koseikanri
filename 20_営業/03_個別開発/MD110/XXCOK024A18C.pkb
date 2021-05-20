@@ -7,7 +7,7 @@ AS
  * Description      : 控除額の支払・入金相殺データが承認されたデータを対象に、控除消込情報を基に、
  *                    控除情報から消込仕訳情報を抽出してGL仕訳の作成し、一般会計OIFに連携する処理
  * MD.050           : 控除データ決済仕訳情報取得 MD050_COK_024_A18
- * Version          : 1.0
+ * Version          : 1.1
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2020/11/24    1.0   H.Ishii          新規作成
+ *  2021/05/18    1.1   SCSK K.Yoshikawa GROUP_ID追加対応
  *
  *****************************************************************************************/
 --
@@ -107,6 +108,9 @@ AS
   cv_sales_deduction        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10650';                 -- 販売控除情報
   cv_tax_account_error_msg  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10681';                 -- 税情報取得エラーメッセージ
   cv_pro_org_id             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10669';                 -- 組織ID
+--2021/05/18 add start
+  cv_group_id_msg           CONSTANT VARCHAR2(50) := 'APP-XXCOK1-00024';                 -- グループID取得エラー
+--2021/05/18 add end
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';                         -- プロファイル
@@ -272,6 +276,9 @@ AS
   gv_category_code2                   VARCHAR2(30);                                 -- 仕訳カテゴリ（控除消込）
   gv_accrued_account                  VARCHAR2(30);                                 -- 経過勘定科目
   gv_accrued_sub_account              VARCHAR2(30);                                 -- 経過勘定補助科目
+--2021/05/18 add start
+  gn_group_id                         NUMBER         DEFAULT NULL;                  -- グループID
+--2021/05/18 add end
 --
   -- 販売控除消込情報
   CURSOR recon_deductions_data_cur
@@ -820,6 +827,23 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+--2021/05/18 add start
+    --==============================================================
+    --１２．グループIDを取得
+    --==============================================================
+    SELECT gjs.attribute1         AS group_id -- グループID
+    INTO   gn_group_id
+    FROM   gl_je_sources             gjs      -- 仕訳ソースマスタ
+    WHERE  gjs.user_je_source_name = cv_source_name;
+--
+    IF ( gn_group_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(cv_xxcok_short_nm
+                                          , cv_group_id_msg
+                                           );
+      RAISE global_api_expt;
+    END IF;
+
+--2021/05/18 add end
   EXCEPTION
 --
 --################################  固定例外処理部 START  ################################
@@ -1548,6 +1572,9 @@ AS
                                                       gt_recon_work_tbl(i).period_name;                              -- リファレンス5（仕訳名摘要）
       gt_gl_interface_tbl(i).reference10           := gt_recon_work_tbl(i).reference10;                              -- リファレンス10（仕訳明細摘要）
       gt_gl_interface_tbl(i).period_name           := gt_recon_work_tbl(i).period_name;                              -- 会計期間
+--2021/05/18 add start
+      gt_gl_interface_tbl(i).group_id              := gn_group_id;                                                   -- グループID
+--2021/05/18 add end
       gt_gl_interface_tbl(i).attribute1            := gt_recon_work_tbl(i).tax_code;                                 -- 属性1（消費税コード）
       gt_gl_interface_tbl(i).attribute3            := gt_recon_work_tbl(i).carry_payment_slip_num;                   -- 属性3（支払伝票番号）
       gt_gl_interface_tbl(i).attribute8            := gt_recon_work_tbl(i).deduction_recon_head_id;                  -- 属性8（控除消込ヘッダーID）
@@ -2235,7 +2262,10 @@ AS
          ,NULL                                                    -- WARNING_CODE
          ,NULL                                                    -- STATUS_DESCRIPTION
          ,NULL                                                    -- STAT_AMOUNT
-         ,NULL                                                    -- GROUP_ID
+--2021/05/18 mod start
+--         ,NULL                                                    -- GROUP_ID
+         ,gn_group_id                                             -- GROUP_ID
+--2021/05/18 mod end
          ,cn_request_id                                           -- REQUEST_ID
          ,NULL                                                    -- SUBLEDGER_DOC_SEQUENCE_ID
          ,NULL                                                    -- SUBLEDGER_DOC_SEQUENCE_VALUE
