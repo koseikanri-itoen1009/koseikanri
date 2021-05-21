@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2013/01/08    1.12  K.Kiriu          [E_本稼動_10389]パフォーマンス対応
  *  2013/08/12    1.13  S.Niki           [E_本稼動_10957]パフォーマンス対応
  *  2015/05/19    1.14  Y.Koh            障害対応E_本稼動_12827
+ *  2021/02/05    1.15  H.Futamura       [E_本稼動_16026]収益認識
  *
  *****************************************************************************************/
 --
@@ -629,11 +630,18 @@ AS
                ,daily_rec.ird_sales_shipped                 -
                 daily_rec.ird_sales_shipped_b               -
                 daily_rec.ird_return_goods                  +
-                daily_rec.ird_return_goods_b                              -- 売上出庫(数量)
+-- == 2021/02/05 V1.15 Modified START ==============================================================
+--                daily_rec.ird_return_goods_b                              -- 売上出庫(数量)
+                daily_rec.ird_return_goods_b                +
+                daily_rec.ird_customer_support_ss           -
+                daily_rec.ird_customer_support_ss_b                       -- 売上出庫(数量)
+-- == 2021/02/05 V1.15 Modified END   ==============================================================
                ,daily_rec.ird_customer_sample_ship          -
                 daily_rec.ird_customer_sample_ship_b        +
-                daily_rec.ird_customer_support_ss           -
-                daily_rec.ird_customer_support_ss_b         +
+-- == 2021/02/05 V1.15 Deleted  START ==============================================================
+--                daily_rec.ird_customer_support_ss           -
+--                daily_rec.ird_customer_support_ss_b         +
+-- == 2021/02/05 V1.15 Deleted  END   ==============================================================
                 daily_rec.ird_sample_quantity               -
                 daily_rec.ird_sample_quantity_b             +
                 daily_rec.ird_ccm_sample_ship               -
@@ -673,12 +681,19 @@ AS
                ,ROUND((daily_rec.ird_sales_shipped          -
                        daily_rec.ird_sales_shipped_b        -
                        daily_rec.ird_return_goods           +
-                       daily_rec.ird_return_goods_b)
+-- == 2021/02/05 V1.15 Modified START ==============================================================
+--                       daily_rec.ird_return_goods_b)
+                       daily_rec.ird_return_goods_b         +
+                       daily_rec.ird_customer_support_ss    -
+                       daily_rec.ird_customer_support_ss_b)
+-- == 2021/02/05 V1.15 Modified END   ==============================================================
                      * daily_rec.ird_operation_cost)                      -- 売上出庫(金額)
                ,ROUND((daily_rec.ird_customer_sample_ship   -
                        daily_rec.ird_customer_sample_ship_b +
-                       daily_rec.ird_customer_support_ss    -
-                       daily_rec.ird_customer_support_ss_b  +
+-- == 2021/02/05 V1.15 Deleted  START ==============================================================
+--                       daily_rec.ird_customer_support_ss    -
+--                       daily_rec.ird_customer_support_ss_b  +
+-- == 2021/02/05 V1.15 Deleted  END   ==============================================================
                        daily_rec.ird_sample_quantity        -
                        daily_rec.ird_sample_quantity_b      +
                        daily_rec.ird_ccm_sample_ship        -
@@ -1833,11 +1848,18 @@ AS
                    ,month_rec.irm_sales_shipped                 -
                     month_rec.irm_sales_shipped_b               -
                     month_rec.irm_return_goods                  +
-                    month_rec.irm_return_goods_b                              -- 売上出庫(数量)
+-- == 2021/02/05 V1.15 Modified START ==============================================================
+--                    month_rec.irm_return_goods_b                              -- 売上出庫(数量)
+                    month_rec.irm_return_goods_b                +
+                    month_rec.irm_customer_support_ss           -
+                    month_rec.irm_customer_support_ss_b                       -- 売上出庫(数量)
+-- == 2021/02/05 V1.15 Modified END   ==============================================================
                    ,month_rec.irm_customer_sample_ship          -
                     month_rec.irm_customer_sample_ship_b        +
-                    month_rec.irm_customer_support_ss           -
-                    month_rec.irm_customer_support_ss_b         +
+-- == 2021/02/05 V1.15 Deleted  START ==============================================================
+--                    month_rec.irm_customer_support_ss           -
+--                    month_rec.irm_customer_support_ss_b         +
+-- == 2021/02/05 V1.15 Deleted  END   ==============================================================
                     month_rec.irm_sample_quantity               -
                     month_rec.irm_sample_quantity_b             +
                     month_rec.irm_ccm_sample_ship               -
@@ -1880,12 +1902,19 @@ AS
                    ,ROUND((month_rec.irm_sales_shipped          -
                            month_rec.irm_sales_shipped_b        -
                            month_rec.irm_return_goods           +
-                           month_rec.irm_return_goods_b)
+-- == 2021/02/05 V1.15 Modified START ==============================================================
+--                           month_rec.irm_return_goods_b)
+                           month_rec.irm_return_goods_b         +
+                           month_rec.irm_customer_support_ss    -
+                           month_rec.irm_customer_support_ss_b)
+-- == 2021/02/05 V1.15 Modified END   ==============================================================
                          * month_rec.irm_operation_cost)                      -- 売上出庫(金額)
                    ,ROUND((month_rec.irm_customer_sample_ship   -
                            month_rec.irm_customer_sample_ship_b +
-                           month_rec.irm_customer_support_ss    -
-                           month_rec.irm_customer_support_ss_b  +
+-- == 2021/02/05 V1.15 Deleted  START ==============================================================
+--                           month_rec.irm_customer_support_ss    -
+--                           month_rec.irm_customer_support_ss_b  +
+-- == 2021/02/05 V1.15 Deleted  END   ==============================================================
                            month_rec.irm_sample_quantity        -
                            month_rec.irm_sample_quantity_b      +
                            month_rec.irm_ccm_sample_ship        -
