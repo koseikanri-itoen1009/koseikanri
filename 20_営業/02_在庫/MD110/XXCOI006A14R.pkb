@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/09/08    1.5   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2009/10/07    1.6   H.Sasaki         [E_T3_00465]棚卸月の型チェックを変更
  *  2015/03/03    1.7   Y.Koh            障害対応E_本稼動_12827
+ *  2021/02/05    1.8   H.Futamura       [E_本稼動_16026]収益認識
  *
  *****************************************************************************************/
 --
@@ -169,15 +170,22 @@ AS
               xird.vd_supplement_stock                                --   消化VD補充入庫
                                                   vd_sp_stock         -- 8.倉庫より入庫
              ,xird.sales_shipped            -                         --   売上出庫
-              xird.sales_shipped_b                                    --   売上出庫振戻
+-- == 2021/02/05 V1.8 Modified START ===============================================================
+--              xird.sales_shipped_b                                    --   売上出庫振戻
+              xird.sales_shipped_b          +                         --   売上出庫振戻
+              xird.customer_support_ss      -                         --   顧客協賛見本出庫
+              xird.customer_support_ss_b                              --   顧客協賛見本出庫振戻
+-- == 2021/02/05 V1.8 Modified END   ===============================================================
                                                   sales_shipped       -- 9.売上出庫
              ,xird.return_goods             -                         --   返品
               xird.return_goods_b                                     --   返品振戻
                                                   customer_return     --10.顧客返品
              ,xird.customer_sample_ship     -                         --   顧客見本出庫
               xird.customer_sample_ship_b   +                         --   顧客見本出庫振戻
-              xird.customer_support_ss      -                         --   顧客協賛見本出庫
-              xird.customer_support_ss_b    +                         --   顧客協賛見本出庫振戻
+-- == 2021/02/05 V1.8 Deleted START ================================================================
+--              xird.customer_support_ss      -                         --   顧客協賛見本出庫
+--              xird.customer_support_ss_b    +                         --   顧客協賛見本出庫振戻
+-- == 2021/02/05 V1.8 Deleted END   ================================================================
               xird.sample_quantity          -                         --   見本出庫
               xird.sample_quantity_b        +                         --   見本出庫振戻
               xird.ccm_sample_ship          -                         --   顧客広告宣伝費A自社商品
@@ -265,15 +273,22 @@ AS
               xirm.vd_supplement_stock                                --   消化VD補充入庫
                                                   vd_sp_stock         -- 8.倉庫より入庫
              ,xirm.sales_shipped            -                         --   売上出庫
-              xirm.sales_shipped_b                                    --   売上出庫振戻
+-- == 2021/02/05 V1.8 Modified START ===============================================================
+--              xirm.sales_shipped_b                                    --   売上出庫振戻
+              xirm.sales_shipped_b          +                         --   売上出庫振戻
+              xirm.customer_support_ss      -                         --   顧客協賛見本出庫
+              xirm.customer_support_ss_b                              --   顧客協賛見本出庫振戻
+-- == 2021/02/05 V1.8 Modified END   ===============================================================
                                                   sales_shipped       -- 9.売上出庫
              ,xirm.return_goods             -                         --   返品
               xirm.return_goods_b                                     --   返品振戻
                                                   customer_retuen     --10.顧客返品
              ,xirm.customer_sample_ship     -                         --   顧客見本出庫
               xirm.customer_sample_ship_b   +                         --   顧客見本出庫振戻
-              xirm.customer_support_ss      -                         --   顧客協賛見本出庫
-              xirm.customer_support_ss_b    +                         --   顧客協賛見本出庫振戻
+-- == 2021/02/05 V1.8 Deleted START ===============================================================
+--              xirm.customer_support_ss      -                         --   顧客協賛見本出庫
+--              xirm.customer_support_ss_b    +                         --   顧客協賛見本出庫振戻
+-- == 2021/02/05 V1.8 Deleted END   ===============================================================
               xirm.sample_quantity          -                         --   見本出庫
               xirm.sample_quantity_b        +                         --   見本出庫振戻
               xirm.ccm_sample_ship          -                         --   顧客広告宣伝費A自社商品
