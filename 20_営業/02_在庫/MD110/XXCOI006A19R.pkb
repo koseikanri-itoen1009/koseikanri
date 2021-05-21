@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A19R(body)
  * Description      : 払出明細表（拠点別計）
  * MD.050           : 払出明細表（拠点別計） <MD050_XXCOI_006_A19>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                                払出合計に基準在庫変更入庫を追加
  *  2009/07/21    1.3   H.Sasaki         [0000807]VD出庫数量より、基準在庫変更入庫数量を減算
  *  2015/03/16    1.4   K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
+ *  2021/02/05    1.5   H.Futamura       [E_本稼動_16026]収益認識
  *
  *****************************************************************************************/
 --
@@ -511,7 +512,12 @@ AS
       ln_sales_ship_qty         :=   ir_svf_data.sales_shipped
                                    - ir_svf_data.sales_shipped_b
                                    - ir_svf_data.return_goods
-                                   + ir_svf_data.return_goods_b;                          -- 07.売上出庫数量
+-- == 2021/02/05 V1.5 Modified START   ===============================================================
+--                                   + ir_svf_data.return_goods_b;                          -- 07.売上出庫数量
+                                   + ir_svf_data.return_goods_b
+                                   + ir_svf_data.customer_support_ss
+                                   - ir_svf_data.customer_support_ss_b;                    -- 07.売上出庫数量
+-- == 2021/02/05 V1.5 Modified END     ===============================================================
       ln_sales_ship_money       :=  ROUND(ir_svf_data.cost_amt * ln_sales_ship_qty);      -- 08.売上出庫金額
 -- == 2009/07/21 V1.3 Modified START ===============================================================
 --      ln_vd_ship_qty            :=   ir_svf_data.inventory_change_out;
@@ -519,10 +525,13 @@ AS
                                    - ir_svf_data.inventory_change_in;                     -- 09.VD出庫数量
 -- == 2009/07/21 V1.3 Modified END   ===============================================================
       ln_vd_ship_money          :=  ROUND(ir_svf_data.cost_amt * ln_vd_ship_qty);         -- 10.VD出庫金額
-      ln_support_qty            :=   ir_svf_data.customer_support_ss
-                                   - ir_svf_data.customer_support_ss_b
-                                   + ir_svf_data.ccm_sample_ship
+-- == 2021/02/05 V1.5 Modified START   ===============================================================
+--      ln_support_qty            :=   ir_svf_data.customer_support_ss
+--                                   - ir_svf_data.customer_support_ss_b
+--                                   + ir_svf_data.ccm_sample_ship
+      ln_support_qty            :=   ir_svf_data.ccm_sample_ship
                                    - ir_svf_data.ccm_sample_ship_b;                       -- 11.協賛見本数量
+-- == 2021/02/05 V1.5 Modified END     ===============================================================
       ln_support_money          :=  ROUND(ir_svf_data.cost_amt * ln_support_qty);         -- 12.協賛見本金額
       ln_sample_qty             :=   ir_svf_data.customer_sample_ship
                                    - ir_svf_data.customer_sample_ship_b
