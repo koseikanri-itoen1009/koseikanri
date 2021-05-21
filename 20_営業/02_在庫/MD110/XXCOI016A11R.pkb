@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A11R(body)
  * Description      : ƒƒbƒg•Êó•¥c‚•\i‘qŒÉj
  * MD.050           : MD050_COI_016_A11_ƒƒbƒg•Êó•¥c‚•\i‘qŒÉj.doc
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/11/06    1.0   Y.Nagasue        V‹Kì¬
+ *  2021/02/05    1.1   H.Futamura       [E_–{‰Ò“®_16026]û‰v”F¯
  *
  *****************************************************************************************/
 --
@@ -912,14 +913,20 @@ AS
            - l_get_monthly_data_rec.sales_shipped_b          -- ”„ãoŒÉU–ß
            - l_get_monthly_data_rec.return_goods             -- •Ô•i
            + l_get_monthly_data_rec.return_goods_b           -- •Ô•iU–ß
+-- == 2021/02/05 V1.1 Added START =================================================================
+           + l_get_monthly_data_rec.customer_support_ss      -- ŒÚ‹q‹¦^Œ©–{oŒÉ
+           - l_get_monthly_data_rec.customer_support_ss_b    -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+-- == 2021/02/05 V1.1 Added END   =================================================================
         ;
 --
         -- ‹¦^Œ©–{
         g_lot_rec_work_tab(gn_target_cnt).support
           := l_get_monthly_data_rec.customer_sample_ship     -- ŒÚ‹qŒ©–{oŒÉ
            - l_get_monthly_data_rec.customer_sample_ship_b   -- ŒÚ‹qŒ©–{oŒÉU–ß
-           + l_get_monthly_data_rec.customer_support_ss      -- ŒÚ‹q‹¦^Œ©–{oŒÉ
-           - l_get_monthly_data_rec.customer_support_ss_b    -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+-- == 2021/02/05 V1.1 Deleted START ===============================================================
+--           + l_get_monthly_data_rec.customer_support_ss      -- ŒÚ‹q‹¦^Œ©–{oŒÉ
+--           - l_get_monthly_data_rec.customer_support_ss_b    -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+-- == 2021/02/05 V1.1 Deleted END   ===============================================================
            + l_get_monthly_data_rec.ccm_sample_ship          -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            - l_get_monthly_data_rec.ccm_sample_ship_b        -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
         ;
@@ -1295,14 +1302,20 @@ AS
            - l_get_daily_data_rec.sales_shipped_b          -- ”„ãoŒÉU–ß
            - l_get_daily_data_rec.return_goods             -- •Ô•i
            + l_get_daily_data_rec.return_goods_b           -- •Ô•iU–ß
+-- == 2021/02/05 V1.1 Added START =================================================================
+           + l_get_daily_data_rec.customer_support_ss      -- ŒÚ‹q‹¦^Œ©–{oŒÉ
+           - l_get_daily_data_rec.customer_support_ss_b    -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+-- == 2021/02/05 V1.1 Added END   =================================================================
         ;
 --
         -- ‹¦^Œ©–{
         g_lot_rec_work_tab(gn_target_cnt).support
           := l_get_daily_data_rec.customer_sample_ship     -- ŒÚ‹qŒ©–{oŒÉ
            - l_get_daily_data_rec.customer_sample_ship_b   -- ŒÚ‹qŒ©–{oŒÉU–ß
-           + l_get_daily_data_rec.customer_support_ss      -- ŒÚ‹q‹¦^Œ©–{oŒÉ
-           - l_get_daily_data_rec.customer_support_ss_b    -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+-- == 2021/02/05 V1.1 Deleted START ===============================================================
+--           + l_get_daily_data_rec.customer_support_ss      -- ŒÚ‹q‹¦^Œ©–{oŒÉ
+--           - l_get_daily_data_rec.customer_support_ss_b    -- ŒÚ‹q‹¦^Œ©–{oŒÉU–ß
+-- == 2021/02/05 V1.1 Deleted END   ===============================================================
            + l_get_daily_data_rec.ccm_sample_ship          -- ŒÚ‹qLé“`”ïA©Ğ¤•i
            - l_get_daily_data_rec.ccm_sample_ship_b        -- ŒÚ‹qLé“`”ïA©Ğ¤•iU–ß
         ;
