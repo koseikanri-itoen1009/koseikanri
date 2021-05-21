@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A03C(body)
  * Description      : 情報系システムへの連携の為、EBSの月次在庫受払表(アドオン)をCSVファイルに出力
  * MD.050           : 月別受払残高情報系連携 <MD050_COI_008_A03>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2010/03/10    1.4   H.Sasaki         [E_本稼動_01856] 月初数量が取得できない場合0を設定
  *  2010/05/21    1.5   N.Abe            [E_本稼動_02770] 消化VD補充の入出庫を追加
  *  2010/05/21    1.6   H.Sasaki         [E_本稼動_07381] 月首、棚卸、減耗の算出方法を変更
+ *  2021/02/05    1.7   H.Futamura       [E_本稼動_16026] 収益認識
  *
  *****************************************************************************************/
 --
@@ -977,8 +978,14 @@ AS
                        + NVL( ir_recept_month_cur.others_stock , 0 ) + NVL( ir_recept_month_cur.vd_supplement_stock , 0 );
 -- == 2010/05/21 V1.5 Modified END   ===============================================================
     --
-    -- 売上出庫  = カーソルで抽出した売上出庫 - 売上出庫振戻
-    ln_sales_shipped := NVL( ir_recept_month_cur.sales_shipped , 0 ) - NVL( ir_recept_month_cur.sales_shipped_b , 0 );
+-- == 2021/02/05 V1.7 Modified START ===============================================================
+--    -- 売上出庫  = カーソルで抽出した売上出庫 - 売上出庫振戻
+    -- 売上出庫  = カーソルで抽出した(売上出庫 - 売上出庫振戻) + (顧客協賛見本出庫 - 顧客協賛見本出庫振戻)
+--    ln_sales_shipped := NVL( ir_recept_month_cur.sales_shipped , 0 ) - NVL( ir_recept_month_cur.sales_shipped_b , 0 );
+    ln_sales_shipped := (NVL( ir_recept_month_cur.sales_shipped , 0 ) - NVL( ir_recept_month_cur.sales_shipped_b , 0 ))
+                           + (NVL( ir_recept_month_cur.customer_support_ss , 0 )
+                         - NVL( ir_recept_month_cur.customer_support_ss_b , 0 ));
+-- == 2021/02/05 V1.7 Modified END   ===============================================================
     --
     -- 顧客返品  = カーソルで抽出した返品ー返品振戻
     ln_return_goods := NVL( ir_recept_month_cur.return_goods , 0 ) - NVL( ir_recept_month_cur.return_goods_b , 0 );
@@ -1014,13 +1021,15 @@ AS
     --
     -- 協賛見本  = カーソルで抽出した(見本出庫 - 見本出庫振戻)
     --                             + (顧客見本出庫 - 顧客見本主庫振戻)
-    --                             + (顧客協賛見本出庫 - 顧客協賛見本出庫振戻)
+--    --                             + (顧客協賛見本出庫 - 顧客協賛見本出庫振戻)
     --                             + (顧客広告宣伝費A自社商品 - 顧客広告宣伝費A自社商品振戻)
     ln_sum_sample := (NVL( ir_recept_month_cur.sample_quantity , 0 ) - NVL( ir_recept_month_cur.sample_quantity_b , 0 ))
                        + (NVL( ir_recept_month_cur.customer_sample_ship , 0 )
                          - NVL( ir_recept_month_cur.customer_sample_ship_b , 0 ))
-                       + (NVL( ir_recept_month_cur.customer_support_ss , 0 )
-                         - NVL( ir_recept_month_cur.customer_support_ss_b , 0 ))
+-- == 2021/02/05 V1.7 Deleted START ================================================================
+--                       + (NVL( ir_recept_month_cur.customer_support_ss , 0 )
+--                         - NVL( ir_recept_month_cur.customer_support_ss_b , 0 ))
+-- == 2021/02/05 V1.7 Deleted END   ================================================================
                        + (NVL( ir_recept_month_cur.ccm_sample_ship , 0 )
                          - NVL( ir_recept_month_cur.ccm_sample_ship_b , 0 ));
 --
