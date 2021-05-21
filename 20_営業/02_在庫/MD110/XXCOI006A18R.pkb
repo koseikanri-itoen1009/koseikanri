@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A18R(body)
  * Description      : 払出明細表（拠点別・合計）
  * MD.050           : 払出明細表（拠点別・合計） <MD050_XXCOI_006_A18>
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2010/05/06    1.9   N.Abe            [E_本稼動_02562]拠点別のPT対応
  *  2015/03/16    1.10  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
  *  2016/10/05    1.11  Y.Koh            障害対応E_本稼動_13807
+ *  2021/02/05    1.12  H.Futamura       [E_本稼動_16026]収益認識
  *
  *****************************************************************************************/
 --
@@ -1065,15 +1066,23 @@ AS
       ln_sales_ship_qty       :=   ir_svf_data.sales_shipped
                                  - ir_svf_data.sales_shipped_b
                                  - ir_svf_data.return_goods
-                                 + ir_svf_data.return_goods_b;              -- 12.売上出庫数量
+-- == 2021/02/05 V1.12 Modified START   ============================================================
+--                                 + ir_svf_data.return_goods_b;              -- 12.売上出庫数量
+                                 + ir_svf_data.return_goods_b
+                                 + ir_svf_data.customer_support_ss
+                                 - ir_svf_data.customer_support_ss_b;       -- 12.売上出庫数量
+-- == 2021/02/05 V1.12 Modified END     ============================================================
 -- == 2009/07/21 V1.5 Modified START ===============================================================
 --      ln_vd_ship_qty          :=   ir_svf_data.inventory_change_out;
       ln_vd_ship_qty          :=   ir_svf_data.inventory_change_out
                                  - ir_svf_data.inventory_change_in;         -- 14.VD出庫数量
 -- == 2009/07/21 V1.5 Modified END   ===============================================================
-      ln_support_qty          :=   ir_svf_data.customer_support_ss
-                                 - ir_svf_data.customer_support_ss_b
-                                 + ir_svf_data.ccm_sample_ship
+-- == 2021/02/05 V1.12 Modified START   ============================================================
+--      ln_support_qty          :=   ir_svf_data.customer_support_ss
+--                                 - ir_svf_data.customer_support_ss_b
+--                                 + ir_svf_data.ccm_sample_ship
+      ln_support_qty          :=   ir_svf_data.ccm_sample_ship
+-- == 2021/02/05 V1.12 Modified END     ============================================================
                                  - ir_svf_data.ccm_sample_ship_b;           -- 16.協賛見本数量
       ln_sample_qty           :=   ir_svf_data.sample_quantity
                                  - ir_svf_data.sample_quantity_b
