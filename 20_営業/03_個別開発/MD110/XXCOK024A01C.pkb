@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2021/04/06    1.1   H.Futamura       E_本稼動_16026
  *  2021/04/28    1.2   A.AOKI           E_本稼動_16026 問屋マージン修正（円）は0円を許す
  *  2021/05/01    1.3   SCSK Y.Koh       E_本稼動_16026 項目数エラーの対応
+ *  2021/05/18    1.4   SCSK Y.Koh       E_本稼動_16026 顧客との紐付きチェック追加
  *
  *****************************************************************************************/
 --
@@ -98,6 +99,9 @@ AS
   -- ロックエラー
   lock_expt             EXCEPTION;
   PRAGMA EXCEPTION_INIT(lock_expt, -54);
+-- 2021/05/18 Ver1.4 ADD Start
+  no_customer_found     EXCEPTION;
+-- 2021/05/18 Ver1.4 ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -296,6 +300,9 @@ AS
 -- 2021/05/01 Ver1.3 ADD Start
   cv_msg_cok_10796                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10796';  -- 開始日エラー
 -- 2021/05/01 Ver1.3 ADD End
+-- 2021/05/18 Ver1.4 ADD Start
+  cv_msg_cok_10797                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10797';  -- 顧客紐づけエラー
+-- 2021/05/18 Ver1.4 ADD End
 --
   cv_tkn_coi_10634                  CONSTANT VARCHAR2(20) := 'APP-XXCOI1-10634';  -- ファイルアップロードIF
   cv_prf_org_err_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
@@ -1875,7 +1882,9 @@ AS
     ln_cnt                    NUMBER;
     lt_product_class_code     mtl_categories_vl.segment1%TYPE;                -- 商品区分コード
     lt_target_category        xxcok_condition_temp.target_category%TYPE;      -- 対象区分
---
+-- 2021/05/18 Ver1.4 ADD Start
+    ln_customer_cnt           NUMBER;
+-- 2021/05/18 Ver1.4 ADD End
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -2216,8 +2225,25 @@ AS
             AND   ffv.flex_value            = g_cond_tmp_chk_rec.corp_code
             ;
 --
-          END IF;
+-- 2021/05/18 Ver1.4 ADD Start
+            SELECT  count(*)
+            INTO    ln_customer_cnt
+            FROM    xxcmm_cust_accounts xca
+            WHERE   xca.intro_chain_code2 in (  SELECT  flv.lookup_code
+                                                FROM    fnd_lookup_values flv
+                                                WHERE   flv.lookup_type   = cv_type_chain_code
+                                                AND     flv.language      = ct_language
+                                                AND     flv.enabled_flag  = cv_const_y
+                                                AND     gd_process_date   BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                                                          AND     NVL(flv.end_date_active, gd_process_date)
+                                                AND     flv.attribute1    = g_cond_tmp_chk_rec.corp_code  );
 --
+            IF  ln_customer_cnt = 0 THEN
+              RAISE no_customer_found;
+            END IF;
+-- 2021/05/18 Ver1.4 ADD End
+--
+          END IF;
           -- 8-2.★控除用チェーンコードでチェック
           IF g_cond_tmp_chk_rec.deduction_chain_code IS NOT NULL THEN
 --
@@ -2235,8 +2261,18 @@ AS
                                     AND     NVL(flv.end_date_active, gd_process_date)
             ;
 --
-          END IF;
+-- 2021/05/18 Ver1.4 ADD Start
+            SELECT  count(*)
+            INTO    ln_customer_cnt
+            FROM    xxcmm_cust_accounts xca
+            WHERE   xca.intro_chain_code2 = g_cond_tmp_chk_rec.deduction_chain_code;
 --
+            IF  ln_customer_cnt = 0 THEN
+              RAISE no_customer_found;
+            END IF;
+-- 2021/05/18 Ver1.4 ADD End
+--
+          END IF;
           -- 8-3.★顧客コードでチェック
           IF g_cond_tmp_chk_rec.customer_code IS NOT NULL THEN
 --
@@ -2323,6 +2359,20 @@ AS
                          );
             ln_cnt  :=  ln_cnt + 1;
             g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+--
+-- 2021/05/18 Ver1.4 ADD Start
+          WHEN no_customer_found THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_msg_kbn_cok
+                         , iv_name         => cv_msg_cok_10797
+                         , iv_token_name1  => cv_col_name_tok
+                         , iv_token_value1 => lv_token_name
+                         , iv_token_name2  => cv_col_value_tok
+                         , iv_token_value2 => lv_token_value
+                         );
+            ln_cnt  :=  ln_cnt + 1;
+            g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+-- 2021/05/18 Ver1.4 ADD End
         END;
 --
         --  ******************************************
