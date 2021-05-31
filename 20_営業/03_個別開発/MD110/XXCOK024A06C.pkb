@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A06C (body)
  * Description      : 販売控除情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : 販売控除データGL連携 MD050_COK_024_A06
- * Version          : 1.00
+ * Version          : 1.01
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2020/11/24    1.0   H.Ishii          新規作成
+ *  2021/05/19    1.1   K.Yoshikawa      グループID追加対応
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,9 @@ AS
   cv_period_name_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-00059';                 -- 会計期間情報取得エラーメッセージ
   cv_account_error_msg      CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10681';                 -- 税情報取得エラーメッセージ
   cv_pro_org_id             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10669';                 -- 組織ID
+--2021/05/19 add start
+  cv_group_id_msg           CONSTANT VARCHAR2(50) := 'APP-XXCOK1-00024';                 -- グループID取得エラー
+--2021/05/19 add end
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';                         -- プロファイル
@@ -207,6 +211,9 @@ AS
   gv_category_code                    VARCHAR2(30);                                 -- 仕訳カテゴリ
   gv_source_code                      VARCHAR2(30);                                 -- 仕訳ソース
   gn_org_id                           NUMBER;                                       -- 組織ID
+--2021/05/19 add start
+  gn_group_id                         NUMBER         DEFAULT NULL;                  -- グループID
+--2021/05/19 add end
 --
   CURSOR deductions_data_cur
   IS
@@ -577,6 +584,24 @@ AS
       lv_errbuf       := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--2021/05/19 add start
+--
+    --==============================================================
+    --１４．グループIDを取得
+    --==============================================================
+    SELECT gjs.attribute1         AS group_id -- グループID
+    INTO   gn_group_id
+    FROM   gl_je_sources             gjs      -- 仕訳ソースマスタ
+    WHERE  gjs.user_je_source_name = gv_source_code;
+--
+    IF ( gn_group_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(cv_xxcok_short_nm
+                                          , cv_group_id_msg
+                                           );
+      RAISE global_api_expt;
+    END IF;
+
+--2021/05/19 add end
 --
   EXCEPTION
 --
@@ -1072,6 +1097,9 @@ AS
     gt_gl_interface_tbl( in_gl_idx ).reference5            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス5（仕訳名摘要）
     gt_gl_interface_tbl( in_gl_idx ).reference10           := iv_reference10;                                           -- リファレンス10（仕訳明細摘要）
     gt_gl_interface_tbl( in_gl_idx ).period_name           := gv_period;                                                -- 会計期間
+--2021/05/18 add start
+    gt_gl_interface_tbl( in_gl_idx ).group_id              := gn_group_id;                                              -- グループID
+--2021/05/18 add end
     gt_gl_interface_tbl( in_gl_idx ).attribute1            := iv_tax_code;                                              -- 属性1（消費税コード）
     gt_gl_interface_tbl( in_gl_idx ).attribute8            := in_gl_contact_id;                                         -- 属性8（GL紐付ID）
     gt_gl_interface_tbl( in_gl_idx ).context               := gv_set_bks_nm;                                            -- コンテキスト
