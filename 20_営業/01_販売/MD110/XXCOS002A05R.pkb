@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *  2019/01/22    1.30  E.Yazaki         [E_本稼動_15535]納品書チェックリストのソート順対応
  *  2021/02/16    1.31  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更
  *  2021/03/03    1.32  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 追加対応
+ *  2021/06/02    1.33  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 再追加対応
  *
  *****************************************************************************************/
 --
@@ -1869,12 +1870,16 @@ AS
 ---- 2021/02/16 Ver.1.31 ADD Start
 --        -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合
 --        IF ( NVL( lt_get_sale_data(in_no).hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
-        -- HHT受信フラグが'Y'かつ、業態小分類がVDの場合
+        -- 出力区分が'1':納品チェックリストかつ、HHT受信フラグが'Y'かつ、業態小分類がVDの場合
         IF ( NVL( lt_get_sale_data(in_no).hht_received_flag, cv_no_hht_received ) = cv_hht_received AND
 -- 2021/03/03 Ver.1.32 Mod End
               ( lt_get_sale_data(in_no).business_low_type = cv_full_service_con_vd OR
                 lt_get_sale_data(in_no).business_low_type = cv_full_service_vd OR
-                lt_get_sale_data(in_no).business_low_type = cv_consume_vd ) ) THEN
+-- 2021/06/02 Ver.1.33 Mod Start
+--                lt_get_sale_data(in_no).business_low_type = cv_consume_vd ) ) THEN
+                lt_get_sale_data(in_no).business_low_type = cv_consume_vd ) AND
+             iv_output_type = cv_output_type_1 ) THEN
+-- 2021/06/02 Ver.1.33 Mod End
 --
           -- 顧客情報を比較し、同じ場合処理しない（明細行を作成しない）
           IF ( lt_get_sale_data(in_no).invoice_no = lt_invoice_no_pre AND
