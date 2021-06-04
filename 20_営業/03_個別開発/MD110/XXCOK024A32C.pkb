@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A32C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：入金時値引処理 MD050_COK_024_A32
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/12/22    1.0   Y.Koh            新規作成
+ *  2021/06/03    1.1   SCSK Y.Koh       [E_本稼動_16026] 消費税明細対応
  *
  *****************************************************************************************/
 --
@@ -792,6 +793,7 @@ AS
             lv_payment_terms_3  = gv_instantly_term_name  THEN
           ld_next_closing_date  :=  gd_process_date;
           lv_next_payment_term  :=  gv_instantly_term_name;
+          ln_invoice_issue_cycle := 0;
         ELSE
 --
           IF  lv_payment_terms_1  IS  NOT NULL  THEN
@@ -1397,6 +1399,11 @@ AS
           orig_system_bill_address_id , -- 請求先顧客所在地参照ID
           orig_system_ship_customer_id, -- 出荷先顧客ID
           orig_system_ship_address_id , -- 出荷先顧客所在地参照ID
+-- 2021/06/03 Ver1.1 ADD Start
+          link_to_line_context        , -- リンク明細コンテキスト
+          link_to_line_attribute1     , -- リンク明細DFF1
+          link_to_line_attribute2     , -- リンク明細DFF2
+-- 2021/06/03 Ver1.1 ADD End
           conversion_type             , -- 換算タイプ
           conversion_rate             , -- 換算レート
           trx_date                    , -- 取引日
@@ -1425,7 +1432,10 @@ AS
           ln_interface_line_attribute2                  , -- 取引明細DFF2(明細行番号)
           gv_gl_category_condition1                     , -- 取引ソース
           gn_gl_set_of_bks_id                           , -- 会計帳簿ID
-          'LINE'                                        , -- 明細タイプ
+-- 2021/06/03 Ver1.1 MOD Start
+          'TAX'                                         , -- 明細タイプ
+--          'LINE'                                        , -- 明細タイプ
+-- 2021/06/03 Ver1.1 MOD End
           l_sales_deduction_t_rec.description           , -- 品目明細摘要
           gv_currency_code                              , -- 通貨コード
           - l_sales_deduction_t_rec.deduction_tax_amount, -- 明細金額
@@ -1435,6 +1445,11 @@ AS
           in_billing_customer_site_id                   , -- 請求先顧客所在地参照ID
           in_ship_to_customer_id                        , -- 出荷先顧客ID
           in_ship_to_customer_site_id                   , -- 出荷先顧客所在地参照ID
+-- 2021/06/03 Ver1.1 ADD Start
+          gv_gl_category_bm                             , -- 取引明細コンテキスト
+          lv_interface_line_attribute1                  , -- 取引明細DFF1(伝票番号)
+          1                                             , -- 取引明細DFF2(明細行番号)
+-- 2021/06/03 Ver1.1 ADD End
           'User'                                        , -- 換算タイプ
           1                                             , -- 換算レート
           id_next_closing_date                          , -- 取引日
@@ -1483,7 +1498,10 @@ AS
           gv_gl_category_bm                             , -- 取引明細コンテキスト
           lv_interface_line_attribute1                  , -- 取引明細DFF1(伝票番号)
           ln_interface_line_attribute2                  , -- 取引明細DFF2(明細行番号)
-          'REV'                                         , -- 勘定科目区分(配分タイプ)
+-- 2021/06/03 Ver1.1 MOD Start
+          'TAX'                                         , -- 勘定科目区分(配分タイプ)
+--          'REV'                                         , -- 勘定科目区分(配分タイプ)
+-- 2021/06/03 Ver1.1 MOD End
           - l_sales_deduction_t_rec.deduction_tax_amount, -- 金額(明細金額)
           100                                           , -- パーセント(割合)
           gv_aff1_company_code                          , -- 会社セグメント
