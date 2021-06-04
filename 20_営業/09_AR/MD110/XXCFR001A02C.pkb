@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2018/04/03    1.13 SCSK佐々木宏之   個別の営業員コード表示[E_本稼動_14952]
  *  2019/09/11    1.14 SCSK桑子 駿介    障害対応[E_本稼動_15472]
  *  2019/10/07    1.15 SCSK佐々木宏之   障害対応[E_本稼動_15472]障害対応
+ *  2021/06/04    1.16 SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -192,7 +193,7 @@ AS
 --      SELECT rcta.trx_number              trx_number,               -- 納品伝票No（AR取引番号）
       SELECT /*+
                  LEADING(rcta) 
-                 USE_NL( rcta rctta rctla rctla_t rctlgda gcc hca_s hca_b avtab )
+                 USE_NL( rcta rctta rctla rctlgda gcc hca_s hca_b avtab )
              */
              rcta.trx_number              trx_number,               -- 納品伝票No（AR取引番号）
 -- Mod 2011.05.26 Ver.1.12 End
@@ -201,10 +202,19 @@ AS
              rctla.line_number            line_number,              -- 納品伝票行No（AR取引明細番号）
              rctla.customer_trx_line_id   customer_trx_line_id,     -- 取引明細ID
              rctla.revenue_amount         rec_amount,               -- 売上金額
-             rctla_t.extended_amount      tax_amount,               -- 税金金額
+-- 2021/06/04 Ver1.16 MOD Start
+             ( select NVL(SUM(rctla_t.extended_amount),0) FROM ra_customer_trx_lines_all rctla_t WHERE rctla_t.link_to_cust_trx_line_id = rctla.customer_trx_line_id )
+                                          tax_amount,               -- 税金金額
+--             rctla_t.extended_amount      tax_amount,               -- 税金金額
+-- 2021/06/04 Ver1.16 MOD End
              avtab.tax_code               tax_code,                 -- AR税区分（AR税金マスタ）
              gcc.segment1                 comp_code,                -- 会社コード(AFF1)
              gcc.segment2                 dept_code,                -- 売上拠点コード(AFF2)
+-- 2021/06/04 Ver1.16 ADD Start
+             xca.sale_base_code           sale_base_code,           -- 売上拠点コード
+             xca.past_sale_base_code      past_sale_base_code,      -- 前月売上拠点コード
+             gcc.segment3                 account_code,             -- 勘定科目コード(AFF3)
+-- 2021/06/04 Ver1.16 ADD End
              hca_s.account_number         ship_to_account_number,   -- 顧客コード（出荷先顧客コード）
              hca_b.account_number         bill_to_account_number,   -- 請求先顧客コード（請求先顧客コード）
              rctta.attribute3             item_code,                -- 商品コード
@@ -216,11 +226,16 @@ AS
       FROM ra_customer_trx_all            rcta,       -- 取引ヘッダ
            ra_cust_trx_types_all          rctta,      -- 取引タイプ
            ra_customer_trx_lines_all      rctla,      -- 取引明細（本体）
-           ra_customer_trx_lines_all      rctla_t,    -- 取引明細（税額）
+-- 2021/06/04 Ver1.16 DEL Start
+--           ra_customer_trx_lines_all      rctla_t,    -- 取引明細（税額）
+-- 2021/06/04 Ver1.16 DEL End
            ra_cust_trx_line_gl_dist_all   rctlgda,    -- 取引配分
            gl_code_combinations           gcc,        -- 勘定科目組合せマスタ
            hz_cust_accounts               hca_s,      -- 顧客マスタ（出荷先）
            hz_cust_accounts               hca_b,      -- 顧客マスタ（請求先）
+-- 2021/06/04 Ver1.16 ADD Start
+           xxcmm_cust_accounts            xca,        -- 顧客追加情報
+-- 2021/06/04 Ver1.16 ADD End
            ar_vat_tax_all_b               avtab       -- AR税金マスタ
       WHERE rcta.cust_trx_type_id         = rctta.cust_trx_type_id
         AND rctta.attribute2              = cv_flag_yes       -- 情報系連携フラグ（＝Y)
@@ -238,11 +253,16 @@ AS
         AND rcta.org_id                   = gn_org_id
         AND rcta.customer_trx_id          = rctla.customer_trx_id
         AND rctla.line_type               = cv_line_type_l    -- 明細
-        AND rctla.customer_trx_line_id    = rctla_t.link_to_cust_trx_line_id(+)
+-- 2021/06/04 Ver1.16 DEL Start
+--        AND rctla.customer_trx_line_id    = rctla_t.link_to_cust_trx_line_id(+)
+-- 2021/06/04 Ver1.16 DEL End
         AND rctla.customer_trx_line_id    = rctlgda.customer_trx_line_id
         AND rctlgda.code_combination_id   = gcc.code_combination_id 
         AND rcta.bill_to_customer_id      = hca_b.cust_account_id
         AND rcta.ship_to_customer_id      = hca_s.cust_account_id(+)
+-- 2021/06/04 Ver1.16 ADD Start
+        AND xca.customer_code(+)          = hca_s.account_number
+-- 2021/06/04 Ver1.16 ADD End
         AND rctla.vat_tax_id              = avtab.vat_tax_id(+)
       ORDER BY
         rcta.trx_number,                  -- 納品伝票No
@@ -841,6 +861,28 @@ AS
           END;
         END IF;
 --  2019/09/11 V1.14 Added END
+--
+-- 2021/06/04 Ver1.16 ADD Start
+        IF  ln_dummy2 = cv_receipt_discnt_item  THEN
+          -- 未払費用の確認
+          SELECT  COUNT(*)
+          INTO    ln_dummy
+          FROM    fnd_lookup_values flv
+          WHERE   flv.lookup_type  = 'XXCOK1_DEDUCTION_DATA_TYPE'
+          AND     flv.language     = 'JA'
+          AND     flv.enabled_flag = 'Y'
+          AND     flv.attribute10  = 'Y'
+          AND     flv.attribute6   = gt_sales_data(ln_loop_cnt).account_code;
+--
+          IF  ln_dummy  >=1 THEN
+            IF  TRUNC(gt_sales_data(ln_loop_cnt).trx_date,'MM')  = TRUNC(gd_process_date,'MM')  THEN
+              gt_sales_data(ln_loop_cnt).dept_code  :=  gt_sales_data(ln_loop_cnt).sale_base_code;
+            ELSE
+              gt_sales_data(ln_loop_cnt).dept_code  :=  gt_sales_data(ln_loop_cnt).past_sale_base_code;
+            END IF;
+          END IF;
+        END IF;
+-- 2021/06/04 Ver1.16 ADD End
 --
         -- 出力文字列作成
         lv_csv_text := cv_enclosed || gt_sales_data(ln_loop_cnt).comp_code || cv_enclosed || cv_delimiter
