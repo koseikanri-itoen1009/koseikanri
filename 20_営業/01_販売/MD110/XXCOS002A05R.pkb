@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2021/02/16    1.31  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更
  *  2021/03/03    1.32  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 追加対応
  *  2021/06/02    1.33  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 再追加対応
+ *  2021/06/10    1.34  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 再々追加対応
  *
  *****************************************************************************************/
 --
@@ -556,6 +557,10 @@ AS
     lt_consumption_tax_class xxcos_sales_exp_headers.consumption_tax_class%TYPE; -- 前回消費税区分
     lt_create_class        xxcos_rep_dlv_chk_list.create_class%TYPE;        -- 前回作成元区分
     -- 2021/02/16 Ver.1.31 Add End
+    -- 2021/06/10 Ver.1.34 Add Start
+    lt_hht_received_flag   xxcos_rep_dlv_chk_list.hht_received_flag%TYPE;   -- 前回HHT受信フラグ
+    -- 2021/06/10 Ver.1.34 Add End
+    -- 
 --
     -- *** ローカル・カーソル ***
 -- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
@@ -1790,6 +1795,9 @@ AS
       lt_consumption_tax_class := NULL;
       lt_create_class    :=  NULL;
 -- 2021/02/16 Ver.1.31 Add End
+-- 2021/06/10 Ver.1.34 Add Start
+      lt_hht_received_flag := NULL;
+-- 2021/06/10 Ver.1.34 Add End
 --
       -- チェックマーク取得
       lv_check_mark := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_mark );
@@ -1888,7 +1896,11 @@ AS
                NVL( lt_get_sale_data(in_no).input_class, cv_x ) = NVL( lt_input_class, cv_x ) AND
                NVL( lt_get_sale_data(in_no).card_sale_class, cv_x ) = NVL( lt_card_sale_class, cv_x ) AND
                NVL( lt_get_sale_data(in_no).consumption_tax_class, cv_x ) = NVL( lt_consumption_tax_class, cv_x ) AND
-               lt_get_sale_data(in_no).create_class = lt_create_class ) THEN
+-- 2021/06/10 Ver.1.34 Mod Start
+--               lt_get_sale_data(in_no).create_class = lt_create_class ) THEN
+               lt_get_sale_data(in_no).create_class = lt_create_class AND
+               NVL( lt_get_sale_data(in_no).hht_received_flag, cv_x ) = NVL( lt_hht_received_flag, cv_x ) ) THEN
+-- 2021/06/10 Ver.1.34 Mod End
             CONTINUE;
           END IF;
 --
@@ -1988,6 +2000,9 @@ AS
           lt_card_sale_class   := lt_get_sale_data(in_no).card_sale_class;
           lt_consumption_tax_class := lt_get_sale_data(in_no).consumption_tax_class;
           lt_create_class      := lt_get_sale_data(in_no).create_class;
+-- 2021/06/10 Ver.1.34 Add Start
+          lt_hht_received_flag := lt_get_sale_data(in_no).hht_received_flag;
+-- 2021/06/10 Ver.1.34 Add End
           CONTINUE;
         END IF;
 -- 2021/02/16 Ver.1.31 ADD End
@@ -2312,6 +2327,9 @@ AS
         lt_consumption_tax_class := lt_get_sale_data(in_no).consumption_tax_class;
         lt_create_class          := lt_get_sale_data(in_no).create_class;
 -- 2021/02/16 Ver.1.31 ADD End
+-- 2021/06/10 Ver.1.34 ADD Start
+        lt_hht_received_flag     := lt_get_sale_data(in_no).hht_received_flag;
+-- 2021/06/10 Ver.1.34 Add End
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
