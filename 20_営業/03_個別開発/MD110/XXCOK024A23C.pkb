@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A23C (body)
  * Description      : 控除マスタを元に、毎月定額で発生する控除データを作成し販売控除情報へ登録する
  * MD.050           : 定額控除データ作成 MD050_COK_024_A23
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -23,6 +23,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/04/13    1.0   M.Sato           新規作成
  *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
+ *  2021/06/16    1.2   K.Yoshikawa      E_本稼動_17256
  *
  *****************************************************************************************/
 --
@@ -207,7 +208,10 @@ AS
     -- 正常に取得できていた場合
     ELSE
       -- 控除データの計上日を求める
-      gd_accounting_date := ADD_MONTHS ( trunc ( ld_process_date , 'month' ) , 1 );
+-- 2021/06/16 Ver1.2 MOD Start
+--      gd_accounting_date := ADD_MONTHS ( trunc ( ld_process_date , 'month' ) , 1 );
+      gd_accounting_date := trunc ( ld_process_date , 'month' ) ;
+-- 2021/06/16 Ver1.2 MODEnd
     --
     END IF;
 --
