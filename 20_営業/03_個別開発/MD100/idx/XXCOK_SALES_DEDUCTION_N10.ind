@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n10
+ON xxcok.xxcok_sales_deduction(
+     data_type
+   , cancel_gl_date
+   , gl_date
+)
+tablespace XXIDX2
+/
