@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A06C (body)
  * Description      : 販売控除情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : 販売控除データGL連携 MD050_COK_024_A06
- * Version          : 1.01
+ * Version          : 1.2
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -27,6 +27,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/11/24    1.0   H.Ishii          新規作成
  *  2021/05/19    1.1   K.Yoshikawa      グループID追加対応
+ *  2021/06/25    1.2   K.Tomie          E_本稼働_17279対応
  *
  *****************************************************************************************/
 --
@@ -214,6 +215,9 @@ AS
 --2021/05/19 add start
   gn_group_id                         NUMBER         DEFAULT NULL;                  -- グループID
 --2021/05/19 add end
+--Ver 1.2 add start
+  gv_parallel_group                   VARCHAR2(2);                                  -- GL連携パラレル実行グループ
+--Ver 1.2 add end
 --
   CURSOR deductions_data_cur
   IS
@@ -240,10 +244,23 @@ AS
 --
   CURSOR deductions_data_lock_cur
   IS
-    SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+--Ver 1.2 mod start
+--    SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+    SELECT /*+ LEADING(flv XSD)
+               INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
+               USE_HASH(XSD)*/
+--Ver 1.2 mod end
            xsd.sales_deduction_id      sales_deduction_id    -- 販売控除ID
     FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
-    WHERE  TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)  -- 売上日
+--Ver 1.2 mod start
+--    WHERE  TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)  -- 売上日
+          ,fnd_lookup_values         flv                     -- クイックコード
+    WHERE  flv.lookup_code                          = xsd.data_type                                 -- データ種類
+    AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
+    AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
+    AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+    AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+--Ver 1.2 mod end
     AND    xsd.gl_if_flag                          IN (cv_n_flag, cv_r_flag)                 -- GL連携フラグ N：未連携、R：再送
     AND    xsd.source_category                     IN (cv_s_flag, cv_t_flag, cv_v_flag       -- 作成元区分 S:販売実績、T:売上実績振替(EDI)、V:売上実績振替(振替割合)
                                                      , cv_u_flag, cv_f_flag)                 -- 作成元区分 U:アップロード、F:定額控除
@@ -268,6 +285,9 @@ AS
     AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
     AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
     AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+--Ver 1.2 add start
+    AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+--Ver 1.2 add end
     AND    TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)         -- 売上日
     AND    xsd.gl_if_flag                          IN (cv_n_flag,cv_r_flag)                         -- GL連携フラグ N：未連携、R：再送
     AND    xsd.source_category                     IN (cv_s_flag, cv_t_flag, cv_v_flag              -- 作成元区分 S:販売実績、T:売上実績振替(EDI)、V:売上実績振替(振替割合)
@@ -682,7 +702,14 @@ AS
           ,customer_code               customer_code
     FROM (
           -- 顧客
-          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+--Ver 1.2 mod start
+--          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+          SELECT /*+ LEADING(flv XSD xca flv2 flv1)
+                     INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
+                     USE_HASH(XSD)
+                     USE_HASH(flv1)
+                     USE_HASH(flv2)*/
+--Ver 1.2 mod end
                  xsd.sales_deduction_id         sales_deduction_id    -- 販売控除ID
                 ,CASE
                    WHEN flv.attribute2 = cv_teigaku_code THEN
@@ -724,6 +751,9 @@ AS
           AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
           AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
           AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+--Ver 1.2 add start
+          AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+--Ver 1.2 add end
           AND    flv1.lookup_code                         = xsd.tax_code                                  -- 税コード
           AND    flv1.lookup_type                         = cv_lookup_tax_conv_code                       -- 消費税コード変換マスタ
           AND    flv1.enabled_flag                        = cv_y_flag                                     -- 使用可能：Y
@@ -739,7 +769,14 @@ AS
           AND    xsd.customer_code_to                    IS NOT NULL                                      -- 振替先顧客コード
           UNION ALL
           -- チェーン
-          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+--Ver 1.2 mod start
+--          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+          SELECT /*+ LEADING(flv XSD flv2 flv1)
+                     INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
+                     USE_HASH(XSD)
+                     USE_HASH(flv1)
+                     USE_HASH(flv2)*/
+--Ver 1.2 mod end
                  xsd.sales_deduction_id         sales_deduction_id    -- 販売控除ID
                 ,CASE
                    WHEN flv.attribute2 = cv_teigaku_code THEN
@@ -773,6 +810,9 @@ AS
           AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
           AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
           AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+--Ver 1.2 add start
+          AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+--Ver 1.2 add end
           AND    flv1.lookup_code                         = xsd.tax_code                                  -- 税コード
           AND    flv1.lookup_type                         = cv_lookup_tax_conv_code                       -- 消費税コード変換マスタ
           AND    flv1.enabled_flag                        = cv_y_flag                                     -- 使用可能：Y
@@ -820,6 +860,9 @@ AS
           AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
           AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
           AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+--Ver 1.2 add start
+          AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+--Ver 1.2 add end
           AND    flv1.lookup_code                         = xsd.tax_code                                  -- 税コード
           AND    flv1.lookup_type                         = cv_lookup_tax_conv_code                       -- 消費税コード変換マスタ
           AND    flv1.enabled_flag                        = cv_y_flag                                     -- 使用可能：Y
@@ -1250,6 +1293,12 @@ AS
                                                                                -- reference10
                        );
 --
+--Ver 1.2 add start
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE edit_gl_expt;
+          END IF;
+--
+--Ver 1.2 add end
           --控除額集約初期化
           ln_deduction_amount := 0;
 --
@@ -1572,7 +1621,9 @@ AS
 --
   EXCEPTION
     WHEN edit_gl_expt THEN
-      lv_errbuf  := lv_errmsg;
+--Ver 1.2 del start
+--      lv_errbuf  := lv_errmsg;
+--Ver 1.2 del end
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -1990,7 +2041,11 @@ AS
    **********************************************************************************/
 --
   PROCEDURE main( errbuf      OUT VARCHAR2               -- エラー・メッセージ  --# 固定 #
-                , retcode     OUT VARCHAR2 )             -- リターン・コード    --# 固定 #
+--Ver 1.2 mod start
+--                , retcode     OUT VARCHAR2 )             -- リターン・コード    --# 固定 #
+                , retcode     OUT VARCHAR2               -- リターン・コード    --# 固定 #
+                , parallel_group IN VARCHAR2 )           -- GL連携パラレル実行グループ
+--Ver 1.2 mod end
                 
   IS
     -- ===============================
@@ -2034,6 +2089,10 @@ AS
 --
 --#####################################  固定部 END  #####################################
 --
+--Ver 1.2 add start
+    -- GL連携パラレル実行グループ設定
+    gv_parallel_group := parallel_group;
+--Ver 1.2 add end
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
