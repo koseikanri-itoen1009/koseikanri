@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A37C(body)
  * Description      : 控除データIF出力（情報系）
  * MD.050           : 控除データIF出力（情報系） MD050_COK_024_A37
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021/02/15    1.0   K.Yoshikawa      main新規作成
  *  2021/04/23    1.1   K.Yoshikawa      main新規作成
+ *  2021/06/30    1.2   T.Nishikawa      [E_本稼動_17306] 入金値引訂正変動対価区分対応
  *
  *****************************************************************************************/
 --
@@ -121,6 +122,9 @@ AS
   cv_item_code_dummy_f           CONSTANT VARCHAR2(33)  := 'XXCOK1_ITEM_CODE_DUMMY_F';  -- XXCOK:品目コード_ダミー値（定額控除）
   cv_item_code_dummy_u           CONSTANT VARCHAR2(33)  := 'XXCOK1_ITEM_CODE_DUMMY_U';  -- XXCOK:品目コード_ダミー値（アップロード）
   cv_item_code_dummy_o           CONSTANT VARCHAR2(33)  := 'XXCOK1_ITEM_CODE_DUMMY_O';  -- XXCOK:品目コード_ダミー値（繰越調整）
+-- 2021/06/30 Ver1.2 Add Start
+  cv_item_code_dummy_nt          CONSTANT VARCHAR2(33)  := 'XXCOK1_ITEM_CODE_DUMMY_NT';  -- XXCOK:品目コード_ダミー値（入金値引）
+-- 2021/06/30 Ver1.2 Add End
   cv_dqu                         CONSTANT VARCHAR2(1)   := '"';
   cv_sep                         CONSTANT VARCHAR2(1)   := ',';
 --
@@ -158,6 +162,9 @@ AS
   gv_item_code_dummy_f           VARCHAR2(7);                                   -- ダミー品目コード（定額控除）
   gv_item_code_dummy_u           VARCHAR2(7);                                   -- ダミー品目コード（アップロード）
   gv_item_code_dummy_o           VARCHAR2(7);                                   -- ダミー品目コード（繰越調整）
+-- 2021/06/30 Ver1.2 Add Start
+  gv_item_code_dummy_nt          VARCHAR2(7);                                   -- ダミー品目コード（入金値引）
+-- 2021/06/30 Ver1.2 Add End
   gn_target_header_id_st_1       NUMBER;                                        -- 販売控除ID (自)控除黒
   gn_target_header_id_ed_1       NUMBER;                                        -- 販売控除ID (至)控除黒
   gd_target_header_date_st_2     DATE;                                          -- 販売控除ID (自)控除赤（リカバリ赤、差額調整取消、繰越調整取消）
@@ -299,6 +306,18 @@ AS
       lv_message_token := cv_item_code_dummy_o;
       RAISE profile_expt;
     END IF;
+-- 2021/06/30 Ver1.2 Add Start
+--
+    lv_step := 'A-1.3f';
+    lv_message_token := 'ダミー品目コード（入金値引）の取得';
+    -- ダミー品目コードの取得
+    gv_item_code_dummy_nt := FND_PROFILE.VALUE( cv_item_code_dummy_nt );
+    -- 取得エラー時
+    IF ( gv_item_code_dummy_nt IS NULL ) THEN
+      lv_message_token := cv_item_code_dummy_nt;
+      RAISE profile_expt;
+    END IF;
+-- 2021/06/30 Ver1.2 Add End
 --
     lv_step := 'A-1.4';
     lv_message_token := 'CSVファイル存在チェック';
@@ -1121,7 +1140,14 @@ AS
           lv_fluctuation_value_class := null;
 -- 2021/04/20 MOD End
         ELSE
-          lv_fluctuation_value_class := lv_attribute11;
+-- 2021/06/30 Ver1.2 Mod Start
+          IF  lt_csv_deduction_tab( i ).item_code  = gv_item_code_dummy_nt THEN
+            lv_fluctuation_value_class := lv_attribute12;
+          ELSE
+            lv_fluctuation_value_class := lv_attribute11;
+          END IF;
+--          lv_fluctuation_value_class := lv_attribute11;
+-- 2021/06/30 Ver1.2 Mod End
         END IF;
 --
     -----------------------------------------------
