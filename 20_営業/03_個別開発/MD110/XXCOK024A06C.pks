@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A06C (spec)
  * Description      : 販売控除情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : 販売控除データGL連携 MD050_COK_024_A06
- * Version          : 1.00
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/01/15    1.0   H.Ishii          新規作成
+ *  2021/06/24    1.1   K.Tomie          E_本稼働_17279対応
  *
  *****************************************************************************************/
 --
@@ -26,6 +27,9 @@ AS
   PROCEDURE main(
      errbuf        OUT    VARCHAR2         --   エラーメッセージ #固定#
     ,retcode       OUT    VARCHAR2         --   エラーコード     #固定#
+--Ver 1.1 add start
+    ,parallel_group IN    VARCHAR2         --   GL連携パラレル実行グループ
+--Ver 1.1 add end
   );
 END XXCOK024A06C;
 /
