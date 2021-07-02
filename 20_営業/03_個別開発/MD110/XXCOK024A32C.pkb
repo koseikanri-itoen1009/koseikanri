@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A32C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：入金時値引処理 MD050_COK_024_A32
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/12/22    1.0   Y.Koh            新規作成
  *  2021/06/03    1.1   SCSK Y.Koh       [E_本稼動_16026] 消費税明細対応
+ *  2021/06/21    1.2   SCSK T.Nishikawa [E_本稼動_17278] 処理対象から売上実績振替分を除く
  *
  *****************************************************************************************/
 --
@@ -589,6 +590,9 @@ AS
       AND     xsd.status              =   'N'
       AND     xsd.recon_slip_num      IS  NULL
       AND     xsd.customer_code_to    IS NOT NULL
+-- 2021/06/21 Ver1.2 ADD Start
+      AND     xsd.source_category     NOT IN ('T' ,'V')
+-- 2021/06/21 Ver1.2 ADD End
       GROUP BY xsd.customer_code_to;
 --
   BEGIN
@@ -1156,7 +1160,11 @@ AS
     AND     xsd.record_date         <=  id_next_closing_date
     AND     xsd.data_type           IN  ( SELECT  lookup_code FROM  flvc1 )
     AND     xsd.status              =   'N'
-    AND     xsd.recon_slip_num      IS  NULL;
+    AND     xsd.recon_slip_num      IS  NULL
+-- 2021/06/21 Ver1.2 ADD Start
+    AND     xsd.source_category     NOT IN ('T' ,'V')
+-- 2021/06/21 Ver1.2 ADD End
+    ;
 --
     IF  ln_count  > 0 THEN
 --
@@ -1193,7 +1201,11 @@ AS
                                             AND     flvc.attribute10  = 'Y'
                                           )
       AND     xsd.status              =   'N'
-      AND     xsd.recon_slip_num      IS  NULL;
+      AND     xsd.recon_slip_num      IS  NULL
+-- 2021/06/21 Ver1.2 ADD Start
+      AND     xsd.source_category     NOT IN ('T' ,'V')
+-- 2021/06/21 Ver1.2 ADD End
+      ;
 --
       -- ============================================================
       -- 顧客情報取得
