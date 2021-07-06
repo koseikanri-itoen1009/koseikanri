@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A38C(body)
  * Description      : 入金時値引データIF出力（情報系）
  * MD.050           : 入金時値引データIF出力（情報系） MD050_COK_024_A38
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021/06/22    1.0   Y.Koh            新規作成
+ *  2021/07/06    1.1   Y.Koh            税率による商品コード変換対応
  *
  *****************************************************************************************/
 --
@@ -67,6 +68,9 @@ AS
   cv_tkn_trx_type             CONSTANT VARCHAR2(15)         := 'TRX_TYPE';                          -- 取引タイプのトークン名
   -- 参照タイプ
   cv_lookup_data_type         CONSTANT VARCHAR2(50)         := 'XXCOK1_DEDUCTION_DATA_TYPE';        -- 控除データ種類
+-- 2021/07/06 Ver1.1 ADD Start
+  cv_lookup_discount_item     CONSTANT VARCHAR2(50)         := 'XXCFR1_RECEIPT_DISCOUNT_ITEM';      -- 入金値引品目対象コード（売上実績連携）
+-- 2021/07/06 Ver1.1 ADD End
   -- フラグ等
   cv_lang_ja                  CONSTANT VARCHAR2(2)          := 'JA';                                -- 言語 JA
   cv_flag_y                   CONSTANT VARCHAR2(1)          := 'Y';                                 -- 有効 Y
@@ -196,7 +200,7 @@ AS
     -- 会社コード取得
     -- ============================================================
     gv_aff1_company_code      := FND_PROFILE.VALUE( cv_aff1_company_code );
-    IF  gv_aff1_company_code	IS  NULL  THEN
+    IF  gv_aff1_company_code  IS  NULL  THEN
       lv_errmsg :=  xxccp_common_pkg.get_msg(
                       cv_appli_xxcok_name
                      ,cv_msg_cok_00003
@@ -318,6 +322,9 @@ AS
   , iv_base_code_to         IN  VARCHAR2                    -- 振替先拠点
   , iv_customer_code_to     IN  VARCHAR2                    -- 振替先顧客コード
   , iv_tax_code             IN  VARCHAR2                    -- 税コード
+-- 2021/07/06 Ver1.1 ADD Start
+  , in_tax_rate             IN  NUMBER                      -- 税率
+-- 2021/07/06 Ver1.1 ADD End
   , in_deduction_amount     IN  NUMBER                      -- 控除額
   , in_deduction_tax_amount IN  NUMBER                      -- 控除税額
   )
@@ -341,6 +348,10 @@ AS
     lv_out_msg                VARCHAR2(1000)      DEFAULT NULL;       -- メッセージ出力変数
     lb_retcode                BOOLEAN             DEFAULT NULL;       -- メッセージ出力関数の戻り値
     lv_csv_text               VARCHAR2(32000);                        -- CSVデータ
+-- 2021/07/06 Ver1.1 ADD Start
+    -- 商品コード
+    lv_item_code              VARCHAR2(30);                           -- 入金時値引の情報系システム連携商品コード
+-- 2021/07/06 Ver1.1 ADD End
     -- 顧客情報
     lv_bill_to_cust_code      VARCHAR2(30)        DEFAULT NULL;       -- メッセージ出力変数
     lv_sales_staff_code       VARCHAR2(30)        DEFAULT NULL;       -- メッセージ出力変数
@@ -349,6 +360,35 @@ AS
 --
     ov_retcode  :=  cv_status_normal;
 --
+-- 2021/07/06 Ver1.1 ADD Start
+    -- ============================================================
+    -- 商品コード変換
+    -- ============================================================
+    lv_item_code  :=  gv_item_code;
+--
+    BEGIN
+      -- 商品コード変換
+      SELECT  flv.lookup_code   item_code
+      INTO    lv_item_code
+      FROM    xxcos_reduced_tax_rate_v  xrtr,
+              fnd_lookup_values         flv
+      WHERE   flv.lookup_type       =       cv_lookup_discount_item
+      AND     flv.language          =       cv_lang_ja
+      AND     flv.enabled_flag      =       cv_flag_y
+      AND     gd_process_month      BETWEEN NVL( flv.start_date_active, gd_process_month )
+                                    AND     NVL( flv.end_date_active, gd_process_month )
+      AND     xrtr.item_code        =       flv.lookup_code
+      AND     gd_process_month      BETWEEN NVL( xrtr.start_date, gd_process_month )
+                                    AND     NVL( xrtr.end_date, gd_process_month )
+      AND     gd_process_month      BETWEEN NVL( xrtr.start_date_histories, gd_process_month )
+                                    AND     NVL( xrtr.end_date_histories, gd_process_month )
+      AND    xrtr.tax_rate          =       in_tax_rate;
+--
+    EXCEPTION
+      WHEN  OTHERS THEN
+        NULL;
+    END;
+-- 2021/07/06 Ver1.1 ADD End
     -- ============================================================
     -- 担当営業員コード取得
     -- ============================================================
@@ -367,7 +407,10 @@ AS
                 || cv_enclosed || cv_trx_number || cv_enclosed || cv_delimiter                      -- 納品伝票No
                 || '1' || cv_delimiter                                                              -- 納品伝票行No
                 || cv_enclosed || iv_customer_code_to || cv_enclosed || cv_delimiter                -- 顧客コード
-                || cv_enclosed || gv_item_code || cv_enclosed || cv_delimiter                       -- 商品コード
+-- 2021/07/06 Ver1.1 MOD Start
+                || cv_enclosed || lv_item_code || cv_enclosed || cv_delimiter                       -- 商品コード
+--                || cv_enclosed || gv_item_code || cv_enclosed || cv_delimiter                       -- 商品コード
+-- 2021/07/06 Ver1.1 MOD End
                 || cv_enclosed || cv_object_code || cv_enclosed || cv_delimiter                     -- 物件コード
                 || cv_enclosed || cv_hc_code || cv_enclosed || cv_delimiter                         -- Ｈ＆Ｃ
                 || cv_enclosed || iv_base_code_to || cv_enclosed || cv_delimiter                    -- 売上拠点コード
@@ -470,9 +513,15 @@ AS
           AND     flvc.enabled_flag = cv_flag_y
           AND     flvc.attribute10  = cv_flag_y
         )
-      SELECT  xsd.base_code_to            base_code_to        ,                 -- 振替先拠点
+-- 2021/07/06 Ver1.1 MOD Start
+      SELECT  xsd.gl_base_code            base_code_to        ,                 -- 振替先拠点
+--      SELECT  xsd.base_code_to            base_code_to        ,                 -- 振替先拠点
+-- 2021/07/06 Ver1.1 MOD End
               xsd.customer_code_to        customer_code_to    ,                 -- 振替先顧客コード
               xsd.tax_code                tax_code            ,                 -- 税コード
+-- 2021/07/06 Ver1.1 ADD Start
+              xsd.tax_rate                tax_rate            ,                 -- 税率
+-- 2021/07/06 Ver1.1 ADD End
               SUM(deduction_amount)       deduction_amount    ,                 -- 控除額
               SUM(deduction_tax_amount)   deduction_tax_amount                  -- 控除税額
       FROM    xxcok_sales_deduction   xsd ,
@@ -480,22 +529,42 @@ AS
       WHERE   xsd.data_type           =   flv.lookup_code
       AND     xsd.cancel_gl_date      IS  NULL
       AND     xsd.gl_date             =   gd_process_month
-      GROUP BY  xsd.base_code_to    ,
+-- 2021/07/06 Ver1.1 MOD Start
+      GROUP BY  xsd.gl_base_code    ,
+--      GROUP BY  xsd.base_code_to    ,
+-- 2021/07/06 Ver1.1 MOD End
                 xsd.customer_code_to,
-                xsd.tax_code
+-- 2021/07/06 Ver1.1 MOD Start
+                xsd.tax_code        ,
+                xsd.tax_rate        
+--                xsd.tax_code
+-- 2021/07/06 Ver1.1 MOD End
     UNION ALL
-      SELECT  xsd.base_code_to            base_code_to        ,                 -- 振替先拠点
+-- 2021/07/06 Ver1.1 MOD Start
+      SELECT  xsd.gl_base_code            base_code_to        ,                 -- 振替先拠点
+--      SELECT  xsd.base_code_to            base_code_to        ,                 -- 振替先拠点
+-- 2021/07/06 Ver1.1 MOD End
               xsd.customer_code_to        customer_code_to    ,                 -- 振替先顧客コード
               xsd.tax_code                tax_code            ,                 -- 税コード
+-- 2021/07/06 Ver1.1 ADD Start
+              xsd.tax_rate                tax_rate            ,                 -- 税率
+-- 2021/07/06 Ver1.1 ADD End
               -SUM(deduction_amount)      deduction_amount    ,                 -- 控除額
               -SUM(deduction_tax_amount)  deduction_tax_amount                  -- 控除税額
       FROM    xxcok_sales_deduction   xsd ,
               flvc1                   flv
       WHERE   xsd.data_type           =   flv.lookup_code
       AND     xsd.cancel_gl_date      =   gd_process_month
-      GROUP BY  xsd.base_code_to    ,
+-- 2021/07/06 Ver1.1 MOD Start
+      GROUP BY  xsd.gl_base_code    ,
+--      GROUP BY  xsd.base_code_to    ,
+-- 2021/07/06 Ver1.1 MOD End
                 xsd.customer_code_to,
-                xsd.tax_code        ;
+-- 2021/07/06 Ver1.1 MOD Start
+                xsd.tax_code        ,
+                xsd.tax_rate        ;
+--                xsd.tax_code        ;
+-- 2021/07/06 Ver1.1 MOD End
 --
   BEGIN
 --
@@ -547,6 +616,9 @@ AS
       , iv_base_code_to         =>  l_discount_data_rec.base_code_to          -- 振替先拠点
       , iv_customer_code_to     =>  l_discount_data_rec.customer_code_to      -- 振替先顧客コード
       , iv_tax_code             =>  l_discount_data_rec.tax_code              -- 税コード
+-- 2021/07/06 Ver1.1 ADD Start
+      , in_tax_rate             =>  l_discount_data_rec.tax_rate              -- 税率
+-- 2021/07/06 Ver1.1 ADD End
       , in_deduction_amount     =>  l_discount_data_rec.deduction_amount      -- 控除額
       , in_deduction_tax_amount =>  l_discount_data_rec.deduction_tax_amount  -- 控除税額
       );
