@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A02C(body)
  * Description      : 情報系システムへの連携の為、EBSの資材取引（標準）をCSVファイルに出力
  * MD.050           : 入出庫情報系連携 <MD050_COI_008_A02>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/04/02    1.1   T.Nakamura       [障害T1_0226]IF項目の順序を修正
  *  2009/06/03    1.2   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2011/01/18    1.3   H.Sekine         [E_本稼動_01762]管轄拠点コードの対応
+ *  2021/07/08    1.4   T.Nishikawa      [E_本稼動_17369]資材取引シーケンスクリア漏れ対応
  *
  *****************************************************************************************/
 --
@@ -163,7 +164,14 @@ AS
          , mtl_system_items_b          msib   -- 品目マスタ
          , mtl_secondary_inventories   msi    -- 保管場所マスタ
          , mtl_transaction_types       mtt    -- 取引タイプマスタ
-    WHERE mmt.transaction_id            >  gn_transaction_id        -- A-2.で取得した取引ID
+-- 2021/07/08 Ver1.4 Mod Start
+--    WHERE mmt.transaction_id            >  gn_transaction_id        -- A-2.で取得した取引ID
+    WHERE (  
+            mmt.transaction_id            >  gn_transaction_id        -- A-2.で取得した取引ID
+          OR
+            mmt.transaction_id            BETWEEN 4005275457 AND 4005275600
+          )
+-- 2021/07/08 Ver1.4 Mod End
     AND   msib.inventory_item_id        =  mmt.inventory_item_id    -- 品目ID
     AND   msib.organization_id          =  gn_organization_id       -- A-1.で取得した在庫組織ID
     AND   msi.secondary_inventory_name  =  mmt.subinventory_code    -- 保管場所コード
