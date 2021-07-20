@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ * 2021/06/17    1.1   Y.Koh            [E_本稼動_16294]対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_vd_sales_vend_all_v(
@@ -30,7 +31,10 @@ AND    EXISTS (
          FROM   xxcmm_cust_accounts xca    --顧客追加情報
                ,hz_cust_accounts    hca    --顧客マスタ
                ,hz_parties          hp     --パーティマスタ
-         WHERE  xca.contractor_supplier_code =  pv.segment1         --BM1の仕入先
+-- 2021/06/17 Ver1.1 MOD Start
+         WHERE  pv.segment1                  IN ( xca.contractor_supplier_code, xca.bm_pay_supplier_code1, xca.bm_pay_supplier_code2 )
+--         WHERE  xca.contractor_supplier_code =  pv.segment1         --BM1の仕入先
+-- 2021/06/17 Ver1.1 MOD End
          AND    xca.business_low_type        =  '25'                --フルVD(フルVD消化は仕入先なしかダミー)
          AND    xca.customer_id              =  hca.cust_account_id
          AND    hca.customer_class_code      =  '10'                --顧客区分(顧客)
