@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *                                        自販機販売報告書の仕入先指定時の顧客抽出条件を追加
  * 2018/07/17    1.5   K.Nara           E_本稼働_15005対応
  *                                        事務センター案件（支払案内書、販売報告書一括出力）
+ * 2021/06/17    1.6   Y.Koh            E_本稼動_16294対応
+ *                                        自販機販売報告書の出力対象について
  *
  *****************************************************************************************/
 --
@@ -1390,7 +1392,10 @@ AS
           AND    hcasab.party_site_id          = hpsb.party_site_id
           AND    hcasab.org_id                 = gn_org_id
           AND    hpsb.location_id              = hlb.location_id
-          AND    xca.contractor_supplier_code  = pv.segment1
+-- 2021/06/17 Ver1.6 MOD Start
+          AND    pv.segment1 IN ( xca.contractor_supplier_code, xca.bm_pay_supplier_code1, xca.bm_pay_supplier_code2 )
+--          AND    xca.contractor_supplier_code  = pv.segment1
+-- 2021/06/17 Ver1.6 MOD End
           AND    pv.vendor_id                  = pvs.vendor_id
           AND    pv.segment1                   = pvs.vendor_site_code
           AND    pvs.org_id                    = gn_org_id
@@ -1877,7 +1882,10 @@ AS
           AND    hcasab.party_site_id          = hpsb.party_site_id
           AND    hcasab.org_id                 = gn_org_id
           AND    hpsb.location_id              = hlb.location_id
-          AND    xca.contractor_supplier_code  = pv.segment1
+-- 2021/06/17 Ver1.6 MOD Start
+          AND    pv.segment1 IN ( xca.contractor_supplier_code, xca.bm_pay_supplier_code1, xca.bm_pay_supplier_code2 )
+--          AND    xca.contractor_supplier_code  = pv.segment1
+-- 2021/06/17 Ver1.6 MOD End
           AND    pv.vendor_id                  = pvs.vendor_id
           AND    pv.segment1                   = pvs.vendor_site_code
           AND    pvs.org_id                    = gn_org_id
@@ -2888,6 +2896,9 @@ AS
         SELECT MIN( xtvcib.rowid )
         FROM  xxcos_tmp_vd_cust_info xtvcib
         WHERE xtvcib.customer_code = xtvcia.customer_code
+-- 2021/06/17 Ver1.6 MOD Start
+        AND   xtvcib.vendor_code   = xtvcia.vendor_code
+-- 2021/06/17 Ver1.6 MOD End
         AND   xtvcib.date_from     = xtvcia.date_from
         AND   xtvcib.output_num    = xtvcia.output_num
       )
@@ -2933,6 +2944,9 @@ AS
         SELECT MIN( xtvcib.rowid )
         FROM  xxcos_tmp_vd_cust_info xtvcib
         WHERE xtvcib.customer_code = xtvcia.customer_code
+-- 2021/06/17 Ver1.6 MOD Start
+        AND   xtvcib.vendor_code   = xtvcia.vendor_code
+-- 2021/06/17 Ver1.6 MOD End
         AND   xtvcib.date_from     = xtvcia.date_from
         AND   xtvcib.output_num    = xtvcia.output_num
       );
