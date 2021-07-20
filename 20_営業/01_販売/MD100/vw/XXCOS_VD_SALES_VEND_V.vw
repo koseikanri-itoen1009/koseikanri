@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_vd_sales_vend_v
  * Description     : 自販機販売報告書用仕入先(拠点用)ビュー
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
  * 2018/01/05    1.1   H.Maeda          [E_本稼動_14793]対応
+ * 2021/06/17    1.2   Y.Koh            [E_本稼動_16294]対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_vd_sales_vend_v(
@@ -37,7 +38,10 @@ AND    xca1.customer_id              =  hca1.cust_account_id
 AND    hca1.customer_class_code      =  '10'                   --顧客区分(顧客)
 AND    hca1.party_id                 =  hp1.party_id
 AND    hp1.duns_number_c             >= '30'                   --顧客ステータス(売上が上がるステータス)
-AND    xca1.contractor_supplier_code =  pv1.segment1           --BM1の仕入先
+-- 2021/06/17 Ver1.2 MOD Start
+AND    pv1.segment1                  IN ( xca1.contractor_supplier_code, xca1.bm_pay_supplier_code1, xca1.bm_pay_supplier_code2 )
+--AND    xca1.contractor_supplier_code =  pv1.segment1           --BM1の仕入先
+-- 2021/06/17 Ver1.2 MOD End
 -- 2018/01/05 Ver.1.1 H.Maeda E_本稼動_14793 ADD START
 UNION
 -- ユーザ拠点(管理下込み)が紹介者チェーン店コード２の仕入先
@@ -59,7 +63,10 @@ AND    xca1.customer_id              =  hca1.cust_account_id
 AND    hca1.customer_class_code      =  '10'                   --顧客区分(顧客)
 AND    hca1.party_id                 =  hp1.party_id
 AND    hp1.duns_number_c             >= '30'                   --顧客ステータス(売上が上がるステータス)
-AND    xca1.contractor_supplier_code =  pv1.segment1           --BM1の仕入先
+-- 2021/06/17 Ver1.2 MOD Start
+AND    pv1.segment1                  IN ( xca1.contractor_supplier_code, xca1.bm_pay_supplier_code1, xca1.bm_pay_supplier_code2 )
+--AND    xca1.contractor_supplier_code =  pv1.segment1           --BM1の仕入先
+-- 2021/06/17 Ver1.2 MOD End
 -- 2018/01/05 Ver.1.1 H.Maeda E_本稼動_14793 ADD END
 UNION
 -- 自拠点が問合せ担当拠点の仕入先
@@ -84,7 +91,10 @@ AND    EXISTS (
          FROM   xxcmm_cust_accounts xca2    --顧客追加情報
                ,hz_cust_accounts    hca2    --顧客マスタ
                ,hz_parties          hp2     --パーティマスタ
-         WHERE  xca2.contractor_supplier_code =  pv2.segment1         --BM1の仕入先
+-- 2021/06/17 Ver1.2 MOD Start
+         WHERE  pv2.segment1                  IN ( xca2.contractor_supplier_code, xca2.bm_pay_supplier_code1, xca2.bm_pay_supplier_code2 )
+--         WHERE  xca2.contractor_supplier_code =  pv2.segment1         --BM1の仕入先
+-- 2021/06/17 Ver1.2 MOD End
          AND    xca2.business_low_type        =  '25'                 --フルVD(フルVD消化は仕入先なしかダミー)
          AND    xca2.customer_id              =  hca2.cust_account_id
          AND    hca2.customer_class_code      =  '10'                 --顧客区分(顧客)
