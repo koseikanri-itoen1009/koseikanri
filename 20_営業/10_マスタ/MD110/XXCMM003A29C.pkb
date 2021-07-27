@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2019/04/09    1.21  小山 伸男        障害E_本稼動_15661対応 顧客追加情報項目変更の不具合対応２(法人顧客)
  *  2019/07/26    1.22  阿部 直樹        障害E_本稼動_15748対応 エラーデータスキップ対応→対応不要
  *  2021/05/21    1.23  二村 悠香        障害E_本稼動_16026対応 収益認識 控除用チェーンコード対応
+ *  2021/07/21    1.24  二村 悠香        障害E_本稼動_16026再対応 収益認識 控除用チェーンコード対応
  *
  *****************************************************************************************/
 --
@@ -3731,6 +3732,9 @@ AS
           END LOOP check_chain_code_loop;
           IF (lv_dedu_chain_code_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
+-- Ver1.24 add start
+            lv_retcode        := cv_status_error;
+-- Ver1.24 add end
             --控除用チェーンコードチェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
