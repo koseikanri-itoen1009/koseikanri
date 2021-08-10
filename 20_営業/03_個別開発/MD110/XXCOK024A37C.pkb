@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A37C(body)
  * Description      : 控除データIF出力（情報系）
  * MD.050           : 控除データIF出力（情報系） MD050_COK_024_A37
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2021/02/15    1.0   K.Yoshikawa      main新規作成
  *  2021/04/23    1.1   K.Yoshikawa      main新規作成
  *  2021/06/30    1.2   T.Nishikawa      [E_本稼動_17306] 入金値引訂正変動対価区分対応
+ *  2021/08/04    1.3   T.Nishikawa      [E_本稼動_17409] GL記帳日追加対応
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,10 @@ AS
   gd_target_header_date_ed_2     DATE;                                          -- 販売控除ID (至)控除赤（リカバリ赤、差額調整取消、繰越調整取消）
   gn_target_header_id_st_3       NUMBER;                                        -- 販売控除ID (自)控除赤（速報戻し）
   gn_target_header_id_ed_3       NUMBER;                                        -- 販売控除ID (至)控除赤（速報戻し）
+-- 2021/08/04 Ver1.3 Add Start
+  gd_max_gl_date                 DATE;                                          -- 設定済最大GL記帳日
+  gd_gl_date                     DATE;                                          -- 直近のオープンしている会計期間の終了日
+-- 2021/08/04 Ver1.3 Add End
 --
   /**********************************************************************************
    * Procedure Name   : proc_init
@@ -379,7 +384,10 @@ AS
         RAISE global_process_expt;
     END;
 --
-    gd_target_header_date_ed_2 := gd_proc_date ;
+-- 2021/08/04 Ver1.3 Mod Start
+--    gd_target_header_date_ed_2 := gd_proc_date ;
+    gd_target_header_date_ed_2 := gd_proc_date + .99999 ;
+-- 2021/08/04 Ver1.3 Mod End
 --
     -- ③控除赤データ(速報戻し)
     BEGIN
@@ -403,6 +411,27 @@ AS
     INTO    gn_target_header_id_ed_3
     FROM    xxcok_dedu_trn_rev xdtr
     WHERE   xdtr.sales_deduction_id >= gn_target_header_id_st_3;
+--
+-- 2021/08/04 Ver1.3 Add Start
+    -- 処理済の最大GL記帳日取得
+    lv_step := 'A-1.7';
+--
+    SELECT  MAX(xsd.gl_date)  max_gl_date
+    INTO    gd_max_gl_date
+    FROM    xxcok_sales_deduction xsd
+    WHERE   xsd.gl_date  IS NOT NULL;
+--
+    --直近のオープンしている会計期間の終了日取得
+    lv_step := 'A-1.8';
+    SELECT MIN(gps.end_date)  min_end_date
+    INTO   gd_gl_date
+    FROM   gl_period_statuses  gps
+    WHERE  gps.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
+    AND    gps.application_id         = 101
+    AND    gps.adjustment_period_flag = 'N'
+    AND    gps.closing_status         = 'O';
+--
+-- 2021/08/04 Ver1.3 Add End
 --
   EXCEPTION
     -- *** 任意で例外処理を記述する ****
@@ -567,6 +596,9 @@ AS
     lv_attribute12            VARCHAR2(150);                                  -- 控除データ種類DFF12 変動対価区分(差額調整分)
     lv_fluctuation_value_class   VARCHAR2(150);                               -- 変動対価区分
     lv_data_type_name         VARCHAR2(80);                                   -- 控除データ種類名称
+-- 2021/08/04 Ver1.3 Add Start
+    ld_gl_date                DATE;                                           -- GL記帳日
+-- 2021/08/04 Ver1.3 End Start
     --###########################  固定部 END   ####################################
 --
     -- ===============================
@@ -632,7 +664,10 @@ AS
              --cancel_gl_date,
              --cancel_user,
              --recon_base_code,
-             --recon_slip_num,
+-- 2021/08/04 Ver1.3 Mod Start
+--             --recon_slip_num,
+             recon_slip_num,
+-- 2021/08/04 Ver1.3 Mod End
              --carry_payment_slip_num,
              --gl_interface_id,
              --cancel_gl_interface_id,
@@ -698,7 +733,10 @@ AS
                  --xsd.cancel_gl_date ,
                  --xsd.cancel_user ,
                  --xsd.recon_base_code ,
-                 --xsd.recon_slip_num ,
+-- 2021/08/04 Ver1.3 Mod Start
+--                 --xsd.recon_slip_num ,
+                 xsd.recon_slip_num ,                                              --支払伝票番号
+-- 2021/08/04 Ver1.3 Mod End
                  --xsd.carry_payment_slip_num ,
                  --xsd.gl_interface_id ,
                  --xsd.cancel_gl_interface_id ,
@@ -775,7 +813,10 @@ AS
              --cancel_gl_date,
              --cancel_user,
              --recon_base_code,
-             --recon_slip_num,
+-- 2021/08/04 Ver1.3 Mod Start
+--             --recon_slip_num,
+             recon_slip_num,
+-- 2021/08/04 Ver1.3 Mod End
              --carry_payment_slip_num,
              --gl_interface_id,
              --cancel_gl_interface_id,
@@ -842,7 +883,10 @@ AS
                  --xsd.cancel_gl_date ,
                  --xsd.cancel_user ,
                  --xsd.recon_base_code ,
-                 --xsd.recon_slip_num ,
+-- 2021/08/04 Ver1.3 Mod Start
+--                 --xsd.recon_slip_num ,
+                 xsd.recon_slip_num ,                                              --支払伝票番号
+-- 2021/08/04 Ver1.3 Mod End
                  --xsd.carry_payment_slip_num ,
                  --xsd.gl_interface_id ,
                  --xsd.cancel_gl_interface_id ,
@@ -921,7 +965,10 @@ AS
              --cancel_gl_date,
              --cancel_user,
              --recon_base_code,
-             --recon_slip_num,
+-- 2021/08/04 Ver1.3 Mod Start
+--             --recon_slip_num,
+             recon_slip_num,
+-- 2021/08/04 Ver1.3 Mod End
              --carry_payment_slip_num,
              --gl_interface_id,
              --cancel_gl_interface_id,
@@ -987,7 +1034,10 @@ AS
                  --xdtr.cancel_gl_date ,
                  --xdtr.cancel_user ,
                  --xdtr.recon_base_code ,
-                 --xdtr.recon_slip_num ,
+-- 2021/08/04 Ver1.3 Mod Start
+--                 --xdtr.recon_slip_num ,
+                 NULL                                  recon_slip_num ,            --支払伝票番号
+-- 2021/08/04 Ver1.3 Mod End
                  --xdtr.carry_payment_slip_num ,
                  --xdtr.gl_interface_id ,
                  --xdtr.cancel_gl_interface_id ,
@@ -1149,6 +1199,35 @@ AS
 --          lv_fluctuation_value_class := lv_attribute11;
 -- 2021/06/30 Ver1.2 Mod End
         END IF;
+-- 2021/08/04 Ver1.3 Add Start
+--
+      -- GL記帳日の編集
+      lv_step := 'A-3.4' || 'sales_deduction_id:' || lt_csv_deduction_tab( i ).sales_deduction_id;
+--
+      IF ( LAST_DAY(TO_DATE(lt_csv_deduction_tab( i ).record_date,cv_date_fmt_ymd)) <= gd_max_gl_date ) THEN
+        ld_gl_date := LAST_DAY( ADD_MONTHS( gd_max_gl_date, 1 ) );
+      ELSE
+        ld_gl_date := LAST_DAY(TO_DATE(lt_csv_deduction_tab( i ).record_date,cv_date_fmt_ymd));
+      END IF;
+--
+      IF (lt_csv_deduction_tab( i ).source_category = cv_source_category_d ) THEN
+        IF (lt_csv_deduction_tab( i ).status = cv_status_new ) THEN
+          BEGIN
+            SELECT xdrh.gl_date  gl_date
+            INTO   ld_gl_date
+            FROM   xxcok_deduction_recon_head  xdrh
+            WHERE  xdrh.recon_slip_num   = lt_csv_deduction_tab( i ).recon_slip_num;
+          EXCEPTION
+            WHEN  NO_DATA_FOUND THEN
+              ld_gl_date := null;
+          END;
+        ELSIF (lt_csv_deduction_tab( i ).status = cv_status_cancel ) THEN
+          ld_gl_date := gd_gl_date;
+        END IF;
+      ELSIF (lt_csv_deduction_tab( i ).source_category = cv_source_category_o ) THEN
+        ld_gl_date := null;
+      END IF;
+-- 2021/08/04 Ver1.3 Add End
 --
     -----------------------------------------------
     -- A-4.販売控除情報（情報系）出力処理
@@ -1190,6 +1269,12 @@ AS
                            cv_dqu ||
                            lt_csv_deduction_tab( i ).corp_code ||
                            cv_dqu;
+-- 2021/08/04 Ver1.3 Add Start
+        -- GL記帳日
+        lv_step := 'A-4.gl_date';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           TO_CHAR( ld_gl_date , cv_date_fmt_ymd );
+-- 2021/08/04 Ver1.3 Add End
         --計上日【YYYYMMDD】
         lv_step := 'A-4.record_date';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
