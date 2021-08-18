@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOK_DEDUCTION_RECON_HEAD
  * Description : 控除消込ヘッダー情報
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2020/07/08    1.0   SCSK Y.Koh       新規作成
+ *  2020/07/27    1.1   SCSK K.Yoshikawa E_本稼動_17382
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
@@ -28,6 +29,7 @@ CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
     ,corp_code                      VARCHAR2(6)
     ,deduction_chain_code           VARCHAR2(9)
     ,cust_code                      VARCHAR2(9)
+    ,condition_no                   VARCHAR2(1039)
     ,invoice_number                 VARCHAR2(30)
     ,target_data_type               VARCHAR2(60)
     ,applicant                      VARCHAR2(30)
@@ -79,6 +81,8 @@ COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.corp_code                    
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.deduction_chain_code                IS '控除用チェーンコード'
 /
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.cust_code                           IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.condition_no                        IS '控除番号'
 /
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.invoice_number                      IS '問屋請求書番号'
 /
