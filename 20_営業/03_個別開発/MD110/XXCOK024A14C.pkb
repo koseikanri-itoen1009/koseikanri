@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A14 (spec)
  * Description      : 控除消込作成API(AP支払)
  * MD.050           : 控除消込作成API(AP支払) MD050_COK_024_A14
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/11/11    1.0   Y.Nakajima       新規作成
+ *  2021/08/12    1.1   K.Yoshikawa      E_本稼動_17382(Q4148)
  *
  *****************************************************************************************/
 --
@@ -56,6 +57,89 @@ AS
   gn_normal_cnt    NUMBER        DEFAULT 0;      -- 正常件数
   gn_error_cnt     NUMBER        DEFAULT 0;      -- 異常件数
   gn_skip_cnt      NUMBER        DEFAULT 0;      -- スキップ件数
+-- 2021/08/12 Ver1.1 ADD Start
+  gv_condition_no    VARCHAR2(1039);
+  gv_condition_no_01 VARCHAR2(1039);
+  gv_condition_no_02 VARCHAR2(1039);
+  gv_condition_no_03 VARCHAR2(1039);
+  gv_condition_no_04 VARCHAR2(1039);
+  gv_condition_no_05 VARCHAR2(1039);
+  gv_condition_no_06 VARCHAR2(1039);
+  gv_condition_no_07 VARCHAR2(1039);
+  gv_condition_no_08 VARCHAR2(1039);
+  gv_condition_no_09 VARCHAR2(1039);
+  gv_condition_no_10 VARCHAR2(1039);
+  gv_condition_no_11 VARCHAR2(1039);
+  gv_condition_no_12 VARCHAR2(1039);
+  gv_condition_no_13 VARCHAR2(1039);
+  gv_condition_no_14 VARCHAR2(1039);
+  gv_condition_no_15 VARCHAR2(1039);
+  gv_condition_no_16 VARCHAR2(1039);
+  gv_condition_no_17 VARCHAR2(1039);
+  gv_condition_no_18 VARCHAR2(1039);
+  gv_condition_no_19 VARCHAR2(1039);
+  gv_condition_no_20 VARCHAR2(1039);
+  gv_condition_no_21 VARCHAR2(1039);
+  gv_condition_no_22 VARCHAR2(1039);
+  gv_condition_no_23 VARCHAR2(1039);
+  gv_condition_no_24 VARCHAR2(1039);
+  gv_condition_no_25 VARCHAR2(1039);
+  gv_condition_no_26 VARCHAR2(1039);
+  gv_condition_no_27 VARCHAR2(1039);
+  gv_condition_no_28 VARCHAR2(1039);
+  gv_condition_no_29 VARCHAR2(1039);
+  gv_condition_no_30 VARCHAR2(1039);
+  gv_condition_no_31 VARCHAR2(1039);
+  gv_condition_no_32 VARCHAR2(1039);
+  gv_condition_no_33 VARCHAR2(1039);
+  gv_condition_no_34 VARCHAR2(1039);
+  gv_condition_no_35 VARCHAR2(1039);
+  gv_condition_no_36 VARCHAR2(1039);
+  gv_condition_no_37 VARCHAR2(1039);
+  gv_condition_no_38 VARCHAR2(1039);
+  gv_condition_no_39 VARCHAR2(1039);
+  gv_condition_no_40 VARCHAR2(1039);
+  gv_condition_no_41 VARCHAR2(1039);
+  gv_condition_no_42 VARCHAR2(1039);
+  gv_condition_no_43 VARCHAR2(1039);
+  gv_condition_no_44 VARCHAR2(1039);
+  gv_condition_no_45 VARCHAR2(1039);
+  gv_condition_no_46 VARCHAR2(1039);
+  gv_condition_no_47 VARCHAR2(1039);
+  gv_condition_no_48 VARCHAR2(1039);
+  gv_condition_no_49 VARCHAR2(1039);
+  gv_condition_no_50 VARCHAR2(1039);
+  gv_condition_no_51 VARCHAR2(1039);
+  gv_condition_no_52 VARCHAR2(1039);
+  gv_condition_no_53 VARCHAR2(1039);
+  gv_condition_no_54 VARCHAR2(1039);
+  gv_condition_no_55 VARCHAR2(1039);
+  gv_condition_no_56 VARCHAR2(1039);
+  gv_condition_no_57 VARCHAR2(1039);
+  gv_condition_no_58 VARCHAR2(1039);
+  gv_condition_no_59 VARCHAR2(1039);
+  gv_condition_no_60 VARCHAR2(1039);
+  gv_condition_no_61 VARCHAR2(1039);
+  gv_condition_no_62 VARCHAR2(1039);
+  gv_condition_no_63 VARCHAR2(1039);
+  gv_condition_no_64 VARCHAR2(1039);
+  gv_condition_no_65 VARCHAR2(1039);
+  gv_condition_no_66 VARCHAR2(1039);
+  gv_condition_no_67 VARCHAR2(1039);
+  gv_condition_no_68 VARCHAR2(1039);
+  gv_condition_no_69 VARCHAR2(1039);
+  gv_condition_no_70 VARCHAR2(1039);
+  gv_condition_no_71 VARCHAR2(1039);
+  gv_condition_no_72 VARCHAR2(1039);
+  gv_condition_no_73 VARCHAR2(1039);
+  gv_condition_no_74 VARCHAR2(1039);
+  gv_condition_no_75 VARCHAR2(1039);
+  gv_condition_no_76 VARCHAR2(1039);
+  gv_condition_no_77 VARCHAR2(1039);
+  gv_condition_no_78 VARCHAR2(1039);
+  gv_condition_no_79 VARCHAR2(1039);
+  gv_condition_no_80 VARCHAR2(1039);
+-- 2021/08/12 Ver1.1 ADD End
 --
 --################################  固定部 END   ##################################
 --
@@ -496,6 +580,9 @@ AS
     , program_application_id                      -- コンカレント・プログラム･アプリケーションID
     , program_id                                  -- コンカレント･プログラムID
     , program_update_date                         -- プログラム更新日
+-- 2021/08/12 Ver1.1 ADD Start
+    , condition_no                                -- 控除番号
+-- 2021/08/12 Ver1.1 ADD End
     )
     VALUES(
       xxcok_deduction_recon_head_s01.nextval      -- 控除消込ヘッダーID
@@ -531,6 +618,9 @@ AS
     , cn_program_application_id                   -- コンカレント・プログラム･アプリケーションID
     , cn_program_id                               -- コンカレント･プログラムID
     , SYSDATE                                     -- プログラム更新日
+-- 2021/08/12 Ver1.1 ADD Start
+    , gv_condition_no                             -- 控除番号
+-- 2021/08/12 Ver1.1 ADD End
     );
 --
 --#################################  固定例外処理部 START   ###################################
@@ -624,21 +714,43 @@ AS
                         xsd.sales_deduction_id      AS  sales_deduction_id
                 FROM    xxcok_sales_deduction       xsd
                 WHERE   xsd.customer_code_to        IN
+-- 2021/08/12 Ver1.1 MOD Start
                         ( SELECT  xca.customer_code
-                          FROM    fnd_lookup_values       flv,
-                                  xxcmm_cust_accounts     xca
-                          WHERE ( xca.customer_code       =   iv_cust_code            or  iv_cust_code            IS  NULL )
-                          AND   ( xca.intro_chain_code2   =   iv_deduction_chain_code or  iv_deduction_chain_code IS  NULL )
-                          AND     flv.lookup_type(+)      =   cv_chain_code
-                          AND     flv.lookup_code(+)      =   xca.intro_chain_code2
-                          AND     flv.language(+)         =   ct_lang
-                          AND     flv.enabled_flag(+)     =   cv_enable
-                          AND   ( flv.attribute1          =   iv_corp_code            or  iv_corp_code            IS  NULL )  )
+                          FROM    xxcmm_cust_accounts     xca
+                          WHERE   xca.customer_code       =   iv_cust_code
+                        UNION ALL
+                          SELECT  xca.customer_code
+                          FROM    xxcmm_cust_accounts     xca
+                          WHERE   xca.intro_chain_code2   =   iv_deduction_chain_code
+                        UNION ALL
+                          SELECT  xca.customer_code
+                          FROM    xxcmm_cust_accounts     xca,
+                                  fnd_lookup_values       flv
+                          WHERE   flv.lookup_type         =   cv_chain_code
+                          AND     flv.language            =   ct_lang
+                          AND     flv.enabled_flag        =   cv_enable
+                          AND     flv.attribute1          =   iv_corp_code
+                          AND     xca.intro_chain_code2   =   flv.lookup_code  )
+--                        ( SELECT  xca.customer_code
+--                          FROM    fnd_lookup_values       flv,
+--                                  xxcmm_cust_accounts     xca
+--                          WHERE ( xca.customer_code       =   iv_cust_code            or  iv_cust_code            IS  NULL )
+--                          AND   ( xca.intro_chain_code2   =   iv_deduction_chain_code or  iv_deduction_chain_code IS  NULL )
+--                          AND     flv.lookup_type(+)      =   cv_chain_code
+--                          AND     flv.lookup_code(+)      =   xca.intro_chain_code2
+--                          AND     flv.language(+)         =   ct_lang
+--                          AND     flv.enabled_flag(+)     =   cv_enable
+--                          AND   ( flv.attribute1          =   iv_corp_code            or  iv_corp_code            IS  NULL )  )
+-- 2021/08/12 Ver1.1 MOD End
                 AND     xsd.recon_slip_num          IS  NULL
                 AND     xsd.record_date             <=  id_target_date_end
                 AND     xsd.data_type               IN  ( SELECT tdt.lookup_code FROM target_data_type tdt )
                 AND   ( xsd.report_decision_flag IS NULL OR xsd.report_decision_flag = cv_one )
                 AND     xsd.status                  =   cv_status_n
+-- 2021/08/12 Ver1.1 ADD Start
+-- 顧客、チェーン、企業のいずれかが指定
+                AND  iv_cust_code || iv_deduction_chain_code || iv_corp_code IS NOT NULL
+-- 2021/08/12 Ver1.1 ADD End
                 UNION ALL
                 SELECT  /*+ INDEX(xsd xxcok_sales_deduction_n08) */
                         xsd.sales_deduction_id      AS  sales_deduction_id
@@ -667,7 +779,187 @@ AS
                 AND     xsd.record_date             <=  id_target_date_end
                 AND     xsd.data_type               IN  ( SELECT tdt.lookup_code FROM target_data_type tdt )
                 AND   ( xsd.report_decision_flag IS NULL OR xsd.report_decision_flag = cv_one )
-                AND     xsd.status                  =   cv_status_n                                           )
+-- 2021/08/12 Ver1.1 ADD Start
+--                AND     xsd.status                  =   cv_status_n                                           )
+                AND     xsd.status                  =   cv_status_n                                           
+-- 控除番号のみ指定 パフォーマンス向上ため本SQL内に控除番号の条件をもつ
+                UNION ALL
+                SELECT  /*+ INDEX(xsd xxcok_sales_deduction_n06) */
+                        xsd.sales_deduction_id      AS  sales_deduction_id
+                FROM    xxcok_sales_deduction       xsd
+                WHERE   iv_cust_code                IS  NULL
+                AND     iv_deduction_chain_code     IS  NULL
+                AND     iv_corp_code                IS  NULL
+                AND     xsd.recon_slip_num          IS  NULL
+                AND     xsd.record_date             <=  id_target_date_end
+                AND     xsd.data_type               IN  ( SELECT tdt.lookup_code FROM target_data_type tdt )
+                AND   ( xsd.report_decision_flag IS NULL OR xsd.report_decision_flag = cv_one )
+                AND     xsd.status                  =   cv_status_n                                           
+                      AND (   xsd.condition_no = gv_condition_no_01
+                           OR xsd.condition_no = gv_condition_no_02
+                           OR xsd.condition_no = gv_condition_no_03
+                           OR xsd.condition_no = gv_condition_no_04
+                           OR xsd.condition_no = gv_condition_no_05
+                           OR xsd.condition_no = gv_condition_no_06
+                           OR xsd.condition_no = gv_condition_no_07
+                           OR xsd.condition_no = gv_condition_no_08
+                           OR xsd.condition_no = gv_condition_no_09
+                           OR xsd.condition_no = gv_condition_no_10
+                           OR xsd.condition_no = gv_condition_no_11
+                           OR xsd.condition_no = gv_condition_no_12
+                           OR xsd.condition_no = gv_condition_no_13
+                           OR xsd.condition_no = gv_condition_no_14
+                           OR xsd.condition_no = gv_condition_no_15
+                           OR xsd.condition_no = gv_condition_no_16
+                           OR xsd.condition_no = gv_condition_no_17
+                           OR xsd.condition_no = gv_condition_no_18
+                           OR xsd.condition_no = gv_condition_no_19
+                           OR xsd.condition_no = gv_condition_no_20
+                           OR xsd.condition_no = gv_condition_no_21
+                           OR xsd.condition_no = gv_condition_no_22
+                           OR xsd.condition_no = gv_condition_no_23
+                           OR xsd.condition_no = gv_condition_no_24
+                           OR xsd.condition_no = gv_condition_no_25
+                           OR xsd.condition_no = gv_condition_no_26
+                           OR xsd.condition_no = gv_condition_no_27
+                           OR xsd.condition_no = gv_condition_no_28
+                           OR xsd.condition_no = gv_condition_no_29
+                           OR xsd.condition_no = gv_condition_no_30
+                           OR xsd.condition_no = gv_condition_no_31
+                           OR xsd.condition_no = gv_condition_no_32
+                           OR xsd.condition_no = gv_condition_no_33
+                           OR xsd.condition_no = gv_condition_no_34
+                           OR xsd.condition_no = gv_condition_no_35
+                           OR xsd.condition_no = gv_condition_no_36
+                           OR xsd.condition_no = gv_condition_no_37
+                           OR xsd.condition_no = gv_condition_no_38
+                           OR xsd.condition_no = gv_condition_no_39
+                           OR xsd.condition_no = gv_condition_no_40
+                           OR xsd.condition_no = gv_condition_no_41
+                           OR xsd.condition_no = gv_condition_no_42
+                           OR xsd.condition_no = gv_condition_no_43
+                           OR xsd.condition_no = gv_condition_no_44
+                           OR xsd.condition_no = gv_condition_no_45
+                           OR xsd.condition_no = gv_condition_no_46
+                           OR xsd.condition_no = gv_condition_no_47
+                           OR xsd.condition_no = gv_condition_no_48
+                           OR xsd.condition_no = gv_condition_no_49
+                           OR xsd.condition_no = gv_condition_no_50
+                           OR xsd.condition_no = gv_condition_no_51
+                           OR xsd.condition_no = gv_condition_no_52
+                           OR xsd.condition_no = gv_condition_no_53
+                           OR xsd.condition_no = gv_condition_no_54
+                           OR xsd.condition_no = gv_condition_no_55
+                           OR xsd.condition_no = gv_condition_no_56
+                           OR xsd.condition_no = gv_condition_no_57
+                           OR xsd.condition_no = gv_condition_no_58
+                           OR xsd.condition_no = gv_condition_no_59
+                           OR xsd.condition_no = gv_condition_no_60
+                           OR xsd.condition_no = gv_condition_no_61
+                           OR xsd.condition_no = gv_condition_no_62
+                           OR xsd.condition_no = gv_condition_no_63
+                           OR xsd.condition_no = gv_condition_no_64
+                           OR xsd.condition_no = gv_condition_no_65
+                           OR xsd.condition_no = gv_condition_no_66
+                           OR xsd.condition_no = gv_condition_no_67
+                           OR xsd.condition_no = gv_condition_no_68
+                           OR xsd.condition_no = gv_condition_no_69
+                           OR xsd.condition_no = gv_condition_no_70
+                           OR xsd.condition_no = gv_condition_no_71
+                           OR xsd.condition_no = gv_condition_no_72
+                           OR xsd.condition_no = gv_condition_no_73
+                           OR xsd.condition_no = gv_condition_no_74
+                           OR xsd.condition_no = gv_condition_no_75
+                           OR xsd.condition_no = gv_condition_no_76
+                           OR xsd.condition_no = gv_condition_no_77
+                           OR xsd.condition_no = gv_condition_no_78
+                           OR xsd.condition_no = gv_condition_no_79
+                           OR xsd.condition_no = gv_condition_no_80
+                           OR gv_condition_no is null))
+-- 2021/08/12 Ver1.1 ADD End
+-- 2021/08/12 Ver1.1 ADD Start
+      AND (   xsd.condition_no = gv_condition_no_01
+           OR xsd.condition_no = gv_condition_no_02
+           OR xsd.condition_no = gv_condition_no_03
+           OR xsd.condition_no = gv_condition_no_04
+           OR xsd.condition_no = gv_condition_no_05
+           OR xsd.condition_no = gv_condition_no_06
+           OR xsd.condition_no = gv_condition_no_07
+           OR xsd.condition_no = gv_condition_no_08
+           OR xsd.condition_no = gv_condition_no_09
+           OR xsd.condition_no = gv_condition_no_10
+           OR xsd.condition_no = gv_condition_no_11
+           OR xsd.condition_no = gv_condition_no_12
+           OR xsd.condition_no = gv_condition_no_13
+           OR xsd.condition_no = gv_condition_no_14
+           OR xsd.condition_no = gv_condition_no_15
+           OR xsd.condition_no = gv_condition_no_16
+           OR xsd.condition_no = gv_condition_no_17
+           OR xsd.condition_no = gv_condition_no_18
+           OR xsd.condition_no = gv_condition_no_19
+           OR xsd.condition_no = gv_condition_no_20
+           OR xsd.condition_no = gv_condition_no_21
+           OR xsd.condition_no = gv_condition_no_22
+           OR xsd.condition_no = gv_condition_no_23
+           OR xsd.condition_no = gv_condition_no_24
+           OR xsd.condition_no = gv_condition_no_25
+           OR xsd.condition_no = gv_condition_no_26
+           OR xsd.condition_no = gv_condition_no_27
+           OR xsd.condition_no = gv_condition_no_28
+           OR xsd.condition_no = gv_condition_no_29
+           OR xsd.condition_no = gv_condition_no_30
+           OR xsd.condition_no = gv_condition_no_31
+           OR xsd.condition_no = gv_condition_no_32
+           OR xsd.condition_no = gv_condition_no_33
+           OR xsd.condition_no = gv_condition_no_34
+           OR xsd.condition_no = gv_condition_no_35
+           OR xsd.condition_no = gv_condition_no_36
+           OR xsd.condition_no = gv_condition_no_37
+           OR xsd.condition_no = gv_condition_no_38
+           OR xsd.condition_no = gv_condition_no_39
+           OR xsd.condition_no = gv_condition_no_40
+           OR xsd.condition_no = gv_condition_no_41
+           OR xsd.condition_no = gv_condition_no_42
+           OR xsd.condition_no = gv_condition_no_43
+           OR xsd.condition_no = gv_condition_no_44
+           OR xsd.condition_no = gv_condition_no_45
+           OR xsd.condition_no = gv_condition_no_46
+           OR xsd.condition_no = gv_condition_no_47
+           OR xsd.condition_no = gv_condition_no_48
+           OR xsd.condition_no = gv_condition_no_49
+           OR xsd.condition_no = gv_condition_no_50
+           OR xsd.condition_no = gv_condition_no_51
+           OR xsd.condition_no = gv_condition_no_52
+           OR xsd.condition_no = gv_condition_no_53
+           OR xsd.condition_no = gv_condition_no_54
+           OR xsd.condition_no = gv_condition_no_55
+           OR xsd.condition_no = gv_condition_no_56
+           OR xsd.condition_no = gv_condition_no_57
+           OR xsd.condition_no = gv_condition_no_58
+           OR xsd.condition_no = gv_condition_no_59
+           OR xsd.condition_no = gv_condition_no_60
+           OR xsd.condition_no = gv_condition_no_61
+           OR xsd.condition_no = gv_condition_no_62
+           OR xsd.condition_no = gv_condition_no_63
+           OR xsd.condition_no = gv_condition_no_64
+           OR xsd.condition_no = gv_condition_no_65
+           OR xsd.condition_no = gv_condition_no_66
+           OR xsd.condition_no = gv_condition_no_67
+           OR xsd.condition_no = gv_condition_no_68
+           OR xsd.condition_no = gv_condition_no_69
+           OR xsd.condition_no = gv_condition_no_70
+           OR xsd.condition_no = gv_condition_no_71
+           OR xsd.condition_no = gv_condition_no_72
+           OR xsd.condition_no = gv_condition_no_73
+           OR xsd.condition_no = gv_condition_no_74
+           OR xsd.condition_no = gv_condition_no_75
+           OR xsd.condition_no = gv_condition_no_76
+           OR xsd.condition_no = gv_condition_no_77
+           OR xsd.condition_no = gv_condition_no_78
+           OR xsd.condition_no = gv_condition_no_79
+           OR xsd.condition_no = gv_condition_no_80
+           OR gv_condition_no is null)
+-- 2021/08/12 Ver1.1 ADD End
       FOR UPDATE  NOWAIT;
 --
     recon_slip_num_up_rec          l_recon_slip_num_up_cur%ROWTYPE;
@@ -816,6 +1108,89 @@ AS
     --
     ov_recon_slip_num := TO_CHAR(lv_recon_slip_num,'FM0000000000');
 --
+-- 2021/08/12 Ver1.1 ADD Start
+   gv_condition_no_01 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 1) ,' ') ,' ');
+   gv_condition_no_02 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 2) ,' ') ,' ');
+   gv_condition_no_03 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 3) ,' ') ,' ');
+   gv_condition_no_04 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 4) ,' ') ,' ');
+   gv_condition_no_05 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 5) ,' ') ,' ');
+   gv_condition_no_06 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 6) ,' ') ,' ');
+   gv_condition_no_07 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 7) ,' ') ,' ');
+   gv_condition_no_08 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 8) ,' ') ,' ');
+   gv_condition_no_09 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' , 9) ,' ') ,' ');
+   gv_condition_no_10 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,10) ,' ') ,' ');
+   gv_condition_no_11 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,11) ,' ') ,' ');
+   gv_condition_no_12 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,12) ,' ') ,' ');
+   gv_condition_no_13 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,13) ,' ') ,' ');
+   gv_condition_no_14 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,14) ,' ') ,' ');
+   gv_condition_no_15 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,15) ,' ') ,' ');
+   gv_condition_no_16 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,16) ,' ') ,' ');
+   gv_condition_no_17 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,17) ,' ') ,' ');
+   gv_condition_no_18 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,18) ,' ') ,' ');
+   gv_condition_no_19 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,19) ,' ') ,' ');
+   gv_condition_no_20 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,20) ,' ') ,' ');
+   gv_condition_no_21 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,21) ,' ') ,' ');
+   gv_condition_no_22 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,22) ,' ') ,' ');
+   gv_condition_no_23 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,23) ,' ') ,' ');
+   gv_condition_no_24 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,24) ,' ') ,' ');
+   gv_condition_no_25 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,25) ,' ') ,' ');
+   gv_condition_no_26 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,26) ,' ') ,' ');
+   gv_condition_no_27 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,27) ,' ') ,' ');
+   gv_condition_no_28 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,28) ,' ') ,' ');
+   gv_condition_no_29 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,29) ,' ') ,' ');
+   gv_condition_no_30 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,30) ,' ') ,' ');
+   gv_condition_no_31 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,31) ,' ') ,' ');
+   gv_condition_no_32 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,32) ,' ') ,' ');
+   gv_condition_no_33 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,33) ,' ') ,' ');
+   gv_condition_no_34 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,34) ,' ') ,' ');
+   gv_condition_no_35 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,35) ,' ') ,' ');
+   gv_condition_no_36 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,36) ,' ') ,' ');
+   gv_condition_no_37 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,37) ,' ') ,' ');
+   gv_condition_no_38 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,38) ,' ') ,' ');
+   gv_condition_no_39 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,39) ,' ') ,' ');
+   gv_condition_no_40 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,40) ,' ') ,' ');
+   gv_condition_no_41 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,41) ,' ') ,' ');
+   gv_condition_no_42 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,42) ,' ') ,' ');
+   gv_condition_no_43 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,43) ,' ') ,' ');
+   gv_condition_no_44 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,44) ,' ') ,' ');
+   gv_condition_no_45 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,45) ,' ') ,' ');
+   gv_condition_no_46 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,46) ,' ') ,' ');
+   gv_condition_no_47 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,47) ,' ') ,' ');
+   gv_condition_no_48 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,48) ,' ') ,' ');
+   gv_condition_no_49 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,49) ,' ') ,' ');
+   gv_condition_no_50 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,50) ,' ') ,' ');
+   gv_condition_no_51 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,51) ,' ') ,' ');
+   gv_condition_no_52 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,52) ,' ') ,' ');
+   gv_condition_no_53 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,53) ,' ') ,' ');
+   gv_condition_no_54 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,54) ,' ') ,' ');
+   gv_condition_no_55 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,55) ,' ') ,' ');
+   gv_condition_no_56 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,56) ,' ') ,' ');
+   gv_condition_no_57 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,57) ,' ') ,' ');
+   gv_condition_no_58 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,58) ,' ') ,' ');
+   gv_condition_no_59 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,59) ,' ') ,' ');
+   gv_condition_no_60 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,60) ,' ') ,' ');
+   gv_condition_no_61 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,61) ,' ') ,' ');
+   gv_condition_no_62 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,62) ,' ') ,' ');
+   gv_condition_no_63 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,63) ,' ') ,' ');
+   gv_condition_no_64 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,64) ,' ') ,' ');
+   gv_condition_no_65 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,65) ,' ') ,' ');
+   gv_condition_no_66 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,66) ,' ') ,' ');
+   gv_condition_no_67 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,67) ,' ') ,' ');
+   gv_condition_no_68 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,68) ,' ') ,' ');
+   gv_condition_no_69 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,69) ,' ') ,' ');
+   gv_condition_no_70 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,70) ,' ') ,' ');
+   gv_condition_no_71 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,71) ,' ') ,' ');
+   gv_condition_no_72 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,72) ,' ') ,' ');
+   gv_condition_no_73 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,73) ,' ') ,' ');
+   gv_condition_no_74 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,74) ,' ') ,' ');
+   gv_condition_no_75 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,75) ,' ') ,' ');
+   gv_condition_no_76 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,76) ,' ') ,' ');
+   gv_condition_no_77 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,77) ,' ') ,' ');
+   gv_condition_no_78 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,78) ,' ') ,' ');
+   gv_condition_no_79 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,79) ,' ') ,' ');
+   gv_condition_no_80 := LTRIM(RTRIM(xxccp_common_pkg.char_delim_partition(gv_condition_no, ',' ,80) ,' ') ,' ');
+-- 2021/08/12 Ver1.1 ADD END
+--
 --#################################  固定例外処理部 START   ###################################
 --
   EXCEPTION
@@ -859,6 +1234,9 @@ AS
    ,iv_invoice_number               IN     VARCHAR2          -- 受領請求書番号
    ,iv_terms_name                   IN     VARCHAR2          -- 支払条件
    ,iv_target_data_type             IN     VARCHAR2          -- 対象データ種類
+-- 2021/08/12 Ver1.1 ADD Start
+   ,iv_condition_no                 IN     VARCHAR2          -- 控除番号(カンマ区切り最大50件)
+-- 2021/08/12 Ver1.1 ADD End
    ,ov_recon_slip_num               OUT    VARCHAR2          -- 支払伝票番号
    ,ov_errbuf                       OUT    VARCHAR2          -- エラー・メッセージ           --# 固定 #
    ,ov_retcode                      OUT    VARCHAR2          -- リターン・コード             --# 固定 #
@@ -905,6 +1283,9 @@ AS
     -- ============================================
     -- A-1．初期処理
     -- ============================================
+-- 2021/08/12 Ver1.1 ADD Start
+    gv_condition_no := iv_condition_no;
+-- 2021/08/12 Ver1.1 ADD End
     init(
        lv_recon_slip_num -- 支払伝票番号ID
       ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
@@ -1034,6 +1415,9 @@ AS
    ,iv_invoice_number               IN     VARCHAR2          -- 受領請求書番号
    ,iv_terms_name                   IN     VARCHAR2          -- 支払条件
    ,iv_target_data_type             IN     VARCHAR2          -- 対象データ種類
+-- 2021/08/12 Ver1.1 ADD Start
+   ,iv_condition_no                 IN     VARCHAR2          -- 控除番号(カンマ区切り最大50件)
+-- 2021/08/12 Ver1.1 ADD End
   )
 --
 --###########################  固定部 START   ###########################
@@ -1079,6 +1463,9 @@ AS
       ,iv_invoice_number         -- 受領請求書番号
       ,iv_terms_name             -- 支払条件
       ,iv_target_data_type       -- 対象データ種類
+-- 2021/08/12 Ver1.1 ADD Start
+      ,iv_condition_no           -- 控除番号(カンマ区切り最大50件)
+-- 2021/08/12 Ver1.1 ADD End
       ,lv_recon_slip_num         -- 支払伝票番号
       ,lv_errbuf                 -- エラー・メッセージ           --# 固定 #
       ,lv_retcode                -- リターン・コード             --# 固定 #
