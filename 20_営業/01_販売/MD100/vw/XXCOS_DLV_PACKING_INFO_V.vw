@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_packing_info_v
  * Description     : 納品予定更新(荷番情報)画面view
- * Version         : 1.1
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,8 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/10/29    1.0   K.Kiriu         新規作成
  *  2010/06/16    1.1   H.Sasaki        [E_本稼動_03075]拠点選択対応
+ *  2021/07/21    1.2   H.Futamura      E_本稼動_17296対応
+ *  2021/08/17    1.3   H.Futamura      E_本稼動_17296再対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_packing_info_v(
    edi_header_info_id          -- EDIヘッダ情報.EDIヘッダ情報ID
@@ -43,6 +45,15 @@ CREATE OR REPLACE VIEW xxcos_dlv_packing_info_v(
 /* 2010/06/16 Ver1.1 Add START */
   ,base_code                   --  顧客アドオン.納品拠点
 /* 2010/06/16 Ver1.1 Add END   */
+-- Ver1.2 Add START
+  ,cust_store_name             -- 顧客アドオン.顧客店舗名称
+  ,category                    -- EDI明細情報.規格情報・高さ(カテゴリ)
+-- Ver1.3 Mod START
+--  ,num_of_case_edi             -- EDI明細情報.ケース入数
+--  ,num_of_bowl_edi             -- EDI明細情報.ボール入数
+  ,edi_qty_in_case             -- EDI明細情報.入数
+-- Ver1.3 Mod END
+-- Ver1.2 Add END
 )
 AS
   SELECT xeh.edi_header_info_id          edi_header_info_id      -- EDIヘッダ情報.EDIヘッダ情報ID
@@ -94,6 +105,15 @@ AS
 /* 2010/06/16 Ver1.1 Add START */
         ,xca.delivery_base_code          base_code               --  顧客アドオン.納品拠点
 /* 2010/06/16 Ver1.1 Add END   */
+-- Ver1.2 Add START
+        ,xca.cust_store_name             cust_store_name         -- 顧客アドオン.顧客店舗名称
+        ,xel.standard_info_height        category                -- EDI明細情報.規格情報・高さ(カテゴリ)
+-- Ver1.3 Mod START
+--        ,xel.num_of_cases                num_of_case_edi         -- EDI明細情報.ケース入数
+--        ,xel.num_of_ball                 num_of_bowl_edi         -- EDI明細情報.ボール入数
+        ,xel.qty_in_case                 edi_qty_in_case         -- EDI明細情報.入数
+-- Ver1.3 Mod END
+-- Ver1.2 Add END
   FROM   xxcos_edi_headers     xeh   -- EDIヘッダ情報
         ,xxcos_edi_lines       xel   -- EDI明細情報
         ,oe_order_headers_all  ooha  -- 受注ヘッダ
@@ -152,5 +172,14 @@ COMMENT ON COLUMN xxcos_dlv_packing_info_v.organization_id         IS '在庫組織I
 /* 2010/06/16 Ver1.1 Add START */
 COMMENT ON COLUMN xxcos_dlv_packing_info_v.base_code               IS '拠点コード';
 /* 2010/06/16 Ver1.1 Add END   */
+-- Ver1.2 Add START
+COMMENT ON COLUMN xxcos_dlv_packing_info_v.cust_store_name         IS '店舗名';
+COMMENT ON COLUMN xxcos_dlv_packing_info_v.category                IS 'カテゴリ';
+-- Ver1.3 Mod START
+--COMMENT ON COLUMN xxcos_dlv_packing_info_v.num_of_case_edi         IS 'ケース入数EDI';
+--COMMENT ON COLUMN xxcos_dlv_packing_info_v.num_of_bowl_edi         IS 'ボール入数EDI';
+COMMENT ON COLUMN xxcos_dlv_packing_info_v.edi_qty_in_case         IS 'EDI入数';
+-- Ver1.3 Mod END
+-- Ver1.2 Add END
 --
 COMMENT ON TABLE  xxcos_dlv_packing_info_v                         IS  '納品予定更新(荷番情報)画面view';
