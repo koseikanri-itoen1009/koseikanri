@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A05C (body)
  * Description      : ŽÀÑU‘ÖE”Ì”„Tœƒf[ƒ^‚Ìì¬/”Ì”„Tœƒf[ƒ^‚Ìì¬iU‘ÖŠ„‡j
  * MD.050           : ŽÀÑU‘ÖE”Ì”„Tœƒf[ƒ^‚Ìì¬/”Ì”„Tœƒf[ƒ^‚Ìì¬iU‘ÖŠ„‡j MD050_COK_024_A05
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/05/12    1.0   Y.Nakajima       V‹Kì¬
  *  2020/12/03    1.1   SCSK Y.Koh       [E_–{‰Ò“®_16026]
+ *  2021/08/25    1.2   SCSK Y.Koh       [E_–{‰Ò“®_17xxx]
  *
  *****************************************************************************************/
 --
@@ -191,9 +192,14 @@ AS
               AND     flvc.enabled_flag = 'Y'
               AND     flvc.attribute2   = 'Y')    -- ”Ì”„Tœì¬‘ÎÛ
     SELECT 
-           /*+ leading(xdst xca gyotai_sho xch flv2 d_typ xcl flv)
-               use_nl(xca) use_nl(flv) use_nl(xch) use_nl(flv2) use_nl(xcl)
+-- 2021/08/25 Ver1.2 MOD Start
+           /*+ leading(xch flv2 d_typ xdst xca  gyotai_sho flv xcl)
+               use_nl(flv2) use_nl(xdst) use_nl(xca) use_nl(flv) use_nl(xcl)
             */
+--           /*+ leading(xdst xca gyotai_sho xch flv2 d_typ xcl flv)
+--               use_nl(xca) use_nl(flv) use_nl(xch) use_nl(flv2) use_nl(xcl)
+--            */
+-- 2021/08/25 Ver1.2 MOD End
            xdst.delivery_base_code                      AS delivery_base_code           -- U‘ÖŒ³‹’“_
           ,xdst.selling_from_cust_code                  AS selling_from_cust_code       -- U‘ÖŒ³ŒÚ‹q
           ,xdst.base_code                               AS base_code                    -- U‘Öæ‹’“_
@@ -258,6 +264,10 @@ AS
     AND    flv.language(+)               = cv_lang
     AND    flv.enabled_flag(+)           = cv_enable
     AND    xch.enabled_flag_h            = cv_enable
+-- 2021/08/25 Ver1.2 MOD Start
+    AND    xch.end_date_active           >= gd_target_date_from
+    AND    xch.start_date_active         <= gd_target_date_to
+-- 2021/08/25 Ver1.2 MOD End
     AND    flv2.lookup_type              = 'XXCOK1_DEDUCTION_DATA_TYPE'
     AND    flv2.lookup_code              = xch.data_type
     AND    flv2.language                 = cv_lang
@@ -272,9 +282,14 @@ AS
     OR     xdst.product_class            = xcl.product_class)
     UNION ALL
     SELECT 
-           /*+ leading(xdst xca gyotai_sho xch flv2 d_typ xcl flv)
-               use_nl(xca) use_nl(flv) use_nl(xch) use_nl(flv2) use_nl(xcl)
+-- 2021/08/25 Ver1.2 MOD Start
+           /*+ leading(xch flv2 d_typ xca gyotai_sho flv xdst xcl )
+               use_nl(xca) use_nl(flv2) use_nl(flv) use_nl(xdst)  use_nl(xcl)
             */
+--           /*+ leading(xdst xca gyotai_sho xch flv2 d_typ xcl flv)
+--               use_nl(xca) use_nl(flv) use_nl(xch) use_nl(flv2) use_nl(xcl)
+--            */
+-- 2021/08/25 Ver1.2 MOD End
            xdst.delivery_base_code                      AS delivery_base_code           -- U‘ÖŒ³‹’“_
           ,xdst.selling_from_cust_code                  AS selling_from_cust_code       -- U‘ÖŒ³ŒÚ‹q
           ,xdst.base_code                               AS base_code                    -- U‘Öæ‹’“_
@@ -339,6 +354,10 @@ AS
     AND    flv.language(+)               = cv_lang
     AND    flv.enabled_flag(+)           = cv_enable
     AND    xch.enabled_flag_h            = cv_enable
+-- 2021/08/25 Ver1.2 MOD Start
+    AND    xch.end_date_active           >= gd_target_date_from
+    AND    xch.start_date_active         <= gd_target_date_to
+-- 2021/08/25 Ver1.2 MOD End
     AND    flv2.lookup_type              = 'XXCOK1_DEDUCTION_DATA_TYPE'
     AND    flv2.lookup_code              = xch.data_type
     AND    flv2.language                 = cv_lang
@@ -353,9 +372,14 @@ AS
     OR     xdst.product_class            = xcl.product_class)
     UNION ALL
     SELECT 
-           /*+ leading(xdst xca gyotai_sho flv xch flv2 d_typ xcl)
-               use_nl(xca) use_nl(flv) use_nl(xch) use_nl(flv2) use_nl(xcl)
-            */            
+-- 2021/08/25 Ver1.2 MOD Start
+           /*+ leading(xch flv2 flv d_typ xca gyotai_sho  xdst  xcl)
+               use_nl(flv2) use_nl(flv) use_nl(xca)  use_nl(xdst)  use_nl(xcl)
+            */
+--           /*+ leading(xdst xca gyotai_sho flv xch flv2 d_typ xcl)
+--               use_nl(xca) use_nl(flv) use_nl(xch) use_nl(flv2) use_nl(xcl)
+--            */            
+-- 2021/08/25 Ver1.2 MOD End
            xdst.delivery_base_code                      AS delivery_base_code           -- U‘ÖŒ³‹’“_
           ,xdst.selling_from_cust_code                  AS selling_from_cust_code       -- U‘ÖŒ³ŒÚ‹q
           ,xdst.base_code                               AS base_code                    -- U‘Öæ‹’“_
@@ -420,6 +444,10 @@ AS
     AND    flv.language                  = cv_lang
     AND    flv.enabled_flag              = cv_enable
     AND    xch.enabled_flag_h            = cv_enable
+-- 2021/08/25 Ver1.2 MOD Start
+    AND    xch.end_date_active           >= gd_target_date_from
+    AND    xch.start_date_active         <= gd_target_date_to
+-- 2021/08/25 Ver1.2 MOD End
     AND    flv2.lookup_type              = 'XXCOK1_DEDUCTION_DATA_TYPE'
     AND    flv2.lookup_code              = xch.data_type
     AND    flv2.language                 = cv_lang
