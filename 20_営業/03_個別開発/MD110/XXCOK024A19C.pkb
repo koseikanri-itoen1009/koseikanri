@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A19C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：控除データ差額金額調整 MD050_COK_024_A19
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/03/12    1.0   Y.Koh            新規作成
+ *  2021/08/26    1.1   K.Yoshikawa      E_本稼動_17494
  *
  *****************************************************************************************/
 --
@@ -64,6 +65,9 @@ AS
   -- ==============================
   -- グローバル変数
   -- ==============================
+-- 2021/08/26 Ver1.1 ADD Start
+  gd_process_date             xxcok_deduction_recon_head.gl_date%TYPE;          -- 業務処理日
+-- 2021/08/26 Ver1.1 ADD End
   gd_process_month            xxcok_deduction_recon_head.gl_date%TYPE;          -- 業務処理月
   gv_recon_slip_num           xxcok_deduction_recon_head.recon_slip_num%TYPE;   -- 支払伝票番号
   gd_gl_date                  xxcok_deduction_recon_head.gl_date%TYPE;          -- GL記帳日
@@ -115,6 +119,9 @@ AS
     -- ============================================================
     -- 業務処理月の取得
     -- ============================================================
+-- 2021/08/26 Ver1.1 ADD Start
+    gd_process_date   :=  xxccp_common_pkg2.get_process_date;
+-- 2021/08/26 Ver1.1 ADD End
     gd_process_month  :=  TRUNC(xxccp_common_pkg2.get_process_date, 'MM');
 
     IF  gd_process_month  IS NULL THEN
@@ -474,11 +481,21 @@ AS
               xsd.source_category                                             , -- 作成元区分
               xca.sale_base_code                                              , -- 売上拠点コード
               xca.past_sale_base_code                                         , -- 前月売上拠点コード
-              xdir.tax_code                                                     -- 消込時税コード
-      FROM    xxcok_deduction_item_recon  xdir                                , -- 控除No別消込情報
-              xxcmm_cust_accounts         xca                                 , -- 顧客追加情報
+-- 2021/08/26 Ver1.1 MOD Start
+--              xdir.tax_code                                                     -- 消込時税コード
+              tax_class_suppliers_outside     tax_code                          -- 消込時税コード
+-- 2021/08/26 Ver1.1 MOD End
+-- 2021/08/26 Ver1.1 MOD Start
+--      FROM    xxcok_deduction_item_recon  xdir                                , -- 控除No別消込情報
+--              xxcmm_cust_accounts         xca                                 , -- 顧客追加情報
+        FROM  xxcmm_cust_accounts         xca                                 , -- 顧客追加情報
+-- 2021/08/26 Ver1.1 MOD End
               fnd_lookup_values           dtyp                                , -- データ種類
-              xxcok_sales_deduction       xsd                                   -- 販売控除情報
+-- 2021/08/26 Ver1.1 MOD Start
+--              xxcok_sales_deduction       xsd                                   -- 販売控除情報
+              xxcok_sales_deduction       xsd                                 , -- 販売控除情報
+              xxcos_reduced_tax_rate_v    xrtr                                  -- 品目別消費税率view
+-- 2021/08/26 Ver1.1 MOD End
       WHERE   xsd.recon_slip_num          =   gv_recon_slip_num
       AND     dtyp.lookup_type            =   cv_lookup_data_type
       AND     dtyp.lookup_code            =   xsd.data_type
@@ -486,9 +503,13 @@ AS
       AND     dtyp.enabled_flag           =   cv_flag_y
       AND     dtyp.attribute2             IN  ('030', '040')
       AND     xca.customer_code(+)        =   xsd.customer_code_to
-      AND     xdir.recon_slip_num         =   gv_recon_slip_num
-      AND     xdir.deduction_chain_code   IN  (xca.intro_chain_code2, xsd.deduction_chain_code)
-      AND     xdir.item_code              =   xsd.item_code
+-- 2021/08/26 Ver1.1 MOD Start
+      AND     xrtr.item_code              =   xsd.item_code
+      AND     gd_process_date BETWEEN nvl(xrtr.start_date_histories,to_date('1900/01/01','YYYY/MM/DD')) AND nvl(xrtr.end_date_histories,to_date('9999/12/31','YYYY/MM/DD'))
+--      AND     xdir.recon_slip_num         =   gv_recon_slip_num
+--      AND     xdir.deduction_chain_code   IN  (xca.intro_chain_code2, xsd.deduction_chain_code)
+--      AND     xdir.item_code              =   xsd.item_code
+-- 2021/08/26 Ver1.1 MOD End
       FOR UPDATE OF xsd.recon_tax_code  NOWAIT;
 --
     CURSOR xxcok_deduction_item_recon_cur
@@ -664,16 +685,30 @@ AS
               xsd.source_category       source_category     , -- 作成元区分
               xca.sale_base_code        sale_base_code      , -- 売上拠点コード
               xca.past_sale_base_code   past_sale_base_code , -- 前月売上拠点コード
-              xdnr.payment_tax_code     payment_tax_code      -- 消込時税コード
-      FROM    xxcok_deduction_num_recon xdnr                , -- 控除No別消込情報
-              xxcmm_cust_accounts       xca                 , -- 顧客追加情報
+-- 2021/08/26 Ver1.1 MOD Start
+--              xdnr.payment_tax_code     payment_tax_code      -- 消込時税コード
+              xsd.tax_code              payment_tax_code      -- 消込時税コード
+-- 2021/08/26 Ver1.1 MOD End
+-- 2021/08/26 Ver1.1 MOD Start
+--      FROM    xxcok_deduction_num_recon xdnr                , -- 控除No別消込情報
+--              xxcmm_cust_accounts       xca                 , -- 顧客追加情報
+      FROM    xxcmm_cust_accounts       xca                 , -- 顧客追加情報
+              fnd_lookup_values         dtyp                , -- データ種類
+-- 2021/08/26 Ver1.1 MOD End
               xxcok_sales_deduction     xsd                   -- 販売控除情報
       WHERE   xsd.recon_slip_num          =   gv_recon_slip_num
       AND     xca.customer_code(+)        =   xsd.customer_code_to
-      AND     xdnr.recon_slip_num         =   gv_recon_slip_num
-      AND     xdnr.deduction_chain_code   IN  (xca.intro_chain_code2, xsd.deduction_chain_code)
-      AND     xdnr.condition_no           =   xsd.condition_no
-      AND     xdnr.tax_code               =   xsd.tax_code
+-- 2021/08/26 Ver1.1 MOD Start
+--      AND     xdnr.recon_slip_num         =   gv_recon_slip_num
+--      AND     xdnr.deduction_chain_code   IN  (xca.intro_chain_code2, xsd.deduction_chain_code)
+--      AND     xdnr.condition_no           =   xsd.condition_no
+--      AND     xdnr.tax_code               =   xsd.tax_code
+      AND     dtyp.lookup_type            =   cv_lookup_data_type
+      AND     dtyp.lookup_code            =   xsd.data_type
+      AND     dtyp.language               =   'JA'
+      AND     dtyp.enabled_flag           =   cv_flag_y
+      AND     dtyp.attribute2             NOT IN  ('030', '040')
+-- 2021/08/26 Ver1.1 MOD End
       FOR UPDATE OF xsd.recon_tax_code  NOWAIT;
 --
     CURSOR xxcok_deduction_num_recon_cur(
