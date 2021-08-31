@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A06C (body)
  * Description      : 販売控除情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : 販売控除データGL連携 MD050_COK_024_A06
- * Version          : 1.2
+ * Version          : 1.3
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -28,6 +28,7 @@ AS
  *  2020/11/24    1.0   H.Ishii          新規作成
  *  2021/05/19    1.1   K.Yoshikawa      グループID追加対応
  *  2021/06/25    1.2   K.Tomie          E_本稼働_17279対応
+ *  2021/08/26    1.3   H.Futamura       E_本稼動_17468対応
  *
  *****************************************************************************************/
 --
@@ -162,10 +163,12 @@ AS
     , deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
   );
 --
-  -- 販売控除ロック用ワークテーブル定義
-  TYPE gr_deductions_lock_rec IS RECORD(
-      sales_deduction_id        xxcok_sales_deduction.sales_deduction_id%TYPE             -- 販売控除ID
-  );
+-- Ver 1.3 del start
+--  -- 販売控除ロック用ワークテーブル定義
+--  TYPE gr_deductions_lock_rec IS RECORD(
+--      sales_deduction_id        xxcok_sales_deduction.sales_deduction_id%TYPE             -- 販売控除ID
+--  );
+-- Ver 1.3 del end
 --
   -- ワークテーブル型定義
   -- 販売控除データ
@@ -176,9 +179,11 @@ AS
   TYPE g_deductions_debt_exp_ttype  IS TABLE OF gr_deductions_debt_exp_rec INDEX BY BINARY_INTEGER;
     gt_deductions_debt_exp_tbl   g_deductions_debt_exp_ttype;
 --
-  -- 販売控除ロック用データ
-  TYPE g_deductions_lock_ttype  IS TABLE OF gr_deductions_lock_rec INDEX BY BINARY_INTEGER;
-    gt_deduction_lock_tbl        g_deductions_lock_ttype;
+-- Ver 1.3 del start
+--  -- 販売控除ロック用データ
+--  TYPE g_deductions_lock_ttype  IS TABLE OF gr_deductions_lock_rec INDEX BY BINARY_INTEGER;
+--    gt_deduction_lock_tbl        g_deductions_lock_ttype;
+-- Ver 1.3 del end
 --
   -- 販売控除データ
   TYPE g_deductions_ttype           IS TABLE OF xxcok_sales_deduction%ROWTYPE INDEX BY BINARY_INTEGER;
@@ -242,30 +247,32 @@ AS
           ,temp.customer_code
     ;
 --
-  CURSOR deductions_data_lock_cur
-  IS
---Ver 1.2 mod start
---    SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
-    SELECT /*+ LEADING(flv XSD)
-               INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
-               USE_HASH(XSD)*/
---Ver 1.2 mod end
-           xsd.sales_deduction_id      sales_deduction_id    -- 販売控除ID
-    FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
---Ver 1.2 mod start
---    WHERE  TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)  -- 売上日
-          ,fnd_lookup_values         flv                     -- クイックコード
-    WHERE  flv.lookup_code                          = xsd.data_type                                 -- データ種類
-    AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
-    AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
-    AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
-    AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
---Ver 1.2 mod end
-    AND    xsd.gl_if_flag                          IN (cv_n_flag, cv_r_flag)                 -- GL連携フラグ N：未連携、R：再送
-    AND    xsd.source_category                     IN (cv_s_flag, cv_t_flag, cv_v_flag       -- 作成元区分 S:販売実績、T:売上実績振替(EDI)、V:売上実績振替(振替割合)
-                                                     , cv_u_flag, cv_f_flag)                 -- 作成元区分 U:アップロード、F:定額控除
-    FOR UPDATE OF sales_deduction_id NOWAIT
-    ;
+-- Ver 1.3 del start
+--  CURSOR deductions_data_lock_cur
+--  IS
+----Ver 1.2 mod start
+----    SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+--    SELECT /*+ LEADING(flv XSD)
+--               INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
+--               USE_HASH(XSD)*/
+----Ver 1.2 mod end
+--           xsd.sales_deduction_id      sales_deduction_id    -- 販売控除ID
+--    FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
+----Ver 1.2 mod start
+----    WHERE  TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)  -- 売上日
+--          ,fnd_lookup_values         flv                     -- クイックコード
+--    WHERE  flv.lookup_code                          = xsd.data_type                                 -- データ種類
+--    AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
+--    AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
+--    AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+--    AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+----Ver 1.2 mod end
+--    AND    xsd.gl_if_flag                          IN (cv_n_flag, cv_r_flag)                 -- GL連携フラグ N：未連携、R：再送
+--    AND    xsd.source_category                     IN (cv_s_flag, cv_t_flag, cv_v_flag       -- 作成元区分 S:販売実績、T:売上実績振替(EDI)、V:売上実績振替(振替割合)
+--                                                     , cv_u_flag, cv_f_flag)                 -- 作成元区分 U:アップロード、F:定額控除
+--    FOR UPDATE OF sales_deduction_id NOWAIT
+--    ;
+-- Ver 1.3 del end
 --
   CURSOR deductions_debt_data_cur
   IS
@@ -902,9 +909,11 @@ AS
     --==================================
     -- 販売控除データのロック
     --==================================
-    OPEN  deductions_data_lock_cur;
-    FETCH deductions_data_lock_cur BULK COLLECT INTO gt_deduction_lock_tbl;
-    CLOSE deductions_data_lock_cur;
+-- Ver 1.3 del start
+--    OPEN  deductions_data_lock_cur;
+--    FETCH deductions_data_lock_cur BULK COLLECT INTO gt_deduction_lock_tbl;
+--    CLOSE deductions_data_lock_cur;
+-- Ver 1.3 del end
 --
   EXCEPTION
     -- データ取得エラー（データ0件） ***
