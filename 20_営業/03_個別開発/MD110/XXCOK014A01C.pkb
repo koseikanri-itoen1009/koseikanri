@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : ”Ì”„ŽÀÑî•ñEŽè”—¿ŒvŽZðŒ‚©‚ç‚Ì”Ì”„Žè”—¿ŒvŽZˆ—
  * MD.050           : ðŒ•Ê”ÌŽè”Ì‹¦ŒvŽZˆ— MD050_COK_014_A01
- * Version          : 3.24
+ * Version          : 3.25
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2020/12/04    3.22  N.Abe            [E_–{‰Ò“®_15904] Ž©”Ì‹@BMŒvŽZÅ”²‚«‘Î‰ž
  *  2021/01/04    3.23  H.Futamura       [E_–{‰Ò“®_15904] Å”²‚«‚Å‚ÌŽ©”Ì‹@BMŒvŽZ‚É‚Â‚¢‚Ä
  *  2021/04/15    3.24  SCSK Y.Koh       [E_–{‰Ò“®_16026]
+ *  2021/06/11    3.25  H.Futamura       [E_–{‰Ò“®_17197] ÅžBMA“d‹C‘ã’[”ˆ—•ÏX
  *****************************************************************************************/
   --==================================================
   -- ƒOƒ[ƒoƒ‹’è”
@@ -4634,9 +4635,11 @@ END insert_xcbs;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- o—Í—pƒƒbƒZ[ƒW
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- ƒƒbƒZ[ƒWo—ÍŠÖ”–ß‚è’l
 --
-    ln_bm1_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM1_“ü‹à’lˆøŠz(Å”²)_ˆêŽžŠi”[
-    ln_bm2_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM2_“ü‹à’lˆøŠz(Å”²)_ˆêŽžŠi”[
-    ln_bm3_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM3_“ü‹à’lˆøŠz(Å”²)_ˆêŽžŠi”[
+-- Ver.3.25 H.Futamura DEL START
+--    ln_bm1_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM1_“ü‹à’lˆøŠz(Å”²)_ˆêŽžŠi”[
+--    ln_bm2_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM2_“ü‹à’lˆøŠz(Å”²)_ˆêŽžŠi”[
+--    ln_bm3_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM3_“ü‹à’lˆøŠz(Å”²)_ˆêŽžŠi”[
+-- Ver.3.25 H.Futamura DEL END
 --
 -- Ver.3.20 N.Abe ADD START
     ln_bm1_amt_tax                 NUMBER         DEFAULT NULL;                 -- yBM1zVDBM(Åž)_ˆêŽžŠi”[
@@ -4652,6 +4655,24 @@ END insert_xcbs;
     ln_bm1_elect_amt_tax_var       NUMBER         DEFAULT NULL;                 -- yBM1z“d‹C—¿(Åž)•Ï“®_ˆêŽžŠi”[
     ln_bm1_elect_amt_no_tax_var    NUMBER         DEFAULT NULL;                 -- yBM1z“d‹C—¿(Å”²)•Ï“®_ˆêŽžŠi”[
 -- Ver.3.23 H.Futamura ADD END
+-- Ver.3.25 H.Futamura ADD START
+    ln_bm1_cond_tax_amt            NUMBER         DEFAULT NULL;                 -- yBM1zÁ”ïÅ_ˆêŽžŠi”[
+    ln_bm2_cond_tax_amt            NUMBER         DEFAULT NULL;                 -- yBM2zÁ”ïÅ_ˆêŽžŠi”[
+    ln_bm3_cond_tax_amt            NUMBER         DEFAULT NULL;                 -- yBM3zÁ”ïÅ_ˆêŽžŠi”[
+    ln_bm1_csh_rcpt_dis_amt_tax    NUMBER         DEFAULT NULL;                 -- yBM1z“ü‹à’lˆøÁ”ïÅ_ˆêŽžŠi”[
+    ln_bm2_csh_rcpt_dis_amt_tax    NUMBER         DEFAULT NULL;                 -- yBM2z“ü‹à’lˆøÁ”ïÅ_ˆêŽžŠi”[
+    ln_bm3_csh_rcpt_dis_amt_tax    NUMBER         DEFAULT NULL;                 -- yBM3z“ü‹à’lˆøÁ”ïÅ_ˆêŽžŠi”[
+    ln_electric_tax_amt            NUMBER         DEFAULT NULL;                 --  “d‹C—¿Á”ïÅ_ˆêŽžŠi”[
+    ln_electric_tax_amt_var        NUMBER         DEFAULT NULL;                 --  •Ï“®“d‹C—¿Á”ïÅ_ˆêŽžŠi”[
+    ln_bm1_amt_notax_tmp           NUMBER         DEFAULT NULL;                 -- yBM1zVDBM(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_bm2_amt_notax_tmp           NUMBER         DEFAULT NULL;                 -- yBM2zVDBM(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_bm3_amt_notax_tmp           NUMBER         DEFAULT NULL;                 -- yBM3zVDBM(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_bm1_csh_rcpt_dis_notax_tmp  NUMBER         DEFAULT NULL;                 -- yBM1z“ü‹à’lˆø(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_bm2_csh_rcpt_dis_notax_tmp  NUMBER         DEFAULT NULL;                 -- yBM2z“ü‹à’lˆø(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_bm3_csh_rcpt_dis_notax_tmp  NUMBER         DEFAULT NULL;                 -- yBM3z“ü‹à’lˆø(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_electric_notax_amt_tmp      NUMBER         DEFAULT NULL;                 --  “d‹C—¿Á”ïÅ(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+    ln_electric_notax_amt_var_tmp  NUMBER         DEFAULT NULL;                 --  •Ï“®“d‹C—¿Á”ïÅ(Å”²)_Á”ïÅŒvŽZˆêŽžŠi”[
+-- Ver.3.25 H.Futamura ADD END
 --
     -- ˜AŒgƒXƒe[ƒ^ƒX(ðŒ•Ê”ÌŽè”Ì‹¦)_ˆêŽžŠi”[
     lv_cond_bm_interface_status    xxcok_cond_bm_support.cond_bm_interface_status%TYPE DEFAULT NULL;
@@ -4753,15 +4774,27 @@ END insert_xcbs;
         -- ”Ì”„ŽÀÑî•ñ‚Ì BM1 BM—¦(%)‚ª NULLˆÈŠO ‚Ìê‡
         IF( i_get_sales_data_rec.bm1_pct IS NOT NULL ) THEN
           -- yBM1zVDBM(Åž)
-          ln_bm1_amt_tax      := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
-          -- yBM1zVDBM(Å”²)
-          ln_bm1_amt_no_tax   := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          ln_bm1_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+-- Ver.3.25 H.Futamura MOD START
+--          -- yBM1zVDBM(Å”²)
+--          ln_bm1_amt_no_tax   := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM1zVDBM(Å”²)Á”ïÅŒvŽZ—p
+          ln_bm1_amt_notax_tmp := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM1zÁ”ïÅ
+          ln_bm1_cond_tax_amt  := ln_bm1_amt_tax - ln_bm1_amt_notax_tmp;
+-- Ver.3.25 H.Futamura MOD END
         -- ”Ì”„ŽÀÑî•ñ‚Ì BM1 BM‹àŠz‚ª NULL ˆÈŠO‚Ìê‡
         ELSIF( i_get_sales_data_rec.bm1_amt IS NOT NULL ) THEN
           -- yBM1zVDBM(Åž)
           ln_bm1_amt_tax      := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
-          -- yBM1zVDBM(Å”²)
-          ln_bm1_amt_no_tax   := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.25 H.Futamura MOD START
+--          -- yBM1zVDBM(Å”²)
+--          ln_bm1_amt_no_tax   := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM1zVDBM(Å”²)Á”ïÅŒvŽZ—p
+          ln_bm1_amt_notax_tmp := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM1zÁ”ïÅ
+          ln_bm1_cond_tax_amt  := ln_bm1_amt_tax - ln_bm1_amt_notax_tmp;
+-- Ver.3.25 H.Futamura MOD END
         END IF;
       END IF;
 --
@@ -4771,14 +4804,26 @@ END insert_xcbs;
         IF( i_get_sales_data_rec.bm2_pct IS NOT NULL ) THEN
           -- yBM2zVDBM(Åž)
           ln_bm2_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
-          -- yBM2zVDBM(Å”²)
-          ln_bm2_amt_no_tax    := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.25 H.Futamura MOD START
+--          -- yBM2zVDBM(Å”²)
+--          ln_bm2_amt_no_tax    := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM2zVDBM(Å”²)Á”ïÅŒvŽZ—p
+          ln_bm2_amt_notax_tmp := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM2zÁ”ïÅ
+          ln_bm2_cond_tax_amt  := ln_bm2_amt_tax - ln_bm2_amt_notax_tmp;
+-- Ver.3.25 H.Futamura MOD END
         -- ”Ì”„ŽÀÑî•ñ‚Ì BM2 BM‹àŠz‚ª NULL ˆÈŠO‚Ìê‡
         ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
           -- yBM2zVDBM(Åž)
           ln_bm2_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
-          -- yBM2zVDBM(Å”²)
-          ln_bm2_amt_no_tax    := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.25 H.Futamura MOD START
+--          -- yBM2zVDBM(Å”²)
+--          ln_bm2_amt_no_tax    := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM2zVDBM(Å”²)Á”ïÅŒvŽZ—p
+          ln_bm2_amt_notax_tmp := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM2zÁ”ïÅ
+          ln_bm2_cond_tax_amt  := ln_bm2_amt_tax - ln_bm2_amt_notax_tmp;
+-- Ver.3.25 H.Futamura MOD END
         END IF;
       END IF;
 --
@@ -4788,14 +4833,26 @@ END insert_xcbs;
         IF( i_get_sales_data_rec.bm3_pct IS NOT NULL ) THEN
           -- yBM3zVDBM(Åž)
           ln_bm3_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
-          -- yBM3zVDBM(Å”²)
-          ln_bm3_amt_no_tax    := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.25 H.Futamura MOD START
+--          -- yBM3zVDBM(Å”²)
+--          ln_bm3_amt_no_tax    := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM3zVDBM(Å”²)Á”ïÅŒvŽZ—p
+          ln_bm3_amt_notax_tmp := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM3zÁ”ïÅ
+          ln_bm3_cond_tax_amt  := ln_bm3_amt_tax - ln_bm3_amt_notax_tmp;
+-- Ver.3.25 H.Futamura MOD END
         -- ”Ì”„ŽÀÑî•ñ‚Ì BM3 BM‹àŠz‚ª NULL ˆÈŠO‚Ìê‡
         ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
           -- yBM3zVDBM(Åž)
           ln_bm3_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
-          -- yBM3zVDBM(Å”²)
-          ln_bm3_amt_no_tax    := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.25 H.Futamura MOD START
+--          -- yBM3zVDBM(Å”²)
+--          ln_bm3_amt_no_tax    := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM3zVDBM(Å”²)Á”ïÅŒvŽZ—p
+          ln_bm3_amt_notax_tmp := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- yBM3zÁ”ïÅ
+          ln_bm3_cond_tax_amt  := ln_bm3_amt_tax - ln_bm3_amt_notax_tmp;
+-- Ver.3.25 H.Futamura MOD END
         END IF;
       END IF;
 --
@@ -4888,7 +4945,7 @@ END insert_xcbs;
       END IF;
     END IF;
     --==================================================
-    -- 3.ŠeVDBM(Åž)A“ü‹à’lˆøŠz(Åž)A“d‹C—¿‚ª NULL ˆÈŠO‚Ìê‡AÅ”²‹àŠz‚¨‚æ‚ÑÁ”ïÅŠz‚ðŽZo‚µ‚Ü‚·B
+    -- 3.ŠeVDBM(Åž)A“ü‹à’lˆøŠz(Åž)‚ª NULL ˆÈŠO‚Ìê‡AÁ”ïÅŠz‚ðŽZo‚µ‚Ü‚·B
     --==================================================
 -- Ver.3.20 N.Abe DEL START
 --    -- BM1 VDBM(Å”²)‚ÌÝ’è
@@ -4897,11 +4954,13 @@ END insert_xcbs;
 --        := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
 --    END IF;
 -- Ver.3.20 N.Abe DEL END
-    -- BM1 “ü‹à’lˆøŠz(Å”²)‚ÌÝ’è
-    IF( l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
-      ln_bm1_rcpt_discount_amt_notax
-        := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 )  );
-    END IF;
+-- Ver.3.25 H.Futamura DEL START
+--    -- BM1 “ü‹à’lˆøŠz(Å”²)‚ÌÝ’è
+--    IF( l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+--      ln_bm1_rcpt_discount_amt_notax
+--        := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 )  );
+--    END IF;
+-- Ver.3.25 H.Futamura DEL END
 -- Ver.3.21 N.Abe DEL START
 ---- Ver.3.20 N.Abe MOD START
 --    --BM1Å‹æ•ª = '1'iÅžj
@@ -4926,16 +4985,18 @@ END insert_xcbs;
 --        := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
 --    END IF;
 -- Ver.3.20 N.Abe DEL END
-    -- BM2 “ü‹à’lˆøŠz(Å”²)‚ÌÝ’è
-    IF( l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
-      ln_bm2_rcpt_discount_amt_notax
-        := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-    END IF;
-    -- BM2 “d‹C—¿(Å”²)‚ÌÝ’è
-    IF( i_get_sales_data_rec.bm2_electric_amt_tax IS NOT NULL ) THEN
-      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax
-        := i_get_sales_data_rec.bm2_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-    END IF;
+-- Ver.3.25 H.Futamura DEL START
+--    -- BM2 “ü‹à’lˆøŠz(Å”²)‚ÌÝ’è
+--    IF( l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+--      ln_bm2_rcpt_discount_amt_notax
+--        := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--    END IF;
+--    -- BM2 “d‹C—¿(Å”²)‚ÌÝ’è
+--    IF( i_get_sales_data_rec.bm2_electric_amt_tax IS NOT NULL ) THEN
+--      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax
+--        := i_get_sales_data_rec.bm2_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--    END IF;
+-- Ver.3.25 H.Futamura DEL END
 -- Ver.3.20 N.Abe DEL START
 --    -- BM3 VDBM(Å”²)‚ÌÝ’è
 --    IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax IS NOT NULL ) THEN
@@ -4943,184 +5004,311 @@ END insert_xcbs;
 --        := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate/ 100 ) );
 --    END IF;
 -- Ver.3.20 N.Abe DEL END
-    -- BM3 “ü‹à’lˆøŠz(Å”²)‚ÌÝ’è
+-- Ver.3.25 H.Futamura DEL START
+--    -- BM3 “ü‹à’lˆøŠz(Å”²)‚ÌÝ’è
+--    IF( l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+--      ln_bm3_rcpt_discount_amt_notax
+--        := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--    END IF;
+--    -- BM3 “d‹C—¿(Å”²)‚ÌÝ’è
+--    IF( i_get_sales_data_rec.bm3_electric_amt_tax IS NOT NULL ) THEN
+--      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax
+--        := i_get_sales_data_rec.bm3_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--    END IF;
+-- Ver.3.25 H.Futamura DEL END
+-- Ver.3.25 H.Futamura ADD START
+    --BM1 “ü‹à’lˆøŠzÁ”ïÅ‚ÌÝ’è
+    IF( l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+      -- BM1 “ü‹à’lˆøŠz(Å”²)Á”ïÅŒvŽZ—p
+      ln_bm1_csh_rcpt_dis_notax_tmp := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      ln_bm1_csh_rcpt_dis_amt_tax   := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt - ln_bm1_csh_rcpt_dis_notax_tmp;
+    END IF;
+    --BM2 “ü‹à’lˆøŠzÁ”ïÅ‚ÌÝ’è
+    IF( l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
+      -- BM2 “ü‹à’lˆøŠz(Å”²)Á”ïÅŒvŽZ—p
+      ln_bm2_csh_rcpt_dis_notax_tmp := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      ln_bm2_csh_rcpt_dis_amt_tax   := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt - ln_bm2_csh_rcpt_dis_notax_tmp;
+    END IF;
+    --BM3 “ü‹à’lˆøŠzÁ”ïÅ‚ÌÝ’è
     IF( l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
-      ln_bm3_rcpt_discount_amt_notax
-        := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      -- BM3 “ü‹à’lˆøŠz(Å”²)Á”ïÅŒvŽZ—p
+      ln_bm3_csh_rcpt_dis_notax_tmp := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      ln_bm3_csh_rcpt_dis_amt_tax   := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt - ln_bm3_csh_rcpt_dis_notax_tmp;
     END IF;
-    -- BM3 “d‹C—¿(Å”²)‚ÌÝ’è
-    IF( i_get_sales_data_rec.bm3_electric_amt_tax IS NOT NULL ) THEN
-      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax
-        := i_get_sales_data_rec.bm3_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-    END IF;
+-- Ver.3.25 H.Futamura ADD END
 --
     --==================================================
-    -- ’[”ˆ—‹æ•ª‚É‚æ‚éŽæ“¾’l‚Ì’[”ˆ—iBMÅ‹æ•ª:Åžj
+    -- ’[”ˆ—‹æ•ª‚É‚æ‚éÁ”ïÅ‚Ì’[”ˆ—iBMÅ‹æ•ª:Åžj
     --==================================================
     -- ”Ì”„ŽÀÑî•ñ‚Ì’[”ˆ—‹æ•ª‚ª 'NEAREST':ŽlŽÌŒÜ“ü‚Ìê‡A­”“_ˆÈ‰º‚Ì’[”‚ðŽlŽÌŒÜ“ü‚µ‚Ü‚·B
     IF( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_nearest ) THEN
--- Ver.3.20 N.Abe DEL START
---      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
--- Ver.3.20 N.Abe DEL END
-      ln_bm1_rcpt_discount_amt_notax                    := ROUND( ln_bm1_rcpt_discount_amt_notax );
--- Ver.3.20 N.Abe DEL START
---      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
---      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
--- Ver.3.20 N.Abe DEL END
-      ln_bm2_rcpt_discount_amt_notax                    := ROUND( ln_bm2_rcpt_discount_amt_notax );
-      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
--- Ver.3.20 N.Abe DEL START
---      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
--- Ver.3.20 N.Abe DEL END
-      ln_bm3_rcpt_discount_amt_notax                    := ROUND( ln_bm3_rcpt_discount_amt_notax );
-      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
---
--- Ver.3.20 N.Abe ADD START
+-- Ver.3.25 H.Futamura DEL START
+---- Ver.3.20 N.Abe DEL START
+----      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL END
+--      ln_bm1_rcpt_discount_amt_notax                    := ROUND( ln_bm1_rcpt_discount_amt_notax );
+---- Ver.3.20 N.Abe DEL START
+----      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+----      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL END
+--      ln_bm2_rcpt_discount_amt_notax                    := ROUND( ln_bm2_rcpt_discount_amt_notax );
+--      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+---- Ver.3.20 N.Abe DEL START
+----      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL END
+--      ln_bm3_rcpt_discount_amt_notax                    := ROUND( ln_bm3_rcpt_discount_amt_notax );
+--      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+-- Ver.3.25 H.Futamura DEL END
+-- Ver.3.25 H.Futamura ADD START
+      --BM1 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      ln_bm1_csh_rcpt_dis_amt_tax := ROUND( ln_bm1_csh_rcpt_dis_amt_tax );
+      --BM2 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      ln_bm2_csh_rcpt_dis_amt_tax := ROUND( ln_bm2_csh_rcpt_dis_amt_tax );
+      --BM3 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      ln_bm3_csh_rcpt_dis_amt_tax := ROUND( ln_bm3_csh_rcpt_dis_amt_tax );
+-- Ver.3.25 H.Futamura ADD END
+-- Ver.3.25 H.Futamura MOD START
+---- Ver.3.20 N.Abe ADD START
+--      -- BM1Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+--        ln_bm1_amt_no_tax       := ROUND( ln_bm1_amt_no_tax );        -- yBM1zVDBM(Å”²)
+---- Ver.3.21 N.Abe DEL START
+----        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );  -- yBM1z“d‹C—¿(Å”²)
+---- Ver.3.21 N.Abe DEL END
+--      END IF;
+--      -- BM2Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+--        ln_bm2_amt_no_tax       := ROUND( ln_bm2_amt_no_tax );        -- yBM2zVDBM(Å”²)
+--      END IF;
+--      -- BM3Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+--        ln_bm3_amt_no_tax       := ROUND( ln_bm3_amt_no_tax );        -- yBM3zVDBM(Å”²)
+--      END IF;
       -- BM1Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
-        ln_bm1_amt_no_tax       := ROUND( ln_bm1_amt_no_tax );        -- yBM1zVDBM(Å”²)
--- Ver.3.21 N.Abe DEL START
---        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );  -- yBM1z“d‹C—¿(Å”²)
--- Ver.3.21 N.Abe DEL END
+        --BM1 Á”ïÅ‚ÌÝ’è
+        ln_bm1_cond_tax_amt    := ROUND( ln_bm1_cond_tax_amt );
       END IF;
       -- BM2Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
-        ln_bm2_amt_no_tax       := ROUND( ln_bm2_amt_no_tax );        -- yBM2zVDBM(Å”²)
+        --BM2 Á”ïÅ‚ÌÝ’è
+        ln_bm2_cond_tax_amt    := ROUND( ln_bm2_cond_tax_amt );
       END IF;
       -- BM3Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
-        ln_bm3_amt_no_tax       := ROUND( ln_bm3_amt_no_tax );        -- yBM3zVDBM(Å”²)
+        --BM3 Á”ïÅ‚ÌÝ’è
+        ln_bm3_cond_tax_amt    := ROUND( ln_bm3_cond_tax_amt );
       END IF;
+-- Ver.3.25 H.Futamura MOD END
 -- Ver.3.20 N.Abe ADD END
     -- ”Ì”„ŽÀÑî•ñ‚Ì’[”ˆ—‹æ•ª‚ª 'UP':Ø‚èã‚°‚Ìê‡A¬”“_ˆÈ‰º‚Ì’[”‚ðØ‚èã‚°‚µ‚Ü‚·B
     ELSIF ( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_up ) THEN
--- Ver.3.20 N.Abe DEL START
---      IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax > 0 )    THEN
---        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
---      ELSIF ( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax < 0 ) THEN
---        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+-- Ver.3.25 H.Futamura DEL START
+---- Ver.3.20 N.Abe DEL START
+----      IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax > 0 )    THEN
+----        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+----      ELSIF ( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax < 0 ) THEN
+----        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+----      END IF;
+---- Ver.3.20 N.Abe DEL END
+--      IF( ln_bm1_rcpt_discount_amt_notax > 0 )    THEN
+--        ln_bm1_rcpt_discount_amt_notax  := CEIL( ln_bm1_rcpt_discount_amt_notax );
+--      ELSIF( ln_bm1_rcpt_discount_amt_notax < 0 ) THEN
+--        ln_bm1_rcpt_discount_amt_notax  := FLOOR( ln_bm1_rcpt_discount_amt_notax );
 --      END IF;
--- Ver.3.20 N.Abe DEL END
-      IF( ln_bm1_rcpt_discount_amt_notax > 0 )    THEN
-        ln_bm1_rcpt_discount_amt_notax  := CEIL( ln_bm1_rcpt_discount_amt_notax );
-      ELSIF( ln_bm1_rcpt_discount_amt_notax < 0 ) THEN
-        ln_bm1_rcpt_discount_amt_notax  := FLOOR( ln_bm1_rcpt_discount_amt_notax );
-      END IF;
--- Ver.3.20 N.Abe DEL START
---      IF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax > 0 )    THEN
---        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
---      ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
---        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+---- Ver.3.20 N.Abe DEL START
+----      IF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax > 0 )    THEN
+----        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+----      ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+----        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+----      END IF;
+----      IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax > 0 )    THEN
+----        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+----      ELSIF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax < 0 ) THEN
+----        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+----      END IF;
+---- Ver.3.20 N.Abe DEL END
+--      IF( ln_bm2_rcpt_discount_amt_notax > 0 )    THEN
+--        ln_bm2_rcpt_discount_amt_notax  := CEIL( ln_bm2_rcpt_discount_amt_notax );
+--      ELSIF ( ln_bm2_rcpt_discount_amt_notax < 0 ) THEN
+--        ln_bm2_rcpt_discount_amt_notax  := FLOOR( ln_bm2_rcpt_discount_amt_notax );
 --      END IF;
---      IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax > 0 )    THEN
---        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
---      ELSIF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax < 0 ) THEN
---        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+--      IF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax > 0 )    THEN
+--        l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+--      ELSIF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax < 0 ) THEN
+--        l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
 --      END IF;
--- Ver.3.20 N.Abe DEL END
-      IF( ln_bm2_rcpt_discount_amt_notax > 0 )    THEN
-        ln_bm2_rcpt_discount_amt_notax  := CEIL( ln_bm2_rcpt_discount_amt_notax );
-      ELSIF ( ln_bm2_rcpt_discount_amt_notax < 0 ) THEN
-        ln_bm2_rcpt_discount_amt_notax  := FLOOR( ln_bm2_rcpt_discount_amt_notax );
-      END IF;
-      IF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax > 0 )    THEN
-        l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
-      ELSIF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax < 0 ) THEN
-        l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
-      END IF;
--- Ver.3.20 N.Abe DEL START
---      IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax > 0 )    THEN
---        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
---      ELSIF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax < 0 ) THEN
---        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL START
+----      IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax > 0 )    THEN
+----        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+----      ELSIF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax < 0 ) THEN
+----        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+----      END IF;
+---- Ver.3.20 N.Abe DEL END
+--      IF( ln_bm3_rcpt_discount_amt_notax > 0 )    THEN
+--        ln_bm3_rcpt_discount_amt_notax  := CEIL( ln_bm3_rcpt_discount_amt_notax );
+--      ELSIF( ln_bm3_rcpt_discount_amt_notax < 0 ) THEN
+--        ln_bm3_rcpt_discount_amt_notax  := FLOOR( ln_bm3_rcpt_discount_amt_notax );
 --      END IF;
--- Ver.3.20 N.Abe DEL END
-      IF( ln_bm3_rcpt_discount_amt_notax > 0 )    THEN
-        ln_bm3_rcpt_discount_amt_notax  := CEIL( ln_bm3_rcpt_discount_amt_notax );
-      ELSIF( ln_bm3_rcpt_discount_amt_notax < 0 ) THEN
-        ln_bm3_rcpt_discount_amt_notax  := FLOOR( ln_bm3_rcpt_discount_amt_notax );
+--      IF( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax > 0 )    THEN
+--        l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+--      ELSIF ( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax < 0 ) THEN
+--        l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+--      END IF;
+-- Ver.3.25 H.Futamura DEL END
+-- Ver.3.25 H.Futamura ADD START
+      --BM1 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      IF ( ln_bm1_csh_rcpt_dis_amt_tax > 0 ) THEN
+        ln_bm1_csh_rcpt_dis_amt_tax := CEIL( ln_bm1_csh_rcpt_dis_amt_tax );
+      ELSIF ( ln_bm1_csh_rcpt_dis_amt_tax < 0 ) THEN
+        ln_bm1_csh_rcpt_dis_amt_tax := FLOOR( ln_bm1_csh_rcpt_dis_amt_tax );
       END IF;
-      IF( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax > 0 )    THEN
-        l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
-      ELSIF ( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax < 0 ) THEN
-        l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+      --BM2 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      IF ( ln_bm2_csh_rcpt_dis_amt_tax > 0 ) THEN
+        ln_bm2_csh_rcpt_dis_amt_tax := CEIL( ln_bm2_csh_rcpt_dis_amt_tax );
+      ELSIF ( ln_bm2_csh_rcpt_dis_amt_tax < 0 ) THEN
+        ln_bm2_csh_rcpt_dis_amt_tax := FLOOR( ln_bm2_csh_rcpt_dis_amt_tax );
       END IF;
--- Ver.3.20 N.Abe ADD START
+      --BM3 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      IF ( ln_bm3_csh_rcpt_dis_amt_tax > 0 ) THEN
+        ln_bm3_csh_rcpt_dis_amt_tax := CEIL( ln_bm3_csh_rcpt_dis_amt_tax );
+      ELSIF ( ln_bm3_csh_rcpt_dis_amt_tax < 0 ) THEN
+        ln_bm3_csh_rcpt_dis_amt_tax := FLOOR( ln_bm3_csh_rcpt_dis_amt_tax );
+      END IF;
+-- Ver.3.25 H.Futamura ADD END
+-- Ver.3.25 H.Futamura MOD START
+---- Ver.3.20 N.Abe ADD START
+--      -- BM1Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+--        -- yBM1zVDBM(Å”²)
+--        IF( ln_bm1_amt_no_tax >= 0 )    THEN
+--          ln_bm1_amt_no_tax  := CEIL( ln_bm1_amt_no_tax );
+--        ELSIF ( ln_bm1_amt_no_tax < 0 ) THEN
+--          ln_bm1_amt_no_tax  := FLOOR( ln_bm1_amt_no_tax );
+--        END IF;
+---- Ver.3.21 N.Abe DEL START
+----        -- yBM1z“d‹C—¿(Å”²)
+----        IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 )    THEN
+----          ln_bm1_elect_amt_no_tax  := CEIL( ln_bm1_elect_amt_no_tax );
+----        ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+----          ln_bm1_elect_amt_no_tax  := FLOOR( ln_bm1_elect_amt_no_tax );
+----        END IF;
+---- Ver.3.21 N.Abe DEL END
+--      END IF;
+--
+--      -- BM2Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+--        -- yBM2zVDBM(Å”²)
+--        IF( ln_bm2_amt_no_tax >= 0 )    THEN
+--          ln_bm2_amt_no_tax  := CEIL( ln_bm2_amt_no_tax );
+--        ELSIF( ln_bm2_amt_no_tax < 0 ) THEN
+--          ln_bm2_amt_no_tax  := FLOOR( ln_bm2_amt_no_tax );
+--        END IF;
+--      END IF;
+--
+--      -- BM3Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+--        -- yBM3zVDBM(Å”²)
+--        IF( ln_bm3_amt_no_tax >= 0 )    THEN
+--          ln_bm3_amt_no_tax  := CEIL( ln_bm3_amt_no_tax );
+--        ELSIF( ln_bm3_amt_no_tax < 0 ) THEN
+--          ln_bm3_amt_no_tax  := FLOOR( ln_bm3_amt_no_tax );
+--        END IF;
+--      END IF;
+---- Ver.3.20 N.Abe ADD END
       -- BM1Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
-        -- yBM1zVDBM(Å”²)
-        IF( ln_bm1_amt_no_tax >= 0 )    THEN
-          ln_bm1_amt_no_tax  := CEIL( ln_bm1_amt_no_tax );
-        ELSIF ( ln_bm1_amt_no_tax < 0 ) THEN
-          ln_bm1_amt_no_tax  := FLOOR( ln_bm1_amt_no_tax );
+        --BM1 Á”ïÅ‚ÌÝ’è
+        IF( ln_bm1_cond_tax_amt > 0 ) THEN
+          ln_bm1_cond_tax_amt  := CEIL( ln_bm1_cond_tax_amt );
+        ELSIF ( ln_bm1_cond_tax_amt < 0 ) THEN
+          ln_bm1_cond_tax_amt := FLOOR( ln_bm1_cond_tax_amt );
         END IF;
--- Ver.3.21 N.Abe DEL START
---        -- yBM1z“d‹C—¿(Å”²)
---        IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 )    THEN
---          ln_bm1_elect_amt_no_tax  := CEIL( ln_bm1_elect_amt_no_tax );
---        ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
---          ln_bm1_elect_amt_no_tax  := FLOOR( ln_bm1_elect_amt_no_tax );
---        END IF;
--- Ver.3.21 N.Abe DEL END
       END IF;
 --
       -- BM2Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
-        -- yBM2zVDBM(Å”²)
-        IF( ln_bm2_amt_no_tax >= 0 )    THEN
-          ln_bm2_amt_no_tax  := CEIL( ln_bm2_amt_no_tax );
-        ELSIF( ln_bm2_amt_no_tax < 0 ) THEN
-          ln_bm2_amt_no_tax  := FLOOR( ln_bm2_amt_no_tax );
+        --BM2 Á”ïÅ‚ÌÝ’è
+        IF( ln_bm2_cond_tax_amt > 0 ) THEN
+          ln_bm2_cond_tax_amt  := CEIL( ln_bm2_cond_tax_amt );
+        ELSIF ( ln_bm2_cond_tax_amt < 0 ) THEN
+          ln_bm2_cond_tax_amt  := FLOOR( ln_bm2_cond_tax_amt );
         END IF;
       END IF;
 --
       -- BM3Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
-        -- yBM3zVDBM(Å”²)
-        IF( ln_bm3_amt_no_tax >= 0 )    THEN
-          ln_bm3_amt_no_tax  := CEIL( ln_bm3_amt_no_tax );
-        ELSIF( ln_bm3_amt_no_tax < 0 ) THEN
-          ln_bm3_amt_no_tax  := FLOOR( ln_bm3_amt_no_tax );
+        --BM3 Á”ïÅ‚ÌÝ’è
+        IF( ln_bm3_cond_tax_amt  > 0 ) THEN
+          ln_bm3_cond_tax_amt   := CEIL( ln_bm3_cond_tax_amt );
+        ELSIF ( ln_bm3_cond_tax_amt  < 0 ) THEN
+          ln_bm3_cond_tax_amt   := FLOOR( ln_bm3_cond_tax_amt );
         END IF;
       END IF;
--- Ver.3.20 N.Abe ADD END
+-- Ver.3.25 H.Futamura MOD END
     -- ã‹LˆÈŠO‚Ìê‡A'DOWN':Ø‚èŽÌ‚Ä‚ªÝ’è‚³‚ê‚Ä‚¢‚é‚±‚Æ‚Æ‚µA­”“_ˆÈ‰º‚Ì’[”‚ðØ‚èŽÌ‚Ä‚µ‚Ü‚·B
     ELSE
--- Ver.3.20 N.Abe DEL START
---      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
--- Ver.3.20 N.Abe DEL END
-      ln_bm1_rcpt_discount_amt_notax                    := TRUNC( ln_bm1_rcpt_discount_amt_notax );
--- Ver.3.20 N.Abe DEL START
---      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
---      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
--- Ver.3.20 N.Abe DEL END
-      ln_bm2_rcpt_discount_amt_notax                    := TRUNC( ln_bm2_rcpt_discount_amt_notax );
-      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
--- Ver.3.20 N.Abe DEL START
---      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
--- Ver.3.20 N.Abe DEL END
-      ln_bm3_rcpt_discount_amt_notax                    := TRUNC( ln_bm3_rcpt_discount_amt_notax );
-      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+-- Ver.3.25 H.futamura DEL START
+---- Ver.3.20 N.Abe DEL START
+----      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL END
+--      ln_bm1_rcpt_discount_amt_notax                    := TRUNC( ln_bm1_rcpt_discount_amt_notax );
+---- Ver.3.20 N.Abe DEL START
+----      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+----      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL END
+--      ln_bm2_rcpt_discount_amt_notax                    := TRUNC( ln_bm2_rcpt_discount_amt_notax );
+--      l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
+---- Ver.3.20 N.Abe DEL START
+----      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+---- Ver.3.20 N.Abe DEL END
+--      ln_bm3_rcpt_discount_amt_notax                    := TRUNC( ln_bm3_rcpt_discount_amt_notax );
+--      l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+-- Ver.3.25 H.futamura DEL END
+-- Ver.3.25 H.Futamura ADD START
+      --BM1 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      ln_bm1_csh_rcpt_dis_amt_tax := TRUNC( ln_bm1_csh_rcpt_dis_amt_tax );
+      --BM2 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      ln_bm2_csh_rcpt_dis_amt_tax := TRUNC( ln_bm2_csh_rcpt_dis_amt_tax );
+      --BM3 “ü‹à’lˆøÁ”ïÅ‚ÌÝ’è
+      ln_bm3_csh_rcpt_dis_amt_tax := TRUNC( ln_bm3_csh_rcpt_dis_amt_tax );
+-- Ver.3.25 H.Futamura ADD END
 --
--- Ver.3.20 N.Abe ADD START
+-- Ver.3.25 H.Futamura MOD START
+---- Ver.3.20 N.Abe ADD START
+--      -- BM1Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+--        ln_bm1_amt_no_tax       := TRUNC( ln_bm1_amt_no_tax );             -- yBM1zVDBM(Å”²)
+---- Ver.3.21 N.Abe DEL START
+----        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );  -- yBM1z“d‹C—¿(Å”²)
+---- Ver.3.21 N.Abe DEL END
+--      END IF;
+--      -- BM2Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+--        ln_bm2_amt_no_tax       := TRUNC( ln_bm2_amt_no_tax );             -- yBM2zVDBM(Å”²)
+--      END IF;
+--      -- BM3Å‹æ•ª = '1'iÅžj
+--      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+--        ln_bm3_amt_no_tax       := TRUNC( ln_bm3_amt_no_tax );             -- yBM3zVDBM(Å”²)
+--      END IF;
+---- Ver.3.20 N.Abe ADD END
       -- BM1Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
-        ln_bm1_amt_no_tax       := TRUNC( ln_bm1_amt_no_tax );             -- yBM1zVDBM(Å”²)
--- Ver.3.21 N.Abe DEL START
---        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );  -- yBM1z“d‹C—¿(Å”²)
--- Ver.3.21 N.Abe DEL END
+        --BM1 Á”ïÅ‚ÌÝ’è
+        ln_bm1_cond_tax_amt    := TRUNC( ln_bm1_cond_tax_amt );
       END IF;
       -- BM2Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
-        ln_bm2_amt_no_tax       := TRUNC( ln_bm2_amt_no_tax );             -- yBM2zVDBM(Å”²)
+        --BM2 Á”ïÅ‚ÌÝ’è
+        ln_bm2_cond_tax_amt    := TRUNC( ln_bm2_cond_tax_amt );
       END IF;
       -- BM3Å‹æ•ª = '1'iÅžj
       IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
-        ln_bm3_amt_no_tax       := TRUNC( ln_bm3_amt_no_tax );             -- yBM3zVDBM(Å”²)
+        --BM3 Á”ïÅ‚ÌÝ’è
+        ln_bm3_cond_tax_amt    := TRUNC( ln_bm3_cond_tax_amt );
       END IF;
--- Ver.3.20 N.Abe ADD END
+-- Ver.3.25 H.Futamura MOD END
     END IF;
--- Ver.3.20 N.Abe ADD START
     --==================================================
     -- Žæ“¾’l‚Ì’[”ˆ—iBMÅ‹æ•ª:Å”²A”ñ‰ÛÅj
     --==================================================
@@ -5189,25 +5377,48 @@ END insert_xcbs;
       END IF;
       -- yBM1z“d‹C—¿(Åž)‚Ì’[”Ø‚èŽÌ‚Ä
       ln_bm1_elect_amt_tax := TRUNC( ln_bm1_elect_amt_tax );
-      -- yBM1z“d‹C—¿(Å”²)‚ðŽZo
-      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+-- Ver.3.25 H.Futamura MOD START
+--      -- yBM1z“d‹C—¿(Å”²)‚ðŽZo
+--      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      -- “d‹C—¿(Å”²)Á”ïÅŒvŽZ—p
+      ln_electric_notax_amt_tmp := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      -- “d‹C—¿Á”ïÅ‚ðŽZo
+      ln_electric_tax_amt := ln_bm1_elect_amt_tax - ln_electric_notax_amt_tmp;
+-- Ver.3.25 H.Futamura MOD END
       -- ==========================
       -- ’[”’²®‹æ•ª‚Å‚Ì’[”’²®
       -- ==========================
-      -- ’[”ˆ—‹æ•ª‚ª 'NEAREST':ŽlŽÌŒÜ“ü‚Ìê‡A“d‹C‘ã(Å”²)‚Ì­”“_ˆÈ‰º‚ðŽlŽÌŒÜ“ü
+-- Ver.3.25 H.Futamura MOD START
+--      -- ’[”ˆ—‹æ•ª‚ª 'NEAREST':ŽlŽÌŒÜ“ü‚Ìê‡A“d‹C‘ã(Å”²)‚Ì­”“_ˆÈ‰º‚ðŽlŽÌŒÜ“ü
+--      IF( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_nearest ) THEN
+--        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );
+--      -- ’[”ˆ—‹æ•ª‚ª 'UP':Ø‚èã‚°‚Ìê‡A“d‹C‘ã(Å”²)‚Ì¬”“_ˆÈ‰º‚ðØ‚èã‚°
+--      ELSIF ( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_up ) THEN
+--        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
+--          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
+--        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
+--          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
+--        END IF;
+--      -- ã‹LˆÈŠO‚Ìê‡A'DOWN':Ø‚èŽÌ‚Ä‚ªÝ’è‚³‚ê‚Ä‚¢‚é‚±‚Æ‚Æ‚·‚éB­”“_ˆÈ‰º‚Ì’[”‚ðØ‚èŽÌ‚Ä
+--      ELSE
+--        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );
+--      END IF;
+--
+      -- ’[”ˆ—‹æ•ª‚ª 'NEAREST':ŽlŽÌŒÜ“ü‚Ìê‡A“d‹C—¿Á”ïÅ‚Ì­”“_ˆÈ‰º‚ðŽlŽÌŒÜ“ü
       IF( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_nearest ) THEN
-        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );
-      -- ’[”ˆ—‹æ•ª‚ª 'UP':Ø‚èã‚°‚Ìê‡A“d‹C‘ã(Å”²)‚Ì¬”“_ˆÈ‰º‚ðØ‚èã‚°
+        ln_electric_tax_amt := ROUND( ln_electric_tax_amt );
+      -- ’[”ˆ—‹æ•ª‚ª 'UP':Ø‚èã‚°‚Ìê‡A“d‹C—¿Á”ïÅ‚Ì¬”“_ˆÈ‰º‚ðØ‚èã‚°
       ELSIF ( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_up ) THEN
-        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
-          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
-        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
-          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
+        IF ( ln_electric_tax_amt >= 0 ) THEN
+          ln_electric_tax_amt := CEIL( ln_electric_tax_amt );
+        ELSIF ( ln_electric_tax_amt < 0 ) THEN
+          ln_electric_tax_amt := FLOOR( ln_electric_tax_amt );
         END IF;
       -- ã‹LˆÈŠO‚Ìê‡A'DOWN':Ø‚èŽÌ‚Ä‚ªÝ’è‚³‚ê‚Ä‚¢‚é‚±‚Æ‚Æ‚·‚éB­”“_ˆÈ‰º‚Ì’[”‚ðØ‚èŽÌ‚Ä
       ELSE
-        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );
+        ln_electric_tax_amt := TRUNC( ln_electric_tax_amt );
       END IF;
+-- Ver.3.25 H.Futamura MOD END
     -- BM1Å‹æ•ª = '2'iÅ”²j
     ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
       -- ’èŠz“d‹C‘ã‚ª0ˆÈŠO
@@ -5220,18 +5431,33 @@ END insert_xcbs;
         ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
           ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
         END IF;
-        -- yBM1z“d‹C—¿(Åž)‚ðŽZo
-        ln_bm1_elect_amt_tax := ln_bm1_elect_amt_no_tax * ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-        -- yBM1z“d‹C—¿(Åž)‚Ì’[”‚ðØ‚èã‚°
-        IF ( ln_bm1_elect_amt_tax >= 0 ) THEN
-          ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
-        ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
-          ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+-- Ver.3.25 H.Futamura ADD START
+        -- “d‹C—¿Á”ïÅ‚ðŽZo
+        ln_electric_tax_amt := ln_bm1_elect_amt_no_tax * ( i_get_sales_data_rec.tax_rate / 100 );
+        IF ( ln_electric_tax_amt >= 0 ) THEN
+          ln_electric_tax_amt := CEIL( ln_electric_tax_amt );
+        ELSIF ( ln_electric_tax_amt < 0 ) THEN
+          ln_electric_tax_amt := FLOOR( ln_electric_tax_amt );
         END IF;
+-- Ver.3.25 H.Futamura ADD END
+-- Ver.3.25 H.Futamura MOD START
+--        ln_bm1_elect_amt_tax := ln_bm1_elect_amt_no_tax * ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--        -- yBM1z“d‹C—¿(Åž)‚Ì’[”‚ðØ‚èã‚°
+--        IF ( ln_bm1_elect_amt_tax >= 0 ) THEN
+--          ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
+--        ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
+--          ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+--        END IF;
+        -- yBM1z“d‹C—¿(Åž)‚ðŽZo
+        ln_bm1_elect_amt_tax := ln_bm1_elect_amt_no_tax + ln_electric_tax_amt;
+-- Ver.3.25 H.Futamura MOD END
 -- Ver.3.23 H.Futamura ADD START
       ELSIF ( NVL( i_get_sales_data_rec.electric_fix_cost, 0 ) = 0 ) THEN
         ln_bm1_elect_amt_no_tax := 0;
         ln_bm1_elect_amt_tax := 0;
+-- Ver.3.25 H.Futamura ADD START
+        ln_electric_tax_amt := 0;
+-- Ver.3.25 H.Futamura ADD END
       END IF;
 -- Ver.3.23 H.Futamura ADD END
       -- •Ï“®“d‹C‘ã‚ª0ˆÈŠO
@@ -5262,70 +5488,149 @@ END insert_xcbs;
 --          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
 --        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
 --          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
-        ln_bm1_elect_amt_no_tax_var := ln_bm1_elect_amt_tax_var / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-        -- yBM1z“d‹C—¿(Å”²)‚Ì’[”‚ðØ‚èã‚°
-        IF ( ln_bm1_elect_amt_no_tax_var >= 0 ) THEN
-          ln_bm1_elect_amt_no_tax_var := CEIL( ln_bm1_elect_amt_no_tax_var );
-        ELSIF ( ln_bm1_elect_amt_no_tax_var < 0 ) THEN
-          ln_bm1_elect_amt_no_tax_var := FLOOR( ln_bm1_elect_amt_no_tax_var );
+-- Ver.3.25 H.Futamura MOD START
+--        ln_bm1_elect_amt_no_tax_var := ln_bm1_elect_amt_tax_var / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--        -- yBM1z“d‹C—¿(Å”²)‚Ì’[”‚ðØ‚èã‚°
+--        IF ( ln_bm1_elect_amt_no_tax_var >= 0 ) THEN
+--          ln_bm1_elect_amt_no_tax_var := CEIL( ln_bm1_elect_amt_no_tax_var );
+--        ELSIF ( ln_bm1_elect_amt_no_tax_var < 0 ) THEN
+--          ln_bm1_elect_amt_no_tax_var := FLOOR( ln_bm1_elect_amt_no_tax_var );
+--        END IF;
+        -- •Ï“®“d‹C—¿(Å”²)Á”ïÅŒvŽZ—p
+        ln_electric_notax_amt_var_tmp := ln_bm1_elect_amt_tax_var / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+        -- •Ï“®“d‹C—¿Á”ïÅ‚ðŽZo
+        ln_electric_tax_amt_var := ln_bm1_elect_amt_tax_var - ln_electric_notax_amt_var_tmp;
+        -- •Ï“®“d‹C—¿Á”ïÅ‚Ì’[”‚ðØ‚èã‚°
+        IF ( ln_electric_tax_amt_var >= 0 ) THEN
+          ln_electric_tax_amt_var := CEIL( ln_electric_tax_amt_var );
+        ELSIF ( ln_electric_tax_amt_var < 0 ) THEN
+          ln_electric_tax_amt_var := FLOOR( ln_electric_tax_amt_var );
         END IF;
+-- Ver.3.25 H.Futamura MOD END
       ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) = 0 ) THEN
         ln_bm1_elect_amt_no_tax_var := 0;
         ln_bm1_elect_amt_tax_var := 0;
+-- Ver.3.25 H.Futamura ADD START
+        ln_electric_tax_amt_var := 0;
+-- Ver.3.25 H.Futamura ADD END
 -- Ver.3.23 H.Futamura MOD END
       END IF;
 -- Ver.3.23 H.Futamura ADD START
       -- yBM1z“d‹C—¿(Åž)‚É’èŠz“d‹C‘ã‚Æ•Ï“®“d‹C‘ã‚ð‡ŽZ‚µ‚½’l‚ðÝ’è
       ln_bm1_elect_amt_tax := ln_bm1_elect_amt_tax + ln_bm1_elect_amt_tax_var;
-      -- yBM1z“d‹C—¿(Å”²)‚É’èŠz“d‹C‘ã‚Æ•Ï“®“d‹C‘ã‚ð‡ŽZ‚µ‚½’l‚ðÝ’è
-      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_no_tax + ln_bm1_elect_amt_no_tax_var;
--- Ver.3.23 H.Futamura ADD END
+-- Ver.3.25 H.Futamura MOD START
+--      -- yBM1z“d‹C—¿(Å”²)‚É’èŠz“d‹C‘ã‚Æ•Ï“®“d‹C‘ã‚ð‡ŽZ‚µ‚½’l‚ðÝ’è
+--      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_no_tax + ln_bm1_elect_amt_no_tax_var;
+---- Ver.3.23 H.Futamura ADD END
+      -- “d‹C—¿Á”ïÅ‚É’èŠz“d‹C‘ãÁ”ïÅ‚Æ•Ï“®“d‹C‘ãÁ”ïÅ‚ð‡ŽZ‚µ‚½’l‚ðÝ’è
+      ln_electric_tax_amt := ln_electric_tax_amt + ln_electric_tax_amt_var;
+-- Ver.3.25 H.Futamura MOD END
     END IF;
 -- Ver.3.21 N.Abe ADD END
     --==================================================
-    -- ŒvŽZ‚µ‚½’l‚ð•Ï”‚ÉŠi”[
+    -- Še’l‚ð•Ï”‚ÉŠi”[
     --==================================================
     -- VDBM(Åž)
     l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax     := ln_bm1_amt_tax;
     l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax     := ln_bm2_amt_tax;
     l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax     := ln_bm3_amt_tax;
-    -- VDBM(Å”²)
-    l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ln_bm1_amt_no_tax;
-    l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ln_bm2_amt_no_tax;
-    l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ln_bm3_amt_no_tax;
-    -- “d‹C—¿(Åž)
-    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax    := ln_bm1_elect_amt_tax;
-    -- “d‹C—¿(Å”²)
-    l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ln_bm1_elect_amt_no_tax;
--- Ver.3.20 N.Abe ADD END
-    --==================================================
-    -- Á”ïÅŠzŽZo
-    --==================================================
-    -- Á”ïÅŠz
-    l_xcbs_data_tab( cn_index_1 ).cond_tax_amt
-      := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax;
-    l_xcbs_data_tab( cn_index_2 ).cond_tax_amt
-      := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax;
-    l_xcbs_data_tab( cn_index_3 ).cond_tax_amt
-      := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax;
+-- Ver.3.25 H.Futamura DEL START
+--    l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ln_bm1_amt_no_tax;
+--    l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ln_bm2_amt_no_tax;
+--    l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ln_bm3_amt_no_tax;
+--    -- “d‹C—¿(Åž)
+--    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax    := ln_bm1_elect_amt_tax;
+--    -- “d‹C—¿(Å”²)
+--    l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ln_bm1_elect_amt_no_tax;
+---- Ver.3.20 N.Abe ADD END
+-- Ver.3.25 H.Futamura DEL END
+-- Ver.3.25 H.Futamura ADD START
+    -- BMÅ‹æ•ª = '1'iÅžj‚Ìê‡
+    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+      -- Á”ïÅŠzÝ’è
+      l_xcbs_data_tab( cn_index_1 ).cond_tax_amt    := ln_bm1_cond_tax_amt;
+      -- VDBM(Å”²)Ý’è
+      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax
+        := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_1 ).cond_tax_amt;
+    END IF;
+    IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+      -- Á”ïÅŠzÝ’è
+      l_xcbs_data_tab( cn_index_2 ).cond_tax_amt    := ln_bm2_cond_tax_amt;
+      -- VDBM(Å”²)Ý’è
+      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax
+        := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_2 ).cond_tax_amt;
+    END IF;
+    IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+      -- Á”ïÅŠzÝ’è
+      l_xcbs_data_tab( cn_index_3 ).cond_tax_amt    := ln_bm3_cond_tax_amt;
+      -- VDBM(Å”²)Ý’è
+      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax
+        := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_3 ).cond_tax_amt;
+    END IF;
+    -- BMÅ‹æ•ª = '2'iÅ”²j‚Ü‚½‚Í'3'i”ñ‰ÛÅj‚Ìê‡
+    IF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+      -- VDBM(Å”²)Ý’è
+      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ln_bm1_amt_no_tax;
+      -- Á”ïÅŠz
+      l_xcbs_data_tab( cn_index_1 ).cond_tax_amt
+        := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax;
+    END IF;
+    IF ( i_get_sales_data_rec.bm2_tax_kbn IN ( '2', '3') ) THEN
+      -- VDBM(Å”²)Ý’è
+      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ln_bm2_amt_no_tax;
+      -- Á”ïÅŠz
+      l_xcbs_data_tab( cn_index_2 ).cond_tax_amt
+        := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax;
+    END IF;
+    IF ( i_get_sales_data_rec.bm3_tax_kbn IN ( '2', '3') ) THEN
+      -- VDBM(Å”²)Ý’è
+      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ln_bm3_amt_no_tax;
+      -- Á”ïÅŠz
+      l_xcbs_data_tab( cn_index_3 ).cond_tax_amt
+        := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax;
+    END IF;
     -- “ü‹à’lˆøÁ”ïÅŠz
-    l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt_tax
-      := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt - ln_bm1_rcpt_discount_amt_notax;
-    l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt_tax
-      := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt - ln_bm2_rcpt_discount_amt_notax;
-    l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt_tax
-      := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt - ln_bm3_rcpt_discount_amt_notax;
+    l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt_tax := ln_bm1_csh_rcpt_dis_amt_tax;
+    l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt_tax := ln_bm2_csh_rcpt_dis_amt_tax;
+    l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt_tax := ln_bm3_csh_rcpt_dis_amt_tax;
+    -- “d‹C—¿(Åž)
+    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax := ln_bm1_elect_amt_tax;
     -- “d‹C—¿Á”ïÅŠz
--- Ver.3.20 N.Abe MOD END
+    l_xcbs_data_tab( cn_index_1 ).electric_tax_amt := ln_electric_tax_amt;
+    -- “d‹C—¿(Å”²)
+    l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax
+      := l_xcbs_data_tab( cn_index_1 ).electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_tax_amt;
+-- Ver.3.25 H.Futamura ADD END
+-- Ver.3.25 H.Futamura DEL START
+--    --==================================================
+--    -- Á”ïÅŠzŽZo
+--    --==================================================
+--    -- Á”ïÅŠz
+--    l_xcbs_data_tab( cn_index_1 ).cond_tax_amt
+--      := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax;
+--    l_xcbs_data_tab( cn_index_2 ).cond_tax_amt
+--      := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax;
+--    l_xcbs_data_tab( cn_index_3 ).cond_tax_amt
+--      := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax - l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax;
+--    -- “ü‹à’lˆøÁ”ïÅŠz
+--    l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt_tax
+--      := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt - ln_bm1_rcpt_discount_amt_notax;
+--    l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt_tax
+--      := l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt - ln_bm2_rcpt_discount_amt_notax;
+--    l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt_tax
+--      := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt - ln_bm3_rcpt_discount_amt_notax;
+--    -- “d‹C—¿Á”ïÅŠz
+---- Ver.3.20 N.Abe MOD START
+----    l_xcbs_data_tab( cn_index_1 ).electric_tax_amt
+----      := i_get_sales_data_rec.bm1_electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
 --    l_xcbs_data_tab( cn_index_1 ).electric_tax_amt
---      := i_get_sales_data_rec.bm1_electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
-    l_xcbs_data_tab( cn_index_1 ).electric_tax_amt
-      := l_xcbs_data_tab( cn_index_1 ).electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
--- Ver.3.20 N.Abe MOD END
-    l_xcbs_data_tab( cn_index_2 ).electric_tax_amt
-      := i_get_sales_data_rec.bm2_electric_amt_tax - l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax;
-    l_xcbs_data_tab( cn_index_3 ).electric_tax_amt
-      := i_get_sales_data_rec.bm3_electric_amt_tax - l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax;
+--      := l_xcbs_data_tab( cn_index_1 ).electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
+---- Ver.3.20 N.Abe MOD END
+--    l_xcbs_data_tab( cn_index_2 ).electric_tax_amt
+--      := i_get_sales_data_rec.bm2_electric_amt_tax - l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax;
+--    l_xcbs_data_tab( cn_index_3 ).electric_tax_amt
+--      := i_get_sales_data_rec.bm3_electric_amt_tax - l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax;
+-- Ver.3.25 H.Futamura DEL END
     --==================================================
     -- 4.Še˜AŒgƒXƒe[ƒ^ƒX
     --==================================================
