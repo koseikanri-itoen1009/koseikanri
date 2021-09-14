@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2010-02-15    1.8   T.Maruyama       E_本稼動_01130対応
  *  2017-04-13    1.9   K.Kiriu          E_本稼動_14025対応
  *  2017-06-09    1.10  N.Watanabe       E_本稼動_14266対応
+ *  2021-09-02    1.11  H.Futamura       E_本稼動_16073対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -184,6 +185,9 @@ AS
   cv_tkn_number_22       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00840';  -- 時間形式チェックエラーメッセージ
   cv_tkn_number_23       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00841';  -- 訪問終了時刻チェックエラーメッセージ
 -- Ver1.10 ADD End
+-- Ver1.11 ADD Start
+  cv_tkn_number_24       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00915';  -- 訪問日比較エラー
+-- Ver1.11 ADD End
 --
   -- トークンコード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -2501,6 +2505,10 @@ AS
     cv_cust_status_break          CONSTANT xxcso_cust_accounts_v.customer_status%TYPE     := '50'; -- 顧客ステータス＝休止
     cv_cust_status_abort_approved CONSTANT xxcso_cust_accounts_v.customer_status%TYPE     := '90'; -- 顧客ステータス＝中止決裁済
     cv_cust_status_not_applicable CONSTANT xxcso_cust_accounts_v.customer_status%TYPE     := '99'; -- 顧客ステータス＝対象外
+-- Ver1.11 ADD Start
+    cv_visit_date_fmt1   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI';
+    cv_visit_date_fmt2   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI:SS';
+-- Ver1.11 ADD End
     -- *** ローカル変数 ***
     lv_gl_period_statuses     VARCHAR2(100); -- 「訪問日時」に該当する対象の会計期間がクローズ
     ld_visite_date            DATE;          -- 訪問日時
@@ -2675,6 +2683,20 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_skip_error_expt;
     END IF;
+--
+-- Ver1.11 ADD Start
+    -- *** 4. 「訪問日時」とシステム日付を比較し、「訪問日時」が未来日付かどうかチェック *** --
+    IF ( g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2) ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_24             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_base_val              -- トークンコード1
+                     ,iv_token_value1 => iv_base_value                -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_skip_error_expt;
+    END IF;
+-- Ver1.11 ADD End
 --
   EXCEPTION
     -- *** スキップ例外ハンドラ ***
@@ -2988,15 +3010,18 @@ AS
     -- =======================
     -- 訪問実績データ登録 
     -- =======================
-    /* 2009.07.16 K.Satomura 0000070対応 START */
-    IF (g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2)) THEN
-      -- 訪問日時が未来の場合は、タスクステータスはオープンで登録する。
-      lt_task_status_id := TO_NUMBER(fnd_profile.value(ct_task_status_open));
-      --
-    ELSE
+-- Ver1.11 MOD Start
+--    /* 2009.07.16 K.Satomura 0000070対応 START */
+--    IF (g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2)) THEN
+--      -- 訪問日時が未来の場合は、タスクステータスはオープンで登録する。
+--      lt_task_status_id := TO_NUMBER(fnd_profile.value(ct_task_status_open));
+--      --
+--    ELSE
+--      lt_task_status_id := NULL;
+--      --
+--    END IF;
       lt_task_status_id := NULL;
-      --
-    END IF;
+-- Ver1.11 MOD End
     --
     /* 2009.07.16 K.Satomura 0000070対応 END */
     xxcso_task_common_pkg.create_task(
@@ -3134,15 +3159,18 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    /* 2009.07.16 K.Satomura 0000070対応 START */
-    IF (g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2)) THEN
-      -- 訪問日時が未来の場合は、タスクステータスはオープンで登録する。
-      lt_task_status_id := TO_NUMBER(fnd_profile.value(ct_task_status_open));
-      --
-    ELSE
+-- Ver1.11 MOD Start
+--    /* 2009.07.16 K.Satomura 0000070対応 START */
+--    IF (g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2)) THEN
+--      -- 訪問日時が未来の場合は、タスクステータスはオープンで登録する。
+--      lt_task_status_id := TO_NUMBER(fnd_profile.value(ct_task_status_open));
+--      --
+--    ELSE
+--      lt_task_status_id := NULL;
+--      --
+--    END IF;
       lt_task_status_id := NULL;
-      --
-    END IF;
+-- Ver1.11 MOD End
     --
     /* 2009.07.16 K.Satomura 0000070対応 END */
     -- =======================
