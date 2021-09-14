@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A32C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：入金時値引処理 MD050_COK_024_A32
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2020/12/22    1.0   Y.Koh            新規作成
  *  2021/06/03    1.1   SCSK Y.Koh       [E_本稼動_16026] 消費税明細対応
  *  2021/06/21    1.2   SCSK T.Nishikawa [E_本稼動_17278] 処理対象から売上実績振替分を除く
+ *  2021/09/10    1.3   SCSK K.Yoshikawa [E_本稼動_17505] 入金時値引処理の実行日の変更
  *
  *****************************************************************************************/
 --
@@ -1635,8 +1636,20 @@ AS
               xdci.billing_customer_site_id ,
               xdci.next_closing_date        ,
               xdci.next_payment_term        
-      FROM    xxcok_discounted_cust_inf   xdci
-      WHERE   xdci.next_closing_date  + xdci.invoice_issue_cycle  <=  gd_process_date;
+-- 2021/09/10 Ver1.3 MOD Start
+--      FROM    xxcok_discounted_cust_inf   xdci
+      FROM    xxcok_discounted_cust_inf   xdci,
+              bom_calendar_dates          bcd2,
+              bom_calendar_dates          bcd1
+-- 2021/09/10 Ver1.3 MOD End
+-- 2021/09/10 Ver1.3 MOD Start
+--      WHERE   xdci.next_closing_date  + xdci.invoice_issue_cycle  <=  gd_process_date;
+      WHERE   bcd1.calendar_code  =   'SALES_CAL'
+      AND     bcd1.calendar_date  =   xdci.next_closing_date
+      AND     bcd2.calendar_code  =   'SALES_CAL'
+      AND     bcd2.seq_num        =   NVL(bcd1.seq_num,bcd1.prior_seq_num)  + xdci.invoice_issue_cycle
+      AND     bcd2.calendar_date  <=  gd_process_date;
+-- 2021/09/10 Ver1.3 MOD End
 --
   BEGIN
 --
