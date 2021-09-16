@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2020/12/03    1.1   SCSK Y.Koh       [E_本稼動_16026]
  *  2021/04/06    1.2   SCSK Y.Koh       [E_本稼動_16026]容器区分対応
  *                                       [E_本稼動_16026]定額控除複数明細対応
+ *  2021/07/26    1.3   SCSK K.Yoshikawa [E_本稼働_17399]
  *
  *****************************************************************************************/
 --
@@ -3256,15 +3257,24 @@ AS
 --
           -- 開始期間確認
           -- 開始日が業務日付より未来の控除マスタの場合
-          IF gt_condition_work_tbl(i).start_date_active > gd_proc_date THEN
+-- 2021/07/26 Ver1.3 MOD Start
+--          IF gt_condition_work_tbl(i).start_date_active > gd_proc_date THEN
+          IF gt_condition_work_tbl(i).start_date_active > gd_proc_date -1 THEN
+-- 2021/07/26 Ver1.3 MOD End
              NULL;
           ELSE
 --
             -- 終了日が業務日付より未来の場合
-            IF gt_condition_work_tbl(i).end_date_active > gd_proc_date THEN
+-- 2021/07/26 Ver1.3 MOD Start
+--            IF gt_condition_work_tbl(i).end_date_active > gd_proc_date THEN
+            IF gt_condition_work_tbl(i).end_date_active > gd_proc_date -1  THEN
+-- 2021/07/26 Ver1.3 MOD End
 --
               -- ワーク日付に業務日付の当月月初を設定
-              gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date,-1)) + cn_1;
+-- 2021/07/26 Ver1.3 MOD Start
+--              gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date,-1)) + cn_1;
+              gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date -1,-1)) + cn_1;
+-- 2021/07/26 Ver1.3 MOD End
 --
               -- ワーク日付(業務日付)が開始日よりも大きい間は繰返し処理を実施
               WHILE gd_work_date >= gt_condition_work_tbl(i).start_date_active  LOOP
