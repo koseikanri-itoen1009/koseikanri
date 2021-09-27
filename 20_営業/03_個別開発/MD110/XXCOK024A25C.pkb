@@ -7,7 +7,7 @@ AS
  * Description      : AP•”–å“ü—Í‚Ì“`•[‚ÌƒXƒe[ƒ^ƒX‚É]‚¢A
  *                  : TœŠz‚ÌŽx•¥ (APŽx•¥) ‰æ–Ê‚ÌÁžƒXƒe[ƒ^ƒX‚ðXV‚µ‚Ü‚·B
  * MD.050           : AP•”–å“ü—Í˜AŒg MD050_COK_024_A25
- * Version          : 1.00
+ * Version          : 1.1
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                    Description
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2020/05/15    1.0   M.Sato           V‹Kì¬
+ *  2021/09/27    1.1   K.Yoshikawa      E_–{‰Ò“®_17557
  *
  *****************************************************************************************/
 --
@@ -601,8 +602,12 @@ AS
              xx03_payment_slips     xpsc                    -- AP•”–å“ü—Í(ŽæÁ“`•[)
       WHERE  xpsc.slip_type         =   cv_slip_type
       AND    xpsc.wf_status         =   cv_ap_status_appr
-      AND    xpsc.last_update_date  >   gd_last_process_date
-      AND    xpsc.last_update_date  <=  gd_this_process_date
+-- 2021/09/27 Ver1.1 MOD Start
+--      AND    xpsc.last_update_date  >   gd_last_process_date
+--      AND    xpsc.last_update_date  <=  gd_this_process_date
+      AND    xpsc.approval_date  >   gd_last_process_date
+      AND    xpsc.approval_date  <=  gd_this_process_date
+-- 2021/09/27 Ver1.1 MOD End
       AND    xpss.invoice_num       =   xpsc.orig_invoice_num
       AND    xpss.org_id            =   xpsc.org_id
       ;
