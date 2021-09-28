@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C_2(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021/04/01    1.0   T.Nishikawa      XXCOK015A05Cをコピーして新規作成
+ *  2021/05/28    1.4   K.Yoshikawa      E_本稼動_17220
  *
  *****************************************************************************************/
 --
@@ -204,6 +205,9 @@ AS
            ,xiwh.tax_amt_0              AS  tax_amt_0
            ,xiwh.total_amt_0            AS  total_amt_0
            ,xiwh.closing_date           AS  closing_date
+--2021/05/28 add start
+           ,xiwh.closing_date_min       AS  closing_date_min
+--2021/05/28 add end
            ,xiwh.total_sales_qty        AS  total_sales_qty
            ,xiwh.total_sales_amt        AS  total_sales_amt
            ,xiwh.sales_fee              AS  sales_fee
@@ -290,6 +294,9 @@ AS
            ,xiwh.tax_amt_0              AS  tax_amt_0
            ,xiwh.total_amt_0            AS  total_amt_0
            ,xiwh.closing_date           AS  closing_date
+--2021/05/28 add start
+           ,xiwh.closing_date_min       AS  closing_date_min
+--2021/05/28 add end
            ,0                           AS  total_sales_qty
            ,0                           AS  total_sales_amt
            ,0                           AS  sales_fee
@@ -503,7 +510,9 @@ AS
       AND     xbb.gl_interface_status   = '0'
       AND     xbb.closing_date          <= gd_closing_date
       AND     xbb.expect_payment_date   <= gd_schedule_date
-      AND     xbb.amt_fix_status        = '0'
+--2021/05/28 dell start
+--      AND     xbb.amt_fix_status        = '0'
+--2021/05/28 dell end
       AND     NVL(xbb.payment_amt_tax, 0) = 0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
 --
@@ -1733,6 +1742,9 @@ AS
      ,vendor_code             -- 送付先コード
      ,payment_date            -- 支払日
      ,closing_date            -- 締め日
+--2021/05/28 add start
+     ,closing_date_min        -- 最小締め日
+--2021/05/28 add end
      ,notifi_amt              -- おもての通知金額
      ,total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
      ,tax_amt_8               -- 軽減8%消費税額
@@ -1794,6 +1806,9 @@ AS
            ,xbb.supplier_code                     AS  vendor_code             -- 送付先コード
            ,gd_pay_date                           AS  payment_date            -- 支払日
            ,MAX(xbb.closing_date)                 AS  closing_date            -- 締め日
+--2021/05/28 add start
+           ,MIN(xbb.closing_date)                 AS  closing_date_min        -- 最小締め日
+--2021/05/28 add end
            ,CASE
               -- 外税
               WHEN iv_tax_div = '1'
@@ -1994,7 +2009,9 @@ AS
     AND     xbb.fb_interface_status                = '0'
     AND     xbb.gl_interface_status                = '0'
     AND     NVL(xbb.payment_amt_tax,0)             = 0
-    AND     xbb.amt_fix_status                     = '0'
+--2021/05/28 dell start
+--    AND     xbb.amt_fix_status                     = '0'
+--2021/05/28 dell end
     AND     pvsa.vendor_id                         = abau.vendor_id
     AND     pvsa.vendor_site_id                    = abau.vendor_site_id
     AND     abau.primary_flag                      = 'Y'
@@ -2283,7 +2300,9 @@ AS
     AND     xbb.fb_interface_status                = '0'
     AND     xbb.gl_interface_status                = '0'
     AND     NVL(xbb.payment_amt_tax,0)             = 0
-    AND     xbb.amt_fix_status                     = '0'
+--2021/05/28 dell start
+--    AND     xbb.amt_fix_status                     = '0'
+--2021/05/28 dell end
     AND     iv_tax_div                             = CASE
                                                        WHEN pvsa.attribute6 = '1' THEN          -- 税込
                                                          '2'
@@ -2480,7 +2499,9 @@ AS
              AND     xbb.fb_interface_status           =  '0'
              AND     xbb.gl_interface_status           =  '0'
              AND     NVL(xbb.payment_amt_tax,0)        =   0
-             AND     xbb.amt_fix_status                =  '0'
+--2021/05/28 dell start
+--             AND     xbb.amt_fix_status                =  '0'
+--2021/05/28 dell end
              AND     iv_tax_div = CASE
                                     WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
                                     WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
@@ -2657,7 +2678,9 @@ AS
                   AND     xbb.fb_interface_status           =  '0'
                   AND     xbb.gl_interface_status           =  '0'
                   AND     NVL(xbb.payment_amt_tax,0)        =  0
-                  AND     xbb.amt_fix_status                =  '0'
+--2021/05/28 dell start
+--                  AND     xbb.amt_fix_status                =  '0'
+--2021/05/28 dell end
                   AND     iv_tax_div                        =  CASE
                                                                  WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
                                                                  WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
@@ -2747,7 +2770,9 @@ AS
                   AND     xbb.fb_interface_status           =  '0'
                   AND     xbb.gl_interface_status           =  '0'
                   AND     NVL(xbb.payment_amt_tax,0)        =  0
-                  AND     xbb.amt_fix_status                =  '0'
+--2021/05/28 dell start
+--                  AND     xbb.amt_fix_status                =  '0'
+--2021/05/28 dell end
                   AND     iv_tax_div                        =  CASE
                                                                  WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
                                                                  WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
@@ -2967,7 +2992,9 @@ AS
              AND     xbb.fb_interface_status                      = '0'
              AND     xbb.gl_interface_status                      = '0'
              AND     NVL(xbb.payment_amt_tax,0)                   = 0
-             AND     xbb.amt_fix_status                           = '0'
+--2021/05/28 dell start
+--             AND     xbb.amt_fix_status                           = '0'
+--2021/05/28 dell end
              AND     xbb.supplier_code                            = pv.segment1
              AND     pv.vendor_id                                 = pvsa.vendor_id
              AND     ( pvsa.inactive_date                         > gd_process_date
