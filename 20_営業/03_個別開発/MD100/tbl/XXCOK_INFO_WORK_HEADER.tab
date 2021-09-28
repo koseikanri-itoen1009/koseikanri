@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2020/11/10    1.0   SCSK N.Abe       新規作成
+ *  2021/05/28    1.1   SCSK K.Yoshikawa E_本稼動_17220
  *
  ****************************************************************************************/
 CREATE TABLE xxcok.xxcok_info_work_header (
@@ -61,7 +62,11 @@ CREATE TABLE xxcok.xxcok_info_work_header (
     ,request_id                     NUMBER(15)
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
-    ,program_update_date            DATE)
+    ,program_update_date            DATE
+--2021/05/28 add start
+    ,closing_date_min               DATE
+--2021/05/28 add end
+    )
 /
 COMMENT ON TABLE xxcok.xxcok_info_work_header IS 'インフォマート用ワーク（ヘッダー）'
 /
@@ -163,3 +168,7 @@ COMMENT ON COLUMN xxcok.xxcok_info_work_header.program_id                       
 /
 COMMENT ON COLUMN xxcok.xxcok_info_work_header.program_update_date                     IS 'プログラム更新日'
 /
+--2021/05/28 add start
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.closing_date_min                        IS '最小締め日'
+/
+--2021/05/28 add end
