@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2020/12/14    1.1   N.Abe            E_本稼動_16841
  *  2021/02/16    1.2   N.Abe            E_本稼動_16843
  *  2021/03/03    1.3   K.Kanada         E_本稼動_16843（本番障害対応）
+ *  2021/05/28    1.4   K.Yoshikawa      E_本稼動_17220
  *
  *****************************************************************************************/
 --
@@ -207,6 +208,9 @@ AS
            ,xiwh.tax_amt_0              AS  tax_amt_0
            ,xiwh.total_amt_0            AS  total_amt_0
            ,xiwh.closing_date           AS  closing_date
+--2021/05/28 add start
+           ,xiwh.closing_date_min       AS  closing_date_min
+--2021/05/28 add end
            ,xiwh.total_sales_qty        AS  total_sales_qty
            ,xiwh.total_sales_amt        AS  total_sales_amt
            ,xiwh.sales_fee              AS  sales_fee
@@ -293,6 +297,9 @@ AS
            ,xiwh.tax_amt_0              AS  tax_amt_0
            ,xiwh.total_amt_0            AS  total_amt_0
            ,xiwh.closing_date           AS  closing_date
+--2021/05/28 add start
+           ,xiwh.closing_date_min       AS  closing_date_min
+--2021/05/28 add end
            ,0                           AS  total_sales_qty
            ,0                           AS  total_sales_amt
            ,0                           AS  sales_fee
@@ -1477,6 +1484,10 @@ AS
             || cv_msg_canm || gt_head_item(43)          -- 合計金額
             || cv_msg_canm || gt_head_item(44)          -- 部門名
             || cv_msg_canm || gt_head_item(45)          -- 備考
+--2021/5/28 add start
+            || cv_msg_canm || gt_head_item(46)          -- 対象期間開始日
+            || cv_msg_canm || gt_head_item(47)          -- 対象期間終了日
+--2021/5/28 add end
             ;
 --
             -- ===============================================
@@ -1545,6 +1556,14 @@ AS
           || cv_msg_canm || g_head_rec.total_amt                            -- 合計金額
           || cv_msg_canm || g_head_rec.inst_dest                            -- 部門名
           || cv_msg_canm || g_head_rec.remarks                              -- 備考
+--2021/5/28 add start
+          || cv_msg_canm || SUBSTR(
+                                   TO_CHAR( g_head_rec.closing_date_min, cv_fmt_ymd )
+                                   ,1
+                                   ,7 
+                                   ) ||'/01'                                 -- 対象期間開始日
+          || cv_msg_canm || TO_CHAR( g_head_rec.closing_date, cv_fmt_ymd )  -- 対象期間終了日
+--2021/5/28 add end
           ;
 --
       ln_out_cnt := ln_out_cnt + 1;
@@ -1736,6 +1755,9 @@ AS
      ,vendor_code             -- 送付先コード
      ,payment_date            -- 支払日
      ,closing_date            -- 締め日
+--2021/05/28 add start
+     ,closing_date_min        -- 最小締め日
+--2021/05/28 add end
      ,notifi_amt              -- おもての通知金額
      ,total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
      ,tax_amt_8               -- 軽減8%消費税額
@@ -1797,6 +1819,9 @@ AS
            ,xbb.supplier_code                     AS  vendor_code             -- 送付先コード
            ,gd_pay_date                           AS  payment_date            -- 支払日
            ,MAX(xbb.closing_date)                 AS  closing_date            -- 締め日
+--2021/05/28 add start
+           ,MIN(xbb.closing_date)                 AS  closing_date_min        -- 最小締め日
+--2021/05/28 add end
            ,CASE
               -- 外税
               WHEN iv_tax_div = '1'
