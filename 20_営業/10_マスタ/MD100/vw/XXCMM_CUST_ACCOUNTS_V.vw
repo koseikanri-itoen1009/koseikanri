@@ -210,7 +210,10 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.policy_chain_code IS '­ô—pƒ`ƒF[ƒ
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.intro_chain_code1 IS 'Ğ‰îÒƒ`ƒF[ƒ“ƒR[ƒh‚P'
 /
-COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.intro_chain_code2 IS 'Ğ‰îÒƒ`ƒF[ƒ“ƒR[ƒh‚Q'
+-- 2021/05/31 [E_–{‰Ò“®_16026]mod start
+--COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.intro_chain_code2 IS 'Ğ‰îÒƒ`ƒF[ƒ“ƒR[ƒh‚Q'
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.intro_chain_code2 IS 'Tœ—pƒ`ƒF[ƒ“ƒR[ƒh'
+-- 2021/05/31 [E_–{‰Ò“®_16026]mod end
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.tax_div IS 'Á”ïÅ‹æ•ª'
 /
