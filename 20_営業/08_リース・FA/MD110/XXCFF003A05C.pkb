@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : Žx•¥Œv‰æì¬
  * MD.050           : MD050_CFF_003_A05_Žx•¥Œv‰æì¬.doc
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  * 2018/3/27      1.7   SCSK‘å’Ë        E_–{‰Ò“®_14830 IFRSƒŠ[ƒXŽ‘ŽY‘Î‰ž
  * 2018/09/10     1.8   SCSK²X–ØG”V  E_–{‰Ò“®_14830 ’Ç‰Á‘Î‰ž
  * 2019/10/03     1.9   SCSK‘åÎG‘×    E_–{‰Ò“®_15913
+ * 2021/09/22     1.10  SCSK¬˜H‹±O    E_–{‰Ò“®_17431
  *
  *****************************************************************************************/
 --
@@ -1765,6 +1766,9 @@ AS
     cv_lease_class_ifrs      CONSTANT VARCHAR2(1) := '2';  -- 'IFRS˜AŒg'
     cn_const_zero            CONSTANT NUMBER(1)   :=  0;
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
+-- Ver.1.10 Y.Shoji ADD Start
+  cv_const_9                 CONSTANT VARCHAR2(1) := '9';  -- '‘ÎÛŠO'
+-- Ver.1.10 Y.Shoji ADD End
 --
     --*** ƒ[ƒJƒ‹•Ï” ***
     ln_payment_frequency     xxcff_contract_headers.payment_frequency%TYPE;  --Žx•¥‰ñ”
@@ -1793,7 +1797,10 @@ AS
       WHERE  ( xpp.contract_line_id   =  in_contract_line_id
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
         AND    lv_ret_dff7            =  cv_lease_class_fin
-        AND    xpp.payment_match_flag =  cv_const_0
+-- Ver.1.10 Y.Shoji MOD Start
+--        AND    xpp.payment_match_flag =  cv_const_0
+        AND    xpp.payment_match_flag IN  (cv_const_0 ,cv_const_9)
+-- Ver.1.10 Y.Shoji MOD End
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
         AND    xpp.payment_frequency  >= ln_payment_frequency)
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
@@ -1958,7 +1965,10 @@ AS
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
       AND    lv_ret_dff7            =  cv_lease_class_fin
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
-      AND    xpp.payment_match_flag =  cv_const_0
+-- Ver.1.10 Y.Shoji MOD Start
+--      AND    xpp.payment_match_flag =  cv_const_0
+      AND    xpp.payment_match_flag IN  (cv_const_0 ,cv_const_9)
+-- Ver.1.10 Y.Shoji MOD End
       AND    xpp.payment_frequency  >= ln_payment_frequency)
 -- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
     OR     ( xpp.contract_line_id   =  in_contract_line_id
