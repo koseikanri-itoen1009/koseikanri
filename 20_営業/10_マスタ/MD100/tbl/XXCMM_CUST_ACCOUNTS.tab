@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.11
+ * Version         : 1.12
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -24,6 +24,7 @@
  *  2016/10/26    1.9  S.Niki        【E_本稼動_13879】取引先顧客コード、相殺用顧客コード、相殺用顧客区分追加
  *  2017/03/07    1.10 S.Yamashita   【E_本稼動_13976】ストレポ＆商談くん連携対象フラグ追加
  *  2019/01/28    1.11 Y.Shoji       【E_本稼動_15490】緯度 -> カテゴリー商品計上区分
+ *  2021/05/31    1.12 H.Futamura    【E_本稼動_16026】紹介者チェーンコード２ -> 控除用チェーンコード
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -217,7 +218,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.policy_chain_code           IS '政策
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_chain_code1           IS '紹介者チェーンコード１'
 /
-COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_chain_code2           IS '紹介者チェーンコード２'
+-- Ver1.12 modify start
+--COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_chain_code2           IS '紹介者チェーンコード２'
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_chain_code2           IS '控除用チェーンコード'
+-- Ver1.12 modify end
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.tax_div                     IS '消費税区分'
 /
