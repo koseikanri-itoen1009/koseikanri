@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2012/01/11    1.19  Shigeto.Niki     障害E_本稼動_08830の対応
  *  2017/04/05    1.20  Shigeto.Niki     障害E_本稼動_13976の対応
  *  2019/01/25    1.21  Yasuhiro.Shoji   障害E_本稼動_15490の対応 「緯度」と「経度」のコメント変更のみ
+ *  2021/05/25    1.22  Keisuke.YoshikawaE_本稼働_16026対応  コメント変更のみ（紹介者チェーンコード2→控除用チェーンコード）
  *
  *****************************************************************************************/
 --
@@ -510,7 +511,7 @@ AS
               xca.delivery_chain_code                        delivery_chain_code,         --納品チェーンＣＤ
               xca.sales_chain_code                           sales_chain_code,            --販売チェーンＣＤ
               xca.intro_chain_code1                          intro_chain_code1,           --紹介用１
-              xca.intro_chain_code2                          intro_chain_code2,           --紹介用２
+              xca.intro_chain_code2                          intro_chain_code2,           --控除用チェーンコード
               xca.policy_chain_code                          policy_chain_code,           --営業政策用
               xca.store_code                                 store_code,                  --店舗コード
               xca.tax_div                                    tax_div,                     --消費税区分
@@ -1366,7 +1367,7 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.delivery_chain_code, 1, 9)         || cv_dqu;  --納品チェーンＣＤ
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.sales_chain_code, 1, 9)            || cv_dqu;  --販売チェーンＣＤ
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.intro_chain_code1, 1, 30)          || cv_dqu;  --紹介用１
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.intro_chain_code2, 1, 30)          || cv_dqu;  --紹介用２
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.intro_chain_code2, 1, 30)          || cv_dqu;  --控除用チェーンコード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.policy_chain_code, 1, 30)          || cv_dqu;  --営業政策用
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.store_code, 1, 10)                 || cv_dqu;  --店舗コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.tax_div, 1, 1)                     || cv_dqu;  --消費税区分
