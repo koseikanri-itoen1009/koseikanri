@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A14 (spec)
  * Description      : 控除消込作成API(AP支払)
  * MD.050           : 控除消込作成API(AP支払) MD050_COK_024_A14
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/11/11    1.0   Y.Nakajima       新規作成
  *  2021/08/12    1.1   K.Yoshikawa      E_本稼動_17382(Q4148)
+ *  2021/08/26    1.2   SCSK Y.Koh       E_本稼動_17382(パフォーマンス改善)
  *
  *****************************************************************************************/
 --
@@ -875,7 +876,10 @@ AS
                            OR xsd.condition_no = gv_condition_no_78
                            OR xsd.condition_no = gv_condition_no_79
                            OR xsd.condition_no = gv_condition_no_80
-                           OR gv_condition_no is null))
+-- 2021/08/25 Ver1.2 MOD Start
+                           ))
+--                           OR gv_condition_no is null))
+-- 2021/08/25 Ver1.2 MOD END
 -- 2021/08/12 Ver1.1 ADD End
 -- 2021/08/12 Ver1.1 ADD Start
       AND (   xsd.condition_no = gv_condition_no_01
