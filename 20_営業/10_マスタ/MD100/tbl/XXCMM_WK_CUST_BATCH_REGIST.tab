@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : ŒÚ‹qˆêŠ‡XV—pƒ[ƒN
  * MD.070          : 
- * Version         : 1.9
+ * Version         : 1.10
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -20,6 +20,7 @@
  *  2017/04/05    1.7  S.Niki        áŠQE_–{‰Ò“®_13976
  *  2017/06/14    1.8  S.Niki        áŠQE_–{‰Ò“®_14271
  *  2018/12/28    1.9  N.Abe         áŠQE_–{‰Ò“®_15490
+ *  2021/05/31    1.10 H.Futamura    áŠQE_–{‰Ò“®_16026
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
@@ -193,7 +194,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.policy_chain_code IS 'ƒ`ƒF[ƒ
 -- 2013/03/29 add start by T.Nakano
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.intro_chain_code1 IS 'Ğ‰îÒƒ`ƒF[ƒ“ƒR[ƒh‚P'
 /
-COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.intro_chain_code2 IS 'Ğ‰îÒƒ`ƒF[ƒ“ƒR[ƒh‚Q'
+-- Ver1.10 modify start
+--COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.intro_chain_code2 IS 'Ğ‰îÒƒ`ƒF[ƒ“ƒR[ƒh‚Q'
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.intro_chain_code2 IS 'Tœ—pƒ`ƒF[ƒ“ƒR[ƒh'
+-- Ver1.10 modify end
 /
 -- 2013/03/29 add end by T.Nakano
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.chain_store_code IS 'ƒ`ƒF[ƒ““XƒR[ƒhi‚d‚c‚hj'
