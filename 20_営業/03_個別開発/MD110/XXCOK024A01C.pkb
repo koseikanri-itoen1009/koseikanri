@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2021/04/28    1.2   A.AOKI           E_本稼動_16026 問屋マージン修正（円）は0円を許す
  *  2021/05/01    1.3   SCSK Y.Koh       E_本稼動_16026 項目数エラーの対応
  *  2021/05/18    1.4   SCSK Y.Koh       E_本稼動_16026 顧客との紐付きチェック追加
+ *  2021/09/21    1.5   H.Futamura       E_本稼動_17546 控除マスタ削除アップロードの改修
  *
  *****************************************************************************************/
 --
@@ -234,6 +235,9 @@ AS
   cv_type_deduction_type            CONSTANT VARCHAR2(30) := 'XXCOK1_DEDUCTION_TYPE';       -- 控除タイプ
   cv_type_deduction_kbn             CONSTANT VARCHAR2(30) := 'XXCOK1_DEDUCTION_KBN';        -- 控除区分
   cv_type_column_digit_chk          CONSTANT VARCHAR2(30) := 'XXCOK1_XXCOK024A01C_DIGIT_CHK'; -- csvアップロード項目桁数チェック
+-- Ver.1.5 ADD Start
+  cv_type_erase_status              CONSTANT VARCHAR2(30) := 'XXCOK1_HEAD_ERASE_STATUS';    -- 控除消込ヘッダーステータス
+-- Ver.1.5 ADD End
 --
   -- 言語コード
   ct_lang                           CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');
@@ -303,6 +307,9 @@ AS
 -- 2021/05/18 Ver1.4 ADD Start
   cv_msg_cok_10797                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10797';  -- 顧客紐づけエラー
 -- 2021/05/18 Ver1.4 ADD End
+-- Ver1.5 Add Start
+  cv_msg_cok_10805                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10805';  -- 控除マスタ削除エラー
+-- Ver1.5 Add End
 --
   cv_tkn_coi_10634                  CONSTANT VARCHAR2(20) := 'APP-XXCOI1-10634';  -- ファイルアップロードIF
   cv_prf_org_err_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
@@ -340,7 +347,11 @@ AS
   cv_tkn_item                       CONSTANT VARCHAR2(20) := 'ITEM';              -- 項目
   cv_tkn_record_no                  CONSTANT VARCHAR2(20) := 'RECORD_NO';         -- レコードNo
   cv_tkn_errmsg                     CONSTANT VARCHAR2(20) := 'ERRMSG';            -- エラー内容詳細
-
+-- Ver1.5 ADD Start
+  cv_data_type_tok                  CONSTANT VARCHAR2(20) := 'DATA_TYPE';         -- データ種類
+  cv_slip_num_tok                   CONSTANT VARCHAR2(20) := 'SLIP_NUM';          -- 支払伝票番号
+  cv_status_tok                     CONSTANT VARCHAR2(20) := 'STATUS';            -- ステータス
+-- Ver1.5 ADD End
 --
   --メッセージ文言
   cv_msg_condition_h                CONSTANT VARCHAR2(16) := '控除条件テーブル';
@@ -413,6 +424,13 @@ AS
                                                                                 -- 日付用ダミー値(最大)
   cv_dummy_base                     CONSTANT VARCHAR2(1)    := 'Z';             -- 拠点コードのダミー値
   cv_dummy_code                     CONSTANT VARCHAR2(2)    := '-1';            -- ダミーコード
+--
+-- Ver1.5 ADD Start
+  -- 消込ステータス
+  cv_recon_status_eg                CONSTANT VARCHAR2(2)    := 'EG';    -- 入力中
+  cv_recon_status_sg                CONSTANT VARCHAR2(2)    := 'SG';    -- 送信中
+  cv_recon_status_sd                CONSTANT VARCHAR2(2)    := 'SD';    -- 送信済
+-- Ver1.5 ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1885,8 +1903,40 @@ AS
 -- 2021/05/18 Ver1.4 ADD Start
     ln_customer_cnt           NUMBER;
 -- 2021/05/18 Ver1.4 ADD End
+-- Ver1.5 Add Start
+    lv_data_type_meaning      VARCHAR2(100);  -- データ種類_内容
+-- Ver1.5 Add End
     -- *** ローカル・カーソル ***
 --
+-- Ver1.5 Add Start
+    CURSOR recon_cur (
+      iv_condition_no  IN  VARCHAR2      -- 控除番号
+     ,iv_detail_number IN  VARCHAR2      -- 明細番号
+    ) IS
+      SELECT distinct xdrh.recon_slip_num  recon_slip_num     -- 支払伝票番号
+            ,xdrh.recon_status             recon_status       -- 消込ステータス
+            ,flv.meaning                   recon_status_name  -- 消込ステータス名
+      FROM   xxcok_condition_header     xch
+            ,xxcok_condition_lines      xcl
+            ,xxcok_sales_deduction      xsd
+            ,xxcok_deduction_recon_head xdrh
+            ,fnd_lookup_values          flv
+      WHERE  xch.condition_id      = xcl.condition_id
+      AND    xch.condition_id      = xsd.condition_id
+      AND    xcl.condition_line_id = xsd.condition_line_id
+      AND    xsd.recon_slip_num    = xdrh.recon_slip_num
+      AND    xdrh.recon_status     IN ( cv_recon_status_eg, cv_recon_status_sg, cv_recon_status_sd )
+      AND    flv.lookup_type       = cv_type_erase_status
+      AND    flv.language          = ct_language
+      AND    flv.lookup_code       = xdrh.recon_status
+      AND    flv.enabled_flag      = cv_const_y
+      AND    gd_process_date BETWEEN NVL(flv.start_date_active, gd_process_date)
+                             AND     NVL(flv.end_date_active, gd_process_date)
+      AND    xch.condition_no      = iv_condition_no
+      AND    xcl.detail_number     = iv_detail_number
+      ;
+    recon_rec    recon_cur%ROWTYPE;
+-- Ver1.5 Add End
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -2664,6 +2714,55 @@ AS
               ln_cnt  :=  ln_cnt + 1;
               g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
             END IF;
+-- Ver1.5 ADD Start
+            -- 控除タイプが③④以外の場合
+            IF ( g_cond_tmp_chk_rec.condition_type  NOT IN ( cv_condition_type_ws_fix, cv_condition_type_ws_add ) )  THEN
+              -- 消込ステータスが'EG'：入力中、'SG'：送信中、'SD'：送信済のデータを取得
+              OPEN recon_cur(
+                     iv_condition_no   => g_cond_tmp_chk_rec.condition_no    -- 控除番号
+                    ,iv_detail_number  => g_cond_tmp_chk_rec.detail_number   -- 明細番号
+                   );
+              LOOP
+                FETCH recon_cur INTO recon_rec;
+                EXIT WHEN recon_cur%NOTFOUND;
+                -- データ種類名を取得
+                BEGIN
+                  SELECT  flv.meaning     AS  data_type_meaning
+                  INTO    lv_data_type_meaning
+                  FROM    fnd_lookup_values flv
+                  WHERE   flv.lookup_type       = cv_type_deduction_data
+                  AND     flv.language          = ct_language
+                  AND     flv.lookup_code       = g_cond_tmp_chk_rec.data_type
+                  AND     flv.enabled_flag      = cv_const_y
+                  AND     gd_process_date BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                          AND     NVL(flv.end_date_active, gd_process_date)
+                  ;
+                EXCEPTION
+                  WHEN OTHERS THEN
+                    lv_data_type_meaning := NULL;
+                END;
+                -- 消込ステータスが'EG'：入力中、'SG'：送信中、'SD'：送信済の場合エラー
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_kbn_cok
+                             , iv_name         => cv_msg_cok_10805
+                             , iv_token_name1  => cv_col_value_tok
+                             , iv_token_value1 => g_cond_tmp_chk_rec.condition_no || cv_delimiter || 
+                                                  g_cond_tmp_chk_rec.detail_number
+                             , iv_token_name2  => cv_data_type_tok
+                             , iv_token_value2 => lv_data_type_meaning
+                             , iv_token_name3  => cv_slip_num_tok
+                             , iv_token_value3 => recon_rec.recon_slip_num
+                             , iv_token_name4  => cv_status_tok
+                             , iv_token_value4 => recon_rec.recon_status_name
+                             );
+                ln_cnt  :=  ln_cnt + 1;
+                g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+              END LOOP;
+              -- カーソルクローズ
+              CLOSE recon_cur;
+--
+            END IF;
+-- Ver1.5 ADD End
           END IF;
         END IF;
 --
