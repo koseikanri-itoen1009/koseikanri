@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2021/04/06    1.2   SCSK Y.Koh       [E_本稼動_16026]容器区分対応
  *                                       [E_本稼動_16026]定額控除複数明細対応
  *  2021/07/26    1.3   SCSK K.Yoshikawa [E_本稼働_17399]
+ *  2021/09/17    1.4   SCSK K.Yoshikawa [E_本稼動_17540]マスタ削除時の支払済控除データの対応
  *
  *****************************************************************************************/
 --
@@ -68,6 +69,9 @@ AS
   gn_add_cnt                NUMBER;                    -- 控除データ登録件数
   gn_cal_skip_cnt           NUMBER;                    -- 控除データ控除額算出スキップ件数
   gn_del_skip_cnt           NUMBER;                    -- 控除データ削除支払済スキップ件数
+-- 2021/09/17 Ver1.4 ADD Start
+  gn_del_ins_cnt            NUMBER;                    -- マイナス控除データ登録件数
+-- 2021/09/17 Ver1.4 ADD End
   gn_add_skip_cnt           NUMBER;                    -- 控除データ登録支払済スキップ件数
   gn_error_cnt              NUMBER;                    -- エラー件数
 --
@@ -103,6 +107,9 @@ AS
 -- 2020/12/03 Ver1.1 ADD End
   cv_msg_cal_error          CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10593';               -- 控除額算出エラー
   cv_msg_slip_date_err      CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10708';               -- 支払処理対象外メッセージ
+-- 2021/09/17 Ver1.4 ADD Start
+  cv_msg_slip_date_ins      CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10807';               -- 支払処理済マイナス控除データ登録メッセージ
+-- 2021/09/17 Ver1.4 ADD End
   cv_msg_lock_err           CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10632';               -- ロックエラーメッセージ
   --トークン値
   cv_tkn_source_line_id     CONSTANT  VARCHAR2(15)  := 'SOURCE_LINE_ID';                 -- 販売実績明細IDのトークン名
@@ -112,6 +119,10 @@ AS
   cv_tkn_base_code          CONSTANT  VARCHAR2(15)  := 'BASE_CODE';                      -- 担当拠点のトークン名
   cv_tkn_errmsg             CONSTANT  VARCHAR2(15)  := 'ERRMSG';                         -- エラーメッセージのトークン名
   cv_tkn_recon_slip_num     CONSTANT  VARCHAR2(15)  := 'RECON_SLIP_NUM';                 -- 支払伝票番号のトークン名
+-- 2021/09/17 Ver1.4 ADD Start
+  cv_tkn_column_value       CONSTANT  VARCHAR2(15)  := 'COLUMN_VALUE';                   -- 控除番号、明細番号のトークン名
+  cv_tkn_data_type          CONSTANT  VARCHAR2(15)  := 'DATA_TYPE';                      -- データ種類のトークン名
+-- 2021/09/17 Ver1.4 ADD End
   --フラグ・区分定数
   cv_item_category          CONSTANT  VARCHAR2(12)  := '本社商品区分';                   -- 定数：本社商品区分
   cv_dummy_flag             CONSTANT  VARCHAR2(5)   := 'DUMMY';                          -- 定数：DUMMY
@@ -133,6 +144,10 @@ AS
   cn_3                      CONSTANT  NUMBER        := 3;                                -- 定数：3
   cn_4                      CONSTANT  NUMBER        := 4;                                -- 定数：4
   cv_deci_flag              CONSTANT  VARCHAR2(1)   := '1';                              -- 確定
+-- 2021/09/17 Ver1.4 ADD Start
+  cv_030                    CONSTANT  VARCHAR2(3)   := '030';                            -- 問屋未収（定額）
+  cv_040                    CONSTANT  VARCHAR2(3)   := '040';                            -- 問屋未収（追加）
+-- 2021/09/17 Ver1.4 ADD Start
 --
   --クイックコード
   cv_lookup_dedu_code       CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEDUCTION_DATA_TYPE';     -- 控除データ種類
@@ -1418,6 +1433,9 @@ AS
 -- 2020/12/03 Ver1.1 ADD End
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = in_condition_line_id                -- 控除詳細ID
+-- 2021/09/17 Ver1.4 ADD Start
+      AND    xsd.request_id          <> cn_request_id                       -- 要求ID
+-- 2021/09/17 Ver1.4 ADD Start
       ;
 --
       gn_del_cnt := gn_del_cnt + ln_del_cnt;
@@ -1452,6 +1470,9 @@ AS
 -- 2020/12/03 Ver1.1 ADD End
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = in_condition_line_id                -- 控除詳細ID
+-- 2021/09/17 Ver1.4 ADD Start
+      AND    xsd.request_id          <> cn_request_id                       -- 要求ID
+-- 2021/09/17 Ver1.4 ADD Start
       ;
     -- 処理区分パラメータがNULL以外の場合
     ELSE
@@ -3036,14 +3057,88 @@ AS
     -- リカバリ対象外削除件数取得用カーソル
     CURSOR l_del_cnt_cur
     IS
-      SELECT xsd.recon_slip_num     recon_slip_num
+-- 2021/09/17 Ver1.4 MOD Start
+--      SELECT xsd.recon_slip_num     recon_slip_num
+      SELECT xsd.sales_deduction_id               sales_deduction_id              --販売控除ID
+             ,xsd.base_code_from                  base_code_from                  --振替元拠点
+             ,xsd.base_code_to                    base_code_to                    --振替先拠点
+             ,xsd.customer_code_from              customer_code_from              --振替元顧客コード
+             ,xsd.customer_code_to                customer_code_to                --振替先顧客コード
+             ,xsd.deduction_chain_code            deduction_chain_code            --控除用チェーンコード
+             ,xsd.corp_code                       corp_code                       --企業コード
+             ,xsd.record_date                     record_date                     --計上日
+             ,xsd.source_category                 source_category                 --作成元区分
+             ,xsd.source_line_id                  source_line_id                  --作成元明細ID
+             ,xsd.condition_id                    condition_id                    --控除条件ID
+             ,xsd.condition_no                    condition_no                    --控除番号
+             ,xsd.condition_line_id               condition_line_id               --控除詳細ID
+             ,xsd.data_type                       data_type                       --データ種類
+             ,xsd.status                          status                          --ステータス
+             ,xsd.item_code                       item_code                       --品目コード
+             ,xsd.sales_uom_code                  sales_uom_code                  --販売単位
+             ,xsd.sales_unit_price                sales_unit_price                --販売単価
+             ,xsd.sales_quantity                  sales_quantity                  --販売数量
+             ,xsd.sale_pure_amount                sale_pure_amount                --売上本体金額
+             ,xsd.sale_tax_amount                 sale_tax_amount                 --売上消費税額
+             ,xsd.deduction_uom_code              deduction_uom_code              --控除単位
+             ,xsd.deduction_unit_price            deduction_unit_price            --控除単価
+             ,xsd.deduction_quantity              deduction_quantity              --控除数量
+             ,xsd.deduction_amount                deduction_amount                --控除額
+             ,xsd.compensation                    compensation                    --補填
+             ,xsd.margin                          margin                          --問屋マージン
+             ,xsd.sales_promotion_expenses        sales_promotion_expenses        --拡売
+             ,xsd.margin_reduction                margin_reduction                --問屋マージン減額
+             ,xsd.tax_code                        tax_code                        --税コード
+             ,xsd.tax_rate                        tax_rate                        --税率
+             ,xsd.recon_tax_code                  recon_tax_code                  --消込時税コード
+             ,xsd.recon_tax_rate                  recon_tax_rate                  --消込時税率
+             ,xsd.deduction_tax_amount            deduction_tax_amount            --控除税額
+             ,xsd.remarks                         remarks                         --備考
+             ,xsd.application_no                  application_no                  --申請書No.
+             ,xsd.gl_if_flag                      gl_if_flag                      --GL連携フラグ
+             ,xsd.gl_base_code                    gl_base_code                    --GL計上拠点
+             ,xsd.gl_date                         gl_date                         --GL記帳日
+             ,xsd.recovery_date                   recovery_date                   --リカバリー日付
+             ,xsd.recovery_add_request_id         recovery_add_request_id         --リカバリデータ追加時要求ID
+             ,xsd.recovery_del_date               recovery_del_date               --リカバリデータ削除時日付
+             ,xsd.recovery_del_request_id         recovery_del_request_id         --リカバリデータ削除時要求ID
+             ,xsd.cancel_flag                     cancel_flag                     --取消フラグ
+             ,xsd.cancel_base_code                cancel_base_code                --取消時計上拠点
+             ,xsd.cancel_gl_date                  cancel_gl_date                  --取消GL記帳日
+             ,xsd.cancel_user                     cancel_user                     --取消実施ユーザ
+             ,xsd.recon_base_code                 recon_base_code                 --消込時計上拠点
+             ,xsd.recon_slip_num                  recon_slip_num                  --支払伝票番号
+             ,xsd.carry_payment_slip_num          carry_payment_slip_num          --繰越時支払伝票番号
+             ,xsd.report_decision_flag            report_decision_flag            --速報確定フラグ
+             ,xsd.gl_interface_id                 gl_interface_id                 --GL連携ID
+             ,xsd.cancel_gl_interface_id          cancel_gl_interface_id          --取消GL連携ID
+             ,flv.attribute2                      dedu_type                       --控除タイプ
+             ,flv.meaning                         dedu_type_name                  --控除タイプ
+             ,xcl.detail_number                   detail_number                   --明細番号
+-- 2021/09/17 Ver1.4 MOD End
       FROM   xxcok_sales_deduction  xsd                                  -- 販売控除情報
+-- 2021/09/17 Ver1.4 ADD Start
+            ,fnd_lookup_values      flv                                  -- データ種類
+            ,xxcok_condition_lines  xcl                                  -- 控除詳細情報
+-- 2021/09/17 Ver1.4 ADD End
       WHERE  xsd.recon_slip_num     IS NOT NULL                            -- 支払伝票番号
       AND    xsd.source_category    IN ( cv_s_flag ,cv_t_flag
                                         ,cv_v_flag ,cv_f_flag)             -- 作成元区分
       AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )            -- GL連携フラグ(Y:連携済、N:未連携)
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = gn_condition_line_id                -- 控除詳細ID
+-- 2021/09/17 Ver1.4 ADD Start
+      AND  ( xsd.report_decision_flag   IS NULL         OR
+             xsd.report_decision_flag    = cv_deci_flag )                  -- 速報確定フラグ
+      AND    flv.lookup_type         = cv_lookup_dedu_code
+      AND    flv.lookup_code         = xsd.data_type
+      AND    flv.language            = USERENV('LANG')
+      AND    flv.enabled_flag        = cv_y_flag
+      AND    xsd.condition_line_id   = xcl.condition_line_id
+      ORDER BY
+             xsd.condition_id
+            ,xsd.condition_line_id
+-- 2021/09/17 Ver1.4 ADD End
       ;
 --
     l_del_cnt_rec           l_del_cnt_cur%ROWTYPE;
@@ -3101,19 +3196,171 @@ AS
         FETCH l_del_cnt_cur INTO l_del_cnt_rec;
         EXIT WHEN l_del_cnt_cur%NOTFOUND;
 --
-          lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
-                                                 ,iv_name         => cv_msg_slip_date_err
-                                                 ,iv_token_name1  => cv_tkn_recon_slip_num
-                                                 ,iv_token_value1 => l_del_cnt_rec.recon_slip_num        -- 支払伝票番号
-                                                 );
+-- 2021/09/17 Ver1.4 ADD Start
+          IF l_del_cnt_rec.dedu_type IN (cv_030,cv_040)  THEN
+            INSERT INTO xxcok_sales_deduction(
+              sales_deduction_id       --販売控除ID
+             ,base_code_from           --振替元拠点
+             ,base_code_to             --振替先拠点
+             ,customer_code_from       --振替元顧客コード
+             ,customer_code_to         --振替先顧客コード
+             ,deduction_chain_code     --控除用チェーンコード
+             ,corp_code                --企業コード
+             ,record_date              --計上日
+             ,source_category          --作成元区分
+             ,source_line_id           --作成元明細ID
+             ,condition_id             --控除条件ID
+             ,condition_no             --控除番号
+             ,condition_line_id        --控除詳細ID
+             ,data_type                --データ種類
+             ,status                   --ステータス
+             ,item_code                --品目コード
+             ,sales_uom_code           --販売単位
+             ,sales_unit_price         --販売単価
+             ,sales_quantity           --販売数量
+             ,sale_pure_amount         --売上本体金額
+             ,sale_tax_amount          --売上消費税額
+             ,deduction_uom_code       --控除単位
+             ,deduction_unit_price     --控除単価
+             ,deduction_quantity       --控除数量
+             ,deduction_amount         --控除額
+             ,compensation             --補填
+             ,margin                   --問屋マージン
+             ,sales_promotion_expenses --拡売
+             ,margin_reduction         --問屋マージン減額
+             ,tax_code                 --税コード
+             ,tax_rate                 --税率
+             ,recon_tax_code           --消込時税コード
+             ,recon_tax_rate           --消込時税率
+             ,deduction_tax_amount     --控除税額
+             ,remarks                  --備考
+             ,application_no           --申請書No.
+             ,gl_if_flag               --GL連携フラグ
+             ,gl_base_code             --GL計上拠点
+             ,gl_date                  --GL記帳日
+             ,recovery_date            --リカバリー日付
+             ,recovery_add_request_id  --リカバリデータ追加時要求ID
+             ,recovery_del_date        --リカバリデータ削除時日付
+             ,recovery_del_request_id  --リカバリデータ削除時要求ID
+             ,cancel_flag              --取消フラグ
+             ,cancel_base_code         --取消時計上拠点
+             ,cancel_gl_date           --取消GL記帳日
+             ,cancel_user              --取消実施ユーザ
+             ,recon_base_code          --消込時計上拠点
+             ,recon_slip_num           --支払伝票番号
+             ,carry_payment_slip_num   --繰越時支払伝票番号
+             ,report_decision_flag     --速報確定フラグ
+             ,gl_interface_id          --GL連携ID
+             ,cancel_gl_interface_id   --取消GL連携ID
+             ,created_by               --作成者
+             ,creation_date            --作成日
+             ,last_updated_by          --最終更新者
+             ,last_update_date         --最終更新日
+             ,last_update_login        --最終更新ログイン
+             ,request_id               --要求ID
+             ,program_application_id   --コンカレント・プログラム・アプリケーションID
+             ,program_id               --コンカレント・プログラムID
+             ,program_update_date      --プログラム更新日
+              )
+            VALUES
+             (
+              xxcok_sales_deduction_s01.nextval           --販売控除ID
+             ,l_del_cnt_rec.base_code_from                --振替元拠点
+             ,l_del_cnt_rec.base_code_to                  --振替先拠点
+             ,l_del_cnt_rec.customer_code_from            --振替元顧客コード
+             ,l_del_cnt_rec.customer_code_to              --振替先顧客コード
+             ,l_del_cnt_rec.deduction_chain_code          --控除用チェーンコード
+             ,l_del_cnt_rec.corp_code                     --企業コード
+             ,l_del_cnt_rec.record_date                   --計上日
+             ,l_del_cnt_rec.source_category               --作成元区分
+             ,l_del_cnt_rec.source_line_id                --作成元明細ID
+             ,l_del_cnt_rec.condition_id                  --控除条件ID
+             ,l_del_cnt_rec.condition_no                  --控除番号
+             ,l_del_cnt_rec.condition_line_id             --控除詳細ID
+             ,l_del_cnt_rec.data_type                     --データ種類
+             ,cv_n_flag                                   --ステータス
+             ,l_del_cnt_rec.item_code                     --品目コード
+             ,l_del_cnt_rec.sales_uom_code                --販売単位
+             ,l_del_cnt_rec.sales_unit_price              --販売単価
+             ,l_del_cnt_rec.sales_quantity * -1           --販売数量
+             ,l_del_cnt_rec.sale_pure_amount * -1         --売上本体金額
+             ,l_del_cnt_rec.sale_tax_amount * -1          --売上消費税額
+             ,l_del_cnt_rec.deduction_uom_code            --控除単位
+             ,l_del_cnt_rec.deduction_unit_price          --控除単価
+             ,l_del_cnt_rec.deduction_quantity * -1       --控除数量
+             ,l_del_cnt_rec.deduction_amount * -1         --控除額
+             ,l_del_cnt_rec.compensation * -1             --補填
+             ,l_del_cnt_rec.margin * -1                   --問屋マージン
+             ,l_del_cnt_rec.sales_promotion_expenses * -1 --拡売
+             ,l_del_cnt_rec.margin_reduction * -1         --問屋マージン減額
+             ,l_del_cnt_rec.tax_code                      --税コード
+             ,l_del_cnt_rec.tax_rate                      --税率
+             ,NULL                                        --消込時税コード
+             ,NULL                                        --消込時税率
+             ,l_del_cnt_rec.deduction_tax_amount * -1     --控除税額
+             ,l_del_cnt_rec.sales_deduction_id            --備考
+             ,l_del_cnt_rec.application_no                --申請書No.
+             ,cv_n_flag                                   --GL連携フラグ
+             ,NULL                                        --GL計上拠点
+             ,NULL                                        --GL記帳日
+             ,gd_proc_date                                --リカバリー日付
+             ,cn_request_id                               --リカバリデータ追加時要求ID
+             ,NULL                                        --リカバリデータ削除時日付
+             ,NULL                                        --リカバリデータ削除時要求ID
+             ,cv_n_flag                                   --取消フラグ
+             ,NULL                                        --取消時計上拠点
+             ,NULL                                        --取消GL記帳日
+             ,NULL                                        --取消実施ユーザ
+             ,NULL                                        --消込時計上拠点
+             ,NULL                                        --支払伝票番号
+             ,NULL                                        --繰越時支払伝票番号
+             ,l_del_cnt_rec.report_decision_flag          --速報確定フラグ
+             ,NULL                                        --GL連携ID
+             ,NULL                                        --取消GL連携ID
+             ,cn_created_by                               -- 作成者
+             ,cd_creation_date                            -- 作成日
+             ,cn_last_updated_by                          -- 最終更新者
+             ,cd_last_update_date                         -- 最終更新日
+             ,cn_last_update_login                        -- 最終更新ログイン
+             ,cn_request_id                               -- 要求ID
+             ,cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
+             ,cn_program_id                               -- コンカレント・プログラムID
+             ,cd_program_update_date                      -- プログラム更新日
+             );
 --
-          lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
-                                                       ,lv_out_msg         -- メッセージ
-                                                       ,1                  -- 改行
-                                                       );
+            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                   ,iv_name         => cv_msg_slip_date_ins
+                                                   ,iv_token_name1  => cv_tkn_column_value
+                                                   ,iv_token_value1 => l_del_cnt_rec.condition_no ||',' ||l_del_cnt_rec.detail_number  -- 控除番号、明細番号
+                                                   ,iv_token_name2  => cv_tkn_data_type
+                                                   ,iv_token_value2 => l_del_cnt_rec.dedu_type_name                                    -- データ種類
+                                                   ,iv_token_name3  => cv_tkn_recon_slip_num
+                                                   ,iv_token_value3 => l_del_cnt_rec.recon_slip_num                                    -- 支払伝票番号
+                                                   );
 --
-          gn_del_skip_cnt := gn_del_skip_cnt + 1;
+            lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                         ,lv_out_msg         -- メッセージ
+                                                         ,1                  -- 改行
+                                                         );
 --
+            gn_del_ins_cnt := gn_del_ins_cnt + 1;
+-- 2021/09/17 Ver1.4 ADD End
+-- 2021/09/17 Ver1.4 MOD Start
+          ELSE
+            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                   ,iv_name         => cv_msg_slip_date_err
+                                                   ,iv_token_name1  => cv_tkn_recon_slip_num
+                                                   ,iv_token_value1 => l_del_cnt_rec.recon_slip_num        -- 支払伝票番号
+                                                   );
+--
+            lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                         ,lv_out_msg         -- メッセージ
+                                                         ,1                  -- 改行
+                                                         );
+--
+            gn_del_skip_cnt := gn_del_skip_cnt + 1;
+          END IF;
+-- 2021/09/17 Ver1.4 MOD End
         END LOOP;
         -- カーソルクローズ
         CLOSE l_del_cnt_cur;
@@ -3581,6 +3828,9 @@ AS
     gn_add_cnt        :=  0;
     gn_cal_skip_cnt   :=  0;
     gn_del_skip_cnt   :=  0;
+-- 2021/09/17 Ver1.4 ADD Start
+    gn_del_ins_cnt    :=  0;
+-- 2021/09/17 Ver1.4 ADD End
     gn_add_skip_cnt   :=  0;
     gn_error_cnt  :=  0;
 --
@@ -3673,6 +3923,9 @@ AS
     cv_add_msg         CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10722';    -- 控除データ登録件数
     cv_cal_skip_msg    CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10723';    -- 控除データ控除額算出スキップ件数
     cv_del_skip_msg    CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10724';    -- 控除データ削除支払済スキップ件数
+-- 2021/09/17 Ver1.4 ADD Start
+    cv_del_ins_msg     CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10806';    -- マイナス控除データ登録件数
+-- 2021/09/17 Ver1.4 ADD End
     cv_add_skip_msg    CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-10725';    -- 控除データ登録支払済スキップ件数
     cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';               -- 件数メッセージ用トークン名
     cv_data_no_get_msg CONSTANT VARCHAR2(20)  := 'APP-XXCOK1-00001';    -- 対象なしメッセージ
@@ -3745,6 +3998,9 @@ AS
       gn_add_cnt        := 0;                    -- 控除データ登録件数
       gn_cal_skip_cnt   := 0;                    -- 控除データ控除額算出スキップ件数
       gn_del_skip_cnt   := 0;                    -- 控除データ削除支払済スキップ件数
+-- 2021/09/17 Ver1.4 ADD Start
+      gn_del_ins_cnt    := 0;                    -- 控除データ削除マイナス控除データ登録件数
+-- 2021/09/17 Ver1.4 ADD End
       gn_add_skip_cnt   := 0;                    -- 控除データ登録支払済スキップ件数
       gn_error_cnt      := 1;                    -- エラー件数
     END IF;
@@ -3823,7 +4079,19 @@ AS
       ,buff   => gv_out_msg
     );
 --
-    -- 控除データ登録支払済スキップ件数出力
+-- 2021/09/17 Ver1.4 ADD Start
+    -- 控除データ削除マイナス控除データ登録件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcok_short_name
+                    ,iv_name         => cv_del_ins_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR( gn_del_ins_cnt )
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- 2021/09/17 Ver1.4 ADD End    -- 控除データ登録支払済スキップ件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_xxcok_short_name
                     ,iv_name         => cv_add_skip_msg
