@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A04C(body)
  * Description      : 拠点で扱う品目の組合せ情報を抽出しCSVファイルを作成して連携する。
  * MD.050           : 拠点品目情報HHT連携 MD050_COI_010_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2011/04/05    1.0   H.Sekine         main新規作成
  *  2011/09/05    1.1   K.Nakamura       [E_本稼動_08224]管理元拠点の取得判定追加
  *  2018/01/11    1.2   H.Sasaki         [E_本稼動_14486]連携項目に出庫元倉庫を追加
+ *  2021/09/24    1.3   K.Tomie          [E_本稼動_17549]拠点品目情報HHT連携の出庫元倉庫を1つにする
  *
  *****************************************************************************************/
 --
@@ -470,47 +471,110 @@ AS
       , deliver_from                    --  出庫元倉庫
       , deliver_from_name               --  出庫元倉庫名
     )
-      SELECT  /*+ INDEX( ximb XXCMN_IMB_N01 ) */
-              DISTINCT
-              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
-                                          AS  "BASE_CODE"             --  拠点コード
-            , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
-            , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
-            , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
-      FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
-            , xxwsh_order_lines_all     xola                          --  受注明細アドオン
-            , oe_transaction_types_all  otta                          --  受注タイプマスタ
-            , mtl_system_items_b        msib                          --  DISC品目マスタ
-            , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
-            , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
-            , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
-            , hz_party_sites            hps                           --  パーティサイト
-            , hz_cust_accounts          hca                           --  顧客マスタ
-            , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
-            , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
-      WHERE   xoha.req_status                                 =   gt_ship_status_result         --  出荷実績計上済
-      AND     xoha.actual_confirm_class                       =   cv_y
-      AND     xoha.arrival_date                               >=  TRUNC( gd_target_date ) - gn_target_term
-      AND     xoha.arrival_date                               <   TRUNC( gd_target_date + 1 ) + 1
-      AND     xoha.latest_external_flag                       =   cv_y
-      AND     xoha.order_header_id                            =   xola.order_header_id
-      AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
-      AND     xoha.order_type_id                              =   otta.transaction_type_id
-      AND     otta.org_id                                     =   gt_itou_ou_id
-      AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
-      AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
-      AND     xola.request_item_id                            =   msib.inventory_item_id
-      AND     msib.organization_id                            =   gt_org_id
-      AND     msib.segment1                                   =   imbc.item_no
-      AND     imbc.item_id                                    =   ximb.item_id
-      AND     xoha.arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.arrival_date )
-      AND     ximb.parent_item_id                             =   imbp.item_id
-      AND     xoha.result_deliver_to_id                       =   hps.party_site_id
-      AND     hps.party_id                                    =   hca.party_id
-      AND     hca.customer_class_code                         =   cv_class_code_1
-      AND     hca.status                                      =   cv_status_a
-      AND     hca.cust_account_id                             =   xca.customer_id
-      AND     xoha.deliver_from                               =   xilv.segment1
+--Ver1.3 Del start
+--      SELECT  /*+ INDEX( ximb XXCMN_IMB_N01 ) */
+--              DISTINCT
+--              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+--                                          AS  "BASE_CODE"             --  拠点コード
+--            , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
+--            , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
+--            , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
+--      FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
+--            , xxwsh_order_lines_all     xola                          --  受注明細アドオン
+--            , oe_transaction_types_all  otta                          --  受注タイプマスタ
+--            , mtl_system_items_b        msib                          --  DISC品目マスタ
+--            , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
+--            , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
+--            , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
+--            , hz_party_sites            hps                           --  パーティサイト
+--            , hz_cust_accounts          hca                           --  顧客マスタ
+--            , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
+--            , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
+--      WHERE   xoha.req_status                                 =   gt_ship_status_result         --  出荷実績計上済
+--      AND     xoha.actual_confirm_class                       =   cv_y
+--      AND     xoha.arrival_date                               >=  TRUNC( gd_target_date ) - gn_target_term
+--      AND     xoha.arrival_date                               <   TRUNC( gd_target_date + 1 ) + 1
+--      AND     xoha.latest_external_flag                       =   cv_y
+--      AND     xoha.order_header_id                            =   xola.order_header_id
+--      AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
+--      AND     xoha.order_type_id                              =   otta.transaction_type_id
+--      AND     otta.org_id                                     =   gt_itou_ou_id
+--      AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
+--      AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
+--      AND     xola.request_item_id                            =   msib.inventory_item_id
+--      AND     msib.organization_id                            =   gt_org_id
+--      AND     msib.segment1                                   =   imbc.item_no
+--      AND     imbc.item_id                                    =   ximb.item_id
+--      AND     xoha.arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.arrival_date )
+--      AND     ximb.parent_item_id                             =   imbp.item_id
+--      AND     xoha.result_deliver_to_id                       =   hps.party_site_id
+--      AND     hps.party_id                                    =   hca.party_id
+--      AND     hca.customer_class_code                         =   cv_class_code_1
+--      AND     hca.status                                      =   cv_status_a
+--      AND     hca.cust_account_id                             =   xca.customer_id
+--      AND     xoha.deliver_from                               =   xilv.segment1
+--Ver1.3 Del end
+--Ver1.3 Add start
+      SELECT
+         BASE_CODE
+        ,ITEM_NUMBER
+        ,DELIVER_FROM
+        ,DELIVER_FROM_NAME
+      FROM
+        (
+          SELECT  /*+ INDEX( ximb XXCMN_IMB_N01 ) */
+                  DISTINCT
+                  DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                                              AS  "BASE_CODE"             --  拠点コード
+                , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
+                , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
+                , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
+                , xoha.arrival_date           AS "ARRIVAL_DATE"           --  着日
+                , row_number() over( 
+                    partition by              -- 集計キー：拠点、品目別
+                        DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                      , imbp.item_no
+                    order by                  -- ソート：着日降順、出庫元倉庫
+                        xoha.arrival_date desc
+                      , xoha.deliver_from  
+                    )                         AS row_number               -- 並び順
+          FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
+                , xxwsh_order_lines_all     xola                          --  受注明細アドオン
+                , oe_transaction_types_all  otta                          --  受注タイプマスタ
+                , mtl_system_items_b        msib                          --  DISC品目マスタ
+                , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
+                , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
+                , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
+                , hz_party_sites            hps                           --  パーティサイト
+                , hz_cust_accounts          hca                           --  顧客マスタ
+                , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
+                , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
+          WHERE   xoha.req_status                                 =   gt_ship_status_result         --  出荷実績計上済
+          AND     xoha.actual_confirm_class                       =   cv_y
+          AND     xoha.arrival_date                               >=  TRUNC( gd_target_date ) - gn_target_term
+          AND     xoha.arrival_date                               <   TRUNC( gd_target_date + 1 ) + 1
+          AND     xoha.latest_external_flag                       =   cv_y
+          AND     xoha.order_header_id                            =   xola.order_header_id
+          AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
+          AND     xoha.order_type_id                              =   otta.transaction_type_id
+          AND     otta.org_id                                     =   gt_itou_ou_id
+          AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
+          AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
+          AND     xola.request_item_id                            =   msib.inventory_item_id
+          AND     msib.organization_id                            =   gt_org_id
+          AND     msib.segment1                                   =   imbc.item_no
+          AND     imbc.item_id                                    =   ximb.item_id
+          AND     xoha.arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.arrival_date )
+          AND     ximb.parent_item_id                             =   imbp.item_id
+          AND     xoha.result_deliver_to_id                       =   hps.party_site_id
+          AND     hps.party_id                                    =   hca.party_id
+          AND     hca.customer_class_code                         =   cv_class_code_1
+          AND     hca.status                                      =   cv_status_a
+          AND     hca.cust_account_id                             =   xca.customer_id
+          AND     xoha.deliver_from                               =   xilv.segment1
+        )
+      WHERE  row_number = 1
+--Ver1.3 Add end
     ;
     --  ==============================================================
     --  受注情報（締め済・確定通知済）抽出
@@ -523,55 +587,125 @@ AS
       , deliver_from                    --  出庫元倉庫
       , deliver_from_name               --  出庫元倉庫名
     )
-      SELECT  /*+ INDEX( imbc IC_ITEM_MST_B_UNQ1 )
-                  INDEX( ximb XXCMN_IMB_N01 )
-              */
-              DISTINCT
-              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
-                                          AS  "BASE_CODE"             --  拠点コード
-            , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
-            , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
-            , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
-      FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
-            , xxwsh_order_lines_all     xola                          --  受注明細アドオン
-            , oe_transaction_types_all  otta                          --  受注タイプマスタ
-            , mtl_system_items_b        msib                          --  DISC品目マスタ
-            , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
-            , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
-            , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
-            , hz_party_sites            hps                           --  パーティサイト
-            , hz_cust_accounts          hca                           --  顧客マスタ
-            , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
-            , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
-      WHERE   xoha.req_status                                 =   gt_ship_status_close          --  締め済み
-      AND     xoha.notif_status                               =   gt_notice_status              --  確定通知済み
-      AND     xoha.schedule_arrival_date                      >=  TRUNC( gd_target_date ) - gn_target_term
-      AND     xoha.schedule_arrival_date                      <   TRUNC( gd_target_date + 1 ) + 1
-      AND     xoha.latest_external_flag                       =   cv_y
-      AND     xoha.order_header_id                            =   xola.order_header_id
-      AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
-      AND     xoha.order_type_id                              =   otta.transaction_type_id
-      AND     otta.org_id                                     =   gt_itou_ou_id
-      AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
-      AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
-      AND     xola.request_item_id                            =   msib.inventory_item_id
-      AND     msib.organization_id                            =   gt_org_id
-      AND     msib.segment1                                   =   imbc.item_no
-      AND     imbc.item_id                                    =   ximb.item_id
-      AND     xoha.schedule_arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.schedule_arrival_date )
-      AND     ximb.parent_item_id                             =   imbp.item_id
-      AND     xoha.deliver_to_id                              =   hps.party_site_id
-      AND     hps.party_id                                    =   hca.party_id
-      AND     hca.customer_class_code                         =   cv_class_code_1
-      AND     hca.status                                      =   cv_status_a
-      AND     hca.cust_account_id                             =   xca.customer_id
-      AND     xoha.deliver_from                               =   xilv.segment1
-      AND NOT EXISTS( SELECT  1
-                      FROM    xxcoi_base_item_tmp     tmp     --  拠点品目情報連携一時表
-                      WHERE   tmp.base_code       =   DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
-                      AND     tmp.item_number     =   imbp.item_no
-                      AND     tmp.deliver_from    =   xoha.deliver_from
-              )
+--Ver1.3 Del start
+--      SELECT  /*+ INDEX( imbc IC_ITEM_MST_B_UNQ1 )
+--                  INDEX( ximb XXCMN_IMB_N01 )
+--              */
+--              DISTINCT
+--              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+--                                          AS  "BASE_CODE"             --  拠点コード
+--            , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
+--            , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
+--            , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
+--      FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
+--            , xxwsh_order_lines_all     xola                          --  受注明細アドオン
+--            , oe_transaction_types_all  otta                          --  受注タイプマスタ
+--            , mtl_system_items_b        msib                          --  DISC品目マスタ
+--            , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
+--            , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
+--            , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
+--            , hz_party_sites            hps                           --  パーティサイト
+--            , hz_cust_accounts          hca                           --  顧客マスタ
+--            , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
+--            , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
+--      WHERE   xoha.req_status                                 =   gt_ship_status_close          --  締め済み
+--      AND     xoha.notif_status                               =   gt_notice_status              --  確定通知済み
+--      AND     xoha.schedule_arrival_date                      >=  TRUNC( gd_target_date ) - gn_target_term
+--      AND     xoha.schedule_arrival_date                      <   TRUNC( gd_target_date + 1 ) + 1
+--      AND     xoha.latest_external_flag                       =   cv_y
+--      AND     xoha.order_header_id                            =   xola.order_header_id
+--      AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
+--      AND     xoha.order_type_id                              =   otta.transaction_type_id
+--      AND     otta.org_id                                     =   gt_itou_ou_id
+--      AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
+--      AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
+--      AND     xola.request_item_id                            =   msib.inventory_item_id
+--      AND     msib.organization_id                            =   gt_org_id
+--      AND     msib.segment1                                   =   imbc.item_no
+--      AND     imbc.item_id                                    =   ximb.item_id
+--      AND     xoha.schedule_arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.schedule_arrival_date )
+--      AND     ximb.parent_item_id                             =   imbp.item_id
+--      AND     xoha.deliver_to_id                              =   hps.party_site_id
+--      AND     hps.party_id                                    =   hca.party_id
+--      AND     hca.customer_class_code                         =   cv_class_code_1
+--      AND     hca.status                                      =   cv_status_a
+--      AND     hca.cust_account_id                             =   xca.customer_id
+--      AND     xoha.deliver_from                               =   xilv.segment1
+--      AND NOT EXISTS( SELECT  1
+--                      FROM    xxcoi_base_item_tmp     tmp     --  拠点品目情報連携一時表
+--                      WHERE   tmp.base_code       =   DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+--                      AND     tmp.item_number     =   imbp.item_no
+--                      AND     tmp.deliver_from    =   xoha.deliver_from
+--              )
+--Ver1.3 Del end
+--Ver1.3 Add start
+      SELECT
+         BASE_CODE
+        ,ITEM_NUMBER
+        ,DELIVER_FROM
+        ,DELIVER_FROM_NAME
+      FROM
+        (
+          SELECT  /*+ INDEX( imbc IC_ITEM_MST_B_UNQ1 )
+                      INDEX( ximb XXCMN_IMB_N01 )
+                  */
+                  DISTINCT
+                  DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                                              AS  "BASE_CODE"             --  拠点コード
+                , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
+                , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
+                , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
+                , xoha.schedule_arrival_date  AS  "SCHEDULE_ARRIVAL_DATE" --  着荷予定日
+                , row_number() over( 
+                    partition by              -- 集計キー：拠点、品目別
+                        DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                      , imbp.item_no
+                    order by                  -- ソート：着荷予定日降順、出庫元倉庫
+                        xoha.schedule_arrival_date desc
+                      , xoha.deliver_from  
+                    )                         AS row_number               -- 並び順
+          FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
+                , xxwsh_order_lines_all     xola                          --  受注明細アドオン
+                , oe_transaction_types_all  otta                          --  受注タイプマスタ
+                , mtl_system_items_b        msib                          --  DISC品目マスタ
+                , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
+                , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
+                , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
+                , hz_party_sites            hps                           --  パーティサイト
+                , hz_cust_accounts          hca                           --  顧客マスタ
+                , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
+                , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
+          WHERE   xoha.req_status                                 =   gt_ship_status_close          --  締め済み
+          AND     xoha.notif_status                               =   gt_notice_status              --  確定通知済み
+          AND     xoha.schedule_arrival_date                      >=  TRUNC( gd_target_date ) - gn_target_term
+          AND     xoha.schedule_arrival_date                      <   TRUNC( gd_target_date + 1 ) + 1
+          AND     xoha.latest_external_flag                       =   cv_y
+          AND     xoha.order_header_id                            =   xola.order_header_id
+          AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
+          AND     xoha.order_type_id                              =   otta.transaction_type_id
+          AND     otta.org_id                                     =   gt_itou_ou_id
+          AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
+          AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
+          AND     xola.request_item_id                            =   msib.inventory_item_id
+          AND     msib.organization_id                            =   gt_org_id
+          AND     msib.segment1                                   =   imbc.item_no
+          AND     imbc.item_id                                    =   ximb.item_id
+          AND     xoha.schedule_arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.schedule_arrival_date )
+          AND     ximb.parent_item_id                             =   imbp.item_id
+          AND     xoha.deliver_to_id                              =   hps.party_site_id
+          AND     hps.party_id                                    =   hca.party_id
+          AND     hca.customer_class_code                         =   cv_class_code_1
+          AND     hca.status                                      =   cv_status_a
+          AND     hca.cust_account_id                             =   xca.customer_id
+          AND     xoha.deliver_from                               =   xilv.segment1
+          AND NOT EXISTS( SELECT  1
+                          FROM    xxcoi_base_item_tmp     tmp     --  拠点品目情報連携一時表
+                          WHERE   tmp.base_code       =   DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                          AND     tmp.item_number     =   imbp.item_no
+                  )
+        )
+      WHERE  row_number = 1
+--Ver1.3 Add end
     ;
     --  ==============================================================
     --  受払累計抽出
