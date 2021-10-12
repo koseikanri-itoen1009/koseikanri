@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A40C(body)
  * Description      : 顧客一括登録ワークテーブルに取込済のデータから顧客レコードを登録します。
  * MD.050           : 顧客一括登録 MD050_CMM_003_A40
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2017/06/14    1.5   S.Niki           E_本稼動_14271対応  自販機フォロー委託２次開発
  *  2019/01/31    1.6   N.Abe            E_本稼動_15490対応  顧客追加情報項目変更
  *  2021/05/21    1.7   H.Futamura       E_本稼働_16026対応  コメント変更のみ（紹介者チェーンコード2→控除用チェーンコード）
+ *  2021/10/07    1.8   K.Tomie          E_本稼働_17534対応  「社員数」必須化
  *
  *****************************************************************************************/
 --
@@ -168,6 +169,9 @@ AS
 -- Ver1.6 add start
   cv_msg_xxcmm_10491     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10491';                                  -- カテゴリー商品計上区分必須チェックエラー
 -- Ver1.6 add end
+-- Ver1.8 add start
+  cv_msg_xxcmm_10504     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10504';                                  -- 社員数必須チェックエラー
+-- Ver1.8 add end
   -- トークン名
   cv_tkn_file_id         CONSTANT VARCHAR2(20)  := 'FILE_ID';                                           -- ファイルID
   cv_tkn_up_name         CONSTANT VARCHAR2(20)  := 'UPLOAD_NAME';                                       -- ファイルアップロード名称
@@ -198,6 +202,9 @@ AS
 -- Ver1.6 add start
   cv_tkn_input_data      CONSTANT VARCHAR2(20)  := 'INPUT_DATA';                                        -- 業態小分類
 -- Ver1.6 add end
+-- Ver1.8 add start
+  cv_tkn_meaning         CONSTANT VARCHAR2(20)  := 'MEANING';                                            -- 業態小分類(内容)
+-- Ver1.8 add end
   --
   cv_appl_name_xxcmm     CONSTANT VARCHAR2(5)   := 'XXCMM';                                             -- アプリケーション短縮名
   cv_appl_short_name     CONSTANT VARCHAR2(10)  := 'XXCCP';                                             -- アドオン：共通・IF領域
@@ -1200,6 +1207,9 @@ AS
     ln_check_cnt              NUMBER;
     lv_required_item          VARCHAR2(2000);
     lv_sqlerrm                VARCHAR2(5000);                         -- SQLERRM変数退避用
+-- Ver1.8 add start
+    lv_meaning                 VARCHAR2(80);                           --業態小分類(内容)
+-- Ver1.8 add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -3487,6 +3497,59 @@ AS
       END IF;
 -- Ver1.6 add end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.8 add start
+--
+      --==============================================================
+      -- A-4.49 社員数必須チェック
+      --==============================================================
+      lv_step := 'A-4.49';
+      -- フォーマットパターン「501:MC」の場合
+      IF ( gv_format = cv_file_format_mc ) THEN
+        -- 業態小分類が業態中分類11:VDに含まれるかをチェック
+        BEGIN
+          SELECT flv.meaning AS meaning
+          INTO   lv_meaning
+          FROM   fnd_lookup_values_vl flv                                           -- LOOKUP表
+          WHERE  flv.lookup_type  = cv_lookup_gyotai_sho                            -- タイプ
+          AND    flv.lookup_code  = i_wk_cust_rec.business_low_type_tmp             -- コード
+          AND    flv.attribute1   = '11'                                            -- 項目属性
+          AND    flv.enabled_flag = cv_yes                                          -- 使用可能フラグ
+          AND    NVL( flv.start_date_active, gd_process_date ) <= gd_process_date   -- 適用開始日
+          AND    NVL( flv.end_date_active,   gd_process_date ) >= gd_process_date   -- 適用終了日
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lv_meaning := NULL;
+        END;
+        -- 業態中分類が11:VDの場合に社員数必須チェック
+        IF (lv_meaning IS NOT NULL) THEN
+          IF (i_wk_cust_rec.emp_number IS NULL) THEN
+            lv_check_status   := cv_status_error;
+            ov_retcode        := cv_status_error;
+            -- 社員数必須チェックエラー
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_10504                    -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_input_line_no                  -- トークンコード1
+                          ,iv_token_value1 => i_wk_cust_rec.line_no                 -- トークン値1
+                          ,iv_token_name2  => cv_tkn_input_data                     -- トークンコード2
+                          ,iv_token_value2 => i_wk_cust_rec.business_low_type_tmp   -- トークン値2
+                          ,iv_token_name3  => cv_tkn_meaning                        -- トークンコード3
+                          ,iv_token_value3 => lv_meaning                            -- トークン値3
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => gv_out_msg);
+            --
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+            lv_check_flag := cv_status_error;
+          END IF;
+        END IF;
+      END IF;
+-- Ver1.8 add end
     END IF;
   --
   -- チェック処理結果をセット
