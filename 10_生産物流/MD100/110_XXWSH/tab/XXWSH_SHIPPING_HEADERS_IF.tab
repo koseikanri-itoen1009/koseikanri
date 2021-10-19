@@ -1,3 +1,18 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2021. All rights reserved.
+ *
+ * Table Name      : xxwsh_shipping_headers_if
+ * Description     : èoâ◊àÀóäÉCÉìÉ^ÉtÉFÅ[ÉXÉwÉbÉ_ÅiÉAÉhÉIÉìÅj
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *                1.0                    êVãKçÏê¨
+ *  2021/08/24    1.1   H.Futamura       E_ñ{â“ìÆ_17407ëŒâû
+ *
+ ************************************************************************/
 CREATE TABLE xxwsh.xxwsh_shipping_headers_if
 (
   header_id                     NUMBER        NOT NULL,
@@ -47,6 +62,9 @@ CREATE TABLE xxwsh.xxwsh_shipping_headers_if
   filler16                      VARCHAR2(150),
   filler17                      VARCHAR2(150),
   filler18                      VARCHAR2(150),
+-- Ver.1.1 Add Start
+  confirm_request_class         VARCHAR2(1),
+-- Ver.1.1 Add End
   created_by                    NUMBER(15,0)  NOT NULL,
   creation_date                 DATE          NOT NULL,
   last_updated_by               NUMBER(15,0)  NOT NULL,
@@ -107,6 +125,9 @@ COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler15               IS 'ó\î
 COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler16               IS 'ó\îı16';
 COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler17               IS 'ó\îı17';
 COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.filler18               IS 'ó\îı18';
+-- Ver.1.1 Add Start
+COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.confirm_request_class  IS 'ï®ó¨íSìñämîFàÀóäãÊï™';
+-- Ver.1.1 Add End
 COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.created_by             IS 'çÏê¨é“';
 COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.creation_date          IS 'çÏê¨ì˙';
 COMMENT ON COLUMN xxwsh.xxwsh_shipping_headers_if.last_updated_by        IS 'ç≈èIçXêVé“';
