@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2009/02/19    1.24  加波  由香里     本番障害#147対応
  *  2009/08/03    1.25  宮田  隆史       SCS障害管理表（0000918）対応：営業システム対応
  *  2011/03/28    1.26  堀籠  直樹       E_本稼動_2538対応
+ *  2021/09/28    1.27  二村  悠香       E_本稼動_17407対応
  *
  *****************************************************************************************/
 --
@@ -131,6 +132,10 @@ AS
 -- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
      ,arr_t_to     xxwsh_shipping_headers_if.arrival_time_to%TYPE       -- 着荷時間To
 -- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
+-- Ver.1.27 Add Start
+     ,co_pa_qty    xxwsh_shipping_headers_if.collected_pallet_qty%TYPE  -- パレット回収枚数
+     ,co_req_class xxwsh_shipping_headers_if.confirm_request_class%TYPE -- 物流担当確認依頼区分
+-- Ver.1.27 Add End
     );
   TYPE tab_data_head_line IS TABLE OF rec_head_line INDEX BY PLS_INTEGER;
 --
@@ -939,6 +944,21 @@ AS
       FOR UPDATE NOWAIT
       ;
 --
+-- Ver.1.27 Add Start
+    -- 行ロック用カーソル 入力Ｐ「入力拠点」「管轄拠点」の両方にデータが存在している場合
+    CURSOR cur_get_lock_2
+    IS
+      SELECT xshi.header_id              AS header_id   -- ヘッダID
+      FROM  xxwsh_shipping_headers_if  xshi -- 出荷依頼インタフェースヘッダ（アドオン）
+           ,xxwsh_shipping_lines_if    xsli -- 出荷依頼インタフェース明細（アドオン）
+      WHERE xshi.data_type          = gv_10      -- [出荷依頼]を表すクイックコード「データタイプ」
+      AND   xshi.header_id          = xsli.header_id     -- ヘッダID
+      AND   xshi.input_sales_branch = gr_param.in_base   -- 入力Ｐ[入力拠点]
+      AND   xshi.head_sales_branch  = gr_param.jur_base  -- 入力Ｐ[管轄拠点]
+      FOR UPDATE NOWAIT
+      ;
+-- Ver.1.27 Add End
+--
     -- 入力Ｐ「入力拠点」のみデータが存在している場合
     CURSOR cur_get_head_line
     IS
@@ -968,6 +988,10 @@ AS
 -- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
             ,xshi.arrival_time_to        AS arr_t_to    -- 着荷時間To
 -- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
+-- Ver.1.27 Add Start
+            ,xshi.collected_pallet_qty   AS co_pa_qty    -- パレット回収枚数
+            ,xshi.confirm_request_class  AS co_req_class -- 物流担当確認依頼区分
+-- Ver.1.27 Add End
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -1012,6 +1036,10 @@ AS
 -- 2009/08/03 T.Miyata Add Start SCS障害管理表（0000918）対応
             ,xshi.arrival_time_to        AS arr_t_to    -- 着荷時間To
 -- 2009/08/03 T.Miyata Add End   SCS障害管理表（0000918）対応
+-- Ver.1.27 Add Start
+            ,xshi.collected_pallet_qty   AS co_pa_qty    -- パレット回収枚数
+            ,xshi.confirm_request_class  AS co_req_class -- 物流担当確認依頼区分
+-- Ver.1.27 Add End
       FROM (SELECT xshi1.header_id
                   ,MAX (xshi1.last_update_date)
                    OVER (PARTITION BY xshi1.order_source_ref) max_date
@@ -1040,10 +1068,21 @@ AS
     -- ====================================================
     --   出荷依頼インタフェース情報を抽出
     -- ====================================================
-    -- 行ロック用カーソルオープン
-    OPEN cur_get_lock;
-    -- 行ロック用カーソルクローズ
-    CLOSE cur_get_lock;
+-- Ver.1.27 Add Start
+    IF (gr_param.jur_base IS NULL) THEN
+-- Ver.1.27 Add End
+      -- 行ロック用カーソルオープン
+      OPEN cur_get_lock;
+      -- 行ロック用カーソルクローズ
+      CLOSE cur_get_lock;
+-- Ver.1.27 Add Start
+    ELSE
+      -- 行ロック用カーソルオープン
+      OPEN cur_get_lock_2;
+      -- 行ロック用カーソルクローズ
+      CLOSE cur_get_lock_2;
+    END IF;
+-- Ver.1.27 Add End
 --
     -- 入力Ｐ[管轄拠点]がNULLの場合
     IF (gr_param.jur_base IS NULL) THEN
@@ -4479,7 +4518,13 @@ AS
     ord_h_all.req_status                   := gr_ship_st;                      -- ステータス
     ord_h_all.schedule_ship_date           := gt_head_line(gn_i).ship_date;    -- 出荷予定日
     ord_h_all.schedule_arrival_date        := gt_head_line(gn_i).arr_date;     -- 着荷予定日
-    ord_h_all.confirm_request_class        := gv_0;                            -- 物流担当確認依頼区分
+-- Ver.1.27 Add Start
+    ord_h_all.collected_pallet_qty         := gt_head_line(gn_i).co_pa_qty;    -- パレット回収枚数
+-- Ver.1.27 Add End
+-- Ver.1.27 Mod Start
+--    ord_h_all.confirm_request_class        := gv_0;                            -- 物流担当確認依頼区分
+    ord_h_all.confirm_request_class        := NVL(gt_head_line(gn_i).co_req_class,gv_0); -- 物流担当確認依頼区分
+-- Ver.1.27 Mod End
     ord_h_all.freight_charge_class         := gv_1;                            -- 運賃区分
     ord_h_all.no_cont_freight_class        := gv_0;                            -- 契約外運賃区分
     ord_h_all.deliver_from_id              := gr_ship_id;                      -- 出荷元ID
@@ -4715,6 +4760,9 @@ AS
        ,req_status
        ,schedule_ship_date
        ,schedule_arrival_date
+-- Ver.1.27 Add Start
+       ,collected_pallet_qty
+-- Ver.1.27 Add End
        ,confirm_request_class
        ,freight_charge_class
        ,no_cont_freight_class
@@ -4772,6 +4820,9 @@ AS
        ,ord_h_all.req_status
        ,ord_h_all.schedule_ship_date
        ,ord_h_all.schedule_arrival_date
+-- Ver.1.27 Add Start
+       ,ord_h_all.collected_pallet_qty
+-- Ver.1.27 Add End
        ,ord_h_all.confirm_request_class
        ,ord_h_all.freight_charge_class
        ,ord_h_all.no_cont_freight_class
