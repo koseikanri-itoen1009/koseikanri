@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2019/07/26    1.22  阿部 直樹        障害E_本稼動_15748対応 エラーデータスキップ対応→対応不要
  *  2021/05/21    1.23  二村 悠香        障害E_本稼動_16026対応 収益認識 控除用チェーンコード対応
  *  2021/07/21    1.24  二村 悠香        障害E_本稼動_16026再対応 収益認識 控除用チェーンコード対応
+ *  2021/10/14    1.25  冨江 広大        障害E_本稼動_17545対応 収益認識 顧客マスタの控除用チェーン変更チェック対応
  *
  *****************************************************************************************/
 --
@@ -221,6 +222,9 @@ AS
 -- Ver1.20 add start
   cv_latitude_not_null_err    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10492';                --カテゴリー商品計上区分指定エラー
 -- Ver1.20 add end
+-- Ver1.25 add start
+  cv_dedu_chain_err_msg       CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10503';                --控除消込ヘッダー情報の消込ステータスチェックエラー
+-- Ver1.25 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -482,6 +486,13 @@ AS
   --固定値
   cv_gyomu_kokyaku_resp       CONSTANT VARCHAR2(30)  := 'XXCMM_RESP_006';                   --職責管理プロファイル値(業務管理部(顧客))
 -- Ver1.19 add end
+-- Ver1.25 add start
+  --メッセージトークン
+  cv_dedu_chain_code          CONSTANT VARCHAR2(30)  := 'DEDU_CHAIN_CODE';                   --控除用チェーンコード
+  cv_token_recon_slip_num     CONSTANT VARCHAR2(30)  := 'RECON_SLIP_NUM';                    --支払伝票番号
+  --参照タイプ
+  cv_lkp_dedu_data_type       CONSTANT VARCHAR2(30)  := 'XXCOK1_DEDUCTION_DATA_TYPE';        -- 控除データ種類
+-- Ver1.25 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -700,6 +711,9 @@ AS
     lv_corp_approval_date       VARCHAR2(100)   := NULL;                  --ローカル変数・決裁日付
     lv_intro_chain_code1        VARCHAR2(100)   := NULL;                  --ローカル変数・紹介者チェーンコード１
     lv_intro_chain_code2        VARCHAR2(100)   := NULL;                  --ローカル変数・控除用チェーンコード
+--Ver1.25 add start
+    lt_intro_chain_code2_bef    xxcmm_cust_accounts.intro_chain_code2%TYPE;     -- 現在値・控除用チェーンコード
+--Ver1.25 add end
     lv_sales_head_base_code     VARCHAR2(100)   := NULL;                  --ローカル変数・販売先本部担当拠点
     lv_sales_head_base_code_mst xxcmm_cust_accounts.sales_head_base_code%TYPE; --販売先本部担当拠点確認用変数
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
@@ -792,6 +806,9 @@ AS
     lv_dedu_chain_code          VARCHAR2(30)    := NULL;                        --控除用チェーンコード
     lv_dedu_chain_code_mst      VARCHAR2(100)   := NULL;                        --控除用チェーンコード存在確認用変数
 -- Ver1.23 add end
+--Ver1.25 add start
+    lv_recon_slip_num           VARCHAR2(2000)  := NULL;                        --控除消込ヘッダー情報の消込ステータスチェック用支払伝票番号変数
+--Ver1.25 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -1499,6 +1516,46 @@ AS
     -- カテゴリー商品計上区分不要業態小分類チェックカーソルレコード型
     check_cat_prod_unn_rec  check_cat_prod_unn_cur%ROWTYPE;
 -- Ver1.19 add end
+-- Ver1.25 add start
+--
+    -- 控除用チェーンコード取得カーソル
+    CURSOR get_intro_chain_code2_cur(
+      iv_customer_code      IN VARCHAR2   -- 顧客コード
+    )
+    IS
+      SELECT xca.intro_chain_code2 AS intro_chain_code2
+      FROM   xxcmm_cust_accounts xca
+      WHERE  xca.customer_code = iv_customer_code
+      ;
+    -- 控除用チェーンコード取得カーソルレコード型
+    get_intro_chain_code2_rec  get_intro_chain_code2_cur%ROWTYPE;
+--
+    --控除消込ヘッダー情報の消込ステータスチェックカーソル
+    CURSOR check_dedu_chain_cur(
+      iv_customer_code      IN VARCHAR2   -- 顧客コード
+    )
+    IS
+      SELECT xdrh.recon_slip_num AS recon_slip_num
+      FROM   xxcok_deduction_recon_head  xdrh  -- 控除消込ヘッダー情報
+            ,xxcok_sales_deduction       xsd   -- 販売控除情報
+            ,fnd_lookup_values_vl        flvv
+      WHERE  xsd.customer_code_to    =   iv_customer_code
+      AND    xdrh.recon_slip_num     =   xsd.recon_slip_num
+      AND    xdrh.recon_status       IN  ('EG','SG','SD')
+      AND    xdrh.interface_div      = 'WP'                                -- 問屋
+      AND    xsd.data_type           = flvv.lookup_code                    -- 控除データ
+      AND    flvv.lookup_type        = cv_lkp_dedu_data_type               -- 控除データ種類
+      AND    flvv.attribute8         = cv_yes                              -- 立替フラグ：差額
+      AND    flvv.enabled_flag       = cv_yes
+      AND    NVL(flvv.start_date_active, gd_process_date) <= gd_process_date
+      AND    NVL(flvv.end_date_active,   gd_process_date) >= gd_process_date
+      GROUP BY xdrh.recon_slip_num
+      ORDER BY xdrh.recon_slip_num
+      ;
+    --控除消込ヘッダー情報の消込ステータスチェックカーソルレコード型
+    TYPE recon_slip_num_ttype IS TABLE OF check_dedu_chain_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    gt_recon_slip_num_tab       recon_slip_num_ttype;
+-- Ver1.25 add end
 --
   BEGIN
 --
@@ -3796,6 +3853,52 @@ AS
           END IF;
         END IF;
 --
+--Ver1.25 add start
+        -- 控除用チェーンコードがNULLでない場合、変更チェック
+        IF (lv_intro_chain_code2 IS NOT NULL ) THEN
+          -- 控除用チェーンコード取得カーソル
+          << get_intro_chain_code2_loop >>
+          FOR get_intro_chain_code2_rec IN get_intro_chain_code2_cur( lv_customer_code )
+          LOOP
+            lt_intro_chain_code2_bef := get_intro_chain_code2_rec.intro_chain_code2;
+          END LOOP get_intro_chain_code2_loop;
+--
+          -- 控除用チェーンコードが変更された場合
+          IF ( lv_intro_chain_code2 <> NVL(lt_intro_chain_code2_bef ,cv_null_bar) ) THEN
+            -- 対象データ取得カーソル
+            OPEN  check_dedu_chain_cur( lv_customer_code );
+            FETCH check_dedu_chain_cur BULK COLLECT INTO gt_recon_slip_num_tab;
+            CLOSE check_dedu_chain_cur;
+            --控除消込ヘッダー情報の消込ステータスチェックエラー時
+            <<check_dedu_chain>>
+            FOR i IN 1..gt_recon_slip_num_tab.COUNT LOOP
+              IF(i < gt_recon_slip_num_tab.COUNT) THEN
+                lv_recon_slip_num := SUBSTRB(lv_recon_slip_num  || gt_recon_slip_num_tab(i).recon_slip_num || ',',1,2000);
+              ELSE
+                lv_recon_slip_num := SUBSTRB(lv_recon_slip_num  || gt_recon_slip_num_tab(i).recon_slip_num,1,2000);
+                lv_check_status   := cv_status_error;
+                lv_retcode        := cv_status_error;
+--
+                --控除消込ヘッダー情報の消込ステータスチェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_dedu_chain_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_dedu_chain_code
+                                ,iv_token_value2 => lt_intro_chain_code2_bef
+                                ,iv_token_name3  => cv_token_recon_slip_num
+                                ,iv_token_value3 => lv_recon_slip_num
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+              END IF;
+            END LOOP check_dedu_chain;
+          END IF;
+        END IF;
+--Ver1.25 add end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
 --
         --チェーン店コード（ＥＤＩ）取得
