@@ -6,7 +6,7 @@ AS
  * Package Name     : xxinv990011(body)
  * Description      : 出荷依頼（依頼№自動採番）のアップロード
  * MD.050           : ファイルアップロード   T_MD050_BPO_990
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021/09/28    1.0   SCSK 二村        新規作成
+ *  2021/10/19    1.1   SCSK 二村        [E_本稼動_17407] 出荷依頼アップロードの新規開発 追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -143,9 +144,15 @@ AS
   cn_c_input_sales_branch_l     CONSTANT NUMBER         := 4;   -- 入力拠点
   cn_c_head_sales_branch_l      CONSTANT NUMBER         := 4;   -- 管轄拠点
   cn_c_ordered_class_l          CONSTANT NUMBER         := 1;   -- 依頼区分
-  cn_c_cust_po_number_l         CONSTANT NUMBER         := 9;   -- PO#（その1）
+-- Ver1.1 Mod Start
+--  cn_c_cust_po_number_l         CONSTANT NUMBER         := 9;   -- PO#（その1）
+  cn_c_cust_po_number_l         CONSTANT NUMBER         := 16;   -- PO#（その1）
+-- Ver1.1 Mod End
   cn_c_arrival_time_l           CONSTANT NUMBER         := 4;   -- 時間指定From/To
-  cn_c_shipping_instructions_l  CONSTANT NUMBER         := 40;  -- 摘要
+-- Ver1.1 Mod Start
+--  cn_c_shipping_instructions_l  CONSTANT NUMBER         := 40;  -- 摘要
+  cn_c_shipping_instructions_l  CONSTANT NUMBER         := 60;  -- 摘要
+-- Ver1.1 Mod End
   cn_c_collected_pallet_qty_l   CONSTANT NUMBER         := 3;   -- パレット回収枚数
   cn_c_collected_pallet_qty_d   CONSTANT NUMBER         := 0;   -- パレット回収枚数（小数点以下）
   cn_c_confirm_request_class_l  CONSTANT NUMBER         := 1;   -- 物流担当確認依頼区分
