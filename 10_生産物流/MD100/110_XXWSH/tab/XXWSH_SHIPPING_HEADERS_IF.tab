@@ -3,7 +3,7 @@
  *
  * Table Name      : xxwsh_shipping_headers_if
  * Description     : 出荷依頼インタフェースヘッダ（アドオン）
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *                1.0                    新規作成
  *  2021/08/24    1.1   H.Futamura       E_本稼動_17407対応
+ *  2021/10/19    1.2   H.Futamura       E_本稼動_17407追加対応
  *
  ************************************************************************/
 CREATE TABLE xxwsh.xxwsh_shipping_headers_if
@@ -19,7 +20,10 @@ CREATE TABLE xxwsh.xxwsh_shipping_headers_if
   order_type                    VARCHAR2(30),
   ordered_date                  DATE,
   party_site_code               VARCHAR2(9),
-  shipping_instructions         VARCHAR2(40),
+-- Ver.1.2 Mod Start
+--  shipping_instructions         VARCHAR2(40),
+  shipping_instructions         VARCHAR2(60),
+-- Ver.1.2 Mod End
   cust_po_number                VARCHAR2(20),
   order_source_ref              VARCHAR2(12)  NOT NULL,
   schedule_ship_date            DATE,
