@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2021/02/16    1.2   N.Abe            E_本稼動_16843
  *  2021/03/03    1.3   K.Kanada         E_本稼動_16843（本番障害対応）
  *  2021/05/28    1.4   K.Yoshikawa      E_本稼動_17220
+ *  2021/10/20    1.5   K.Tomie          E_本稼動_17220(追加項目の書式変更)
  *
  *****************************************************************************************/
 --
@@ -120,6 +121,9 @@ AS
   cv_msg_canm                CONSTANT VARCHAR2(1)     := ',';
   -- 書式フォーマット
   cv_fmt_ymd                 CONSTANT VARCHAR2(10)    := 'YYYY/MM/DD';
+--Ver1.5 add start
+  cv_fmt_ymd2                CONSTANT VARCHAR2(8)    := 'YYYYMMDD';
+--Ver1.5 add end
   -- ファイルオープンパラメータ
   cv_open_mode_w             CONSTANT VARCHAR2(1)     := 'w';                   -- テキストの書込み
   cn_max_linesize            CONSTANT BINARY_INTEGER  := 32767;                 -- 1行当り最大文字数
@@ -1558,11 +1562,19 @@ AS
           || cv_msg_canm || g_head_rec.remarks                              -- 備考
 --2021/5/28 add start
           || cv_msg_canm || SUBSTR(
-                                   TO_CHAR( g_head_rec.closing_date_min, cv_fmt_ymd )
+--Ver1.5 mod start
+--                                   TO_CHAR( g_head_rec.closing_date_min, cv_fmt_ymd )
+                                   TO_CHAR( g_head_rec.closing_date_min, cv_fmt_ymd2 )
+--Ver1.5 mod end
                                    ,1
-                                   ,7 
-                                   ) ||'/01'                                 -- 対象期間開始日
-          || cv_msg_canm || TO_CHAR( g_head_rec.closing_date, cv_fmt_ymd )  -- 対象期間終了日
+--Ver1.5 mod start
+--                                   ,7 
+--                                   ) ||'/01'                                 -- 対象期間開始日
+--          || cv_msg_canm || TO_CHAR( g_head_rec.closing_date, cv_fmt_ymd )  -- 対象期間終了日
+                                   ,6
+                                   ) ||'01'                                  -- 対象期間開始日
+          || cv_msg_canm || TO_CHAR( g_head_rec.closing_date, cv_fmt_ymd2 )  -- 対象期間終了日
+--Ver1.5 mod end
 --2021/5/28 add end
           ;
 --
