@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                       [E_本稼動_16026]定額控除複数明細対応
  *  2021/07/26    1.3   SCSK K.Yoshikawa [E_本稼働_17399]
  *  2021/09/17    1.4   SCSK K.Yoshikawa [E_本稼動_17540]マスタ削除時の支払済控除データの対応
+ *  2021/10/21    1.5   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
  *
  *****************************************************************************************/
 --
@@ -110,6 +111,12 @@ AS
 -- 2021/09/17 Ver1.4 ADD Start
   cv_msg_slip_date_ins      CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10807';               -- 支払処理済マイナス控除データ登録メッセージ
 -- 2021/09/17 Ver1.4 ADD End
+-- 2021/10/21 Ver1.5 ADD Start
+  cv_msg_slip_date_discount CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10808';               -- 支払処理対象外メッセージ入金時値引
+  cv_msg_slip_date_err_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10809';               -- 支払処理対象外メッセージ内訳
+  cv_msg_slip_date_ins_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10810';               -- 支払処理済マイナス控除データ登録メッセージ内訳
+  cv_msg_slip_date_dis_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10811';               -- 支払処理対象外メッセージ入金時値引内訳
+-- 2021/10/21 Ver1.5 ADD End
   cv_msg_lock_err           CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10632';               -- ロックエラーメッセージ
   --トークン値
   cv_tkn_source_line_id     CONSTANT  VARCHAR2(15)  := 'SOURCE_LINE_ID';                 -- 販売実績明細IDのトークン名
@@ -123,6 +130,11 @@ AS
   cv_tkn_column_value       CONSTANT  VARCHAR2(15)  := 'COLUMN_VALUE';                   -- 控除番号、明細番号のトークン名
   cv_tkn_data_type          CONSTANT  VARCHAR2(15)  := 'DATA_TYPE';                      -- データ種類のトークン名
 -- 2021/09/17 Ver1.4 ADD End
+-- 2021/10/21 Ver1.5 ADD Start
+  cv_tkn_target_date_end    CONSTANT  VARCHAR2(15)  := 'TARGET_DATE_END';                -- 対象期間（TO)のトークン名
+  cv_tkn_due_date           CONSTANT  VARCHAR2(15)  := 'DUE_DATE';                       -- 支払予定日のトークン名
+  cv_tkn_status             CONSTANT  VARCHAR2(15)  := 'STATUS';                         -- 支払伝票のステータスのトークン名
+-- 2021/10/21 Ver1.5 ADD End
   --フラグ・区分定数
   cv_item_category          CONSTANT  VARCHAR2(12)  := '本社商品区分';                   -- 定数：本社商品区分
   cv_dummy_flag             CONSTANT  VARCHAR2(5)   := 'DUMMY';                          -- 定数：DUMMY
@@ -156,6 +168,9 @@ AS
   cv_lookup_cls_code        CONSTANT  VARCHAR2(30)  := 'XXCOS1_MK_ORG_CLS_MST_013_A01';  -- 作成元区分
   cv_lookup_ded_type_code   CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEDUCTION_TYPE';          -- 控除タイプ
   cv_business_type          CONSTANT  VARCHAR2(20)  := 'XX03_BUSINESS_TYPE';             -- ビジネスタイプ
+-- 2021/10/21 Ver1.5 ADD Start
+  cv_head_erase_status      CONSTANT  VARCHAR2(30)  := 'XXCOK1_HEAD_ERASE_STATUS';       -- 控除消込ヘッダーステータス
+-- 2021/10/21 Ver1.5 ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3049,6 +3064,11 @@ AS
     lv_get_data_flag        VARCHAR2(1)    DEFAULT NULL;               -- データ作成処理フラグ
     lv_out_msg              VARCHAR2(1000) DEFAULT NULL;               -- メッセージ出力変数
     lb_retcode              BOOLEAN        DEFAULT NULL;               -- メッセージ出力関数の戻り値
+-- 2021/10/21 Ver1.5 ADD Start
+    ln_msg_err_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
+    ln_msg_dis_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
+    ln_msg_ins_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
+-- 2021/10/21 Ver1.5 ADD End
 --
     -- *** ローカル例外 ***
     no_data_expt              EXCEPTION;               -- 対象データ0件エラー
@@ -3143,6 +3163,133 @@ AS
 --
     l_del_cnt_rec           l_del_cnt_cur%ROWTYPE;
 --
+-- 2021/10/21 Ver1.5 ADD Start
+    -- *** ローカル・カーソル ***
+    -- リカバリ対象外削除メッセージ出力用カーソル
+    CURSOR l_del_message_cur
+    IS
+      SELECT 
+            recon.condition_no                   condition_no                           -- 控除番号
+           ,recon.deduction_type                 deduction_type                         -- 控除タイプ
+           ,recon.discount_target                discount_target                        -- 入金時値引対象
+           ,recon.recon_slip_num                 recon_slip_num                         -- 支払伝票番号
+           ,recon.recon_status                   recon_status                           -- 消込ステータス
+           ,to_char(recon.max_recon_due_date,'YYYY/MM/DD')             max_recon_due_date                     -- 支払予定日
+           ,to_char(recon.target_date_end,'YYYY/MM/DD')                target_date_end                        -- 対象期間(to)
+      FROM (
+           SELECT 
+                    xsd.sales_deduction_id               sales_deduction_id             -- 販売控除ID
+                   ,xsd.condition_no                    condition_no                    -- 控除番号
+                   ,xsd.condition_line_id               condition_line_id               -- 控除詳細ID
+                   ,flv.attribute2                      deduction_type                  -- 控除タイプ
+                   ,flv.attribute10                     discount_target                 -- 入金時値引対象
+                   ,xdrh.deduction_recon_head_id        deduction_recon_head_id         -- 控除消込ヘッダーID
+                   ,xdrh.recon_slip_num                 recon_slip_num                  -- 支払伝票番号
+                   ,flv2.meaning                        recon_status                    -- 消込ステータス
+                   ,xdrh.recon_due_date                 recon_due_date                  -- 支払予定日
+                   ,max(xdrh.recon_due_date) over(partition by  xsd.condition_line_id)  
+                                                        max_recon_due_date              -- MAX支払予定日
+                   ,xdrh.target_date_end                target_date_end                 -- 対象期間(to)
+            FROM   xxcok_sales_deduction      xsd                                       -- 販売控除情報
+                  ,fnd_lookup_values          flv                                       -- データ種類
+                  ,fnd_lookup_values          flv2                                      -- 控除消込ヘッダーステータス
+                  ,xxcok_deduction_recon_head xdrh                                      -- 控除消込ヘッダー
+            WHERE  xsd.recon_slip_num     IS NOT NULL                                   -- 支払伝票番号
+            AND    xsd.source_category    IN ( cv_s_flag ,cv_t_flag
+                                              ,cv_v_flag ,cv_f_flag)                    -- 作成元区分
+            AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )                   -- GL連携フラグ(Y:連携済、N:未連携)
+            AND    xsd.status              = cv_n_flag                                  -- ステータス(N：新規)
+            AND    xsd.condition_line_id  IN (SELECT xcl.condition_line_id     condition_line_id       -- 控除詳細ID
+                                              FROM   xxcok_condition_header    xch                     -- 控除条件テーブル
+                                                    ,xxcok_condition_lines     xcl                     -- 控除詳細テーブル
+                                              WHERE  xch.condition_id              = xcl.condition_id  -- 控除条件ID
+                                              AND (  (    xch.header_recovery_flag  = cv_d_flag)
+                                                   OR(    xch.header_recovery_flag  = cv_u_flag
+                                                      AND xcl.line_recovery_flag    = cv_d_flag)
+                                                   OR(    xch.header_recovery_flag  = cv_n_flag
+                                                      AND xcl.line_recovery_flag    = cv_d_flag))       -- リカバリ対象フラグ
+                                              AND (     xch.request_id            = gn_request_id
+                                                    OR  xcl.request_id            = gn_request_id)    -- 要求ID
+                                             )
+            AND  ( xsd.report_decision_flag   IS NULL         OR
+                   xsd.report_decision_flag    = cv_deci_flag )                         -- 速報確定フラグ
+            AND    flv.lookup_type         = cv_lookup_dedu_code
+            AND    flv.lookup_code         = xsd.data_type
+            AND    flv.language            = USERENV('LANG')
+            AND    flv.enabled_flag        = cv_y_flag
+            AND    flv.attribute10         = cv_n_flag                                  -- 入金時値引以外
+            AND    flv2.lookup_type        = cv_head_erase_status
+            AND    flv2.lookup_code        = xdrh.recon_status
+            AND    flv2.language           = USERENV('LANG')
+            AND    flv2.enabled_flag       = cv_y_flag
+            AND    xsd.recon_slip_num      = xdrh.recon_slip_num
+            UNION ALL
+            SELECT xsd.sales_deduction_id              sales_deduction_id               -- 販売控除ID
+                  ,xsd.condition_no                    condition_no                     -- 控除番号
+                  ,xsd.condition_line_id               condition_line_id                -- 控除詳細ID
+                  ,null                                deduction_type                   -- 控除タイプ
+                  ,flv.attribute10                     discount_target                  -- 入金時値引対象
+                  ,rct.customer_trx_id                 deduction_recon_head_id          -- 控除消込ヘッダーID
+                  ,xsd.recon_slip_num                  recon_slip_num                   -- 支払伝票番号
+                  ,null                                recon_status                     -- 消込ステータス
+                  ,aps.due_date                        due_date                         -- 支払予定日
+                  ,max(aps.due_date) over(partition by  xsd.condition_line_id)  
+                                                              max_recon_due_date        -- MAX支払予定日
+                  ,null                                target_date_end                  -- 対象期間(to)
+            FROM   xxcok_sales_deduction      xsd                                       -- 販売控除情報
+                  ,fnd_lookup_values          flv                                       -- データ種類
+                  ,ra_customer_trx_all        rct                                       -- AR取引ヘッダー
+                  ,ar_payment_schedules_all   aps                                       -- AR入金予定
+            WHERE  xsd.recon_slip_num     IS NOT NULL                                   -- 支払伝票番号
+            AND    xsd.source_category    IN ( cv_s_flag ,cv_t_flag
+                                              ,cv_v_flag ,cv_f_flag)                    -- 作成元区分
+            AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )                   -- GL連携フラグ(Y:連携済、N:未連携)
+            AND    xsd.status              = cv_n_flag                                  -- ステータス(N：新規)
+            AND    xsd.condition_line_id  IN  (SELECT xcl.condition_line_id     condition_line_id       -- 控除詳細ID
+                                               FROM   xxcok_condition_header    xch                     -- 控除条件テーブル
+                                                     ,xxcok_condition_lines     xcl                     -- 控除詳細テーブル
+                                               WHERE  xch.condition_id              = xcl.condition_id  -- 控除条件ID
+                                               AND (  (    xch.header_recovery_flag  = cv_d_flag)
+                                                    OR(    xch.header_recovery_flag  = cv_u_flag
+                                                       AND xcl.line_recovery_flag    = cv_d_flag)
+                                                    OR(    xch.header_recovery_flag  = cv_n_flag
+                                                       AND xcl.line_recovery_flag    = cv_d_flag))       -- リカバリ対象フラグ
+                                                AND  (     xch.request_id            = gn_request_id
+                                                       OR  xcl.request_id            = gn_request_id)    -- 要求ID
+                                               )
+           AND  ( xsd.report_decision_flag   IS NULL         OR
+                   xsd.report_decision_flag    = cv_deci_flag )                         -- 速報確定フラグ
+            AND    flv.lookup_type         = cv_lookup_dedu_code
+            AND    flv.lookup_code         = xsd.data_type
+            AND    flv.language            = USERENV('LANG')
+            AND    flv.enabled_flag        = cv_y_flag
+            AND    flv.attribute10         = cv_y_flag                                  -- 入金時値引
+            AND    xsd.recon_slip_num      = rct.trx_number
+            AND    rct.customer_trx_id     = aps.customer_trx_id
+            )recon
+      WHERE recon.recon_due_date = recon.max_recon_due_date
+      GROUP BY
+            recon.condition_no                                                          -- 控除番号
+           ,condition_line_id                                                           -- 控除詳細ID
+           ,recon.deduction_type                                                        -- データ種類
+           ,discount_target                                                             -- 入金時値引対象
+           ,recon.recon_slip_num                                                        -- 支払伝票番号
+           ,recon.recon_status                                                          -- 消込ステータス
+           ,recon.max_recon_due_date                                                    -- 支払予定日
+           ,recon.target_date_end                                                       -- 対象期間(to)
+      ORDER BY 
+            decode(recon.deduction_type,cv_030,'XXX', 
+                   decode(recon.deduction_type,cv_040,'XXX','000'))                     -- データ種類
+           ,recon.discount_target                                                       -- 入金時値引対象
+           ,recon.condition_no                                                          -- 控除番号
+           ,condition_line_id                                                           -- 控除詳細ID
+           ,recon.recon_slip_num                                                        -- 支払伝票番号
+      ;
+--
+    l_del_message_rec           l_del_message_cur%ROWTYPE;
+--
+-- 2021/10/21 Ver1.5 ADD End
+--
     -- *** ローカル・レコード ***
 --
   BEGIN
@@ -3166,6 +3313,117 @@ AS
       -- 対象データ無しエラー
       RAISE no_data_expt;
     END IF;
+--
+-- 2021/10/21 Ver1.5 ADD Start
+    -- リカバリ対象外メッセージ出力用カーソルオープン
+    OPEN l_del_message_cur;
+    LOOP
+    -- データ取得
+    FETCH l_del_message_cur INTO l_del_message_rec;
+    EXIT WHEN l_del_message_cur%NOTFOUND;
+--
+      IF l_del_message_rec.deduction_type IN (cv_030,cv_040)  THEN
+        IF ln_msg_ins_cnt = 0 THEN
+          --支払処理中の控除を相殺する控除データ作成メッセージ見出し
+          lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                 ,iv_name         => cv_msg_slip_date_ins_d
+                                                );
+--
+          lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                       ,lv_out_msg         -- メッセージ
+                                                       ,1                  -- 改行
+                                                       );
+        END IF;
+        ln_msg_ins_cnt := ln_msg_ins_cnt + 1;
+--
+        --支払処理中の控除を相殺する控除データ作成メッセージ
+        lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                               ,iv_name         => cv_msg_slip_date_ins
+                                               ,iv_token_name1  => cv_tkn_condition_no
+                                               ,iv_token_value1 => l_del_message_rec.condition_no          -- 控除番号
+                                               ,iv_token_name2  => cv_tkn_recon_slip_num
+                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+                                               ,iv_token_name3  => cv_tkn_target_date_end
+                                               ,iv_token_value3 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+                                               ,iv_token_name4  => cv_tkn_due_date
+                                               ,iv_token_value4 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+                                               ,iv_token_name5  => cv_tkn_status
+                                               ,iv_token_value5 => l_del_message_rec.recon_status          -- ステータス
+                                               );
+--
+        lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                     ,lv_out_msg         -- メッセージ
+                                                     ,1                  -- 改行
+                                                     );
+--
+      ELSIF l_del_message_rec.discount_target = cv_y_flag  THEN
+        IF ln_msg_dis_cnt = 0 THEN
+          --支払処理確定済(支払伝票が承認済)の控除データの削除スキップメッセージ(入金時値引)見出し
+          lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                 ,iv_name         => cv_msg_slip_date_dis_d
+                                                 );
+--
+          lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                       ,lv_out_msg         -- メッセージ
+                                                       ,1                  -- 改行
+                                                       );
+        END IF;
+        ln_msg_dis_cnt := ln_msg_dis_cnt + 1;
+--
+        --支払処理確定済(支払伝票が承認済)の控除データの削除スキップメッセージ(入金時値引)
+        lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                               ,iv_name         => cv_msg_slip_date_discount
+                                               ,iv_token_name1  => cv_tkn_condition_no
+                                               ,iv_token_value1 => l_del_message_rec.condition_no          -- 控除番号
+                                               ,iv_token_name2  => cv_tkn_recon_slip_num
+                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+                                               ,iv_token_name3  => cv_tkn_due_date
+                                               ,iv_token_value3 => l_del_message_rec.max_recon_due_date    -- 支払期日
+                                               );
+--
+        lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                     ,lv_out_msg         -- メッセージ
+                                                     ,1                  -- 改行
+                                                     );
+--
+      ELSE
+        IF ln_msg_err_cnt = 0 THEN
+          --支払処理確定済(支払伝票が承認済)の控除データの削除スキップメッセージ見出し
+          lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                 ,iv_name         => cv_msg_slip_date_err_d
+                                                 );
+--
+          lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                       ,lv_out_msg         -- メッセージ
+                                                       ,1                  -- 改行
+                                                       );
+--
+        END IF;
+        ln_msg_err_cnt := ln_msg_err_cnt + 1;
+--
+        --支払処理確定済(支払伝票が承認済)の控除データの削除スキップメッセージ
+        lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                               ,iv_name         => cv_msg_slip_date_err
+                                               ,iv_token_name1  => cv_tkn_condition_no
+                                               ,iv_token_value1 => l_del_message_rec.condition_no          -- 控除番号
+                                               ,iv_token_name2  => cv_tkn_recon_slip_num
+                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+                                               ,iv_token_name3  => cv_tkn_target_date_end
+                                               ,iv_token_value3 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+                                               ,iv_token_name4  => cv_tkn_due_date
+                                               ,iv_token_value4 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+                                               );
+--
+        lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                     ,lv_out_msg         -- メッセージ
+                                                     ,1                  -- 改行
+                                                     );
+      END IF;
+    END LOOP;
+    -- カーソルクローズ
+    CLOSE l_del_message_cur;
+   --
+-- 2021/10/21 Ver1.5 ADD End
 --
     -- 控除条件のループスタート
     <<main_data_loop>>
@@ -3328,35 +3586,39 @@ AS
              ,cd_program_update_date                      -- プログラム更新日
              );
 --
-            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
-                                                   ,iv_name         => cv_msg_slip_date_ins
-                                                   ,iv_token_name1  => cv_tkn_column_value
-                                                   ,iv_token_value1 => l_del_cnt_rec.condition_no ||',' ||l_del_cnt_rec.detail_number  -- 控除番号、明細番号
-                                                   ,iv_token_name2  => cv_tkn_data_type
-                                                   ,iv_token_value2 => l_del_cnt_rec.dedu_type_name                                    -- データ種類
-                                                   ,iv_token_name3  => cv_tkn_recon_slip_num
-                                                   ,iv_token_value3 => l_del_cnt_rec.recon_slip_num                                    -- 支払伝票番号
-                                                   );
+-- 2021/10/21 Ver1.5 DELL Start
+--            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+--                                                   ,iv_name         => cv_msg_slip_date_ins
+--                                                   ,iv_token_name1  => cv_tkn_column_value
+--                                                   ,iv_token_value1 => l_del_cnt_rec.condition_no ||',' ||l_del_cnt_rec.detail_number  -- 控除番号、明細番号
+--                                                   ,iv_token_name2  => cv_tkn_data_type
+--                                                   ,iv_token_value2 => l_del_cnt_rec.dedu_type_name                                    -- データ種類
+--                                                   ,iv_token_name3  => cv_tkn_recon_slip_num
+--                                                   ,iv_token_value3 => l_del_cnt_rec.recon_slip_num                                    -- 支払伝票番号
+--                                                   );
 --
-            lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
-                                                         ,lv_out_msg         -- メッセージ
-                                                         ,1                  -- 改行
-                                                         );
+--            lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+--                                                         ,lv_out_msg         -- メッセージ
+--                                                         ,1                  -- 改行
+--                                                         );
+-- 2021/10/21 Ver1.5 DELL End
 --
             gn_del_ins_cnt := gn_del_ins_cnt + 1;
 -- 2021/09/17 Ver1.4 ADD End
 -- 2021/09/17 Ver1.4 MOD Start
           ELSE
-            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
-                                                   ,iv_name         => cv_msg_slip_date_err
-                                                   ,iv_token_name1  => cv_tkn_recon_slip_num
-                                                   ,iv_token_value1 => l_del_cnt_rec.recon_slip_num        -- 支払伝票番号
-                                                   );
+-- 2021/10/21 Ver1.5 DELL Start
+--            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+--                                                   ,iv_name         => cv_msg_slip_date_err
+--                                                   ,iv_token_name1  => cv_tkn_recon_slip_num
+--                                                   ,iv_token_value1 => l_del_cnt_rec.recon_slip_num        -- 支払伝票番号
+--                                                   );
 --
-            lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
-                                                         ,lv_out_msg         -- メッセージ
-                                                         ,1                  -- 改行
-                                                         );
+--            lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+--                                                         ,lv_out_msg         -- メッセージ
+--                                                         ,1                  -- 改行
+--                                                         );
+-- 2021/10/21 Ver1.5 DELL End
 --
             gn_del_skip_cnt := gn_del_skip_cnt + 1;
           END IF;
@@ -3982,6 +4244,12 @@ AS
          which  => FND_FILE.LOG
         ,buff   => lv_errbuf      -- エラーメッセージ
       );
+-- 2021/10/21 Ver1.5 ADD Start 支払済データが存在する場合は警告
+    ELSE
+      IF gn_add_skip_cnt > 0 or gn_del_ins_cnt > 0 THEN
+         lv_retcode := cv_status_warn;
+      END IF;
+-- 2021/10/21 Ver1.5 END Start
     END IF;
 --
     -- 空行挿入
