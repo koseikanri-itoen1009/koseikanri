@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS018A01C(body)
  * Description      : CSVデータアップロード（販売実績）
  * MD.050           : MD050_COS_018_A01_CSVデータアップロード（販売実績）
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2019/06/20    1.2   S.Kuwako         E_本稼動_15472軽減税率対応
  *  2019/07/25    1.3   N.Koyama         E_本稼動_15472軽減税率対応(障害対応)
  *  2019/11/06    1.4   Y.Ohishi         E_本稼動_15850VD委託販売実績アップロードの桁数について
+ *  2021/10/27    1.5   Y.Shoji          E_本稼動_17406VD委託販売実績アップロードの納品伝票番号のチェックについて
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,9 @@ AS
   cv_msg_get_open_period_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15124';    --在庫会計期間オープン期間取得エラー
   cv_msg_dlv_date_chk_err_2         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15125';    --納品日オープン会計期間外エラー
 -- Ver.1.4 ADD END
+-- Ver.1.5 ADD START
+  cv_msg_inv_num_multi_cust_err     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15354';    --納品伝票番号・複数顧客チェックエラー
+-- Ver.1.5 ADD END
 --
   --メッセージ用文字列
   cv_msg_file_up_load               CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11282';    --ファイルアップロードIF
@@ -196,6 +200,9 @@ AS
   cv_tkn_param2                     CONSTANT VARCHAR2(30)  := 'PARAM2';              --パラメータ2
   cv_tkn_param3                     CONSTANT VARCHAR2(30)  := 'PARAM3';              --パラメータ3
   cv_tkn_param4                     CONSTANT VARCHAR2(30)  := 'PARAM4';              --パラメータ4
+-- Ver.1.5 ADD START
+  cv_tkn_param5                     CONSTANT VARCHAR2(30)  := 'PARAM5';              --パラメータ5
+-- Ver.1.5 ADD END
   cv_tkn_column                     CONSTANT VARCHAR2(30)  := 'COLUMN';              --項目名
 -- Ver.1.2 ADD START
   cv_tkn_common                     CONSTANT VARCHAR2(30)  := 'LINE_NO';             --行番号
@@ -398,6 +405,10 @@ AS
   gn_line_suc_cnt                   NUMBER;                                             --成功明細カウンター
   gt_bp_com_code                    xxcos_sales_bus_partners.bp_company_code%TYPE;      --取引先会社コード
   gt_dlv_inv_num                    xxcos_sales_bus_partners.dlv_invoice_number%TYPE;   --納品伝票番号
+-- Ver.1.5 ADD START
+  gt_pre_dlv_inv_num                xxcos_sales_exp_headers.dlv_invoice_number%TYPE;    --前レコード・納品伝票番号
+  gt_pre_customer_code              xxcos_sales_exp_headers.ship_to_customer_code%TYPE; --前レコード・顧客コード
+-- Ver.1.5 ADD END
 -- Ver.1.4 ADD START
 --
   -- オープン会計期間格納用
@@ -2282,6 +2293,39 @@ AS
 --
     END IF;
 --
+-- Ver.1.5 ADD START
+    -- 前レコードと納品伝票番号が同じで、顧客コードが違う場合はエラーとする。
+    IF (  in_cnt > 2
+      AND gt_pre_dlv_inv_num   =  iv_dlv_inv_num
+      AND gt_pre_customer_code <> lv_customer_code ) THEN
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+              iv_application   => cv_xxcos_appl_short_name
+             ,iv_name          => cv_msg_inv_num_multi_cust_err              --納品伝票番号・複数顧客チェックエラー
+             ,iv_token_name1   => cv_tkn_param1                              --パラメータ1(トークン)
+             ,iv_token_value1  => in_cnt                                     --行番号
+             ,iv_token_name2   => cv_tkn_param2                              --パラメータ2(トークン)
+             ,iv_token_value2  => iv_dlv_inv_num                             --納品伝票番号
+             ,iv_token_name3   => cv_tkn_param3                              --パラメータ3(トークン)
+             ,iv_token_value3  => in_line_number                             --明細番号
+             ,iv_token_name4   => cv_tkn_param4                              --パラメータ4(トークン)
+             ,iv_token_value4  => iv_customer_code                           --伊藤園顧客コード
+             ,iv_token_name5   => cv_tkn_param5                              --パラメータ5(トークン)
+             ,iv_token_value5  => iv_bp_customer_code                        --取引先顧客コード
+            );
+--
+      FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+       ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+      );
+      ov_retcode := cv_status_warn;
+    END IF;
+--
+    -- チェック後に現レコード値を前レコード値として設定
+    gt_pre_dlv_inv_num   := iv_dlv_inv_num;
+    gt_pre_customer_code := lv_customer_code;
+--
+-- Ver.1.5 ADD END
     --伊藤園顧客コードが取得できる場合
     IF ( lv_customer_code IS NOT NULL ) THEN
 --
