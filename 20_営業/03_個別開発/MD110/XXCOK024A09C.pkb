@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2021/07/26    1.3   SCSK K.Yoshikawa [E_本稼働_17399]
  *  2021/09/17    1.4   SCSK K.Yoshikawa [E_本稼動_17540]マスタ削除時の支払済控除データの対応
  *  2021/10/21    1.5   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
+ *  2021/11/05    1.6   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
  *
  *****************************************************************************************/
 --
@@ -3171,6 +3172,9 @@ AS
       SELECT 
             recon.condition_no                   condition_no                           -- 控除番号
            ,recon.deduction_type                 deduction_type                         -- 控除タイプ
+-- 2021/11/05 Ver1.6 ADD Start
+           ,recon.data_type                      data_type                              -- データ種類名称
+-- 2021/11/05 Ver1.6 ADD End
            ,recon.discount_target                discount_target                        -- 入金時値引対象
            ,recon.recon_slip_num                 recon_slip_num                         -- 支払伝票番号
            ,recon.recon_status                   recon_status                           -- 消込ステータス
@@ -3183,12 +3187,19 @@ AS
                    ,xsd.condition_line_id               condition_line_id               -- 控除詳細ID
                    ,flv.attribute2                      deduction_type                  -- 控除タイプ
                    ,flv.attribute10                     discount_target                 -- 入金時値引対象
+-- 2021/11/05 Ver1.6 ADD Start
+                   ,flv.meaning                         data_type                       -- データ種類名称
+-- 2021/11/05 Ver1.6 ADD End
                    ,xdrh.deduction_recon_head_id        deduction_recon_head_id         -- 控除消込ヘッダーID
                    ,xdrh.recon_slip_num                 recon_slip_num                  -- 支払伝票番号
                    ,flv2.meaning                        recon_status                    -- 消込ステータス
                    ,xdrh.recon_due_date                 recon_due_date                  -- 支払予定日
-                   ,max(xdrh.recon_due_date) over(partition by  xsd.condition_line_id)  
+-- 2021/11/05 Ver1.6 MOD Start
+--                   ,max(xdrh.recon_due_date) over(partition by  xsd.condition_line_id)  
+--                                                        max_recon_due_date              -- MAX支払予定日
+                   ,max(xdrh.recon_due_date) over(partition by  xsd.condition_id)  
                                                         max_recon_due_date              -- MAX支払予定日
+-- 2021/11/05 Ver1.6 MOD End
                    ,xdrh.target_date_end                target_date_end                 -- 対象期間(to)
             FROM   xxcok_sales_deduction      xsd                                       -- 販売控除情報
                   ,fnd_lookup_values          flv                                       -- データ種類
@@ -3229,12 +3240,19 @@ AS
                   ,xsd.condition_line_id               condition_line_id                -- 控除詳細ID
                   ,null                                deduction_type                   -- 控除タイプ
                   ,flv.attribute10                     discount_target                  -- 入金時値引対象
+-- 2021/11/05 Ver1.6 ADD Start
+                  ,flv.meaning                         data_type                        -- データ種類名称
+-- 2021/11/05 Ver1.6 ADD End
                   ,rct.customer_trx_id                 deduction_recon_head_id          -- 控除消込ヘッダーID
                   ,xsd.recon_slip_num                  recon_slip_num                   -- 支払伝票番号
                   ,null                                recon_status                     -- 消込ステータス
                   ,aps.due_date                        due_date                         -- 支払予定日
-                  ,max(aps.due_date) over(partition by  xsd.condition_line_id)  
+-- 2021/11/05 Ver1.6 MOD Start
+--                  ,max(aps.due_date) over(partition by  xsd.condition_line_id)  
+--                                                              max_recon_due_date        -- MAX支払予定日
+                  ,max(aps.due_date) over(partition by  xsd.condition_id)  
                                                               max_recon_due_date        -- MAX支払予定日
+-- 2021/11/05 Ver1.6 MOD End
                   ,null                                target_date_end                  -- 対象期間(to)
             FROM   xxcok_sales_deduction      xsd                                       -- 販売控除情報
                   ,fnd_lookup_values          flv                                       -- データ種類
@@ -3270,8 +3288,13 @@ AS
       WHERE recon.recon_due_date = recon.max_recon_due_date
       GROUP BY
             recon.condition_no                                                          -- 控除番号
-           ,condition_line_id                                                           -- 控除詳細ID
+-- 2021/11/05 Ver1.6 DEL Start
+--           ,condition_line_id                                                           -- 控除詳細ID
+-- 2021/11/05 Ver1.6 DEL End
            ,recon.deduction_type                                                        -- データ種類
+-- 2021/11/05 Ver1.6 ADD Start
+           ,recon.data_type                                                             -- データ種類名称
+-- 2021/11/05 Ver1.6 ADD End
            ,discount_target                                                             -- 入金時値引対象
            ,recon.recon_slip_num                                                        -- 支払伝票番号
            ,recon.recon_status                                                          -- 消込ステータス
@@ -3282,7 +3305,9 @@ AS
                    decode(recon.deduction_type,cv_040,'XXX','000'))                     -- データ種類
            ,recon.discount_target                                                       -- 入金時値引対象
            ,recon.condition_no                                                          -- 控除番号
-           ,condition_line_id                                                           -- 控除詳細ID
+-- 2021/11/05 Ver1.6 DEL Start
+--           ,condition_line_id                                                           -- 控除詳細ID
+-- 2021/11/05 Ver1.6 DEL End
            ,recon.recon_slip_num                                                        -- 支払伝票番号
       ;
 --
@@ -3341,14 +3366,26 @@ AS
                                                ,iv_name         => cv_msg_slip_date_ins
                                                ,iv_token_name1  => cv_tkn_condition_no
                                                ,iv_token_value1 => l_del_message_rec.condition_no          -- 控除番号
-                                               ,iv_token_name2  => cv_tkn_recon_slip_num
-                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
-                                               ,iv_token_name3  => cv_tkn_target_date_end
-                                               ,iv_token_value3 => l_del_message_rec.target_date_end       -- 対象期間（TO)
-                                               ,iv_token_name4  => cv_tkn_due_date
-                                               ,iv_token_value4 => l_del_message_rec.max_recon_due_date    -- 支払予定日
-                                               ,iv_token_name5  => cv_tkn_status
-                                               ,iv_token_value5 => l_del_message_rec.recon_status          -- ステータス
+-- 2021/11/05 Ver1.6 MOD Start
+                                               ,iv_token_name2  => cv_tkn_data_type
+                                               ,iv_token_value2 => l_del_message_rec.data_type             -- データ種類
+                                               ,iv_token_name3  => cv_tkn_recon_slip_num
+                                               ,iv_token_value3 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+                                               ,iv_token_name4  => cv_tkn_target_date_end
+                                               ,iv_token_value4 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+                                               ,iv_token_name5  => cv_tkn_due_date
+                                               ,iv_token_value5 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+                                               ,iv_token_name6  => cv_tkn_status
+                                               ,iv_token_value6 => l_del_message_rec.recon_status          -- ステータス
+--                                               ,iv_token_name2  => cv_tkn_recon_slip_num
+--                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+--                                               ,iv_token_name3  => cv_tkn_target_date_end
+--                                               ,iv_token_value3 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+--                                               ,iv_token_name4  => cv_tkn_due_date
+--                                               ,iv_token_value4 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+--                                               ,iv_token_name5  => cv_tkn_status
+--                                               ,iv_token_value5 => l_del_message_rec.recon_status          -- ステータス
+-- 2021/11/05 Ver1.6 MOD End
                                                );
 --
         lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
@@ -3406,12 +3443,24 @@ AS
                                                ,iv_name         => cv_msg_slip_date_err
                                                ,iv_token_name1  => cv_tkn_condition_no
                                                ,iv_token_value1 => l_del_message_rec.condition_no          -- 控除番号
-                                               ,iv_token_name2  => cv_tkn_recon_slip_num
-                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
-                                               ,iv_token_name3  => cv_tkn_target_date_end
-                                               ,iv_token_value3 => l_del_message_rec.target_date_end       -- 対象期間（TO)
-                                               ,iv_token_name4  => cv_tkn_due_date
-                                               ,iv_token_value4 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+-- 2021/11/05 Ver1.6 MOD Start
+                                               ,iv_token_name2  => cv_tkn_data_type
+                                               ,iv_token_value2 => l_del_message_rec.data_type             -- データ種類
+                                               ,iv_token_name3  => cv_tkn_recon_slip_num
+                                               ,iv_token_value3 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+                                               ,iv_token_name4  => cv_tkn_target_date_end
+                                               ,iv_token_value4 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+                                               ,iv_token_name5  => cv_tkn_due_date
+                                               ,iv_token_value5 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+                                               ,iv_token_name6  => cv_tkn_status
+                                               ,iv_token_value6 => l_del_message_rec.recon_status          -- ステータス
+--                                               ,iv_token_name2  => cv_tkn_recon_slip_num
+--                                               ,iv_token_value2 => l_del_message_rec.recon_slip_num        -- 支払伝票番号
+--                                               ,iv_token_name3  => cv_tkn_target_date_end
+--                                               ,iv_token_value3 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+--                                               ,iv_token_name4  => cv_tkn_due_date
+--                                               ,iv_token_value4 => l_del_message_rec.max_recon_due_date    -- 支払予定日
+-- 2021/11/05 Ver1.6 MOD End
                                                );
 --
         lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
