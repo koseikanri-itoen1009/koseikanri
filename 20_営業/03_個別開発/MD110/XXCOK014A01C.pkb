@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.25
+ * Version          : 3.26
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2021/01/04    3.23  H.Futamura       [E_本稼動_15904] 税抜きでの自販機BM計算について
  *  2021/04/15    3.24  SCSK Y.Koh       [E_本稼動_16026]
  *  2021/06/11    3.25  H.Futamura       [E_本稼動_17197] 税込BM、電気代端数処理変更
+ *  2021/09/16    3.26  H.Futamura       [E_本稼動_17526] 非課税BMの消費税計算について
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -201,6 +202,10 @@ AS
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
   cv_profile_name_11               CONSTANT VARCHAR2(50)    := 'XXCOK1_XSEL_DATA_LOCK';             -- 販売実績明細データロック
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+-- Ver.3.26 H.Futamura ADD START
+  cv_profile_name_12               CONSTANT VARCHAR2(50)    := 'XXCOK1_TAX_EXEMPT_CODE';            -- 非課税_税コード
+  cv_profile_name_13               CONSTANT VARCHAR2(50)    := 'XXCOK1_TAX_EXEMPT_RATE';            -- 非課税_税率
+-- Ver.3.26 H.Futamura ADD END
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_DISTRICT_PARA_MST';       -- 販手販協計算実行区分
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
@@ -335,6 +340,10 @@ AS
 -- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
   gv_xsel_data_lock                VARCHAR2(1)   DEFAULT NULL;   -- 販手販協_販売実績明細ロック
 -- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+-- Ver.3.26 H.Futamura ADD START
+  gv_tax_exempt_code               VARCHAR2(4)   DEFAULT NULL;   -- 非課税_税コード
+  gv_tax_exempt_rate               NUMBER        DEFAULT NULL;   -- 非課税_税率
+-- Ver.3.26 H.Futamura ADD END
   --==================================================
   -- 共通例外
   --==================================================
@@ -4883,13 +4892,31 @@ END insert_xcbs;
           -- 【BM2】VDBM(税抜)
           ln_bm2_amt_no_tax    := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
           -- 【BM2】VDBM(税込)
-          ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.26 H.Futamura MOD START
+--          ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'2'（税抜）の場合
+          IF( i_get_sales_data_rec.bm2_tax_kbn = '2' ) THEN
+            ln_bm2_amt_tax     := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'3'（非課税）の場合
+          ELSIF( i_get_sales_data_rec.bm2_tax_kbn = '3' ) THEN
+            ln_bm2_amt_tax     := ln_bm2_amt_no_tax;
+          END IF;
+-- Ver.3.26 H.Futamura MOD END
         -- 販売実績情報の BM2 BM金額が NULL 以外の場合
         ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
           -- 【BM2】VDBM(税抜)
           ln_bm2_amt_no_tax    := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
           -- 【BM2】VDBM(税込)
-          ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.26 H.Futamura MOD START
+--          ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'2'（税抜）の場合
+          IF( i_get_sales_data_rec.bm2_tax_kbn = '2' ) THEN
+            ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'3'（非課税）の場合
+          ELSIF( i_get_sales_data_rec.bm2_tax_kbn = '3' ) THEN
+            ln_bm2_amt_tax     := ln_bm2_amt_no_tax;
+          END IF;
+-- Ver.3.26 H.Futamura MOD END
         END IF;
       END IF;
 --
@@ -4900,13 +4927,31 @@ END insert_xcbs;
           -- 【BM3】VDBM(税抜)
           ln_bm3_amt_no_tax    := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
           -- 【BM3】VDBM(税込)
-          ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.26 H.Futamura MOD START
+--          ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'2'（税抜）の場合
+          IF( i_get_sales_data_rec.bm3_tax_kbn = '2' ) THEN
+            ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'3'（非課税）の場合
+          ELSIF( i_get_sales_data_rec.bm3_tax_kbn = '3' ) THEN
+            ln_bm3_amt_tax     := ln_bm3_amt_no_tax;
+          END IF;
+-- Ver.3.26 H.Futamura MOD END
         -- 販売実績情報の BM3 BM金額が NULL 以外の場合
         ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
           -- 【BM3】VDBM(税抜)
           ln_bm3_amt_no_tax    := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
           -- 【BM3】VDBM(税込)
-          ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+-- Ver.3.26 H.Futamura MOD START
+--          ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'2'（税抜）の場合
+          IF( i_get_sales_data_rec.bm3_tax_kbn = '2' ) THEN
+            ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+          -- BM2税区分'3'（非課税）の場合
+          ELSIF( i_get_sales_data_rec.bm3_tax_kbn = '3' ) THEN
+            ln_bm3_amt_tax     := ln_bm3_amt_no_tax;
+          END IF;
+-- Ver.3.26 H.Futamura MOD END
         END IF;
       END IF;
 -- Ver.3.20 N.Abe ADD END
@@ -5706,6 +5751,27 @@ END insert_xcbs;
 -- Ver.3.20 N.Abe DEL END
     l_xcbs_data_tab( cn_index_2 ).electric_amt_tax := i_get_sales_data_rec.bm2_electric_amt_tax;
     l_xcbs_data_tab( cn_index_3 ).electric_amt_tax := i_get_sales_data_rec.bm3_electric_amt_tax;
+-- Ver.3.26 H.Futamura ADD START
+    -- 税コード、消費税率
+    l_xcbs_data_tab( cn_index_1 ).tax_code   := i_get_sales_data_rec.tax_code;
+    l_xcbs_data_tab( cn_index_1 ).tax_rate   := i_get_sales_data_rec.tax_rate;
+    -- BM税区分 = '3'（非課税）の場合
+    IF ( i_get_sales_data_rec.bm2_tax_kbn = '3' ) THEN
+      l_xcbs_data_tab( cn_index_2 ).tax_code := gv_tax_exempt_code;
+      l_xcbs_data_tab( cn_index_2 ).tax_rate := gv_tax_exempt_rate;
+    ELSE
+      l_xcbs_data_tab( cn_index_2 ).tax_code := i_get_sales_data_rec.tax_code;
+      l_xcbs_data_tab( cn_index_2 ).tax_rate := i_get_sales_data_rec.tax_rate;
+    END IF;
+    -- BM税区分 = '3'（非課税）の場合
+    IF ( i_get_sales_data_rec.bm3_tax_kbn = '3' ) THEN
+      l_xcbs_data_tab( cn_index_3 ).tax_code := gv_tax_exempt_code;
+      l_xcbs_data_tab( cn_index_3 ).tax_rate := gv_tax_exempt_rate;
+    ELSE
+      l_xcbs_data_tab( cn_index_3 ).tax_code := i_get_sales_data_rec.tax_code;
+      l_xcbs_data_tab( cn_index_3 ).tax_rate := i_get_sales_data_rec.tax_rate;
+    END IF;
+-- Ver.3.26 H.Futamura ADD END
     --==================================================
     -- 5.取得した内容を条件別販手販協情報に設定します。
     --==================================================
@@ -5729,8 +5795,10 @@ END insert_xcbs;
       l_xcbs_data_tab( i ).container_type_code       := i_get_sales_data_rec.container_code;            -- 容器区分コード
       l_xcbs_data_tab( i ).selling_price             := i_get_sales_data_rec.dlv_unit_price;            -- 売価金額
       l_xcbs_data_tab( i ).consumption_tax_class     := i_get_sales_data_rec.tax_div;                   -- 消費税区分
-      l_xcbs_data_tab( i ).tax_code                  := i_get_sales_data_rec.tax_code;                  -- 税金コード
-      l_xcbs_data_tab( i ).tax_rate                  := i_get_sales_data_rec.tax_rate;                  -- 消費税率
+-- Ver.3.26 H.Futamura DEL START
+--      l_xcbs_data_tab( i ).tax_code                  := i_get_sales_data_rec.tax_code;                  -- 税金コード
+--      l_xcbs_data_tab( i ).tax_rate                  := i_get_sales_data_rec.tax_rate;                  -- 消費税率
+-- Ver.3.26 H.Futamura DEL END
       l_xcbs_data_tab( i ).term_code                 := i_get_sales_data_rec.term_name;                 -- 支払条件
       l_xcbs_data_tab( i ).closing_date              := i_get_sales_data_rec.closing_date;              -- 締め日
       l_xcbs_data_tab( i ).expect_payment_date       := i_get_sales_data_rec.expect_payment_date;       -- 支払予定日
@@ -8308,6 +8376,44 @@ END insert_xt0c;
       RAISE error_proc_expt;
     END IF;
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+-- Ver.3.26 H.Futamura ADD START
+    --==================================================
+    -- プロファイル取得(XXCOK:非課税_税コード)
+    --==================================================
+    gv_tax_exempt_code := FND_PROFILE.VALUE( cv_profile_name_12 );
+    IF( gv_tax_exempt_code IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_12
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(XXCOK:非課税_税率)
+    --==================================================
+    gv_tax_exempt_rate := TO_NUMBER( FND_PROFILE.VALUE( cv_profile_name_13 ) );
+    IF( gv_tax_exempt_rate IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_13
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+-- Ver.3.26 H.Futamura ADD END
     --==================================================
     -- 稼働日カレンダコード取得
     --==================================================
