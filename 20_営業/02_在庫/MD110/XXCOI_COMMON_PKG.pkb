@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2017/01/23    1.17  S.Yamashita      [E_本稼動_13965]倉替入力の簡素化対応(引当可能数(総数)算出(ファンクション型)を追加)
  *  2017/04/18    1.18  S.Niki           [E_本稼動_14166]引当可能数表示対応(引当可能数(総数)算出2(ファンクション型)を追加)
  *  2017/07/03    1.19  S.Yamashita      [E_本稼動_14393]引当可能数算出 ヒント句追加
+ *  2021/11/18    1.20  K.Kanada         [E_本稼動_17782]パフォーマンス改善対応（Ver.1.16対応の戻し）
  *
  *****************************************************************************************/
 --
@@ -6781,7 +6782,10 @@ AS
       -- 引当情報取得
 -- == Ver1.16 Mod START ===================================
 --      SELECT NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
-      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n03) */
+-- Ver.1.20 K.Kanada Mod S
+--      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n03) */
+      SELECT 
+-- Ver.1.20 K.Kanada Mod E
              NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
 -- == Ver1.16 Mod END   ===================================
             ,NVL(SUM(xlri.singly_qty), 0)  singly_qty_sum  -- バラ数（合計）
