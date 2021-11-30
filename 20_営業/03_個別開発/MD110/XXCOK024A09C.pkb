@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *  2021/09/17    1.4   SCSK K.Yoshikawa [E_本稼動_17540]マスタ削除時の支払済控除データの対応
  *  2021/10/21    1.5   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
  *  2021/11/05    1.6   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
+ *  2021/11/25    1.7   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
+ *                                       [E_本稼動_17540]8月31日以前の控除を除外
  *
  *****************************************************************************************/
 --
@@ -76,6 +78,9 @@ AS
 -- 2021/09/17 Ver1.4 ADD End
   gn_add_skip_cnt           NUMBER;                    -- 控除データ登録支払済スキップ件数
   gn_error_cnt              NUMBER;                    -- エラー件数
+-- 2021/11/25 Ver1.7 ADD Start
+  gd_except_del_dedu_date   DATE;                      -- 問屋相殺控除データ作成除外基準日
+-- 2021/11/25 Ver1.7 ADD End
 --
 --##################################  固定部 END  ##################################
 --
@@ -119,6 +124,9 @@ AS
   cv_msg_slip_date_dis_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10811';               -- 支払処理対象外メッセージ入金時値引内訳
 -- 2021/10/21 Ver1.5 ADD End
   cv_msg_lock_err           CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10632';               -- ロックエラーメッセージ
+-- 2021/11/25 Ver1.7 ADD Start
+  cv_pro_msg                CONSTANT VARCHAR2(20)   := 'APP-XXCOK1-00003';               -- プロファイル取得エラー
+-- 2021/11/25 Ver1.7 ADD End
   --トークン値
   cv_tkn_source_line_id     CONSTANT  VARCHAR2(15)  := 'SOURCE_LINE_ID';                 -- 販売実績明細IDのトークン名
   cv_tkn_item_code          CONSTANT  VARCHAR2(15)  := 'ITEM_CODE';                      -- 品目コードのトークン名
@@ -136,6 +144,10 @@ AS
   cv_tkn_due_date           CONSTANT  VARCHAR2(15)  := 'DUE_DATE';                       -- 支払予定日のトークン名
   cv_tkn_status             CONSTANT  VARCHAR2(15)  := 'STATUS';                         -- 支払伝票のステータスのトークン名
 -- 2021/10/21 Ver1.5 ADD End
+-- 2021/11/25 Ver1.7 ADD Start
+  cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';                         -- プロファイル
+  cv_except_del_dedu_date   CONSTANT  VARCHAR2(30) := 'XXCOK1_EXCEPT_DEL_DEDU_DATE';     -- 問屋相殺控除データ作成除外基準日
+-- 2021/11/25 Ver1.7 ADD End
   --フラグ・区分定数
   cv_item_category          CONSTANT  VARCHAR2(12)  := '本社商品区分';                   -- 定数：本社商品区分
   cv_dummy_flag             CONSTANT  VARCHAR2(5)   := 'DUMMY';                          -- 定数：DUMMY
@@ -1376,6 +1388,23 @@ AS
 --    gd_prev_month_date := trunc(gd_proc_date,'MM') - 1 ;
 -- 2020/12/03 Ver1.1 DEL End
 --
+-- 2021/11/25 Ver1.7 ADD Start
+    -- ===============================
+    -- 4．プロファイル取得：問屋相殺控除データ作成除外基準日
+    -- ===============================
+    gd_except_del_dedu_date := to_date(FND_PROFILE.VALUE( cv_except_del_dedu_date ),'YYYY/MM/DD');
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( gd_except_del_dedu_date IS NULL ) THEN
+      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                 , iv_name         => cv_pro_msg
+                                                 , iv_token_name1  => cv_tkn_pro
+                                                 , iv_token_value1 => cv_except_del_dedu_date
+                                                  );
+      lv_errbuf       := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2021/11/25 Ver1.7 ADD End
   EXCEPTION
 --
 --############################    固定例外処理部 START  ############################
@@ -3214,7 +3243,10 @@ AS
                                               FROM   xxcok_condition_header    xch                     -- 控除条件テーブル
                                                     ,xxcok_condition_lines     xcl                     -- 控除詳細テーブル
                                               WHERE  xch.condition_id              = xcl.condition_id  -- 控除条件ID
-                                              AND (  (    xch.header_recovery_flag  = cv_d_flag)
+-- 2021/11/25 Ver1.7 MOD Start
+                                              AND (  (    xch.header_recovery_flag  = cv_d_flag
+                                                      AND xcl.line_recovery_flag    = cv_d_flag)
+-- 2021/11/25 Ver1.7 MOD End
                                                    OR(    xch.header_recovery_flag  = cv_u_flag
                                                       AND xcl.line_recovery_flag    = cv_d_flag)
                                                    OR(    xch.header_recovery_flag  = cv_n_flag
@@ -3234,6 +3266,12 @@ AS
             AND    flv2.language           = USERENV('LANG')
             AND    flv2.enabled_flag       = cv_y_flag
             AND    xsd.recon_slip_num      = xdrh.recon_slip_num
+-- 2021/11/25 Ver1.7 ADD Start
+            AND    ((flv.attribute2        IN (cv_030,cv_040)
+                    AND xsd.record_date    > gd_except_del_dedu_date)
+                   OR
+                   (flv.attribute2         NOT IN (cv_030,cv_040)))                      -- 計上日
+-- 2021/11/25 Ver1.7 ADD End
             UNION ALL
             SELECT xsd.sales_deduction_id              sales_deduction_id               -- 販売控除ID
                   ,xsd.condition_no                    condition_no                     -- 控除番号
@@ -3267,7 +3305,10 @@ AS
                                                FROM   xxcok_condition_header    xch                     -- 控除条件テーブル
                                                      ,xxcok_condition_lines     xcl                     -- 控除詳細テーブル
                                                WHERE  xch.condition_id              = xcl.condition_id  -- 控除条件ID
-                                               AND (  (    xch.header_recovery_flag  = cv_d_flag)
+-- 2021/11/25 Ver1.7 MOD Start
+                                               AND (  (    xch.header_recovery_flag  = cv_d_flag
+                                                       AND xcl.line_recovery_flag    = cv_d_flag)
+-- 2021/11/25 Ver1.7 MOD End
                                                     OR(    xch.header_recovery_flag  = cv_u_flag
                                                        AND xcl.line_recovery_flag    = cv_d_flag)
                                                     OR(    xch.header_recovery_flag  = cv_n_flag
@@ -3486,8 +3527,13 @@ AS
       -- ヘッダーのリカバリフラグが「D：削除」または、
       -- ヘッダーのリカバリフラグが「U：更新」、明細のリカバリフラグが「D：削除」または、
       -- ヘッダーのリカバリフラグが「N：対象外」、明細のリカバリフラグが「D：削除」
-      IF    ((gt_condition_work_tbl(i).header_recovery_flag  = cv_d_flag)
+-- 2021/11/25 Ver1.7 MOD Start
+--      IF    ((gt_condition_work_tbl(i).header_recovery_flag  = cv_d_flag)
+--        OR   (gt_condition_work_tbl(i).header_recovery_flag  = cv_u_flag
+      IF    ((gt_condition_work_tbl(i).header_recovery_flag  = cv_d_flag
+        AND   gt_condition_work_tbl(i).line_recovery_flag    = cv_d_flag)
         OR   (gt_condition_work_tbl(i).header_recovery_flag  = cv_u_flag
+-- 2021/11/25 Ver1.7 MOD End
         AND   gt_condition_work_tbl(i).line_recovery_flag    = cv_d_flag)
         OR   (gt_condition_work_tbl(i).header_recovery_flag  = cv_n_flag
         AND   gt_condition_work_tbl(i).line_recovery_flag    = cv_d_flag)) THEN
@@ -3505,6 +3551,9 @@ AS
 --
 -- 2021/09/17 Ver1.4 ADD Start
           IF l_del_cnt_rec.dedu_type IN (cv_030,cv_040)  THEN
+-- 2021/11/25 Ver1.7 ADD Start
+            IF l_del_cnt_rec.record_date > gd_except_del_dedu_date THEN
+-- 2021/11/25 Ver1.7 ADD End
             INSERT INTO xxcok_sales_deduction(
               sales_deduction_id       --販売控除ID
              ,base_code_from           --振替元拠点
@@ -3655,6 +3704,9 @@ AS
             gn_del_ins_cnt := gn_del_ins_cnt + 1;
 -- 2021/09/17 Ver1.4 ADD End
 -- 2021/09/17 Ver1.4 MOD Start
+-- 2021/11/25 Ver1.7 ADD Start
+            END IF;
+-- 2021/11/25 Ver1.7 ADD End
           ELSE
 -- 2021/10/21 Ver1.5 DELL Start
 --            lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
@@ -4295,7 +4347,10 @@ AS
       );
 -- 2021/10/21 Ver1.5 ADD Start 支払済データが存在する場合は警告
     ELSE
-      IF gn_add_skip_cnt > 0 or gn_del_ins_cnt > 0 THEN
+-- 2021/11/25 Ver1.7 MOD Start
+--      IF gn_add_skip_cnt > 0 or gn_del_ins_cnt > 0 THEN
+      IF gn_del_skip_cnt > 0 or gn_del_ins_cnt > 0 THEN
+-- 2021/11/25 Ver1.7 MOD End
          lv_retcode := cv_status_warn;
       END IF;
 -- 2021/10/21 Ver1.5 END Start
