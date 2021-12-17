@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2021/11/05    1.6   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
  *  2021/11/25    1.7   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
  *                                       [E_本稼動_17540]8月31日以前の控除を除外
+ *  2021/12/17    1.8   SCSK K.Yoshikawa [E_本稼動_17540]8月31日以前かつ承認済の控除を除外
  *
  *****************************************************************************************/
 --
@@ -3099,6 +3100,9 @@ AS
     ln_msg_dis_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
     ln_msg_ins_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
 -- 2021/10/21 Ver1.5 ADD End
+-- 2021/12/17 Ver1.8 ADD Start
+   lv_recon_status          VARCHAR2(2)    DEFAULT NULL;               -- 消込ステータス
+-- 2021/12/17 Ver1.8 ADD End
 --
     -- *** ローカル例外 ***
     no_data_expt              EXCEPTION;               -- 対象データ0件エラー
@@ -3269,6 +3273,12 @@ AS
 -- 2021/11/25 Ver1.7 ADD Start
             AND    ((flv.attribute2        IN (cv_030,cv_040)
                     AND xsd.record_date    > gd_except_del_dedu_date)
+-- 2021/12/17 Ver1.8 ADD Start
+                   OR
+                   (flv.attribute2        IN (cv_030,cv_040)
+                    AND xsd.record_date    <= gd_except_del_dedu_date
+                    AND xdrh.recon_status <> 'AD')                                       -- 承認済
+-- 2021/12/17 Ver1.8 ADD Start
                    OR
                    (flv.attribute2         NOT IN (cv_030,cv_040)))                      -- 計上日
 -- 2021/11/25 Ver1.7 ADD End
@@ -3549,11 +3559,26 @@ AS
         FETCH l_del_cnt_cur INTO l_del_cnt_rec;
         EXIT WHEN l_del_cnt_cur%NOTFOUND;
 --
+-- 2021/12/17 Ver1.8 ADD Start
+       BEGIN
+         SELECT xdrh.recon_status
+         INTO   lv_recon_status
+         FROM   xxcok_deduction_recon_head xdrh
+         WHERE  xdrh.recon_slip_num = l_del_cnt_rec.recon_slip_num;
+       EXCEPTION
+         WHEN no_data_found THEN
+          lv_recon_status  :=null;
+       END;
+-- 2021/12/17 Ver1.8 ADD End
 -- 2021/09/17 Ver1.4 ADD Start
           IF l_del_cnt_rec.dedu_type IN (cv_030,cv_040)  THEN
+-- 2021/12/17 Ver1.8 MOD Start
 -- 2021/11/25 Ver1.7 ADD Start
-            IF l_del_cnt_rec.record_date > gd_except_del_dedu_date THEN
+--            IF l_del_cnt_rec.record_date > gd_except_del_dedu_date THEN
+            IF l_del_cnt_rec.record_date > gd_except_del_dedu_date 
+              OR (l_del_cnt_rec.record_date <= gd_except_del_dedu_date AND lv_recon_status <> 'AD')  THEN
 -- 2021/11/25 Ver1.7 ADD End
+-- 2021/12/17 Ver1.8 MOD END
             INSERT INTO xxcok_sales_deduction(
               sales_deduction_id       --販売控除ID
              ,base_code_from           --振替元拠点
