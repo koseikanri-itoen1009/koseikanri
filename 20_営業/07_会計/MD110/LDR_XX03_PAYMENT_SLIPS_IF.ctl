@@ -1,16 +1,17 @@
 --********************************************************************
 -- 制御ファイル  : LDR_XX034DL001C.ctl
 -- 機能概要      : 部門入力（AP）データロード
--- バージョン    : 11.5.10.1.7
+-- バージョン    : 11.5.10.1.8
 -- 作成者        : OCSJ BFA-Fin
 -- 作成日        : 2004-04-26
 -- 変更者        : 崎浜秀輝
--- 最終変更日    : 2016-11-10
+-- 最終変更日    : 2021-12-17
 -- 変更履歴      :
 --     2004-04-19 新規作成
 --     2004-05-21 EXCHANGE_RATE とEXCHANGE_RATE_TYPE_NAMEの項目順修正
 --     2005-12-02 INTEGER型をINTEGER EXTERNAL型に変更
 --     2016-11-10 [E_本稼動_13901]対応 稟議決裁番号追加
+--     2021-12-17 [E_本稼働_17678]対応 電子帳簿保存法改正対応
 --
 -- Copyright (c) 2002 Oracle Corporation Japan All Rights Reserved
 -- 当プログラム使用に際して一切の保証は行わない
@@ -69,6 +70,10 @@ FIELDS TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' TRAILING NULLCOLS
 --  EXCHANGE_RATE_TYPE_NAME   CHAR          TERMINATED BY ",",
 -- Ver.1.1 Modify End
   PREPAY_NUM                CHAR          TERMINATED BY ","
+-- Ver 11.5.10.1.8 Add Start
+ ,INVOICE_ELE_DATA_YES      CHAR          TERMINATED BY ",",
+  INVOICE_ELE_DATA_NO       CHAR          TERMINATED BY ","
+-- Ver 11.5.10.1.8 Add End
        )
 
 INTO TABLE XX03_PAYMENT_SLIP_LINES_IF
