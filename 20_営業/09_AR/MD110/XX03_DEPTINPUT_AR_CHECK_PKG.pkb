@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.23
+ * Version                : 11.5.10.2.24
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2018/02/07   11.5.10.2.21   障害 [E_本稼動_14663] 対応
  *  2019/10/25   11.5.10.2.22   障害 [E_本稼動_16009] 対応
  *  2021/04/28   11.5.10.2.23   障害 [E_本稼動_16026] 対応
+ *  2021/12/20   11.5.10.2.24   障害 [E_本稼働_17678] 対応
  *
  *****************************************************************************************/
 --
@@ -1082,6 +1083,18 @@ AS
           )
       ;
 -- 2013/09/19 ver 11.5.10.2.18 ADD END
+-- ver 11.5.10.2.24 Add Start
+    -- 支払案内書電子データ受領チェック
+    CURSOR xx03_payment_ele_data_cur
+    IS
+      SELECT xrs.request_date         AS request_date
+            ,xrs.orig_invoice_num     AS orig_invoice_num
+            ,xrs.payment_ele_data_yes AS payment_ele_data_yes
+            ,xrs.payment_ele_data_no  AS payment_ele_data_no
+      FROM   xx03_receivable_slips      xrs
+      WHERE  xrs.receivable_id = in_receivable_id
+    ;
+-- ver 11.5.10.2.24 Add End
 --
     -- *** ローカル・レコード ***
     xx03_xrsjlv_rec            xx03_xrsjlv_cur          %ROWTYPE;       -- 処理対象データ取得カーソルレコード型
@@ -1156,6 +1169,9 @@ AS
     -- 項目整合性チェックカーソルレコード型
     xx03_save_code_chk_rec       xx03_save_code_chk_cur%ROWTYPE;
 -- 2013/09/19 ver 11.5.10.2.18 ADD END
+-- ver 11.5.10.2.24 Add Start
+    xx03_payment_ele_data_rec    xx03_payment_ele_data_cur%ROWTYPE;
+-- ver 11.5.10.2.24 Add End
 --
     -- 相互検証用パラメータ
     lb_retcode          BOOLEAN;
@@ -1944,6 +1960,24 @@ AS
 -- ver 11.5.10.2.14 2010/12/24 Add End   [E_本稼動_02004]
 --
 -- 2006/02/18 Ver11.5.10.1.6E Add END
+-- ver 11.5.10.2.24 Add Start
+        --請求書電子データ受領チェック
+        OPEN xx03_payment_ele_data_cur;
+        FETCH xx03_payment_ele_data_cur INTO xx03_payment_ele_data_rec;
+        IF ( xx03_payment_ele_data_rec.payment_ele_data_yes = 'Y' 
+            AND xx03_payment_ele_data_rec.payment_ele_data_no = 'N' )
+          OR ( xx03_payment_ele_data_rec.payment_ele_data_yes = 'N' 
+            AND xx03_payment_ele_data_rec.payment_ele_data_no = 'Y' )
+          OR ( xx03_payment_ele_data_rec.request_date IS NOT NULL   )
+          OR ( xx03_payment_ele_data_rec.orig_invoice_num IS NOT NULL   ) THEN
+          NULL;
+        ELSE
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR', 'APP-XXCFR1-00159');
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_payment_ele_data_cur;
+-- ver 11.5.10.2.24 Add End
 --
         -- 部門入力エラーチェックでエラーがなかった場合のみチェックID取得
         IF ( ln_err_cnt <= 0 ) THEN
