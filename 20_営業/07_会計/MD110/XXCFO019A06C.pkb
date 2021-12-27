@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
  * Package Name     : XXCFO019A06C(body)
  * Description      : 電子帳簿AR取引の情報系システム連携
  * MD.050           : MD050_CFO_019_A06_電子帳簿AR取引の情報系システム連携
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
  *                                      結合テスト障害対応[障害No36:取引明細のLINE行とTAX行の結合条件変更]
  *  2012-11-28    1.2   T.Osawa         0件時警告終了対応
  *  2012-12-18    1.3   T.Ishiwata      性能改善対応
+ *  2021/12/17    1.4   Y.Koh          [E_本稼働_17678]対応 電子帳簿保存法改正対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1468,7 +1469,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
     --==============================================================
     -- 未転記チェック
     --==============================================================
-    IF ( gt_data_tab(50) IS NULL ) THEN
+    -- 2021/12/17 Ver1.4 MOD Start
+    IF ( gt_data_tab(51) IS NULL ) THEN
+--    IF ( gt_data_tab(50) IS NULL ) THEN
+    -- 2021/12/17 Ver1.4 MOD End
       --未転記(転記日が未設定)の場合、以下の処理を行う
       --==============================================================
       --未転記メッセージ出力
@@ -1638,7 +1642,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
       lv_delimit  :=  cv_delimit;
     END LOOP;
     --連携日時
-    lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(49);
+    -- 2021/12/17 Ver1.4 MOD Start
+    lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(50);
+--    lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(49);
+    -- 2021/12/17 Ver1.4 MOD End
     --
     -- ====================================================
     -- ファイル書き込み
@@ -1755,7 +1762,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
     IS
       SELECT /*+ LEADING(rct)
                USE_NL(rct rctl rctl2 rctg_h hcab hcas hpb hps tax gdct ttype)
-               INDEX(rct RA_CUSTOMER_TRX_U1)
+    -- 2021/12/17 Ver1.4 DEL Start
+--               INDEX(rct RA_CUSTOMER_TRX_U1)
+    -- 2021/12/17 Ver1.4 DEL End
              */
              DECODE(ttype.type, cv_trx_type_inv, lt_type_trx, lt_type_cm) AS type   -- タイプ('INV','取引','クレメモ')
             ,rct.doc_sequence_value                      AS doc_sequence_value      -- 補助簿文書番号
@@ -1814,6 +1823,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 MOD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 MOD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,rctg_h.gl_posted_date                       AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -1859,7 +1871,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
       UNION ALL
       SELECT /*+ LEADING(rct araa)
                  USE_NL(rct araa rctl2 rctg_h hcab hcas hcab2 hpb hps hpb2 gdct)
-                 INDEX(rct RA_CUSTOMER_TRX_U1)
+    -- 2021/12/17 Ver1.4 DEL Start
+--                 INDEX(rct RA_CUSTOMER_TRX_U1)
+    -- 2021/12/17 Ver1.4 DEL End
                  INDEX(araa AR_RECEIVABLE_APPLICATIONS_N2)
              */
              lt_type_cm_apply                            AS type                    -- タイプ(クレメモ消込)
@@ -1916,6 +1930,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,rct2.invoice_currency_code                  AS invoice_currency_code   -- 消込対象取引通貨
             ,araa.acctd_amount_applied_to                AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,araa.gl_posted_date                         AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2003,6 +2020,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,aj.acctd_amount                             AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,aj.gl_posted_date                           AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2108,6 +2128,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,rctg_h.gl_posted_date                       AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2212,6 +2235,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,rct2.invoice_currency_code                  AS invoice_currency_code   -- 消込対象取引通貨
             ,araa.acctd_amount_applied_to                AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,araa.gl_posted_date                         AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2300,6 +2326,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,aj.acctd_amount                             AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,aj.gl_posted_date                           AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2417,6 +2446,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,rctg_h.gl_posted_date                       AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_1                              AS data_type               -- データタイプ(連携/未連携)
@@ -2529,6 +2561,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,rct2.invoice_currency_code                  AS invoice_currency_code   -- 消込対象取引通貨
             ,araa.acctd_amount_applied_to                AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,araa.gl_posted_date                         AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_1                              AS data_type               -- データタイプ(連携/未連携)
@@ -2626,6 +2661,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,aj.acctd_amount                             AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,aj.gl_posted_date                           AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_1                              AS data_type               -- データタイプ(連携/未連携)
@@ -2740,6 +2778,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,rctg_h.gl_posted_date                       AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2840,6 +2881,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,NULL                                        AS acctd_adj_amount        -- 機能通貨修正金額
             ,rct2.invoice_currency_code                  AS invoice_currency_code   -- 消込対象取引通貨
             ,araa.acctd_amount_applied_to                AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,araa.gl_posted_date                         AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -2931,6 +2975,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             ,aj.acctd_amount                             AS acctd_adj_amount        -- 機能通貨修正金額
             ,NULL                                        AS invoice_currency_code   -- 消込対象取引通貨
             ,NULL                                        AS acctd_amount_applied_to -- 機能通貨クレメモ消込金額
+            -- 2021/12/17 Ver1.4 ADD Start
+            ,rctg_h.attribute10                          AS payment_ele_data        -- 電子証票あり/なし
+            -- 2021/12/17 Ver1.4 ADD End
             ,gv_coop_date                                AS cool_date               -- 連携日時
             ,aj.gl_posted_date                           AS gl_posted_date          -- GL転記日_チェック用
             ,cv_data_type_0                              AS data_type               -- データタイプ(連携/未連携)
@@ -3081,9 +3128,15 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             , gt_data_tab(46) -- 機能通貨修正金額
             , gt_data_tab(47) -- 消込対象取引通貨
             , gt_data_tab(48) -- 機能通貨クレメモ消込金額
-            , gt_data_tab(49) -- 連携日時
-            , gt_data_tab(50) -- GL転記日_チェック用
-            , gt_data_tab(51) -- データタイプ
+            -- 2021/12/17 Ver1.4 MOD Start
+            , gt_data_tab(49) -- 電子証票あり/なし
+            , gt_data_tab(50) -- 連携日時
+            , gt_data_tab(51) -- GL転記日_チェック用
+            , gt_data_tab(52) -- データタイプ
+--            , gt_data_tab(49) -- 連携日時
+--            , gt_data_tab(50) -- GL転記日_チェック用
+--            , gt_data_tab(51) -- データタイプ
+            -- 2021/12/17 Ver1.4 MOD End
             ;
           EXIT WHEN get_ar_trx_manual_number_cur%NOTFOUND;
 --
@@ -3238,9 +3291,15 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
             , gt_data_tab(46) -- 機能通貨修正金額
             , gt_data_tab(47) -- 消込対象取引通貨
             , gt_data_tab(48) -- 機能通貨クレメモ消込金額
-            , gt_data_tab(49) -- 連携日時
-            , gt_data_tab(50) -- GL転記日_チェック用
-            , gt_data_tab(51) -- データタイプ
+            -- 2021/12/17 Ver1.4 MOD Start
+            , gt_data_tab(49) -- 電子証票あり/なし
+            , gt_data_tab(50) -- 連携日時
+            , gt_data_tab(51) -- GL転記日_チェック用
+            , gt_data_tab(52) -- データタイプ
+--            , gt_data_tab(49) -- 連携日時
+--            , gt_data_tab(50) -- GL転記日_チェック用
+--            , gt_data_tab(51) -- データタイプ
+            -- 2021/12/17 Ver1.4 MOD End
             ;
           EXIT WHEN get_ar_trx_manual_id_cur%NOTFOUND;
 --
@@ -3399,9 +3458,15 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
           , gt_data_tab(46) -- 機能通貨修正金額
           , gt_data_tab(47) -- 消込対象取引通貨
           , gt_data_tab(48) -- 機能通貨クレメモ消込金額
-          , gt_data_tab(49) -- 連携日時
-          , gt_data_tab(50) -- GL転記日_チェック用
-          , gt_data_tab(51) -- データタイプ
+          -- 2021/12/17 Ver1.4 MOD Start
+          , gt_data_tab(49) -- 電子証票あり/なし
+          , gt_data_tab(50) -- 連携日時
+          , gt_data_tab(51) -- GL転記日_チェック用
+          , gt_data_tab(52) -- データタイプ
+--          , gt_data_tab(49) -- 連携日時
+--          , gt_data_tab(50) -- GL転記日_チェック用
+--          , gt_data_tab(51) -- データタイプ
+          -- 2021/12/17 Ver1.4 MOD End
           ;
         EXIT WHEN get_ar_trx_fixed_cur%NOTFOUND;
 --
@@ -3501,7 +3566,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
           RAISE global_process_expt;
         END IF;
 --
-        IF ( gt_data_tab(51) = cv_data_type_0 ) THEN
+        -- 2021/12/17 Ver1.4 MOD Start
+        IF ( gt_data_tab(52) = cv_data_type_0 ) THEN
+--        IF ( gt_data_tab(51) = cv_data_type_0 ) THEN
+        -- 2021/12/17 Ver1.4 MOD End
           --データタイプが0(連携分)の場合、対象件数（連携分）に1カウント
           gn_target_cnt      := gn_target_cnt + 1;
         ELSE
