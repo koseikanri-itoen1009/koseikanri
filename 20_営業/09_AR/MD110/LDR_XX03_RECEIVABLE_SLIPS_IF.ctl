@@ -1,11 +1,11 @@
 --********************************************************************
 -- 制御ファイル  : LDR_XX034RL001C.ctl
 -- 機能概要      : 部門入力（AR）データロード
--- バージョン    : 11.5.10.2.6
+-- バージョン    : 11.5.10.2.7
 -- 作成者        : 野呂祐介
 -- 作成日        : 2005-01-12
 -- 変更者        : 森澤崇,大草昭人
--- 最終変更日    : 2016-11-29
+-- 最終変更日    : 2021-12-17
 -- 変更履歴      :
 --     2005-01-12 新規作成
 --     2005-03-03 LOAD内でのPROFILE取得→SHELLで処理する対応
@@ -13,6 +13,7 @@
 --     2006-09-05 REQUEST_IDをSHELLの文字変換で処理し、ORG_IDを後続の
 --                プログラムでUPDATEで処理する対応に変更
 --     2016-11-29 障害対応E_本稼動_13901
+--     2021-12-17 [E_本稼働_17678]対応 電子帳簿保存法改正対応
 --
 -- Copyright (c) 2004-2005 Oracle Corporation Japan All Rights Reserved
 -- 当プログラム使用に際して一切の保証は行わない
@@ -87,6 +88,10 @@ FIELDS TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' TRAILING NULLCOLS
   , ONETIME_CUSTOMER_ADDRESS_1 CHAR          TERMINATED BY ","                    -- 住所１
   , ONETIME_CUSTOMER_ADDRESS_2 CHAR          TERMINATED BY ","                    -- 住所２
   , ONETIME_CUSTOMER_ADDRESS_3 CHAR          TERMINATED BY ","                    -- 住所３
+-- Ver 11.5.10.2.7 Add Start
+  , PAYMENT_ELE_DATA_YES       CHAR          TERMINATED BY ","                    -- 支払案内書電子データ受領あり
+  , PAYMENT_ELE_DATA_NO        CHAR          TERMINATED BY ","                    -- 支払案内書電子データ受領なし
+-- Ver 11.5.10.2.7 Add End
        )
 
 INTO TABLE XX03_RECEIVABLE_SLIPS_LINE_IF
