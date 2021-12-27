@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求依頼データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AR）       OCSJ/BFAFIN/MD050/F702
  * MD.070(CMD.050)  : 部門入力（AR）データインポート OCSJ/BFAFIN/MD070/F702
- * Version          : 11.5.10.2.12
+ * Version          : 11.5.10.2.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2012/10/24   11.5.10.2.11   [E_本稼動_09965]パフォーマンス対応のため、
  *                              XX03_COMMITMENT_NUMBER_LOV_Vをコメントアウトするように修正
  *  2016/12/06   11.5.10.2.12   障害対応E_本稼動_13901
+ *  2021/12/17   11.5.10.2.13   [E_本稼働_17678]対応 電子帳簿保存法改正対応
  *****************************************************************************************/
 --
 --#####################  固定共通例外宣言部 START   ####################
@@ -469,6 +470,10 @@ AS
      , HEAD.PROGRAM_APPLICATION_ID as HEAD_PROGRAM_APPLICATION_ID        -- 
      , HEAD.PROGRAM_ID             as HEAD_PROGRAM_ID                    -- 
      , HEAD.PROGRAM_UPDATE_DATE    as HEAD_PROGRAM_UPDATE_DATE           -- 
+     -- ver 11.5.10.2.13 Add Start
+     , HEAD.PAYMENT_ELE_DATA_YES   as HEAD_PAYMENT_ELE_DATA_YES          -- 支払案内書電子データ受領あり
+     , HEAD.PAYMENT_ELE_DATA_NO    as HEAD_PAYMENT_ELE_DATA_NO           -- 支払案内書電子データ受領なし
+     -- ver 11.5.10.2.13 Add End
      , LINE.INTERFACE_ID           as LINE_INTERFACE_ID                  -- インターフェースID
      , LINE.LINE_NUMBER            as LINE_LINE_NUMBER                   -- ラインナンバー
      , LINE.SLIP_LINE_TYPE_NAME    as LINE_SLIP_LINE_TYPE_NAME           -- 請求内容
@@ -601,6 +606,10 @@ AS
          , xrsi.PROGRAM_APPLICATION_ID  as PROGRAM_APPLICATION_ID
          , xrsi.PROGRAM_ID             as PROGRAM_ID
          , xrsi.PROGRAM_UPDATE_DATE    as PROGRAM_UPDATE_DATE
+         -- ver 11.5.10.2.13 Add Start
+         , xrsi.PAYMENT_ELE_DATA_YES   as PAYMENT_ELE_DATA_YES               -- 支払案内書電子データ受領あり
+         , xrsi.PAYMENT_ELE_DATA_NO    as PAYMENT_ELE_DATA_NO                -- 支払案内書電子データ受領なし
+         -- ver 11.5.10.2.13 Add End
         FROM
            XX03_RECEIVABLE_SLIPS_IF    xrsi    --「請求伝票インターフェイス表」
 -- ver 11.5.10.2.7 Chg Start
@@ -3192,6 +3201,10 @@ AS
       , PROGRAM_UPDATE_DATE
       , DELETE_FLAG
       , FIRST_CUSTOMER_FLAG            -- 一見顧客区分
+      -- ver 11.5.10.2.13 Add Start
+      , PAYMENT_ELE_DATA_YES                                -- 支払案内書電子データ受領あり
+      , PAYMENT_ELE_DATA_NO                                 -- 支払案内書電子データ受領なし
+      -- ver 11.5.10.2.13 Add End
     )
     VALUES(
         gn_receivable_id                                    -- 伝票ID
@@ -3284,6 +3297,10 @@ AS
       , xx00_date_pkg.get_system_datetime_f                 -- PROGRAM_UPDATE_DATE
       , 'N'                                                 -- 削除フラグ：Y=削除,N=非削除
       , DECODE(xx03_if_head_line_rec.HEAD_ONE_CUSTOMER_NAME, NULL, 'N', 'Y')  -- 一見顧客区分
+      -- ver 11.5.10.2.13 Add Start
+      , xx03_if_head_line_rec.HEAD_PAYMENT_ELE_DATA_YES     -- 支払案内書電子データ受領あり
+      , xx03_if_head_line_rec.HEAD_PAYMENT_ELE_DATA_NO      -- 支払案内書電子データ受領なし
+      -- ver 11.5.10.2.13 Add End
     );
 --
   EXCEPTION
