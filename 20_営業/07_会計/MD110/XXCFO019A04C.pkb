@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A04C AS
  * Package Name     : XXCFO019A04C
  * Description      : 電子帳簿AP仕入請求の情報系システム連携
  * MD.050           : MD050_CFO_019_A04_電子帳簿AP仕入請求の情報系システム連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A04C AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/08/31    1.0   M.Kitajma        初回作成
  *  2012/12/05    1.1   T.Osawa          照合数量の桁あふれ対応
+ *  2021/12/17    1.2   Y.Koh            [E_本稼働_17678]対応 電子帳簿保存法改正対応
  *
  *****************************************************************************************/
 --
@@ -2009,6 +2010,9 @@ EXCEPTION
         ,ai.exchange_rate                                AS exchange_rate             --33.換算レート
         ,ai.base_amount                                  AS base_amount               --34.機能通貨請求書金額
         ,ai.base_amount_dist                             AS base_amount_dist          --35.機能通貨配分金額
+        -- 2021/12/17 Ver1.2 ADD Start
+        ,ai.payment_ele_data                             AS payment_ele_data          --36.電子証票あり/なし
+        -- 2021/12/17 Ver1.2 ADD End
         ,TO_CHAR(gd_coop_date,cv_date_format_ymdhms)     AS coop_date                 --36.連携日時
         ,cv_period_flag                                  AS data_type                 --37.データタイプ
       FROM                                                                            
@@ -2050,6 +2054,9 @@ EXCEPTION
              ,aia.exchange_rate                                                       --24.換算レート
              ,aia.base_amount                                                         --25.機能通貨金額
              ,aid.base_amount                            AS base_amount_dist          --26.機能通貨金額
+             -- 2021/12/17 Ver1.2 ADD Start
+             ,aid.attribute10                            AS payment_ele_data          --36.電子証票あり/なし
+             -- 2021/12/17 Ver1.2 ADD End
            FROM                                                                       
               ap_invoices_all aia                                                     -- 1.ＡＰ請求書
              ,ap_invoice_distributions_all aid                                        -- 2.ＡＰ請求書配分
@@ -2162,6 +2169,9 @@ EXCEPTION
         ,ai.exchange_rate                                AS exchange_rate             --33.換算レート
         ,ai.base_amount                                  AS base_amount               --34.機能通貨請求書金額
         ,ai.base_amount_dist                             AS base_amount_dist          --35.機能通貨配分金額
+        -- 2021/12/17 Ver1.2 ADD Start
+        ,ai.payment_ele_data                             AS payment_ele_data          --36.電子証票あり/なし
+        -- 2021/12/17 Ver1.2 ADD End
         ,TO_CHAR(gd_coop_date,cv_date_format_ymdhms)     AS coop_date                 --36.連携日時 
         ,cv_period_flag                                  AS data_type                 --37.データタイプ
       FROM                                                                            
@@ -2203,6 +2213,9 @@ EXCEPTION
              ,aia.exchange_rate                                                       --24.換算レート
              ,aia.base_amount                                                         --25.機能通貨金額
              ,aid.base_amount                            AS base_amount_dist          --26.機能通貨金額
+             -- 2021/12/17 Ver1.2 ADD Start
+             ,aid.attribute10                            AS payment_ele_data          --36.電子証票あり/なし
+             -- 2021/12/17 Ver1.2 ADD End
            FROM                                                                       
               ap_invoices_all aia                                                     -- 1.ＡＰ請求書
              ,ap_invoice_distributions_all aid                                        -- 2.ＡＰ請求書配分
@@ -2309,6 +2322,9 @@ EXCEPTION
         ,exchange_rate                                   AS exchange_rate             --33.換算レート
         ,base_amount                                     AS base_amount               --34.機能通貨請求書
         ,base_amount_dist                                AS base_amount_dist          --35.機能通貨配分金
+        -- 2021/12/17 Ver1.2 ADD Start
+        ,payment_ele_data                                AS payment_ele_data          --36.電子証票あり/なし
+        -- 2021/12/17 Ver1.2 ADD End
         ,TO_CHAR(gd_coop_date,cv_date_format_ymdhms)     AS coop_date                 --36.連携日時 
         ,data_type                                       AS data_type                 --37.データタイプ
       FROM
@@ -2358,6 +2374,9 @@ EXCEPTION
             ,ai.exchange_rate                                AS exchange_rate             --33.換算レート
             ,ai.base_amount                                  AS base_amount               --34.機能通貨請求書金額
             ,ai.base_amount_dist                             AS base_amount_dist          --35.機能通貨配分金額
+            -- 2021/12/17 Ver1.2 ADD Start
+            ,ai.payment_ele_data                             AS payment_ele_data          --36.電子証票あり/なし
+            -- 2021/12/17 Ver1.2 ADD End
             ,gd_coop_date                                    AS coop_date                 --36.連携日時
             ,cv_wait_flag                                    AS data_type                 --37.データタイプ(W:未連携)
           FROM                                                                            
@@ -2399,6 +2418,9 @@ EXCEPTION
                  ,aia.exchange_rate                                                       --24.換算レート        
                  ,aia.base_amount                                                         --25.機能通貨金額      
                  ,aid.base_amount                            AS base_amount_dist          --26.機能通貨金額      
+                 -- 2021/12/17 Ver1.2 ADD Start
+                 ,aid.attribute10                            AS payment_ele_data          --36.電子証票あり/なし
+                 -- 2021/12/17 Ver1.2 ADD End
                FROM
                   ap_invoices_all aia                                                     -- 1.ＡＰ請求書
                  ,ap_invoice_distributions_all aid                                        -- 2.ＡＰ請求書配分
@@ -2512,6 +2534,9 @@ EXCEPTION
             ,ai.exchange_rate                                AS exchange_rate             --33.換算レート
             ,ai.base_amount                                  AS base_amount               --34.機能通貨請求書金額
             ,ai.base_amount_dist                             AS base_amount_dist          --35.機能通貨配分金額
+            -- 2021/12/17 Ver1.2 ADD Start
+            ,ai.payment_ele_data                             AS payment_ele_data          --36.電子証票あり/なし
+            -- 2021/12/17 Ver1.2 ADD End
             ,gd_coop_date                                    AS coop_date                 --36.連携日時
             ,cv_period_flag                                  AS data_type                 --37.データタイプ(P：通常)
           FROM                                                                            
@@ -2553,6 +2578,9 @@ EXCEPTION
                  ,aia.exchange_rate                                                       --24.換算レート
                  ,aia.base_amount                                                         --25.機能通貨金額
                  ,aid.base_amount                            AS base_amount_dist          --26.機能通貨金額
+                 -- 2021/12/17 Ver1.2 ADD Start
+                 ,aid.attribute10                            AS payment_ele_data          --36.電子証票あり/なし
+                 -- 2021/12/17 Ver1.2 ADD End
                FROM                                                                       
                   ap_invoices_all aia                                                     -- 1.ＡＰ請求書
                  ,ap_invoice_distributions_all aid                                        -- 2.ＡＰ請求書配分
@@ -2705,8 +2733,13 @@ EXCEPTION
           , gt_data_tab(33) --33.換算レート
           , gt_data_tab(34) --34.機能通貨請求書金額
           , gt_data_tab(35) --35.機能通貨配分金額
-          , gt_data_tab(36) --36.連携日時
-          , gt_data_tab(37) --37.データタイプ
+          -- 2021/12/17 Ver1.2 MOD Start
+          , gt_data_tab(36) --36.電子証票あり/なし
+          , gt_data_tab(37) --37.連携日時
+          , gt_data_tab(38) --38.データタイプ
+--          , gt_data_tab(36) --36.連携日時
+--          , gt_data_tab(37) --37.データタイプ
+          -- 2021/12/17 Ver1.2 MOD End
         ;
         EXIT WHEN get_ap_invoice_num_cur%NOTFOUND;
 --
@@ -2846,8 +2879,13 @@ EXCEPTION
           , gt_data_tab(33) --33.換算レート
           , gt_data_tab(34) --34.機能通貨請求書金額
           , gt_data_tab(35) --35.機能通貨配分金額
-          , gt_data_tab(36) --36.連携日時
-          , gt_data_tab(37) --37.データタイプ
+          -- 2021/12/17 Ver1.2 MOD Start
+          , gt_data_tab(36) --36.電子証票あり/なし
+          , gt_data_tab(37) --37.連携日時
+          , gt_data_tab(38) --38.データタイプ
+--          , gt_data_tab(36) --36.連携日時
+--          , gt_data_tab(37) --37.データタイプ
+          -- 2021/12/17 Ver1.2 MOD End
         ;
         EXIT WHEN get_ap_invoice_id_cur%NOTFOUND;
 --
@@ -2985,8 +3023,13 @@ EXCEPTION
           , gt_data_tab(33) --33.換算レート
           , gt_data_tab(34) --34.機能通貨請求書金額
           , gt_data_tab(35) --35.機能通貨配分金額
-          , gt_data_tab(36) --36.連携日時
-          , gt_data_tab(37) --37.データタイプ
+          -- 2021/12/17 Ver1.2 MOD Start
+          , gt_data_tab(36) --36.電子証票あり/なし
+          , gt_data_tab(37) --37.連携日時
+          , gt_data_tab(38) --38.データタイプ
+--          , gt_data_tab(36) --36.連携日時
+--          , gt_data_tab(37) --37.データタイプ
+          -- 2021/12/17 Ver1.2 MOD End
         ;
         EXIT WHEN get_ap_invoice_cur%NOTFOUND;
 --
@@ -3058,7 +3101,10 @@ EXCEPTION
         END IF;
 --
         -- 対象件数（連携分）カウント
-        IF ( gt_data_tab(37) = cv_period_flag ) THEN
+        -- 2021/12/17 Ver1.2 MOD Start
+        IF ( gt_data_tab(38) = cv_period_flag ) THEN
+--        IF ( gt_data_tab(37) = cv_period_flag ) THEN
+        -- 2021/12/17 Ver1.2 MOD End
           gn_target_cnt := NVL(gn_target_cnt,0) + 1;
         -- 対象件数（未連携処理分）カウント
         ELSE
