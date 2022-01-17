@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2021/05/01    1.3   SCSK Y.Koh       E_本稼動_16026 項目数エラーの対応
  *  2021/05/18    1.4   SCSK Y.Koh       E_本稼動_16026 顧客との紐付きチェック追加
  *  2021/09/21    1.5   H.Futamura       E_本稼動_17546 控除マスタ削除アップロードの改修
+ *  2022/01/13    1.6   SCSK Y.Koh       E_本稼動_17413 控除マスタのデータ種類が変更された
  *
  *****************************************************************************************/
 --
@@ -2503,8 +2504,11 @@ AS
               ( lt_master_start_date <= TRUNC(gd_process_date) )
             )
         THEN
-          IF  (ld_before_start_date = TO_DATE(g_cond_tmp_chk_rec.start_date_active,cv_date_format)
-          AND  ld_before_end_date = TO_DATE(g_cond_tmp_chk_rec.end_date_active,cv_date_format)) THEN
+-- 2022/01/13 Ver1.6 MOD Start
+          IF   ld_before_start_date != TO_DATE(g_cond_tmp_chk_rec.start_date_active,cv_date_format) THEN
+--          IF  (ld_before_start_date = TO_DATE(g_cond_tmp_chk_rec.start_date_active,cv_date_format)
+--          AND  ld_before_end_date = TO_DATE(g_cond_tmp_chk_rec.end_date_active,cv_date_format)) THEN
+-- 2022/01/13 Ver1.6 MOD End
             lv_errmsg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_msg_kbn_cok
                          , iv_name         => cv_msg_cok_10604
@@ -5097,11 +5101,14 @@ AS
           --  ************************************************
           BEGIN
             UPDATE  xxcok_condition_header xch
-            SET     xch.corp_code                 =   g_cond_tmp_chk_rec.corp_code                                    --  企業コード
-                  , xch.deduction_chain_code      =   g_cond_tmp_chk_rec.deduction_chain_code                         --  チェーン店コード
-                  , xch.customer_code             =   g_cond_tmp_chk_rec.customer_code                                --  顧客コード
-                  , xch.data_type                 =   g_cond_tmp_chk_rec.data_type                                    --  データ種類
-                  , xch.tax_code                  =   g_cond_tmp_chk_rec.tax_code                                     --  税コード
+-- 2022/01/13 Ver1.6 MOD Start
+            SET     xch.tax_code                  =   g_cond_tmp_chk_rec.tax_code                                     --  税コード
+--            SET     xch.corp_code                 =   g_cond_tmp_chk_rec.corp_code                                    --  企業コード
+--                  , xch.deduction_chain_code      =   g_cond_tmp_chk_rec.deduction_chain_code                         --  チェーン店コード
+--                  , xch.customer_code             =   g_cond_tmp_chk_rec.customer_code                                --  顧客コード
+--                  , xch.data_type                 =   g_cond_tmp_chk_rec.data_type                                    --  データ種類
+--                  , xch.tax_code                  =   g_cond_tmp_chk_rec.tax_code                                     --  税コード
+-- 2022/01/13 Ver1.6 MOD End
                   , xch.tax_rate                  =   g_cond_tmp_chk_rec.tax_rate                                     --  税率
                   , xch.start_date_active         =   ld_start_date                                                   --  開始日
                   , xch.end_date_active           =   ld_end_date                                                     --  終了日
