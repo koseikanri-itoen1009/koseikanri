@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
  * Package Name     : XXCFO019A13C(body)
  * Description      : 電子帳簿請求の情報系システム連携
  * MD.050           : MD050_CFO_019_A13_電子帳簿請求の情報系システム連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021-12-23    1.0   K.Tomie         新規作成 (E_本稼動_17770対応)
+ *  2022-01-20    1.1   K.Tomie         日付書式変更対応 (E_本稼動_17770再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -122,6 +123,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
   --値セット
   cv_flex_value_department    CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';                  --入金拠点コード
   --ＣＳＶ出力フォーマット
+-- Ver1.1 add start
+  cv_date_format_ymds         CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';          --ＣＳＶ出力フォーマット
+  cv_date_format_dmr          CONSTANT VARCHAR2(9)  := 'DD-MON-RR';            --ＣＳＶ出力フォーマット
+-- Ver1.1 add end
   cv_date_format_ymdhms       CONSTANT VARCHAR2(20)  := 'YYYYMMDDHH24MISS';          --ＣＳＶ出力フォーマット
   cv_date_format_ymdshms      CONSTANT VARCHAR2(21)  := 'YYYY/MM/DD HH24:MI:SS';     --ＣＳＶ出力フォーマット
   --ＣＳＶ
@@ -770,7 +775,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
         lv_file_data  :=  lv_file_data || lv_delimit  || gt_data_tab(ln_cnt);
       ELSIF ( gt_item_attr(ln_cnt) = cv_attr_dat ) THEN
         --DATE
-        lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(ln_cnt);
+-- Ver1.1 mod start
+--        lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(ln_cnt);
+        --DATE型は一律YYYY/MM/DDとする。
+        lv_file_data  :=  lv_file_data || lv_delimit || TO_CHAR(TO_DATE(gt_data_tab(ln_cnt),cv_date_format_dmr),cv_date_format_ymds);
+-- Ver1.1 mod end
       END IF;
       lv_delimit  :=  cv_delimit;
     END LOOP;
