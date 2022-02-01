@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
  * Package Name     : XXCFO019A13C(body)
  * Description      : 電子帳簿請求の情報系システム連携
  * MD.050           : MD050_CFO_019_A13_電子帳簿請求の情報系システム連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021-12-23    1.0   K.Tomie         新規作成 (E_本稼動_17770対応)
  *  2022-01-20    1.1   K.Tomie         日付書式変更対応 (E_本稼動_17770再対応)
+ *  2022-01-24    1.2   K.Tomie         日付書式変更および項目順序変更 (E_本稼動_17770再々対応) 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -124,7 +125,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
   cv_flex_value_department    CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';                  --入金拠点コード
   --ＣＳＶ出力フォーマット
 -- Ver1.1 add start
-  cv_date_format_ymds         CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';          --ＣＳＶ出力フォーマット
+-- Ver1.2 mod start
+--  cv_date_format_ymds         CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';          --ＣＳＶ出力フォーマット
+  cv_date_format_ymd          CONSTANT VARCHAR2(8)  := 'YYYYMMDD';             --ＣＳＶ出力フォーマット
+-- Ver1.2 mod end
   cv_date_format_dmr          CONSTANT VARCHAR2(9)  := 'DD-MON-RR';            --ＣＳＶ出力フォーマット
 -- Ver1.1 add end
   cv_date_format_ymdhms       CONSTANT VARCHAR2(20)  := 'YYYYMMDDHH24MISS';          --ＣＳＶ出力フォーマット
@@ -777,8 +781,12 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
         --DATE
 -- Ver1.1 mod start
 --        lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(ln_cnt);
-        --DATE型は一律YYYY/MM/DDとする。
-        lv_file_data  :=  lv_file_data || lv_delimit || TO_CHAR(TO_DATE(gt_data_tab(ln_cnt),cv_date_format_dmr),cv_date_format_ymds);
+-- Ver1.2 mod start
+--        --DATE型は一律YYYY/MM/DDとする。
+--        lv_file_data  :=  lv_file_data || lv_delimit || TO_CHAR(TO_DATE(gt_data_tab(ln_cnt),cv_date_format_dmr),cv_date_format_ymds);
+        --DATE型は一律YYYYMMDDとする。
+        lv_file_data  :=  lv_file_data || lv_delimit || TO_CHAR(TO_DATE(gt_data_tab(ln_cnt),cv_date_format_dmr),cv_date_format_ymd);
+-- Ver1.2 mod end
 -- Ver1.1 mod end
       END IF;
       lv_delimit  :=  cv_delimit;
@@ -925,10 +933,16 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
           ,xil.sold_location_name              AS  sold_location_name                   --売上拠点名
           ,xil.ship_shop_code                  AS  ship_shop_code                       --納品先店舗コード
           ,xil.ship_shop_name                  AS  ship_shop_name                       --納品先店名
-          ,xil.inv_type                        AS  inv_type                             --請求区分
-          ,flv2.meaning                        AS  inv_name                             --請求区分名
+-- Ver1.2 mod start
+--          ,xil.inv_type                        AS  inv_type                             --請求区分
+--          ,flv2.meaning                        AS  inv_name                             --請求区分名
+--          ,xil.vd_cust_type                    AS  vd_cust_type                         --VD顧客区分
+--          ,flv3.meaning                        AS  vd_cust_name                         --VD顧客区分名
           ,xil.vd_cust_type                    AS  vd_cust_type                         --VD顧客区分
-          ,flv3.meaning                        AS  vd_cust_name                         --VD顧客区分名
+          ,flv2.meaning                        AS  vd_cust_name                         --VD顧客区分名
+          ,xil.inv_type                        AS  inv_type                             --請求区分
+          ,flv3.meaning                        AS  inv_name                             --請求区分名
+-- Ver1.2 mod end
           ,xil.chain_shop_code                 AS  chain_shop_code                      --チェーン店コード
           ,hp.party_name                       AS  edi_chain_code_name                  --チェーン店名
           ,xil.delivery_date                   AS  delivery_date                        --納品日
@@ -980,8 +994,12 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
                AND  ffvl.summary_flag         =  cv_flag_n
                AND  ffvs.flex_value_set_name  =  cv_flex_value_department
            ) ffv1                                 --入金拠点名取得用
-          ,apps.fnd_lookup_values          flv2   --請求区分名取得用
-          ,apps.fnd_lookup_values          flv3   --VD顧客区分名取得用
+-- Ver1.2 mod start
+--          ,apps.fnd_lookup_values          flv2   --請求区分名取得用
+--          ,apps.fnd_lookup_values          flv3   --VD顧客区分名取得用
+          ,apps.fnd_lookup_values          flv2   --VD顧客区分名取得用
+          ,apps.fnd_lookup_values          flv3   --請求区分名取得用
+-- Ver1.2 mod end
           ,apps.xxcmm_cust_accounts        xca    --顧客追加情報(チェーン店名取得用)
           ,apps.hz_cust_accounts           hca    --顧客マスタ(チェーン店名取得用)
           ,apps.hz_parties                 hp     --パーティマスタ(チェーン店名取得用)
@@ -1007,14 +1025,24 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
       AND  flv1.lookup_type(+)        = cv_lookup_syohizei_kbn       --消費税区分名取得
       AND  flv1.enabled_flag(+)       = cv_flag_y                    --消費税区分名取得
       AND  xih.receipt_location_code  = ffv1.base_code (+)           --入金拠点名取得
-      AND  xil.inv_type               = flv2.lookup_code(+)          --請求区分名取得
-      AND  flv2.language(+)           = cv_lang                      --請求区分名取得
-      AND  flv2.lookup_type(+)        = cv_lookup_invoice_kbn        --請求区分名取得
-      AND  flv2.enabled_flag(+)       = cv_flag_y                    --請求区分名取得
-      AND  xil.vd_cust_type           = flv3.lookup_code(+)          --VD顧客区分名取得
-      AND  flv3.language(+)           = cv_lang                      --VD顧客区分名取得
-      AND  flv3.lookup_type(+)        = cv_lookup_vd_customer_kbn    --VD顧客区分名取得
-      AND  flv3.enabled_flag(+)       = cv_flag_y                    --VD顧客区分名取得
+-- Ver1.2 mod start
+--      AND  xil.inv_type               = flv2.lookup_code(+)          --請求区分名取得
+--      AND  flv2.language(+)           = cv_lang                      --請求区分名取得
+--      AND  flv2.lookup_type(+)        = cv_lookup_invoice_kbn        --請求区分名取得
+--      AND  flv2.enabled_flag(+)       = cv_flag_y                    --請求区分名取得
+--      AND  xil.vd_cust_type           = flv3.lookup_code(+)          --VD顧客区分名取得
+--      AND  flv3.language(+)           = cv_lang                      --VD顧客区分名取得
+--      AND  flv3.lookup_type(+)        = cv_lookup_vd_customer_kbn    --VD顧客区分名取得
+--      AND  flv3.enabled_flag(+)       = cv_flag_y                    --VD顧客区分名取得
+      AND  xil.vd_cust_type           = flv2.lookup_code(+)          --VD顧客区分名取得
+      AND  flv2.language(+)           = cv_lang                      --VD顧客区分名取得
+      AND  flv2.lookup_type(+)        = cv_lookup_vd_customer_kbn    --VD顧客区分名取得
+      AND  flv2.enabled_flag(+)       = cv_flag_y                    --VD顧客区分名取得
+      AND  xil.inv_type               = flv3.lookup_code(+)          --請求区分名取得
+      AND  flv3.language(+)           = cv_lang                      --請求区分名取得
+      AND  flv3.lookup_type(+)        = cv_lookup_invoice_kbn        --請求区分名取得
+      AND  flv3.enabled_flag(+)       = cv_flag_y                    --請求区分名取得
+-- Ver1.2 mod end
       AND  xil.chain_shop_code        = xca.edi_chain_code(+)        --チェーン店名取得
       AND  xca.customer_id            = hca.cust_account_id(+)       --チェーン店名取得
       AND  hca.party_id               = hp.party_id(+)               --チェーン店名取得
@@ -1115,10 +1143,16 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
           , gt_data_tab(48) --売上拠点名
           , gt_data_tab(49) --納品先店舗コード
           , gt_data_tab(50) --納品先店名
-          , gt_data_tab(51) --請求区分
-          , gt_data_tab(52) --請求区分名
-          , gt_data_tab(53) --VD顧客区分
-          , gt_data_tab(54) --VD顧客区分名
+-- Ver1.2 mod start
+--          , gt_data_tab(51) --請求区分
+--          , gt_data_tab(52) --請求区分名
+--          , gt_data_tab(53) --VD顧客区分
+--          , gt_data_tab(54) --VD顧客区分名
+          , gt_data_tab(51) --VD顧客区分
+          , gt_data_tab(52) --VD顧客区分名
+          , gt_data_tab(53) --請求区分
+          , gt_data_tab(54) --請求区分名
+-- Ver1.2 mod end
           , gt_data_tab(55) --チェーン店コード
           , gt_data_tab(56) --チェーン店名
           , gt_data_tab(57) --納品日
