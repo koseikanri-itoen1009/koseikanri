@@ -1,0 +1,173 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : XXCOK_CONDITION_LINES_EST
+ * Description : 見積控除詳細テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/01/14    1.0   SCSK Y.Koh       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_condition_lines_est (
+     condition_line_id              NUMBER        NOT NULL
+    ,condition_id                   NUMBER        NOT NULL
+    ,condition_no                   VARCHAR2(12)  NOT NULL
+    ,detail_number                  NUMBER        NOT NULL
+    ,enabled_flag_l                 VARCHAR2(1)   NOT NULL
+    ,target_category                VARCHAR2(1)
+    ,product_class                  VARCHAR2(1)
+    ,item_code                      VARCHAR2(10)
+    ,uom_code                       VARCHAR2(3)
+    ,line_recovery_flag             VARCHAR2(1)   NOT NULL
+    ,shop_pay_1                     NUMBER
+    ,material_rate_1                NUMBER
+    ,condition_unit_price_en_2      NUMBER
+    ,demand_en_3                    NUMBER
+    ,shop_pay_en_3                  NUMBER
+    ,compensation_en_3              NUMBER
+    ,wholesale_margin_en_3          NUMBER
+    ,wholesale_margin_per_3         NUMBER
+    ,accrued_en_3                   NUMBER
+    ,normal_shop_pay_en_4           NUMBER
+    ,just_shop_pay_en_4             NUMBER
+    ,just_condition_en_4            NUMBER
+    ,wholesale_adj_margin_en_4      NUMBER
+    ,wholesale_adj_margin_per_4     NUMBER
+    ,accrued_en_4                   NUMBER
+    ,prediction_qty_5               NUMBER
+    ,ratio_per_5                    NUMBER
+    ,amount_prorated_en_5           NUMBER
+    ,condition_unit_price_en_5      NUMBER
+    ,support_amount_sum_en_5        NUMBER
+    ,prediction_qty_6               NUMBER
+    ,condition_unit_price_en_6      NUMBER
+    ,target_rate_6                  NUMBER
+    ,deduction_unit_price_en_6      NUMBER
+    ,accounting_base                VARCHAR2(4)
+    ,accounting_customer_code       VARCHAR2(9)
+    ,deduction_amount               NUMBER
+    ,deduction_tax_amount           NUMBER
+    ,dl_wholesale_margin_en         NUMBER
+    ,dl_wholesale_margin_per        NUMBER
+    ,dl_wholesale_adj_margin_en     NUMBER
+    ,dl_wholesale_adj_margin_per    NUMBER
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_condition_lines_est_pk PRIMARY KEY (condition_line_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_condition_lines_est IS '見積控除詳細テーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.condition_line_id                        IS '控除詳細ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.condition_id                             IS '控除条件ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.condition_no                             IS '控除番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.detail_number                            IS '明細番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.enabled_flag_l                           IS '有効フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.target_category                          IS '対象区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.product_class                            IS '商品区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.item_code                                IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.uom_code                                 IS '単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.line_recovery_flag                       IS 'リカバリ対象フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.shop_pay_1                               IS '店納(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.material_rate_1                          IS '料率(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.condition_unit_price_en_2                IS '条件単価２(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.demand_en_3                              IS '請求(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.shop_pay_en_3                            IS '店納(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.compensation_en_3                        IS '補填(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.wholesale_margin_en_3                    IS '問屋マージン(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.wholesale_margin_per_3                   IS '問屋マージン(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.accrued_en_3                             IS '未収計３(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.normal_shop_pay_en_4                     IS '通常店納(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.just_shop_pay_en_4                       IS '今回店納(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.just_condition_en_4                      IS '今回条件(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.wholesale_adj_margin_en_4                IS '問屋マージン修正(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.wholesale_adj_margin_per_4               IS '問屋マージン修正(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.accrued_en_4                             IS '未収計４(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.prediction_qty_5                         IS '予測数量５(本)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.ratio_per_5                              IS '比率(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.amount_prorated_en_5                     IS '金額按分(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.condition_unit_price_en_5                IS '条件単価５(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.support_amount_sum_en_5                  IS '協賛金合計(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.prediction_qty_6                         IS '予測数量６(本)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.condition_unit_price_en_6                IS '条件単価６(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.target_rate_6                            IS '対象率(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.deduction_unit_price_en_6                IS '控除単価(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.accounting_base                          IS '計上拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.accounting_customer_code                 IS '計上顧客'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.deduction_amount                         IS '控除額(本体)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.deduction_tax_amount                     IS '控除税額'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.dl_wholesale_margin_en                   IS 'DL用問屋マージン(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.dl_wholesale_margin_per                  IS 'DL用問屋マージン(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.dl_wholesale_adj_margin_en               IS 'DL用問屋マージン修正(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.dl_wholesale_adj_margin_per              IS 'DL用問屋マージン修正(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.created_by                               IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.creation_date                            IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.last_updated_by                          IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.last_update_date                         IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.last_update_login                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.request_id                               IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.program_id                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_lines_est.program_update_date                      IS 'プログラム更新日'
+/
