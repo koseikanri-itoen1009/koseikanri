@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2021/05/18    1.4   SCSK Y.Koh       E_本稼動_16026 顧客との紐付きチェック追加
  *  2021/09/21    1.5   H.Futamura       E_本稼動_17546 控除マスタ削除アップロードの改修
  *  2022/01/13    1.6   SCSK Y.Koh       E_本稼動_17413 控除マスタのデータ種類が変更された
+ *  2022/02/15    1.7   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
  *
  *****************************************************************************************/
 --
@@ -176,6 +177,10 @@ AS
   cv_csv_update                     CONSTANT VARCHAR2(4)  :=  '修正';   -- CSV処理区分(修正)
   cv_csv_insert                     CONSTANT VARCHAR2(4)  :=  '登録';   -- CSV処理区分(登録)
   cv_csv_decision                   CONSTANT VARCHAR2(4)  :=  '決裁';   -- CSV処理区分(決裁)
+-- 2022/02/15 Ver1.7 ADD Start
+  cv_data_type_div_nrm              CONSTANT VARCHAR2(1)  :=  'N';    -- データ種類区分(通常)
+  cv_data_type_div_est              CONSTANT VARCHAR2(1)  :=  'E';    -- データ種類区分(見積)
+-- 2022/02/15 Ver1.7 ADD End
 --
   cv_condition_type_req             CONSTANT VARCHAR2(3)  :=  '010';  -- 控除タイプ(請求額×料率(％))
   cv_condition_type_sale            CONSTANT VARCHAR2(3)  :=  '020';  -- 控除タイプ(販売数量×金額)
@@ -228,6 +233,10 @@ AS
   -- 参照タイプ
   cv_type_upload_obj                CONSTANT VARCHAR2(30) := 'XXCCP1_FILE_UPLOAD_OBJ';      -- ファイルアップロードオブジェクト
   cv_type_deduction_data            CONSTANT VARCHAR2(30) := 'XXCOK1_DEDUCTION_DATA_TYPE';  -- 控除データ種類
+-- 2022/02/15 Ver1.7 ADD Start
+  cv_type_deduction_data_est        CONSTANT VARCHAR2(30) := 'XXCOK1_DEDUCTION_DATA_TYPE_EST';
+                                                                                            -- 控除データ種類(見積用)
+-- 2022/02/15 Ver1.7 ADD End
   cv_type_chain_code                CONSTANT VARCHAR2(30) := 'XXCMM_CHAIN_CODE';            -- チェーンコード
   cv_type_business_type             CONSTANT VARCHAR2(30) := 'XX03_BUSINESS_TYPE';          -- 企業タイプ
   cv_type_deduction_1_kbn           CONSTANT VARCHAR2(30) := 'XXCOK1_DEDUCTION_1_KBN';      -- 請求額×料率（％）区分
@@ -494,6 +503,9 @@ AS
             , xct.deduction_chain_code            AS deduction_chain_code         --  控除用チェーンコード
             , xct.customer_code                   AS customer_code                --  顧客コード
             , xct.data_type                       AS data_type                    --  データ種類
+-- 2022/02/15 Ver1.7 ADD Start
+            , xct.data_type_div                   AS data_type_div                --  データ種類区分
+-- 2022/02/15 Ver1.7 ADD End
             , xct.start_date_active               AS start_date_active            --  開始日
             , xct.end_date_active                 AS end_date_active              --  終了日
             , xct.content                         AS content                      --  内容
@@ -549,6 +561,9 @@ AS
             , xct.deduction_chain_code            AS deduction_chain_code         --  控除用チェーンコード
             , xct.customer_code                   AS customer_code                --  顧客コード
             , xct.data_type                       AS data_type                    --  データ種類
+-- 2022/02/15 Ver1.7 ADD Start
+            , xct.data_type_div                   AS data_type_div                --  データ種類区分
+-- 2022/02/15 Ver1.7 ADD End
             , xct.start_date_active               AS start_date_active            --  開始日
             , xct.end_date_active                 AS end_date_active              --  終了日
             , xct.content                         AS content                      --  内容
@@ -1237,6 +1252,10 @@ AS
     lv_data_type        fnd_lookup_values.lookup_code%TYPE; -- データ種類
     lv_condition_cls    fnd_lookup_values.attribute1%TYPE;  -- 控除区分
     lv_condition_type   fnd_lookup_values.attribute2%TYPE;  -- 控除タイプ
+-- 2022/02/15 Ver1.7 ADD Start
+    lv_data_type_div    xxcok_condition_temp.data_type_div%TYPE;
+                                                            -- データ種類区分
+-- 2022/02/15 Ver1.7 ADD End
     ln_dummy            NUMBER;
     ln_err_chk          NUMBER;
 --
@@ -1311,11 +1330,20 @@ AS
         SELECT  flv.lookup_code     AS  data_type
               , flv.attribute1      AS  condition_class
               , flv.attribute2      AS  condition_type
+-- 2022/02/15 Ver1.7 ADD Start
+              , DECODE(flv.lookup_type, cv_type_deduction_data, cv_data_type_div_nrm, cv_type_deduction_data_est, cv_data_type_div_est)
+-- 2022/02/15 Ver1.7 ADD End
         INTO    lv_data_type
               , lv_condition_cls
               , lv_condition_type
+-- 2022/02/15 Ver1.7 ADD Start
+              , lv_data_type_div
+-- 2022/02/15 Ver1.7 ADD End
         FROM    fnd_lookup_values flv
-        WHERE   flv.lookup_type       = cv_type_deduction_data
+-- 2022/02/15 Ver1.7 MOD Start
+        WHERE   flv.lookup_type       IN ( cv_type_deduction_data, cv_type_deduction_data_est )
+--        WHERE   flv.lookup_type       = cv_type_deduction_data
+-- 2022/02/15 Ver1.7 MOD End
         AND     flv.language          = ct_language
         AND     flv.meaning           = g_if_data_tab(cn_data_type)
         AND     flv.enabled_flag      = cv_const_y
@@ -1518,6 +1546,9 @@ AS
         , deduction_tax_amount            -- 控除税額
         , condition_cls                   -- 控除区分
         , condition_type                  -- 控除タイプ
+-- 2022/02/15 Ver1.7 ADD Start
+        , data_type_div                   -- データ種類区分
+-- 2022/02/15 Ver1.7 ADD End
         , created_by                      -- 作成者
         , creation_date                   -- 作成日
         , last_updated_by                 -- 最終更新者
@@ -1593,6 +1624,9 @@ AS
         , TO_NUMBER(g_if_data_tab(cn_deduction_tax_amount))                       -- 控除税額
         , lv_condition_cls                                                        -- 控除区分
         , lv_condition_type                                                       -- 控除タイプ
+-- 2022/02/15 Ver1.7 ADD Start
+        , lv_data_type_div                                                        -- データ種類区分
+-- 2022/02/15 Ver1.7 ADD End
         , cn_created_by                                                           -- 作成者
         , cd_creation_date                                                        -- 作成日
         , cn_last_updated_by                                                      -- 最終更新者
@@ -2104,6 +2138,9 @@ AS
         IF g_cond_tmp_chk_rec.process_type_line IN( cv_process_delete )
           OR g_cond_tmp_chk_rec.process_type IN  (cv_process_update,cv_process_decision) THEN
           BEGIN
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             SELECT xch.start_date_active    -- 開始日
                   ,xch.end_date_active      -- 終了日
             INTO   ld_before_start_date
@@ -2112,6 +2149,18 @@ AS
             WHERE  xch.condition_no    = g_cond_tmp_chk_rec.condition_no  -- 控除No
             AND    xch.enabled_flag_h  = cv_const_y                   -- 有効フラグ
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              SELECT xch.start_date_active    -- 開始日
+                    ,xch.end_date_active      -- 終了日
+              INTO   ld_before_start_date
+                    ,ld_before_end_date
+              FROM   xxcok_condition_header_est xch
+              WHERE  xch.condition_no    = g_cond_tmp_chk_rec.condition_no  -- 控除No
+              AND    xch.enabled_flag_h  = cv_const_y                   -- 有効フラグ
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               ld_before_start_date := NULL;
@@ -2127,6 +2176,9 @@ AS
         THEN
           BEGIN
             --
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             SELECT  xch.condition_id          AS  condition_id
                   , NVL( (  SELECT MAX( sub.detail_number )     AS  max_detail_number
                             FROM xxcok_condition_lines sub
@@ -2140,6 +2192,23 @@ AS
             WHERE   xch.condition_no      =   g_cond_tmp_chk_rec.condition_no
             AND     xch.enabled_flag_h    =   cv_const_y
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              SELECT  xch.condition_id          AS  condition_id
+                    , NVL( (  SELECT MAX( sub.detail_number )     AS  max_detail_number
+                              FROM xxcok_condition_lines_est  sub
+                              WHERE sub.condition_no = xch.condition_no ), 0 )
+                                                AS  max_detail_number
+                    , xch.start_date_active     AS  start_date_active
+              INTO    lt_exists_header
+                    , lt_max_detail_number
+                    , lt_master_start_date
+              FROM    xxcok_condition_header_est  xch
+              WHERE   xch.condition_no      =   g_cond_tmp_chk_rec.condition_no
+              AND     xch.enabled_flag_h    =   cv_const_y
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
             --
             IF ( lt_exists_header IS NOT NULL ) THEN
               --  控除条件IDが取得された場合、TEMPに保持（明細挿入時に使用）:同一控除番号に一律設定
@@ -2163,6 +2232,9 @@ AS
         THEN
           BEGIN
             --
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             SELECT  xcl.condition_line_id     AS  condition_line_id
             INTO    lt_exists_line
             FROM    xxcok_condition_lines     xcl
@@ -2170,6 +2242,17 @@ AS
             AND     xcl.detail_number     =   g_cond_tmp_chk_rec.detail_number
             AND     xcl.enabled_flag_l    =   cv_const_y
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              SELECT  xcl.condition_line_id     AS  condition_line_id
+              INTO    lt_exists_line
+              FROM    xxcok_condition_lines_est xcl
+              WHERE   xcl.condition_no      =   g_cond_tmp_chk_rec.condition_no
+              AND     xcl.detail_number     =   g_cond_tmp_chk_rec.detail_number
+              AND     xcl.enabled_flag_l    =   cv_const_y
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
             --
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
@@ -2209,7 +2292,11 @@ AS
         IF  g_cond_tmp_chk_rec.process_type_line = cv_process_delete THEN
 --
           -- 修正前開始日が業務日付到来後の場合
-          IF ld_before_start_date <= gd_process_date THEN
+-- 2022/02/15 Ver1.7 ADD Start
+          IF  g_cond_tmp_chk_rec.data_type_div  =   cv_data_type_div_nrm  AND
+              ld_before_start_date              <=  gd_process_date       THEN
+--          IF ld_before_start_date <= gd_process_date THEN
+-- 2022/02/15 Ver1.7 ADD End
             -- 特定拠点の所属者でない場合NG
             IF  gn_privilege_delete = 0 THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
@@ -2448,12 +2535,25 @@ AS
           ELSE
 --
             -- 10.マスタに有効なデータが存在しない場合
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             SELECT COUNT(1)    AS  dummy
             INTO   ln_dummy
             FROM   xxcok_condition_header  xch -- 控除条件
             WHERE  xch.condition_no   = g_cond_tmp_chk_rec.condition_no  -- 控除番号
             AND    xch.enabled_flag_h = cv_const_y                       -- 有効フラグ
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              SELECT COUNT(1)    AS  dummy
+              INTO   ln_dummy
+              FROM   xxcok_condition_header_est xch -- 見積控除条件
+              WHERE  xch.condition_no   = g_cond_tmp_chk_rec.condition_no  -- 控除番号
+              AND    xch.enabled_flag_h = cv_const_y                       -- 有効フラグ
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
 --
             -- 0件だった場合、マスタ未登録エラー
             IF ln_dummy = 0 OR (ld_before_start_date IS NULL AND  ld_before_end_date IS NULL )THEN
@@ -2475,12 +2575,25 @@ AS
           AND g_cond_tmp_chk_rec.condition_no     IS  NOT NULL
           AND TO_NUMBER(g_cond_tmp_chk_rec.condition_no) >  0  THEN
 --
+-- 2022/02/15 Ver1.7 ADD Start
+          IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
           SELECT COUNT(1)    AS  dummy
           INTO   ln_dummy
           FROM   xxcok_condition_header  xch -- 控除条件
           WHERE  xch.condition_no   = g_cond_tmp_chk_rec.condition_no  -- 控除番号
           AND    xch.enabled_flag_h = cv_const_y                       -- 有効フラグ
           ;
+-- 2022/02/15 Ver1.7 ADD Start
+          ELSE
+            SELECT COUNT(1)    AS  dummy
+            INTO   ln_dummy
+            FROM   xxcok_condition_header_est xch -- 見積控除条件
+            WHERE  xch.condition_no   = g_cond_tmp_chk_rec.condition_no  -- 控除番号
+            AND    xch.enabled_flag_h = cv_const_y                       -- 有効フラグ
+            ;
+          END IF;
+-- 2022/02/15 Ver1.7 ADD End
 --
           -- 0件だった場合、マスタ未登録エラー
           IF ln_dummy = 0 THEN
@@ -2500,6 +2613,9 @@ AS
         --  ★ヘッダ、明細の何れかが更新の場合、マスタデータの開始日以降の場合NG
         IF  ( (     g_cond_tmp_chk_rec.process_type = cv_process_update 
                 OR g_cond_tmp_chk_rec.process_type_line = cv_process_update )
+-- 2022/02/15 Ver1.7 ADD Start
+              AND g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm
+-- 2022/02/15 Ver1.7 ADD End
               AND
               ( lt_master_start_date <= TRUNC(gd_process_date) )
             )
@@ -2641,7 +2757,11 @@ AS
         END IF;
 --
         --  処理区分が更新の場合
-        IF (    g_cond_tmp_chk_rec.csv_process_type = cv_csv_update ) THEN
+-- 2022/02/15 Ver1.7 ADD Start
+        IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  AND
+            g_cond_tmp_chk_rec.csv_process_type = cv_csv_update       THEN
+--        IF (    g_cond_tmp_chk_rec.csv_process_type = cv_csv_update ) THEN
+-- 2022/02/15 Ver1.7 ADD End
 --
           -- 19.★修正前開始日が業務日付より前かつ開始日を修正する場合
           IF (ld_before_start_date != TO_DATE(g_cond_tmp_chk_rec.start_date_active,cv_date_format)) THEN
@@ -2697,6 +2817,9 @@ AS
 --
           -- 23.DB上に該当する明細番号が存在するか確認
           ELSE
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             SELECT COUNT(1)    AS  dummy
             INTO   ln_dummy
             FROM   xxcok_condition_lines  xcl -- 控除詳細
@@ -2704,6 +2827,17 @@ AS
             AND    xcl.detail_number  = g_cond_tmp_chk_rec.detail_number  -- 明細番号
             AND    xcl.enabled_flag_l = cv_const_y                        -- 有効フラグ
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              SELECT COUNT(1)    AS  dummy
+              INTO   ln_dummy
+              FROM   xxcok_condition_lines_est  xcl -- 見積控除詳細
+              WHERE  xcl.condition_no   = g_cond_tmp_chk_rec.condition_no   -- 控除番号
+              AND    xcl.detail_number  = g_cond_tmp_chk_rec.detail_number  -- 明細番号
+              AND    xcl.enabled_flag_l = cv_const_y                        -- 有効フラグ
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
 ---- 0件だった場合、マスタ未登録エラー
             IF ln_dummy = 0 THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
@@ -3673,6 +3807,9 @@ AS
             END IF;
 --
               -- 58-1.品目コード重複チェック：明細の処理区分が登録で、同一控除番号、同一品目コードのデータで明細の処理区分が同一の場合
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             IF    g_cond_tmp_chk_rec.item_code  IS NOT NULL
               AND g_cond_tmp_chk_rec.process_type_line = cv_process_insert THEN
 --
@@ -3718,6 +3855,9 @@ AS
                 g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
               END IF;
             END IF;
+-- 2022/02/15 Ver1.7 ADD Start
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
 --
             -- 60.単位が未設定の場合エラー
             IF g_cond_tmp_chk_rec.uom_code  IS NULL THEN
@@ -4569,12 +4709,25 @@ AS
       --  先の削除処理で消される可能性があるため、削除後にチェック
       IF ( g_cond_tmp_rec.process_type IN( cv_process_update, cv_const_n ) ) THEN
         --  ヘッダの処理区分が U or NULL の場合、控除番号が一致する有効なマスタが存在するか
+-- 2022/02/15 Ver1.7 ADD Start
+        IF  g_cond_tmp_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
         SELECT  COUNT(1)      AS  cnt
         INTO    ln_exists_header
         FROM    xxcok_condition_header    xch
         WHERE   xch.condition_no    =   g_cond_tmp_rec.condition_no
         AND     xch.enabled_flag_h  =   cv_const_y
         ;
+-- 2022/02/15 Ver1.7 ADD Start
+        ELSE
+          SELECT  COUNT(1)      AS  cnt
+          INTO    ln_exists_header
+          FROM    xxcok_condition_header_est  xch
+          WHERE   xch.condition_no    =   g_cond_tmp_rec.condition_no
+          AND     xch.enabled_flag_h  =   cv_const_y
+          ;
+        END IF;
+-- 2022/02/15 Ver1.7 ADD End
       END IF;
       --
       --  ⑦
@@ -4790,6 +4943,9 @@ AS
         END IF;
       END IF;
 --
+-- 2022/02/15 Ver1.7 ADD Start
+      IF  g_cond_tmp_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
       --  ①or②or③or④or⑤or⑥
       IF ( g_cond_tmp_rec.condition_type IN( cv_condition_type_req, cv_condition_type_sale, cv_condition_type_ws_fix
                                         , cv_condition_type_ws_add, cv_condition_type_spons, cv_condition_type_pre_spons ) ) THEN
@@ -4874,6 +5030,9 @@ AS
           g_message_list_tab( g_cond_tmp_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
         END IF;
       END IF;
+-- 2022/02/15 Ver1.7 ADD Start
+      END IF;
+-- 2022/02/15 Ver1.7 ADD End
 --
       -- ⑤の場合
       IF  g_cond_tmp_rec.condition_type =  cv_condition_type_spons  THEN
@@ -5100,6 +5259,9 @@ AS
           --  ヘッダの更新
           --  ************************************************
           BEGIN
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             UPDATE  xxcok_condition_header xch
 -- 2022/01/13 Ver1.6 MOD Start
             SET     xch.tax_code                  =   g_cond_tmp_chk_rec.tax_code                                     --  税コード
@@ -5122,6 +5284,25 @@ AS
                   , xch.program_update_date       =   cd_program_update_date
             WHERE   xch.condition_no              =   g_cond_tmp_chk_rec.condition_no
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              UPDATE  xxcok_condition_header_est  xch
+              SET     xch.tax_code                  =   g_cond_tmp_chk_rec.tax_code                                     --  税コード
+                    , xch.tax_rate                  =   g_cond_tmp_chk_rec.tax_rate                                     --  税率
+                    , xch.start_date_active         =   ld_start_date                                                   --  開始日
+                    , xch.end_date_active           =   ld_end_date                                                     --  終了日
+                    , xch.header_recovery_flag      =   cv_const_n                                                      --  リカバリ対象フラグ
+                    , xch.last_updated_by           =   cn_last_updated_by
+                    , xch.last_update_date          =   cd_last_update_date
+                    , xch.last_update_login         =   cn_last_update_login
+                    , xch.request_id                =   cn_request_id
+                    , xch.program_application_id    =   cn_program_application_id
+                    , xch.program_id                =   cn_program_id
+                    , xch.program_update_date       =   cd_program_update_date
+              WHERE   xch.condition_no              =   g_cond_tmp_chk_rec.condition_no
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
             IF ( ld_start_date  <= gd_process_date ) THEN
               --  ヘッダが更新されたことに伴う、明細のリカバリ対象フラグを変更
               UPDATE  xxcok_condition_lines  xcl
@@ -5160,6 +5341,9 @@ AS
           --  ヘッダの更新
           --  ************************************************
           BEGIN
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             UPDATE  xxcok_condition_header
             SET     content                   =   g_cond_tmp_chk_rec.content                                      --  内容
                   , decision_no               =   g_cond_tmp_chk_rec.decision_no                                  --  決裁No
@@ -5174,6 +5358,24 @@ AS
                   , program_update_date       =   cd_program_update_date
             WHERE   condition_no              =   g_cond_tmp_chk_rec.condition_no
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              UPDATE  xxcok_condition_header_est
+              SET     content                   =   g_cond_tmp_chk_rec.content                                      --  内容
+                    , decision_no               =   g_cond_tmp_chk_rec.decision_no                                  --  決裁No
+                    , header_recovery_flag      =   cv_const_n                                                      --  リカバリ対象フラグ
+                    , agreement_no              =   g_cond_tmp_chk_rec.agreement_no                                 --  契約番号
+                    , last_updated_by           =   cn_last_updated_by
+                    , last_update_date          =   cd_last_update_date
+                    , last_update_login         =   cn_last_update_login
+                    , request_id                =   cn_request_id
+                    , program_application_id    =   cn_program_application_id
+                    , program_id                =   cn_program_id
+                    , program_update_date       =   cd_program_update_date
+              WHERE   condition_no              =   g_cond_tmp_chk_rec.condition_no
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
           EXCEPTION
             WHEN OTHERS THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
@@ -5242,6 +5444,9 @@ AS
           --  ヘッダの挿入
           --  ***************************************
           BEGIN
+-- 2022/02/15 Ver1.7 ADD Start
+            IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
             INSERT INTO xxcok_condition_header(
                 condition_id                --  控除条件ID
               , condition_no                --  控除番号
@@ -5294,6 +5499,62 @@ AS
               , cd_program_update_date                                                -- プログラム更新日
             )
             ;
+-- 2022/02/15 Ver1.7 ADD Start
+            ELSE
+              INSERT INTO xxcok_condition_header_est(
+                  condition_id                --  控除条件ID
+                , condition_no                --  控除番号
+                , enabled_flag_h              --  有効フラグ
+                , corp_code                   --  企業コード
+                , deduction_chain_code        --  チェーン店コード
+                , customer_code               --  顧客コード
+                , data_type                   --  データ種類
+                , tax_code                    --  税コード
+                , tax_rate                    --  税率
+                , start_date_active           --  開始日
+                , end_date_active             --  終了日
+                , content                     --  内容
+                , decision_no                 --  決裁No
+                , agreement_no                --  契約番号
+                , header_recovery_flag        --  リカバリ対象フラグ
+                , created_by                  --  作成者
+                , creation_date               --  作成日
+                , last_updated_by             --  最終更新者
+                , last_update_date            --  最終更新日
+                , last_update_login           --  最終更新ログイン
+                , request_id                  --  要求ID
+                , program_application_id      --  コンカレント・プログラム・アプリケーションID
+                , program_id                  --  コンカレント・プログラムID
+                , program_update_date         --  プログラム更新日
+              )VALUES(
+                  lt_condition_id                                                       -- 控除条件ID
+                , lt_condition_no                                                       -- 控除番号
+                , cv_const_y                                                            -- 有効フラグ
+                , g_cond_tmp_chk_rec.corp_code                                          -- 企業コード
+                , g_cond_tmp_chk_rec.deduction_chain_code                               -- チェーン店コード
+                , g_cond_tmp_chk_rec.customer_code                                      -- 顧客コード
+                , g_cond_tmp_chk_rec.data_type                                          -- データ種類
+                , g_cond_tmp_chk_rec.tax_code                                           -- 税コード
+                , g_cond_tmp_chk_rec.tax_rate                                           -- 税率
+                , ld_start_date                                                         -- 開始日
+                , ld_end_date                                                           -- 終了日
+                , g_cond_tmp_chk_rec.content                                            -- 内容
+                , g_cond_tmp_chk_rec.decision_no                                        -- 決裁No
+                , g_cond_tmp_chk_rec.agreement_no                                       -- 契約番号
+                , cv_const_n                                                            -- リカバリ対象フラグ
+                , cn_created_by                                                         -- 作成者
+                , cd_creation_date                                                      -- 作成日
+                , cn_last_updated_by                                                    -- 最終更新者
+                , cd_last_update_date                                                   -- 最終更新日
+                , cn_last_update_login                                                  -- 最終更新ログイン
+                , cn_request_id                                                         -- 要求ID
+                , cn_program_application_id                                             -- コンカレント・プログラム・アプリケーションID
+                , cn_program_id                                                         -- コンカレント・プログラムID
+                , cd_program_update_date                                                -- プログラム更新日
+              )
+              ;
+            END IF;
+-- 2022/02/15 Ver1.7 ADD End
           EXCEPTION
             WHEN OTHERS THEN
               -- エラーメッセージの取得
@@ -5434,6 +5695,9 @@ AS
         --  明細の挿入
         --  ************************************************
         BEGIN
+-- 2022/02/15 Ver1.7 ADD Start
+          IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
           INSERT INTO xxcok_condition_lines(
               CONDITION_LINE_ID
             , CONDITION_ID
@@ -5543,6 +5807,113 @@ AS
             , cn_program_id
             , cd_program_update_date
           );
+-- 2022/02/15 Ver1.7 ADD Start
+          ELSE
+            INSERT INTO xxcok_condition_lines_est(
+                CONDITION_LINE_ID
+              , CONDITION_ID
+              , CONDITION_NO
+              , DETAIL_NUMBER
+              , ENABLED_FLAG_L
+              , TARGET_CATEGORY
+              , PRODUCT_CLASS
+              , ITEM_CODE
+              , UOM_CODE
+              , LINE_RECOVERY_FLAG
+              , SHOP_PAY_1
+              , MATERIAL_RATE_1
+              , CONDITION_UNIT_PRICE_EN_2
+              , DEMAND_EN_3
+              , SHOP_PAY_EN_3
+              , COMPENSATION_EN_3
+              , WHOLESALE_MARGIN_EN_3
+              , WHOLESALE_MARGIN_PER_3
+              , ACCRUED_EN_3
+              , NORMAL_SHOP_PAY_EN_4
+              , JUST_SHOP_PAY_EN_4
+              , JUST_CONDITION_EN_4
+              , WHOLESALE_ADJ_MARGIN_EN_4
+              , WHOLESALE_ADJ_MARGIN_PER_4
+              , ACCRUED_EN_4
+              , PREDICTION_QTY_5
+              , RATIO_PER_5
+              , AMOUNT_PRORATED_EN_5
+              , CONDITION_UNIT_PRICE_EN_5
+              , SUPPORT_AMOUNT_SUM_EN_5
+              , PREDICTION_QTY_6
+              , CONDITION_UNIT_PRICE_EN_6
+              , TARGET_RATE_6
+              , DEDUCTION_UNIT_PRICE_EN_6
+              , ACCOUNTING_CUSTOMER_CODE
+              , DEDUCTION_AMOUNT
+              , DEDUCTION_TAX_AMOUNT
+              , DL_WHOLESALE_MARGIN_EN
+              , DL_WHOLESALE_MARGIN_PER
+              , DL_WHOLESALE_ADJ_MARGIN_EN
+              , DL_WHOLESALE_ADJ_MARGIN_PER
+              , CREATED_BY
+              , CREATION_DATE
+              , LAST_UPDATED_BY
+              , LAST_UPDATE_DATE
+              , LAST_UPDATE_LOGIN
+              , REQUEST_ID
+              , PROGRAM_APPLICATION_ID
+              , PROGRAM_ID
+              , PROGRAM_UPDATE_DATE
+            )VALUES(
+                lt_condition_line_id
+              , lt_condition_id
+              , lt_condition_no
+              , g_cond_tmp_chk_rec.detail_number
+              , cv_const_y
+              , g_cond_tmp_chk_rec.target_category
+              , g_cond_tmp_chk_rec.product_class_code
+              , g_cond_tmp_chk_rec.item_code
+              , lt_uom_code
+              , cv_const_n
+              , g_cond_tmp_chk_rec.shop_pay_1
+              , g_cond_tmp_chk_rec.material_rate_1
+              , g_cond_tmp_chk_rec.condition_unit_price_en_2_6
+              , g_cond_tmp_chk_rec.demand_en_3
+              , g_cond_tmp_chk_rec.shop_pay_en_3
+              , lt_compensation_en_3
+              , lt_wholesale_margin_en_3
+              , lt_wholesale_margin_per_3
+              , lt_accrued_en_3
+              , g_cond_tmp_chk_rec.normal_shop_pay_en_4
+              , g_cond_tmp_chk_rec.just_shop_pay_en_4
+              , lt_just_condition_en_4
+              , lt_wholesale_adj_margin_en_4
+              , lt_wholesale_adj_margin_per_4
+              , lt_accrued_en_4
+              , g_cond_tmp_chk_rec.prediction_qty_5_6
+              , NULL
+              , NULL
+              , NULL
+              , g_cond_tmp_chk_rec.support_amount_sum_en_5
+              , g_cond_tmp_chk_rec.prediction_qty_5_6
+              , g_cond_tmp_chk_rec.condition_unit_price_en_2_6
+              , g_cond_tmp_chk_rec.target_rate_6
+              , lt_deduction_unit_price_en_6
+              , g_cond_tmp_chk_rec.accounting_customer_code
+              , g_cond_tmp_chk_rec.deduction_amount
+              , g_cond_tmp_chk_rec.deduction_tax_amount
+              , g_cond_tmp_chk_rec.wholesale_margin_en_3
+              , g_cond_tmp_chk_rec.wholesale_margin_per_3
+              , g_cond_tmp_chk_rec.wholesale_adj_margin_en_4
+              , g_cond_tmp_chk_rec.wholesale_adj_margin_per_4
+              , cn_created_by
+              , cd_creation_date
+              , cn_last_updated_by
+              , cd_last_update_date
+              , cn_last_update_login
+              , cn_request_id
+              , cn_program_application_id
+              , cn_program_id
+              , cd_program_update_date
+            );
+          END IF;
+-- 2022/02/15 Ver1.7 ADD End
         EXCEPTION
           WHEN OTHERS THEN
             -- エラーメッセージの取得
@@ -5559,6 +5930,9 @@ AS
         END;
 --
         -- ヘッダ情報のWHOカラムを更新
+-- 2022/02/15 Ver1.7 ADD Start
+        IF  g_cond_tmp_chk_rec.data_type_div  = cv_data_type_div_nrm  THEN
+-- 2022/02/15 Ver1.7 ADD End
         UPDATE  xxcok_condition_header xch
         SET     xch.last_updated_by           =   cn_last_updated_by
               , xch.last_update_date          =   cd_last_update_date
@@ -5569,6 +5943,20 @@ AS
               , xch.program_update_date       =   cd_program_update_date
         WHERE   xch.condition_no       = lt_condition_no
         ;
+-- 2022/02/15 Ver1.7 ADD Start
+        ELSE
+          UPDATE  xxcok_condition_header_est  xch
+          SET     xch.last_updated_by           =   cn_last_updated_by
+                , xch.last_update_date          =   cd_last_update_date
+                , xch.last_update_login         =   cn_last_update_login
+                , xch.request_id                =   cn_request_id
+                , xch.program_application_id    =   cn_program_application_id
+                , xch.program_id                =   cn_program_id
+                , xch.program_update_date       =   cd_program_update_date
+          WHERE   xch.condition_no       = lt_condition_no
+          ;
+        END IF;
+-- 2022/02/15 Ver1.7 ADD End
       END IF;
       --
     END LOOP  get_cond_tm_loop3;
@@ -5707,6 +6095,9 @@ AS
                     AND     xct.detail_number       =   xcl.detail_number
                     AND     xct.request_id          =   cn_request_id
                     AND     xct.process_type_line   =   cv_process_delete
+-- 2022/02/15 Ver1.7 ADD Start
+                    AND     xct.data_type_div       =   cv_data_type_div_nrm
+-- 2022/02/15 Ver1.7 ADD End
             )
           )
     ;
@@ -5727,6 +6118,9 @@ AS
                    AND     xct.detail_number       =   xcl.detail_number
                    AND     xcl.condition_no        =   xch.condition_no
                    AND     xct.process_type_line   =   cv_process_delete
+-- 2022/02/15 Ver1.7 ADD Start
+                   AND     xct.data_type_div       =   cv_data_type_div_nrm
+-- 2022/02/15 Ver1.7 ADD End
                   )
     ;
 --
@@ -5744,6 +6138,9 @@ AS
     WHERE  EXISTS( SELECT  1     AS  dummy
                    FROM    xxcok_condition_temp     xct
                    WHERE   xct.condition_no  =  xch.condition_no
+-- 2022/02/15 Ver1.7 ADD Start
+                   AND     xct.data_type_div =  cv_data_type_div_nrm
+-- 2022/02/15 Ver1.7 ADD End
                    AND     NOT EXISTS( SELECT  1     AS  dummy
                                        FROM    xxcok_condition_lines    xcl
                                        WHERE   xcl.condition_no   =   xct.condition_no
@@ -5751,6 +6148,71 @@ AS
                                        )
                    )
     ;
+-- 2022/02/15 Ver1.7 ADD Start
+    UPDATE  xxcok_condition_lines_est xcl
+    SET     xcl.enabled_flag_l          =   cv_const_n
+          , xcl.line_recovery_flag      =   cv_const_n
+          , xcl.last_updated_by         =   fnd_global.user_id
+          , xcl.last_update_date        =   cd_last_update_date
+          , xcl.last_update_login       =   cn_last_update_login
+          , xcl.request_id              =   cn_request_id
+          , xcl.program_application_id  =   cn_program_application_id
+          , xcl.program_id              =   cn_program_id
+          , xcl.program_update_date     =   cd_program_update_date
+    WHERE ( EXISTS( SELECT  1     AS  dummy
+                    FROM    xxcok_condition_temp    xct
+                    WHERE   xct.condition_no        =   xcl.condition_no
+                    AND     xct.detail_number       =   xcl.detail_number
+                    AND     xct.request_id          =   cn_request_id
+                    AND     xct.process_type_line   =   cv_process_delete
+                    AND     xct.data_type_div       =   cv_data_type_div_est
+            )
+          )
+    ;
+--
+    --
+    UPDATE  xxcok_condition_header_est  xch
+    SET     xch.last_updated_by         =   fnd_global.user_id
+          , xch.last_update_date        =   cd_last_update_date
+          , xch.last_update_login       =   cn_last_update_login
+          , xch.request_id              =   cn_request_id
+          , xch.program_application_id  =   cn_program_application_id
+          , xch.program_id              =   cn_program_id
+          , xch.program_update_date     =   cd_program_update_date
+    WHERE  EXISTS( SELECT  1     AS  dummy
+                   FROM    xxcok_condition_lines_est xcl
+                          ,xxcok_condition_temp      xct
+                   WHERE   xct.condition_no        =   xcl.condition_no
+                   AND     xct.detail_number       =   xcl.detail_number
+                   AND     xcl.condition_no        =   xch.condition_no
+                   AND     xct.process_type_line   =   cv_process_delete
+                   AND     xct.data_type_div       =   cv_data_type_div_est
+                  )
+    ;
+--
+    --  ヘッダ削除  TEMPでヘッダ削除となっている控除番号と一致する控除ヘッダを全て無効化
+    UPDATE  xxcok_condition_header_est  xch
+    SET     xch.enabled_flag_h          =   cv_const_n
+          , xch.header_recovery_flag    =   cv_const_n
+          , xch.last_updated_by         =   fnd_global.user_id
+          , xch.last_update_date        =   cd_last_update_date
+          , xch.last_update_login       =   cn_last_update_login
+          , xch.request_id              =   cn_request_id
+          , xch.program_application_id  =   cn_program_application_id
+          , xch.program_id              =   cn_program_id
+          , xch.program_update_date     =   cd_program_update_date
+    WHERE  EXISTS( SELECT  1     AS  dummy
+                   FROM    xxcok_condition_temp     xct
+                   WHERE   xct.condition_no  =  xch.condition_no
+                   AND     xct.data_type_div =  cv_data_type_div_est
+                   AND     NOT EXISTS( SELECT  1     AS  dummy
+                                       FROM    xxcok_condition_lines_est  xcl
+                                       WHERE   xcl.condition_no   =   xct.condition_no
+                                       AND     xcl.enabled_flag_l =   cv_const_y
+                                       )
+                   )
+    ;
+-- 2022/02/15 Ver1.7 ADD End
 --
 --#################################  固定例外処理部 START   ####################################
 --
