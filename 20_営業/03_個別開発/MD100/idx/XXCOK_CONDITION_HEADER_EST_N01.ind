@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_condition_header_est_n01
+ON xxcok.xxcok_condition_header_est(
+     corp_code
+   , start_date_active
+   , end_date_active
+)
+TABLESPACE xxidx2
+/
