@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_condition_lines_est_n01
+ON xxcok.xxcok_condition_lines_est (
+     condition_id
+)
+TABLESPACE xxidx2
+/
