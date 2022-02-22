@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_condition_lines_est_n04
+ON xxcok.xxcok_condition_lines_est(
+     condition_id
+   , item_code
+   , product_class
+)
+TABLESPACE xxidx2
+/
