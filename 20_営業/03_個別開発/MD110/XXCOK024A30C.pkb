@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A30C(body)
  * Description      : 控除マスタIF出力（情報系）
  * MD.050           : 控除マスタIF出力（情報系） MD050_COK_024_A30
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/12/18    1.0   R.Oikawa        main新規作成
+ *  2022/02/22    1.1   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
  *
  *****************************************************************************************/
 --
@@ -419,7 +420,97 @@ AS
       AND    ffvv.value_category(+) = 'XX03_BUSINESS_TYPE'
       AND    xca.customer_code(+) = xch.customer_code
 -- 2021/04/02 MOD End
-      ORDER BY xch.condition_id, xcl.condition_line_id
+-- 2022/02/22 Ver1.1 MOD Start
+    UNION ALL
+      SELECT xch.condition_id                   condition_id,                 -- 控除条件ID
+             xch.condition_no                   condition_no,                 -- 控除番号
+             xch.enabled_flag_h                 enabled_flag_h,               -- 有効フラグ
+             xch.corp_code                      corp_code,                    -- 企業コード
+             xch.deduction_chain_code           deduction_chain_code,         -- 控除用チェーンコード
+             xch.customer_code                  customer_code,                -- 顧客コード
+             ffvv.attribute2 
+                || flv2.attribute3 
+                || xca.sale_base_code           base_code,                    -- 拠点
+             xch.data_type                      data_type,                    -- データ種類
+             flv.meaning                        data_type_name,               -- データ種類名
+             xch.tax_code                       tax_code,                     -- 税コード
+             xch.tax_rate                       tax_rate,                     -- 税率
+             TO_CHAR( xch.start_date_active, cv_date_fmt_ymd )
+                                                start_date_active,            -- 開始日
+             TO_CHAR( xch.end_date_active, cv_date_fmt_ymd )
+                                                end_date_active,              -- 終了日
+             xch.content                        content ,                     -- 内容
+             xch.decision_no                    decision_no,                  -- 決裁No
+             xch.agreement_no                   agreement_no,                 -- 契約番号
+             xch.header_recovery_flag           header_recovery_flag,         -- リカバリ対象フラグ
+             xcl.condition_line_id              condition_line_id,            -- 控除詳細ID
+             xcl.detail_number                  detail_number,                -- 明細番号
+             xcl.enabled_flag_l                 enabled_flag_l,               -- 有効フラグ(明細)
+             xcl.target_category                target_category,              -- 対象区分
+             xcl.product_class                  product_class,                -- 商品区分
+             xcl.item_code                      item_code,                    -- 品目コード
+             xcl.uom_code                       uom_code,                     -- 単位
+             xcl.line_recovery_flag             line_recovery_flag,           -- リカバリ対象フラグ(明細)
+             xcl.shop_pay_1                     shop_pay_1,                   -- 店納(％)
+             xcl.material_rate_1                material_rate_1,              -- 料率(％)
+             xcl.condition_unit_price_en_2      condition_unit_price_en_2,    -- 条件単価２(円)
+             xcl.demand_en_3                    demand_en_3,                  -- 請求(円)
+             xcl.shop_pay_en_3                  shop_pay_en_3,                -- 店納(円)
+             xcl.compensation_en_3              compensation_en_3,            -- 補填(円)
+             xcl.wholesale_margin_en_3          wholesale_margin_en_3,        -- 問屋マージン(円)
+             xcl.wholesale_margin_per_3         wholesale_margin_per_3,       -- 問屋マージン(％)
+             xcl.accrued_en_3                   accrued_en_3,                 -- 未収計３(円)
+             xcl.normal_shop_pay_en_4           normal_shop_pay_en_4,         -- 通常店納(円)
+             xcl.just_shop_pay_en_4             just_shop_pay_en_4,           -- 今回店納(円)
+             xcl.just_condition_en_4            just_condition_en_4,          -- 今回条件(円)
+             xcl.wholesale_adj_margin_en_4      wholesale_adj_margin_en_4,    -- 問屋マージン修正(円)
+             xcl.wholesale_adj_margin_per_4     wholesale_adj_margin_per_4,   -- 問屋マージン修正(％)
+             xcl.accrued_en_4                   accrued_en_4,                 -- 未収計４(円)
+             xcl.prediction_qty_5               prediction_qty_5,             -- 予測数量５(本)
+             xcl.ratio_per_5                    ratio_per_5,                  -- 比率(％)
+             xcl.amount_prorated_en_5           amount_prorated_en_5,         -- 金額按分(円)
+             xcl.condition_unit_price_en_5      condition_unit_price_en_5,    -- 条件単価５(円)
+             xcl.support_amount_sum_en_5        support_amount_sum_en_5,      -- 協賛金合計(円)
+             xcl.prediction_qty_6               prediction_qty_6,             -- 予測数量６(本)
+             xcl.condition_unit_price_en_6      condition_unit_price_en_6,    -- 条件単価６(円)
+             xcl.target_rate_6                  target_rate_6,                -- 対象率(％)
+             xcl.deduction_unit_price_en_6      deduction_unit_price_en_6,    -- 控除単価(円)
+             xcl.accounting_customer_code       accounting_customer_code,     -- 計上顧客
+             xcl.deduction_amount               deduction_amount,             -- 控除額(本体)
+             xcl.deduction_tax_amount           deduction_tax_amount,         -- 控除税額
+             xcl.dl_wholesale_margin_en         dl_wholesale_margin_en,       -- DL用問屋マージン(円)
+             xcl.dl_wholesale_margin_per        dl_wholesale_margin_per,      -- DL用問屋マージン(％)
+             xcl.dl_wholesale_adj_margin_en     dl_wholesale_adj_margin_en,   -- DL用問屋マージン修正(円)
+             xcl.dl_wholesale_adj_margin_per    dl_wholesale_adj_margin_per,  -- DL用問屋マージン修正(％)
+             fu1.user_name                      create_user_name,             -- 作成者
+             TO_CHAR( xcl.creation_date, cv_date_fmt_ymd )
+                                                creation_date,                -- 作成日
+             fu2.user_name                      last_updated_user_name,       -- 最終更新者
+             TO_CHAR( xcl.last_update_date, cv_date_fmt_ymd )
+                                                last_update_date              -- 最終更新日
+      FROM   xxcok_condition_header_est xch, -- 控除条件テーブル
+             xxcok_condition_lines_est  xcl, -- 控除詳細テーブル
+             fnd_user fu1,               -- ユーザーマスタ
+             fnd_user fu2,               -- ユーザーマスタ
+             fnd_lookup_values      flv, -- データ種類
+             fnd_lookup_values      flv2,-- チェーンコード
+             fnd_flex_values_vl     ffvv, -- 企業
+             xxcmm_cust_accounts    xca  -- 顧客
+      WHERE  xch.condition_id    = xcl.condition_id
+      AND    xcl.created_by      = fu1.user_id(+)
+      AND    xcl.last_updated_by = fu2.user_id(+)
+      AND    flv.lookup_type(+)  = 'XXCOK1_DEDUCTION_DATA_TYPE_EST'
+      AND    flv.lookup_code(+)  = xch.data_type
+      AND    flv.language(+)     = 'JA'
+      AND    flv2.lookup_type(+)  = 'XXCMM_CHAIN_CODE'
+      AND    flv2.lookup_code(+)  = xch.deduction_chain_code
+      AND    flv2.language(+)     = 'JA'
+      AND    ffvv.flex_value(+)   = xch.corp_code
+      AND    ffvv.value_category(+) = 'XX03_BUSINESS_TYPE'
+      AND    xca.customer_code(+) = xch.customer_code
+      ORDER BY condition_id, condition_line_id
+--      ORDER BY xch.condition_id, xcl.condition_line_id
+-- 2022/02/22 Ver1.1 MOD End
       ;
 --
     TYPE csv_condition_ttype IS TABLE OF csv_condition_cur%ROWTYPE INDEX BY BINARY_INTEGER;
