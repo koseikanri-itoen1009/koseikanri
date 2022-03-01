@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_info_rev_head_n01
+ON xxcok.xxcok_info_rev_header (
+     rev
+    ,tax_div
+    ,check_result
+)
+TABLESPACE xxidx2
+/

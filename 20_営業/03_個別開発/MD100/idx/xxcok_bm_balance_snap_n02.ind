@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_bm_balance_snap_n02
+ON xxcok.xxcok_bm_balance_snap (
+     supplier_code
+    ,snapshot_timing
+    ,snapshot_create_ym
+)
+TABLESPACE xxidx2
+/

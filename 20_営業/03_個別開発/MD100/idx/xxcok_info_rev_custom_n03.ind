@@ -1,0 +1,12 @@
+CREATE INDEX xxcok.xxcok_info_rev_custom_n03
+ON xxcok.xxcok_info_rev_custom (
+     request_id
+    ,vendor_code
+    ,cust_code
+    ,calc_type
+    ,snapshot_create_ym
+    ,snapshot_timing
+    ,rev
+)
+TABLESPACE xxidx2
+/

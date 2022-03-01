@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_info_rev_head_n03
+ON xxcok.xxcok_info_rev_header (
+     snapshot_create_ym
+    ,snapshot_timing
+    ,rev
+    ,check_result
+)
+TABLESPACE xxidx2
+/

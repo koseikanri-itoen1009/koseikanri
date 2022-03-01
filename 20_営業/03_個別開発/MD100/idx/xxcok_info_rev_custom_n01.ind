@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_info_rev_custom_n01
+ON xxcok.xxcok_info_rev_custom (
+     vendor_code
+    ,tax_div
+    ,rev
+    ,check_result
+)
+TABLESPACE xxidx2
+/
