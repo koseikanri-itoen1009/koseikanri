@@ -1,0 +1,186 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOK_INFO_REV_HEADER
+ * Description : インフォマート用赤黒（ヘッダー）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2021/11/30    1.0   K.Yoshikawa     新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_INFO_REV_HEADER (
+     SNAPSHOT_CREATE_YM             VARCHAR2(6)   NOT NULL
+    ,SNAPSHOT_TIMING                VARCHAR2(1)   NOT NULL
+    ,REV                            NUMBER(1)     NOT NULL
+    ,CHECK_RESULT                   VARCHAR2(1) 
+    ,ROW_ID                         VARCHAR2(100)
+    ,EDI_INTERFACE_DATE             DATE
+    ,VENDOR_CODE                    VARCHAR2(15)  NOT NULL
+    ,SET_CODE                       VARCHAR2(15)  NOT NULL
+    ,CUST_CODE                      VARCHAR2(9)
+    ,CUST_NAME                      VARCHAR2(60)
+    ,DEST_POST_CODE                 VARCHAR2(10)
+    ,DEST_ADDRESS1                  VARCHAR2(200)
+    ,DEST_TEL                       VARCHAR2(24)
+    ,FAX                            VARCHAR2(24)
+    ,DEPT_NAME                      VARCHAR2(60)
+    ,SEND_POST_CODE                 VARCHAR2(10)
+    ,SEND_ADDRESS1                  VARCHAR2(200)
+    ,SEND_TEL                       VARCHAR2(24)
+    ,NUM                            VARCHAR2(20)
+    ,PAYMENT_DATE                   DATE
+    ,CLOSING_DATE                   DATE
+    ,NOTIFI_AMT                     NUMBER(13)
+    ,TOTAL_AMT_NO_TAX_10            NUMBER(13)
+    ,TAX_AMT_10                     NUMBER(13)
+    ,TOTAL_AMT_10                   NUMBER(13)
+    ,TOTAL_AMT_NO_TAX_8             NUMBER(13)
+    ,TAX_AMT_8                      NUMBER(13)
+    ,TOTAL_AMT_8                    NUMBER(13)
+    ,TOTAL_AMT_NO_TAX_0             NUMBER(13)
+    ,TAX_AMT_0                      NUMBER(13)
+    ,TOTAL_AMT_0                    NUMBER(13)
+    ,TOTAL_SALES_QTY                NUMBER(12,2)
+    ,TOTAL_SALES_AMT                NUMBER(13)
+    ,SALES_FEE                      NUMBER(13)
+    ,ELECTRIC_AMT                   NUMBER(13)
+    ,TAX_AMT                        NUMBER(13)
+    ,TRANSFER_FEE                   NUMBER(13)
+    ,PAYMENT_AMT                    NUMBER(13)
+    ,REMARKS                        VARCHAR2(1000)
+    ,BANK_CODE                      VARCHAR2(30)
+    ,BANK_NAME                      VARCHAR2(60)
+    ,BRANCH_CODE                    VARCHAR2(25)
+    ,BRANCH_NAME                    VARCHAR2(60)
+    ,BANK_HOLDER_NAME_ALT           VARCHAR2(150)
+    ,TAX_DIV                        VARCHAR2(1)   NOT NULL
+    ,TARGET_DIV                     VARCHAR2(1)
+    ,CREATED_BY                     NUMBER(15)    NOT NULL
+    ,CREATION_DATE                  DATE          NOT NULL
+    ,LAST_UPDATED_BY                NUMBER(15)    NOT NULL
+    ,LAST_UPDATE_DATE               DATE          NOT NULL
+    ,LAST_UPDATE_LOGIN              NUMBER(15)
+    ,REQUEST_ID                     NUMBER(15)
+    ,PROGRAM_APPLICATION_ID         NUMBER(15)
+    ,PROGRAM_ID                     NUMBER(15)
+    ,PROGRAM_UPDATE_DATE            DATE
+    ,CLOSING_DATE_MIN               DATE)
+/
+COMMENT ON TABLE XXCOK.XXCOK_INFO_REV_HEADER IS 'インフォマート用赤黒（ヘッダー）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SNAPSHOT_CREATE_YM                       IS 'スナップショット作成年月'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SNAPSHOT_TIMING                          IS 'スナップショットタイミング'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.REV                                      IS 'REV'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CHECK_RESULT                             IS '妥当性チェック結果'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.ROW_ID                                   IS '元テーブルレコードID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.EDI_INTERFACE_DATE                       IS '連携日（EDI支払案内書）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.VENDOR_CODE                              IS '送付先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SET_CODE                                 IS '通知書書式設定コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CUST_CODE                                IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CUST_NAME                                IS '会社名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.DEST_POST_CODE                           IS '郵便番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.DEST_ADDRESS1                            IS '住所'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.DEST_TEL                                 IS '電話番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.FAX                                      IS 'FAX番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.DEPT_NAME                                IS '部署名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SEND_POST_CODE                           IS '郵便番号（送付元）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SEND_ADDRESS1                            IS '住所（送付元）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SEND_TEL                                 IS '電話番号（送付元）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.NUM                                      IS '番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.PAYMENT_DATE                             IS '支払日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CLOSING_DATE                             IS '締め日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.NOTIFI_AMT                               IS 'おもての通知金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_AMT_NO_TAX_10                      IS '10%合計金額（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TAX_AMT_10                               IS '10%消費税額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_AMT_10                             IS '10%合計金額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_AMT_NO_TAX_8                       IS '軽減8%合計金額（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TAX_AMT_8                                IS '軽減8%消費税額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_AMT_8                              IS '軽減8%合計金額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_AMT_NO_TAX_0                       IS '非課税合計金額（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TAX_AMT_0                                IS '非課税消費税額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_AMT_0                              IS '非課税合計金額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_SALES_QTY                          IS '販売本数合計'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TOTAL_SALES_AMT                          IS '販売金額合計'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SALES_FEE                                IS '販売手数料'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.ELECTRIC_AMT                             IS '電気代等合計　税抜'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TAX_AMT                                  IS '消費税'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TRANSFER_FEE                             IS '振込手数料　税込'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.PAYMENT_AMT                              IS 'お支払金額　税込'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.REMARKS                                  IS 'おもて備考'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_CODE                                IS '銀行コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_NAME                                IS '銀行名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BRANCH_CODE                              IS '支店コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BRANCH_NAME                              IS '支店名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_HOLDER_NAME_ALT                     IS '口座名'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TAX_DIV                                  IS '税区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TARGET_DIV                               IS '対象区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CREATED_BY                               IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CREATION_DATE                            IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.LAST_UPDATED_BY                          IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.LAST_UPDATE_DATE                         IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.LAST_UPDATE_LOGIN                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.REQUEST_ID                               IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.PROGRAM_APPLICATION_ID                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.PROGRAM_ID                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.PROGRAM_UPDATE_DATE                      IS 'プログラム更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CLOSING_DATE_MIN                         IS '最小締め日'
+/

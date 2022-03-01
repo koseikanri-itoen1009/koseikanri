@@ -1,0 +1,124 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOK_INFO_REV_CUSTOM
+ * Description : インフォマート用赤黒（カスタム明細）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2021/11/30    1.0   K.Yoshikawa     新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_INFO_REV_CUSTOM 
+(
+     SNAPSHOT_CREATE_YM             VARCHAR2(6)   NOT NULL
+    ,SNAPSHOT_TIMING                VARCHAR2(1)   NOT NULL
+    ,REV                            NUMBER(1)     NOT NULL
+    ,CHECK_RESULT                   VARCHAR2(1)
+    ,ROW_ID                         VARCHAR2(100)
+    ,EDI_INTERFACE_DATE             DATE
+    ,VENDOR_CODE                    VARCHAR2(9)   NOT NULL
+    ,CUST_CODE                      VARCHAR2(9)   NOT NULL
+    ,INST_DEST                      VARCHAR2(100)
+    ,CALC_TYPE                      NUMBER(2)
+    ,CALC_SORT                      NUMBER
+    ,SELL_BOTTLE                    VARCHAR2(100)
+    ,SALES_QTY                      NUMBER(13)
+    ,SALES_TAX_AMT                  NUMBER(13)
+    ,SALES_AMT                      VARCHAR2(13)
+    ,CONTRACT                       VARCHAR2(100)
+    ,SALES_FEE                      NUMBER(13)
+    ,TAX_AMT                        NUMBER(13)
+    ,SALES_TAX_FEE                  NUMBER(13)
+    ,BOTTLE_CODE                    VARCHAR2(100)
+    ,SALLING_PRICE                  NUMBER(13)
+    ,REBATE_RATE                    NUMBER(4,2)
+    ,REBATE_AMT                     NUMBER(8,2)
+    ,TAX_CODE                       VARCHAR2(4)
+    ,TAX_DIV                        VARCHAR2(1)   NOT NULL
+    ,TARGET_DIV                     VARCHAR2(1)
+    ,CREATED_BY                     NUMBER(15)    NOT NULL
+    ,CREATION_DATE                  DATE          NOT NULL
+    ,LAST_UPDATED_BY                NUMBER(15)    NOT NULL
+    ,LAST_UPDATE_DATE               DATE          NOT NULL
+    ,LAST_UPDATE_LOGIN              NUMBER(15)
+    ,REQUEST_ID                     NUMBER(15)
+    ,PROGRAM_APPLICATION_ID         NUMBER(15)
+    ,PROGRAM_ID                     NUMBER(15)
+    ,PROGRAM_UPDATE_DATE            DATE)
+/
+COMMENT ON TABLE XXCOK.XXCOK_INFO_REV_CUSTOM IS 'インフォマート用赤黒（カスタム明細）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SNAPSHOT_CREATE_YM                       IS 'スナップショット作成年月'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SNAPSHOT_TIMING                          IS 'スナップショットタイミング'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.REV                                      IS 'REV'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CHECK_RESULT                             IS '妥当性チェック結果'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.ROW_ID                                   IS '元テーブルレコードID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.EDI_INTERFACE_DATE                       IS '連携日（EDI支払案内書）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.VENDOR_CODE                              IS '送付先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CUST_CODE                                IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.INST_DEST                                IS '設置場所'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CALC_TYPE                                IS '計算条件'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CALC_SORT                                IS '計算条件ソート順'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SELL_BOTTLE                              IS '売価／容器'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SALES_QTY                                IS '販売本数'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SALES_TAX_AMT                            IS '販売金額（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SALES_AMT                                IS '販売金額（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CONTRACT                                 IS 'ご契約内容'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SALES_FEE                                IS '販売手数料（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.TAX_AMT                                  IS '消費税'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SALES_TAX_FEE                            IS '販売手数料（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.BOTTLE_CODE                              IS '容器区分コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.SALLING_PRICE                            IS '売価金額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.REBATE_RATE                              IS '割戻率'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.REBATE_AMT                               IS '割戻額'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.TAX_CODE                                 IS '税コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.TAX_DIV                                  IS '税区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.TARGET_DIV                               IS '対象区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CREATED_BY                               IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.CREATION_DATE                            IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.LAST_UPDATED_BY                          IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.LAST_UPDATE_DATE                         IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.LAST_UPDATE_LOGIN                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.REQUEST_ID                               IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.PROGRAM_APPLICATION_ID                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.PROGRAM_ID                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_CUSTOM.PROGRAM_UPDATE_DATE                      IS 'プログラム更新日'
+/
