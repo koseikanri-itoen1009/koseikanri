@@ -7,7 +7,7 @@ AS
  * Description      : 消化VD請求書出力（単価別）
  * MD.050           : MD050_CFR_003_A22_消化VD請求書出力（単価別）
  * MD.070           : MD050_CFR_003_A22_消化VD請求書出力（単価別）
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/02/04    1.0   SCSK 冨江 広大   新規作成
+ *  2022/03/03    1.1   SCSK 冨江 広大   E_本稼働_17554②(内訳分類対応)
  *
  *****************************************************************************************/
 --
@@ -651,6 +652,9 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'update_work_table'; -- プログラム名
+-- Ver1.1 add start
+    cv_location_dummy CONSTANT VARCHAR2(5) := 'DUMMY';
+-- Ver1.1 add end
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -772,7 +776,10 @@ AS
                ,xditp.category3        = l_category3_tab(i)          --内訳分類３
                ,xditp.inc_tax_charge3  = l_inc_tax_charge3_tab(i)    --当月お買上げ額３
         WHERE   xditp.bill_cust_code   = l_bill_cust_code_tab(i)
-        AND     xditp.location_code    = l_location_code_tab(i)
+-- Ver1.1 mod start
+--        AND     xditp.location_code    = l_location_code_tab(i)
+        AND     NVL(xditp.location_code,cv_location_dummy) = NVL(l_location_code_tab(i),cv_location_dummy)
+-- Ver1.1 mod end
         AND     xditp.request_id       = cn_request_id
         ;
     EXCEPTION
