@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A02C (body)
  * Description      : 控除マスタCSV出力
  * MD.050           : 控除マスタCSV出力 MD050_COK_024_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/05/21    1.0   Y.Nakajima       新規作成
  *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
+ *  2022/02/24    1.2   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
  
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
   cv_type_dec_pri_base        CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEC_PRIVILEGE_BASE';     -- 控除マスタ特権拠点
   cv_type_dec_del_dept        CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEC_DEL_PRI_DEPT';       -- 控除マスタ削除特権部署
   cv_type_deduction_data      CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEDUCTION_DATA_TYPE';    -- 控除データ種類
+-- 2022/02/24 Ver1.2 MOD Start
+  cv_type_deduction_data_est  CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEDUCTION_DATA_TYPE_EST';-- 見積控除データ種類
+-- 2022/02/24 Ver1.2 MOD Ens
   cv_type_deduction_1_kbn     CONSTANT  VARCHAR2(30)  := 'XXCOK1_DEDUCTION_1_KBN';        -- 対象区分
   --メッセージ
   cv_msg_para_code_null_err   CONSTANT  VARCHAR2(100) := 'APP-XXCOK1-10679';     -- 必須パラメータ未設定エラー（企業コード、控除用チェーンコード、顧客コード）
@@ -367,13 +371,214 @@ AS
     AND   flv.lookup_code(+)              = xcl.target_category
     -- 商品区分
     AND   xcl.product_class               = pro.product_class_code(+)
+-- 2022/02/24 Ver1.2 MOD Start
+  UNION ALL
+    SELECT 
+            /*+ LEADING(mst@a)
+            NO_PUSH_PRED(mst@a)
+            USE_NL(mst@a xch)
+            INDEX(XCH XXCOK_CONDITION_HEADER_EST_PK) */
+           xch.condition_no                             AS condition_no                            -- 控除番号
+          ,xch.corp_code                                AS corp_code                               -- 企業コード
+          ,xch.deduction_chain_code                     AS deduction_chain_code                    -- 控除用チェーンコード
+          ,xch.customer_code                            AS customer_code                           -- 顧客コード
+          ,flvv2.meaning                                AS data_type                               -- データ種類
+          ,xch.start_date_active                        AS start_date_active                       -- 開始日
+          ,xch.end_date_active                          AS end_date_active                         -- 終了日
+          ,xch.content                                  AS content                                 -- 内容
+          ,xch.decision_no                              AS decision_no                             -- 決裁No
+          ,xch.agreement_no                             AS agreement_no                            -- 契約番号
+          ,xcl.detail_number                            AS detail_number                           -- 明細番号
+          ,flv.meaning                                  AS target_category                         -- 対象区分
+          ,pro.product_class                            AS product_class                           -- 商品区分
+          ,xcl.item_code                                AS item_code                               -- 品目コード
+          ,xcl.uom_code                                 AS uom_code                                -- 単位
+          ,xcl.shop_pay_1                               AS shop_pay_1                              -- 店納(%)
+          ,xcl.material_rate_1                          AS material_rate                           -- 料率(%)
+          ,xcl.demand_en_3                              AS demand_en                               -- 請求(円)
+          ,xcl.shop_pay_en_3                            AS shop_pay_en                             -- 店納(円)
+          ,xcl.dl_wholesale_margin_en                   AS wholesale_margin_en                     -- DL用問屋マージン(円)
+          ,xcl.dl_wholesale_margin_per                  AS wholesale_margin_per                    -- DL用問屋マージン(％)
+          ,xcl.normal_shop_pay_en_4                     AS normal_shop_pay_en                      -- 通常店納(円)
+          ,xcl.just_shop_pay_en_4                       AS just_shop_pay_en                        -- 今回店納(円)
+          ,xcl.dl_wholesale_adj_margin_en               AS wholesale_adj_margin_en                 -- DL用問屋マージン修正(円)
+          ,xcl.dl_wholesale_adj_margin_per              AS wholesale_adj_margin_per                -- DL用問屋マージン修正(％)
+          ,CASE
+             -- 控除タイプが'050'の場合
+             WHEN  flvv2.attribute2 = cv_condition_type_spons THEN
+                xcl.prediction_qty_5
+             -- 控除タイプが'060'の場合
+             WHEN  flvv2.attribute2 = cv_condition_type_pre_spons THEN
+                xcl.prediction_qty_6
+             END                                        AS prediction_qty                          -- 予測数量(本)
+          ,xcl.support_amount_sum_en_5                  AS support_amount_sum_en                   -- 協賛金合計(円)
+          ,CASE
+             -- 控除タイプが'020'の場合
+             WHEN  flvv2.attribute2 = cv_condition_type_sale THEN
+                xcl.condition_unit_price_en_2
+             -- 控除タイプが'060'の場合
+             WHEN  flvv2.attribute2 = cv_condition_type_pre_spons THEN
+                xcl.condition_unit_price_en_6
+             END                                        AS condition_unit_price_en                 -- 条件単価(円)
+          
+          ,xcl.target_rate_6                            AS target_rate6                            -- 対象率(％)
+          ,xcl.accounting_base                          AS accounting_base                         -- 計上拠点
+          ,xcl.accounting_customer_code                 AS accounting_customer_code                -- 計上顧客
+          ,xcl.deduction_amount                         AS deduction_amount                        -- 控除額(本体)
+          ,xch.tax_code                                 AS tax_code                                -- 税コード
+          ,xcl.deduction_tax_amount                     AS deduction_tax_amount                    -- 控除税額
+          ,xch.last_update_date                         AS head_last_update_date                   -- ヘッダ最終更新日
+          ,papf.employee_number                         AS head_employee_number                    -- ヘッダ最終更新者従業員番号
+          ,papf.per_information18                       AS head_last_update_by_last                -- ヘッダ最終更新者姓
+          ,papf.per_information19                       AS head_last_update_by_first               -- ヘッダ最終更新者名
+          ,xcl.last_update_date                         AS line_last_update_date                   -- 明細最終更新日
+          ,papf2.employee_number                        AS line_employee_number                    -- 明細最終更新者従業員番号
+          ,papf2.per_information18                      AS line_last_update_by_last                -- 明細最終更新者姓
+          ,papf2.per_information19                      AS line_last_update_by_first               -- 明細最終更新者名
+    FROM xxcok_condition_header_est   xch                                                          -- 控除条件テーブル
+        ,xxcok_condition_lines_est    xcl                                                          -- 控除詳細テーブル
+        ,fnd_flex_values_vl           ffvv                                                         -- 企業マスタ
+        ,fnd_lookup_values_vl         flvv1                                                        -- チェーンマスタ
+        ,xxcmm_cust_accounts          xca                                                          -- 顧客マスタ
+        ,xxcmm_cust_accounts          xca2                                                         -- 顧客マスタ2
+        ,fnd_lookup_values_vl         flvv2                                                        -- 控除データ種類
+        ,fnd_user                     fu                                                           -- ユーザーマスタ
+        ,fnd_user                     fu2                                                          -- ユーザーマスタ2
+        ,per_all_people_f             papf                                                         -- 従業員マスタ
+        ,per_all_people_f             papf2                                                        -- 従業員マスタ2
+        ,fnd_lookup_values            flv                                                          -- 対象区分
+       ,(SELECT /*+ QB_NAME(a) */
+                mst2.CONDITION_ID AS CONDITION_ID
+         FROM
+         (-- 1.企業指定時
+          SELECT /*+ INDEX(xch1 XXCOK_CONDITION_HEADER_EST_N01) */
+                 xch1.condition_id            AS condition_id
+          FROM   xxcok_condition_header_est   xch1
+          WHERE  iv_corp_code                     IS NOT NULL
+          AND    xch1.corp_code                 = iv_corp_code
+          UNION
+          -- 2.チェーン指定時
+          SELECT /*+ INDEX(xch2 XXCOK_CONDITION_HEADER_EST_N02) */
+                 xch2.condition_id            AS condition_id
+          FROM   xxcok_condition_header_est   xch2
+          WHERE  iv_introduction_code             IS NOT NULL
+          AND    xch2.deduction_chain_code   = iv_introduction_code
+          UNION
+          -- 3.顧客指定時
+          SELECT /*+ INDEX(xch3 XXCOK_CONDITION_HEADER_EST_N03) */
+                 xch3.condition_id            AS condition_id
+          FROM   xxcok_condition_header_est   xch3
+          WHERE  iv_ship_cust_code                IS NOT NULL
+          AND    xch3.customer_code             = iv_ship_cust_code
+          UNION
+          -- 4.控除番号のみ指定時
+          SELECT /*+ INDEX(xch4 XXCOK_CONDITION_HEADER_EST_N04) */
+                 xch4.condition_id            AS condition_id
+          FROM   xxcok_condition_header_est   xch4
+          WHERE  iv_order_deduction_no IS NOT NULL                  -- 控除番号
+          AND    iv_corp_code          IS NULL                      -- 企業コード
+          AND    iv_introduction_code  IS NULL                      -- 控除用チェーンコード
+          AND    iv_ship_cust_code     IS NULL                      -- 顧客コード
+          AND    iv_last_update_date   IS NULL                      -- 最終更新日
+          AND    xch4.condition_no     = iv_order_deduction_no
+          UNION
+          -- 「5.最終更新日のみ」or「6.最終更新日と控除番号のみ」指定時
+          SELECT /*+ INDEX(xch5 XXCOK_CONDITION_HEADER_EST_N05) */
+                 xch5.condition_id            AS condition_id
+          FROM   xxcok_condition_header_est   xch5
+          WHERE  iv_corp_code          IS NULL                      -- 企業コード
+          AND    iv_introduction_code  IS NULL                      -- 控除用チェーンコード
+          AND    iv_ship_cust_code     IS NULL                      -- 顧客コード
+          AND    iv_last_update_date   IS NOT NULL                  -- 最終更新日
+          AND    xch5.last_update_date >= TO_DATE(iv_last_update_date,cv_date_format)
+          ) mst2
+        ) mst                                                          -- パラメータ判別用インラインビュー
+       ,(SELECT mcv.segment1     product_class_code
+               ,mcv.description  product_class
+         FROM   mtl_categories_vl    mcv
+               ,mtl_category_sets_vl mcsv
+         WHERE  mcsv.structure_id      = mcv.structure_id
+         AND    mcsv.category_set_name = gv_item_div_h
+        )                             pro
+    WHERE 1 = 1
+    AND    mst.condition_id                       = xch.condition_id                               -- インラインビュー.控除条件ID ＝ 控除条件.控除条件ID
+    AND    xch.condition_id                       = xcl.condition_id                               -- 控除条件.控除条件ID         ＝ 控除詳細.控除条件ID
+    AND    xch.enabled_flag_h                     = cv_const_y                                     -- 控除条件.有効フラグ         ＝ Y
+    AND    xcl.enabled_flag_l                     = cv_const_y                                     -- 控除詳細.有効フラグ         ＝ Y
+    -- 控除データ種類
+    AND    xch.data_type                          = flvv2.lookup_code
+    AND    flvv2.lookup_type                      = cv_type_deduction_data_est
+    -- 企業
+    AND    xch.corp_code                          = ffvv.flex_value(+)                             -- 控除条件.企業コード         ＝ 企業マスタ.企業コード
+    AND    ffvv.value_category(+)                 = cv_type_business_type
+    -- チェーン
+    AND    xch.deduction_chain_code               = flvv1.lookup_code(+)                           -- 控除条件.控除用チェーンコード     ＝ チェーンマスタ.控除用チェーンコード
+    AND    flvv1.lookup_type(+)                   = cv_type_chain_code
+    -- 顧客
+    AND    xch.customer_code                      = xca.customer_code(+)                           -- 控除条件.顧客コード         ＝ 顧客マスタ.顧客コード
+    -- 計上顧客
+    AND    xcl.accounting_customer_code           = xca2.customer_code(+)                          -- 控除詳細.計上顧客コード     ＝ 顧客マスタ2.顧客コード
+    -- パラメータ
+    AND    (iv_order_deduction_no     IS NULL                                                                                                -- パラメータ.控除番号         IS NULL
+      OR    xch.condition_no          = iv_order_deduction_no)                                                                               -- 控除条件.控除番号           ＝ パラメータ.控除番号
+    AND    (iv_data_type              IS NULL                                                                                                -- パラメータ.データ種類       IS NULL
+      OR    flvv2.meaning             = iv_data_type)                                                                                        -- 控除データ種類.内容         ＝ パラメータ.データ種類
+    AND    (iv_tax_code               IS NULL                                                                                                -- パラメータ.税コード         IS NULL
+      OR    xch.tax_code              = iv_tax_code)                                                                                         -- 控除条件.税コード           ＝ パラメータ.税コード
+    AND    xch.end_date_active        >= NVL(TO_DATE(iv_order_list_date_from,cv_date_format),TO_DATE(cv_min_date,cv_date_format))            -- 控除条件.終了日             >= パラメータ.開始日
+    AND    xch.start_date_active      <= NVL(TO_DATE(iv_order_list_date_to,  cv_date_format),TO_DATE(cv_max_date,cv_date_format))            -- 控除条件.開始日             <= パラメータ.終了日
+    AND    (iv_content                IS NULL                                                                                                -- パラメータ.内容             IS NULL
+      OR    xch.content               LIKE cv_perc||iv_content||cv_perc)                                                                     -- 控除条件.内容             LIKE パラメータ.内容
+    AND    (iv_decision_no            IS NULL                                                                                                -- パラメータ.決裁No           IS NULL
+      OR    xch.decision_no           = iv_decision_no)                                                                                      -- 控除条件.決裁No             ＝ パラメータ.決裁No
+    AND    (iv_agreement_no           IS NULL                                                                                                -- パラメータ.契約番号         IS NULL
+      OR    xch.agreement_no          = iv_agreement_no)                                                                                     -- 控除条件.契約番号           ＝ パラメータ.契約番号
+    AND    (iv_last_update_date       IS NULL                                                                                                -- パラメータ.最終更新日       IS NULL
+      OR    xch.last_update_date      >= TO_DATE(iv_last_update_date,cv_date_format))                                                        -- 控除条件.最終更新日         ＝ パラメータ.最終更新日
+    -- 拠点制御
+    AND     (gv_privilege_flag         = cv_const_y                                     -- 特権ユーザー判断フラグ      ＝ 'Y'
+      OR     ffvv.attribute2           = gv_user_base_code                              -- 企業マスタ.本部担当拠点     ＝ 所属拠点コード
+      OR     flvv1.attribute3          = gv_user_base_code                              -- チェーンマスタ.本部担当拠点 ＝ 所属拠点コード
+      OR     xca.sale_base_code        = gv_user_base_code                              -- 顧客.売上担当拠点           ＝ 所属拠点コード
+      OR     xca2.sale_base_code       = gv_user_base_code                              -- 控除詳細.計上顧客           ＝ 所属拠点コード
+             )
+    -- ヘッダ従業員情報
+    AND    fu.user_id                  = xch.last_updated_by
+    AND    papf.person_id              = fu.employee_id
+    AND    papf.current_employee_flag  = cv_const_y
+    AND    papf.effective_start_date   IN (SELECT MAX(papf3.effective_start_date) effective_start_date
+                                           FROM   per_all_people_f  papf3
+                                           WHERE  papf3.current_employee_flag = cv_const_y
+                                           AND    papf3.person_id             = papf.person_id)
+    -- 明細従業員情報
+    AND    fu2.user_id                 = xcl.last_updated_by
+    AND    papf2.person_id             = fu2.employee_id
+    AND    papf2.current_employee_flag = cv_const_y
+    AND    papf2.effective_start_date  IN (SELECT MAX(papf4.effective_start_date) effective_start_date
+                                           FROM   per_all_people_f  papf4
+                                           WHERE  papf4.current_employee_flag = cv_const_y
+                                           AND    papf4.person_id             = papf2.person_id)
+    -- 対象区分
+    AND   flv.language(+)                 = cv_lang
+    AND   flv.lookup_type(+)              = cv_type_deduction_1_kbn
+    AND   flv.lookup_code(+)              = xcl.target_category
+    -- 商品区分
+    AND   xcl.product_class               = pro.product_class_code(+)
     ORDER BY
-           xch.corp_code                  -- 企業コード
-          ,xch.deduction_chain_code       -- 控除用チェーンコード
-          ,xch.customer_code              -- 顧客コード
-          ,xch.data_type                  -- データ種類
-          ,xch.condition_no               -- 控除番号
-          ,xcl.detail_number              -- 明細番号
+           corp_code                  -- 企業コード
+          ,deduction_chain_code       -- 控除用チェーンコード
+          ,customer_code              -- 顧客コード
+          ,data_type                  -- データ種類
+          ,condition_no               -- 控除番号
+          ,detail_number              -- 明細番号
+--    ORDER BY
+--           xch.corp_code                  -- 企業コード
+--          ,xch.deduction_chain_code       -- 控除用チェーンコード
+--          ,xch.customer_code              -- 顧客コード
+--          ,xch.data_type                  -- データ種類
+--          ,xch.condition_no               -- 控除番号
+--          ,xcl.detail_number              -- 明細番号
+-- 2022/02/24 Ver1.2 MOD End
   ;
 --
   -- 取得データ格納変数定義 (全出力)
