@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *  2021/09/21    1.5   H.Futamura       E_本稼動_17546 控除マスタ削除アップロードの改修
  *  2022/01/13    1.6   SCSK Y.Koh       E_本稼動_17413 控除マスタのデータ種類が変更された
  *  2022/02/15    1.7   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
+ *  2022/03/09    1.8   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応(メッセージ変更)
+ *                                       E_本稼動_17939【収益認識】定額協賛金(既存メッセージ不具合修正)
  *
  *****************************************************************************************/
 --
@@ -320,6 +322,9 @@ AS
 -- Ver1.5 Add Start
   cv_msg_cok_10805                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10805';  -- 控除マスタ削除エラー
 -- Ver1.5 Add End
+-- 2022/03/xx Ver1.8 ADD Start
+  cv_msg_cok_10835                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10835';  -- マスタ未登録エラー
+-- 2022/03/xx Ver1.8 ADD End
 --
   cv_tkn_coi_10634                  CONSTANT VARCHAR2(20) := 'APP-XXCOI1-10634';  -- ファイルアップロードIF
   cv_prf_org_err_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
@@ -2559,7 +2564,10 @@ AS
             IF ln_dummy = 0 OR (ld_before_start_date IS NULL AND  ld_before_end_date IS NULL )THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
                              iv_application  => cv_msg_kbn_cok
-                           , iv_name         => cv_msg_cok_10600
+-- 2022/03/xx Ver1.8 MOD Start
+                           , iv_name         => cv_msg_cok_10835
+--                           , iv_name         => cv_msg_cok_10600
+-- 2022/03/xx Ver1.8 MOD End
                            , iv_token_name1  => cv_col_name_tok
                            , iv_token_value1 => cv_msg_condition_no
                            , iv_token_name2  => cv_col_value_tok
@@ -2599,7 +2607,10 @@ AS
           IF ln_dummy = 0 THEN
             lv_errmsg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_msg_kbn_cok
-                         , iv_name         => cv_msg_cok_10600
+-- 2022/03/xx Ver1.8 MOD Start
+                         , iv_name         => cv_msg_cok_10835
+--                         , iv_name         => cv_msg_cok_10600
+-- 2022/03/xx Ver1.8 MOD End
                          , iv_token_name1  => cv_col_name_tok
                          , iv_token_value1 => cv_msg_condition_no
                          , iv_token_name2  => cv_col_value_tok
@@ -4999,7 +5010,10 @@ AS
              iv_application  => cv_msg_kbn_cok
            , iv_name         => cv_msg_cok_10608
            , iv_token_name1  => cv_col_name_tok
-           , iv_token_value1 => cv_msg_target_cate
+-- 2022/03/xx Ver1.8 MOD Start
+           , iv_token_value1 => cv_msg_item_code
+--           , iv_token_value1 => cv_msg_target_cate
+-- 2022/03/xx Ver1.8 MOD End
            );
           ln_cnt  :=  ln_cnt + 1;
           g_message_list_tab( g_cond_tmp_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
@@ -5022,9 +5036,15 @@ AS
         IF ( ln_dummy <> 0 ) THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
              iv_application  => cv_msg_kbn_cok
-           , iv_name         => cv_msg_cok_10609
+-- 2022/03/xx Ver1.8 MOD Start
+           , iv_name         => cv_msg_cok_10608
+--           , iv_name         => cv_msg_cok_10609
+-- 2022/03/xx Ver1.8 MOD End
            , iv_token_name1  => cv_col_name_tok
-           , iv_token_value1 => cv_msg_target_cate
+-- 2022/03/xx Ver1.8 MOD Start
+           , iv_token_value1 => cv_msg_item_code
+--           , iv_token_value1 => cv_msg_target_cate
+-- 2022/03/xx Ver1.8 MOD End
            );
           ln_cnt  :=  ln_cnt + 1;
           g_message_list_tab( g_cond_tmp_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
