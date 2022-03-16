@@ -1,0 +1,232 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_WHOLESALE_PAY_CHECK_LIST
+ * Description : 問屋未収単価チェックリストワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/01/28    1.0   SCSK K.Yoshikawa新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_wholesale_pay_check_list (
+     wholesale_bill_detail_id       NUMBER
+    ,p_payment_date                 VARCHAR2(10)
+    ,p_selling_date                 VARCHAR2(10)
+    ,p_base_code                    VARCHAR2(4)
+    ,p_vendor_code                  VARCHAR2(9)
+    ,p_bill_no                      VARCHAR2(10)
+    ,p_deduction_chain_code         VARCHAR2(9)
+    ,symbol1                        VARCHAR2(30)
+    ,symbol1_description            VARCHAR2(240)
+    ,symbol2                        VARCHAR2(30)
+    ,symbol2_description            VARCHAR2(240)
+    ,symbol2_tag                    VARCHAR2(150)
+    ,symbol3                        VARCHAR2(30)
+    ,symbol3_description            VARCHAR2(240)
+    ,symbol4                        VARCHAR2(30)
+    ,symbol4_description            VARCHAR2(240)
+    ,payment_date                   VARCHAR2(10)
+    ,bill_no                        VARCHAR2(10)
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(20)
+    ,cust_code                      VARCHAR2(9)
+    ,cust_name                      VARCHAR2(100)
+    ,deduction_chain_code           VARCHAR2(9)
+    ,deduction_chain_name           VARCHAR2(80)
+    ,selling_date                   VARCHAR2(10)
+    ,item_code                      VARCHAR2(240)
+    ,item_name                      VARCHAR2(100)
+    ,expansion_sales_type           VARCHAR2(1)
+    ,demand_qty                     NUMBER
+    ,demand_unit_price              NUMBER
+    ,difference_amt                 NUMBER
+    ,demand_amt                     NUMBER
+    ,unit_type                      VARCHAR2(1)
+    ,supplier_code                  VARCHAR2(9)
+    ,supplier_name                  VARCHAR2(100)
+    ,bank_name                      VARCHAR2(60)
+    ,bank_branch_name               VARCHAR2(60)
+    ,bank_acct_type                 VARCHAR2(4)
+    ,bank_acct_no                   VARCHAR2(30)
+    ,tax_rate                       NUMBER
+    ,tax                            VARCHAR2(2)
+    ,stamp                          VARCHAR2(2)
+    ,demand_en_3                    NUMBER(8,2)
+    ,shop_pay_en_3                  NUMBER(8,2)
+    ,normal_shop_pay_en_4           NUMBER(8,2)
+    ,just_shop_pay_en_4             NUMBER(8,2)
+    ,net_selling_price              NUMBER(8,2)
+    ,accrued_en_3                   NUMBER(8,2)
+    ,accrued_en_3_c                 VARCHAR2(2)
+    ,accrued_en_4_1                 NUMBER(8,2)
+    ,accrued_en_4_1_c               VARCHAR2(2)
+    ,accrued_en_4_2                 NUMBER(8,2)
+    ,accrued_en_4_2_c               VARCHAR2(2)
+    ,accrued_en_4_3                 NUMBER(8,2)
+    ,accrued_en_4_3_c               VARCHAR2(2)
+    ,accrued_en_4_4                 NUMBER(8,2)
+    ,accrued_en_4_4_c               VARCHAR2(2)
+    ,accrued_en_4_5                 NUMBER(8,2)
+    ,accrued_en_4_5_c               VARCHAR2(2)
+    ,accrued_en_4_6                 NUMBER(8,2)
+    ,accrued_en_4_6_c               VARCHAR2(2)
+    ,no_data_message                VARCHAR2(30)
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE)
+ PCTFREE 10 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcok.xxcok_wholesale_pay_check_list IS '問屋未収単価チェックリストワークテーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.wholesale_bill_detail_id        IS '問屋請求書明細ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.p_payment_date                  IS '支払年月日(入力パラメータ)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.p_selling_date                 IS '売上対象年月(入力パラメータ)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.p_base_code                     IS '拠点コード(入力パラメータ)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.p_vendor_code                   IS '仕入先コード(入力パラメータ)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.p_bill_no                       IS '請求書番号(入力パラメータ)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.p_deduction_chain_code          IS '控除用チェーン(入力パラメータ)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol1                         IS 'ヘッダ用記号１'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol1_description             IS 'ヘッダ用記号１摘要'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol2                         IS 'ヘッダ用記号２'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol2_description             IS 'ヘッダ用記号２摘要'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol2_tag                     IS 'ヘッダ用記号２タグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol3                         IS 'ヘッダ用記号３'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol3_description             IS 'ヘッダ用記号３摘要'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol4                         IS 'ヘッダ用記号４'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.symbol4_description             IS 'ヘッダ用記号４摘要'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.payment_date                    IS '支払年月日'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.bill_no                         IS '請求書No.'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.base_code                       IS '拠点コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.base_name                       IS '拠点名'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.cust_code                       IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.cust_name                       IS '顧客名称'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.deduction_chain_code            IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.deduction_chain_name            IS '控除用チェーン名'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.selling_date                   IS '売上対象年月'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.item_code                       IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.item_name                       IS '品目名称'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.expansion_sales_type            IS '拡売区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.demand_qty                      IS '請求数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.demand_unit_price               IS '請求単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.difference_amt                  IS '端数調整'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.demand_amt                      IS '請求金額'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.unit_type                       IS '請求単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.supplier_code                   IS '仕入先コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.supplier_name                   IS '仕入先名'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.bank_name                       IS '銀行名'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.bank_branch_name                IS '支店名'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.bank_acct_type                  IS '口座種別'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.bank_acct_no                    IS '口座番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.tax_rate                        IS '税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.tax                             IS '税'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.stamp                           IS '印'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.demand_en_3                     IS '建値'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.shop_pay_en_3                   IS '店納(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.normal_shop_pay_en_4            IS '通常店納'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.just_shop_pay_en_4              IS '特売店納'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.net_selling_price               IS 'NET価格'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_3                    IS '通常'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_3_c                  IS '通常_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_1                  IS '拡売1'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_1_c                IS '拡売1_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_2                  IS '拡売2'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_2_c                IS '拡売2_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_3                  IS '拡売3'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_3_c                IS '拡売3_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_4                  IS '拡売4'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_4_c                IS '拡売4_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_5                  IS '拡売5'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_5_c                IS '拡売5_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_6                  IS '拡売6'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.accrued_en_4_6_c                IS '拡売6_チェック'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.no_data_message                 IS '0件メッセージ'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.created_by                      IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.creation_date                   IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.last_updated_by                 IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.last_update_date                IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.last_update_login               IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.request_id                      IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.program_application_id          IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.program_id                      IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_wholesale_pay_check_list.program_update_date             IS 'プログラム更新日'
+/
