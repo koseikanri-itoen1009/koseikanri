@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_CONDITION_TEMP
  * Description : 控除マスタCSVアップロードワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2020/05/12    1.0   SCSK Y.Ishii     新規作成
  *  2020/06/10    1.0   SCSK K.Kanada    決裁番号の桁数変更（10⇒11）
  *  2021/04/06    1.1   SCSK Y.Koh       定額控除追加要件対応
+ *  2022/03/10    1.2   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
  *
  ****************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_temp (
@@ -60,6 +61,9 @@ CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_temp (
     ,condition_cls                  VARCHAR2(6)
     ,condition_type                 VARCHAR2(6)
     ,condition_id                   NUMBER
+-- 2022/03/10 Ver1.2 ADD Start
+    ,data_type_div                  VARCHAR2(1)
+-- 2022/03/10 Ver1.2 ADD End
     ,created_by                     NUMBER(15,0)  NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15,0)  NOT NULL
@@ -161,6 +165,10 @@ COMMENT ON COLUMN xxcok.xxcok_condition_temp.condition_type                     
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_temp.condition_id                              IS '控除条件ID'
 /
+-- 2022/01/10 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcok_condition_temp.data_type_div                                   IS 'データ種類区分'
+/
+-- 2022/01/10 Ver1.2 ADD End
 COMMENT ON COLUMN xxcok.xxcok_condition_temp.created_by                                IS '作成者'
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_temp.creation_date                             IS '作成日'
