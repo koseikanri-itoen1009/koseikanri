@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_WHOLESALE_BILL_LINE
  * Description : –â‰®¿‹‘–¾×ƒe[ƒuƒ‹
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/07/09    1.1   K.Yamaguchi      [áŠQ0000515]STORAGE‹å’Ç‰Á
  *  2009/12/25    1.2   K.Nakamura       [E_–{‰Ò“®_00608]¿‹’P‰¿AŽx•¥’P‰¿‚ÌŒ…”C³
  *  2021/03/21    1.3   SCSK Y.Koh       [E_–{‰Ò“®_16026]Žû‰v”FŽ¯
+ *  2022/02/24    1.4   SCSK R.Oikawa    [E_–{‰Ò“®_18059]TœŽx•¥–¢—ˆ“úƒ`ƒFƒbƒN‹y‚Ñ¿‹·Šz‚Ì€–Ú–¼Ì•ÏX
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
@@ -90,9 +91,12 @@ COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_QTY               IS '
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_UNIT_PRICE        IS '¿‹’P‰¿'
 /
+-- 2022/02/24 Ver.1.4 [E_–{‰Ò“®_18059] SCSK R.Oikawa MOD START
 -- 2021/03/21 Ver.1.3 [E_–{‰Ò“®_16026] SCS Y.Koh ADD START
-COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DIFFERENCE_AMT           IS '¿‹·Šz(Å”²)'
+--COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DIFFERENCE_AMT           IS '¿‹·Šz(Å”²)'
+COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DIFFERENCE_AMT           IS '’[”’²®(Å”²)'
 -- 2021/03/21 Ver.1.3 [E_–{‰Ò“®_16026] SCS Y.Koh ADD START
+-- 2022/02/24 Ver.1.4 [E_–{‰Ò“®_18059] SCSK R.Oikawa MOD END
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_AMT               IS '¿‹‹àŠz'
 /
