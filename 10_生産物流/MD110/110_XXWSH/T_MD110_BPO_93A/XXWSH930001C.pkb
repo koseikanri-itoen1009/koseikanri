@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.72
+ * Version          : 1.73
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -172,6 +172,8 @@ AS
  *  2016/10/12    1.70 SCSK   桐生和幸   E_本稼動_13899    配送No重複対応
  *  2017/02/24    1.71 SCSK   渡邊直樹   E_本稼動_14058    エラーチェック制御不具合修正
  *  2018/09/25    1.72 SCSK   矢崎栄司   E_本稼動_15305    CSVと配車配送計画の比較条件の変更
+ *  2022/03/17    1.73 SCSK   二村悠香   E_本稼動_15305対応戻し
+ *                                       E_本稼動_17932    外部倉庫入出庫実績インタフェース処理修正作業
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -721,6 +723,10 @@ AS
   gv_yes                         CONSTANT VARCHAR2(1) := 'Y';     -- 汎用Y
   gv_no                          CONSTANT VARCHAR2(1) := 'N';     -- 汎用N
 -- 2016/10/12 Ver.1.70 Add End
+-- Ver.1.73 Add Start
+  -- クイックコード：外部倉庫判断用
+  gv_no_ex_wh_type               CONSTANT VARCHAR2(19) := 'XXWSH_NO_EX_WH_CODE';
+-- Ver.1.73 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -5979,6 +5985,14 @@ AS
         AND    ((xilv2.date_to IS NULL)
          OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).shipped_date)))  -- 組織有効終了日
         AND    xilv2.disable_date IS NULL   -- 無効日
+-- Ver.1.73 Add Start
+        AND NOT EXISTS ( SELECT 1
+                         FROM   fnd_lookup_values flv
+                         WHERE  flv.lookup_type = gv_no_ex_wh_type
+                         AND    flv.meaning = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+                         AND    flv.language = userenv('LANG')
+                         AND    flv.enabled_flag = gv_yes )
+-- Ver.1.73 Add End
         ;
 --
       END IF;
@@ -5996,6 +6010,14 @@ AS
         AND    ((xilv2.date_to IS NULL)
          OR    (xilv2.date_to >= TRUNC(gr_interface_info_rec(i).arrival_date)))  -- 組織有効終了日
         AND    xilv2.disable_date IS NULL   -- 無効日
+-- Ver.1.73 Add Start
+        AND NOT EXISTS ( SELECT 1
+                         FROM   fnd_lookup_values flv
+                         WHERE  flv.lookup_type = gv_no_ex_wh_type
+                         AND    flv.meaning = SUBSTRB(gr_interface_info_rec(i).order_source_ref, 1, 4)
+                         AND    flv.language = userenv('LANG')
+                         AND    flv.enabled_flag = gv_yes )
+-- Ver.1.73 Add End
         ;
 --
       END IF;
@@ -6217,6 +6239,14 @@ AS
           AND    ((xilv2.date_to IS NULL)
            OR    (xilv2.date_to >= TRUNC(ld_search_date)))  -- 出荷or着荷日
           AND    xilv2.disable_date IS NULL   -- 無効日
+-- Ver.1.73 Add Start
+          AND NOT EXISTS ( SELECT 1
+                           FROM   fnd_lookup_values flv
+                           WHERE  flv.lookup_type = gv_no_ex_wh_type
+                           AND    flv.meaning = SUBSTRB(gr_interface_info_rec(i).delivery_no, 1, 4)
+                           AND    flv.language = userenv('LANG')
+                           AND    flv.enabled_flag = gv_yes )
+-- Ver.1.73 Add End
           ;
 --
           -- 受注ソース（業者発番）と配送No            の矛盾がある為、エラー
@@ -7717,11 +7747,19 @@ AS
 --                  ,xcs.arrival_date  arrival_date     --着荷日
 --                  ,xcs.carrier_code  carrier_code     --運送業者
 --                  ,xcs.delivery_type delivery_type    --配送区分
-            SELECT NVL(xcs.shipped_date, xcs.schedule_ship_date           ) shipped_date     --出荷日
-                  ,NVL(xcs.arrival_date, xcs.schedule_arrival_date        ) arrival_date     --着荷日
-                  ,NVL(xcs.result_freight_carrier_code, xcs.carrier_code  ) carrier_code     --運送業者
-                  ,NVL(xcs.result_shipping_method_code, xcs.delivery_type ) delivery_type    --配送区分
+-- Ver.1.73 Del Start
+--            SELECT NVL(xcs.shipped_date, xcs.schedule_ship_date           ) shipped_date     --出荷日
+--                  ,NVL(xcs.arrival_date, xcs.schedule_arrival_date        ) arrival_date     --着荷日
+--                  ,NVL(xcs.result_freight_carrier_code, xcs.carrier_code  ) carrier_code     --運送業者
+--                  ,NVL(xcs.result_shipping_method_code, xcs.delivery_type ) delivery_type    --配送区分
+-- Ver.1.73 Del End
 -- 2018/09/25 Ver.1.72 Mod End
+-- Ver.1.73 Add Start
+            SELECT xcs.shipped_date  shipped_date     --出荷日
+                  ,xcs.arrival_date  arrival_date     --着荷日
+                  ,xcs.carrier_code  carrier_code     --運送業者
+                  ,xcs.delivery_type delivery_type    --配送区分
+-- Ver.1.73 Add End
                   ,CASE
                      WHEN ( gr_interface_info_rec(i).eos_data_type IN ( gv_eos_data_cd_200  --200 有償出荷報告
                                                                        ,gv_eos_data_cd_210  --210 拠点出荷確定報告
