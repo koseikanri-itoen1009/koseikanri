@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2021/11/25    1.7   SCSK K.Yoshikawa [E_本稼動_17546]控除マスタ削除アップロードの改修
  *                                       [E_本稼動_17540]8月31日以前の控除を除外
  *  2021/12/17    1.8   SCSK K.Yoshikawa [E_本稼動_17540]8月31日以前かつ承認済の控除を除外
+ *  2022/03/03    1.9   SCSK Y.Koh        E_本稼動_17939 定額協賛金対応
  *
  *****************************************************************************************/
 --
@@ -2432,7 +2433,11 @@ AS
 --          ,gt_condition_work_tbl(in_main_idx).corp_code                -- 企業コード
           ,NULL                                                        -- 企業コード
 -- 2021/03/22 Ver1.2 MOD End
-          ,gd_work_date                                                -- 計上日
+-- 2022/03/03 Ver1.9 MOD Start
+          ,greatest(gd_work_date, gt_condition_work_tbl(in_main_idx).start_date_active)
+                                                                       -- 計上日
+--          ,gd_work_date                                                -- 計上日
+-- 2022/03/03 Ver1.9 MOD End
           ,cv_f_flag                                                   -- 作成元区分
           ,NULL                                                        -- 作成元明細ID
           ,gt_condition_work_tbl(in_main_idx).condition_id             -- 控除条件ID
@@ -2440,7 +2445,10 @@ AS
           ,gt_condition_work_tbl(in_main_idx).condition_line_id        -- 控除詳細ID
           ,gt_condition_work_tbl(in_main_idx).data_type                -- データ種類
           ,cv_n_flag                                                   -- ステータス
-          ,NULL                                                        -- 品目コード
+-- 2022/03/03 Ver1.9 MOD Start
+          ,gt_condition_work_tbl(in_main_idx).item_code                -- 品目コード
+--          ,NULL                                                        -- 品目コード
+-- 2022/03/03 Ver1.9 MOD End
           ,NULL                                                        -- 販売単位
           ,NULL                                                        -- 販売単価
           ,NULL                                                        -- 販売数量
@@ -3894,7 +3902,10 @@ AS
           -- 開始日が業務日付より未来の控除マスタの場合
 -- 2021/07/26 Ver1.3 MOD Start
 --          IF gt_condition_work_tbl(i).start_date_active > gd_proc_date THEN
-          IF gt_condition_work_tbl(i).start_date_active > gd_proc_date -1 THEN
+-- 2022/03/03 Ver1.9 MOD Start
+          IF trunc(gt_condition_work_tbl(i).start_date_active,'MM') > gd_proc_date -1 THEN
+--          IF gt_condition_work_tbl(i).start_date_active > gd_proc_date -1 THEN
+-- 2022/03/03 Ver1.9 MOD End
 -- 2021/07/26 Ver1.3 MOD End
              NULL;
           ELSE
@@ -3912,7 +3923,10 @@ AS
 -- 2021/07/26 Ver1.3 MOD End
 --
               -- ワーク日付(業務日付)が開始日よりも大きい間は繰返し処理を実施
-              WHILE gd_work_date >= gt_condition_work_tbl(i).start_date_active  LOOP
+-- 2022/03/03 Ver1.9 MOD Start
+              WHILE gd_work_date >= trunc(gt_condition_work_tbl(i).start_date_active,'MM')  LOOP
+--              WHILE gd_work_date >= gt_condition_work_tbl(i).start_date_active  LOOP
+-- 2022/03/03 Ver1.9 MOD End
 --
                 -- ============================================================
                 -- A-6.販売控除データ登録の呼び出し
@@ -3945,7 +3959,10 @@ AS
               gd_work_date := LAST_DAY(ADD_MONTHS(gt_condition_work_tbl(i).end_date_active,-1)) + cn_1;
 --
               -- ワーク日付が開始日よりも大きい間は繰返し処理を実施
-              WHILE gd_work_date >= gt_condition_work_tbl(i).start_date_active  LOOP
+-- 2022/03/03 Ver1.9 MOD Start
+              WHILE gd_work_date >= trunc(gt_condition_work_tbl(i).start_date_active,'MM')  LOOP
+--              WHILE gd_work_date >= gt_condition_work_tbl(i).start_date_active  LOOP
+-- 2022/03/03 Ver1.9 MOD End
 --
                 -- ============================================================
                 -- A-6.販売控除データ登録の呼び出し
