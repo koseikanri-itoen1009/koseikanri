@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A23C (body)
  * Description      : 控除マスタを元に、毎月定額で発生する控除データを作成し販売控除情報へ登録する
  * MD.050           : 定額控除データ作成 MD050_COK_024_A23
- * Version          : 1.2
+ * Version          : 1.3
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -24,6 +24,7 @@ AS
  *  2020/04/13    1.0   M.Sato           新規作成
  *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
  *  2021/06/16    1.2   K.Yoshikawa      E_本稼動_17256
+ *  2022/03/03    1.3   K.Tomie          E_本稼働_17939
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,9 @@ AS
       ,customer_code                xxcok_condition_header.customer_code%TYPE               -- 顧客コード(条件)
       ,data_type                    xxcok_condition_header.data_type%TYPE                   -- データ種類
       ,tax_code                     xxcok_condition_header.tax_code%TYPE                    -- 税コード
+-- Ver1.3 add start
+      ,start_date_active            xxcok_condition_header.start_date_active%TYPE           -- 開始日
+-- Ver1.3 add end
       ,condition_line_id            xxcok_condition_lines.condition_line_id%TYPE            -- 控除詳細ID
 -- 2021/04/06 Ver1.1 MOD Start
 --      ,accounting_base              xxcok_condition_lines.accounting_base%TYPE              -- 計上拠点
@@ -131,6 +135,9 @@ AS
 -- 2021/04/06 Ver1.1 MOD End
       ,deduction_amount             xxcok_condition_lines.deduction_amount%TYPE             -- 控除額(本体)
       ,deduction_tax                xxcok_condition_lines.deduction_tax_amount%TYPE         -- 控除税額
+-- Ver1.3 add start
+      ,item_code                    xxcok_condition_lines.item_code%TYPE                    -- 品目コード
+-- Ver1.3 add end
   );
 --
   -- ワークテーブル型定義
@@ -277,6 +284,9 @@ AS
             ,xch.customer_code            AS customer_code      -- 顧客コード(条件)
             ,xch.data_type                AS data_type          -- データ種類
             ,xch.tax_code                 AS tax_code           -- 税コード
+-- Ver1.3 add start
+            ,xch.start_date_active        AS start_date_active  --開始日
+-- Ver1.3 add end
             ,xcl.condition_line_id        AS condition_line_id  -- 控除詳細ID
 -- 2021/04/06 Ver1.1 MOD Start
 --            ,xcl.accounting_base          AS accounting_base    -- 計上拠点
@@ -285,6 +295,9 @@ AS
 -- 2021/04/06 Ver1.1 MOD Start
             ,xcl.deduction_amount         AS deduction_amount   -- 控除額(本体)
             ,xcl.deduction_tax_amount     AS deduction_tax      -- 控除税額
+-- Ver1.3 add start
+            ,xcl.item_code                AS item_code          --品目コード
+-- Ver1.3 add end
       FROM
              xxcok_condition_header       xch                   -- 控除条件テーブル
             ,xxcok_condition_lines        xcl                   -- 控除詳細テーブル
@@ -293,16 +306,19 @@ AS
             ,xxcmm_cust_accounts          xca                   -- 顧客追加情報
 -- 2021/04/06 Ver1.1 ADD End
       WHERE 1 = 1
-      AND xch.enabled_flag_h              = cv_y_flag                     -- 有効フラグ
-      AND gd_accounting_date              BETWEEN xch.start_date_active   -- 開始日
-                                          AND xch.end_date_active         -- 終了日
-      AND flv.lookup_type                 = 'XXCOK1_DEDUCTION_DATA_TYPE'  -- 控除データ種類
-      AND flv.lookup_code                 =  xch.data_type                -- データ種類
-      AND flv.language                    = 'JA'                          -- 言語：JA
-      AND flv.enabled_flag                = cv_y_flag                     -- 参照表:有効フラグ
-      AND flv.attribute2                  = cv_fix_dedcton_type           -- 控除タイプ
-      AND xcl.condition_id                = xch.condition_id              -- 控除条件ID
-      AND xcl.enabled_flag_l              = cv_y_flag                     -- 控除詳細:有効フラグ
+      AND xch.enabled_flag_h              = cv_y_flag                                       -- 有効フラグ
+-- Ver1.3 mod start
+--      AND gd_accounting_date              BETWEEN xch.start_date_active   -- 開始日
+      AND gd_accounting_date              BETWEEN trunc ( xch.start_date_active , 'month' ) -- 開始日の当月1日
+-- Ver1.3 mod end 
+                                          AND xch.end_date_active                           -- 終了日
+      AND flv.lookup_type                 = 'XXCOK1_DEDUCTION_DATA_TYPE'                    -- 控除データ種類
+      AND flv.lookup_code                 =  xch.data_type                                  -- データ種類
+      AND flv.language                    = 'JA'                                            -- 言語：JA
+      AND flv.enabled_flag                = cv_y_flag                                       -- 参照表:有効フラグ
+      AND flv.attribute2                  = cv_fix_dedcton_type                             -- 控除タイプ
+      AND xcl.condition_id                = xch.condition_id                                -- 控除条件ID
+      AND xcl.enabled_flag_l              = cv_y_flag                                       -- 控除詳細:有効フラグ
 -- 2021/04/06 Ver1.1 ADD Start
       AND xcl.accounting_customer_code    = xca.customer_code(+)          -- 控除詳細:計上顧客
 -- 2021/04/06 Ver1.1 ADD End
@@ -547,7 +563,15 @@ AS
 --            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).corp_code          -- 企業コード
             ,NULL                                                       -- 企業コード
 -- 2021/04/06 Ver1.1 MOD End
-            ,gd_accounting_date                                       -- 計上日
+-- Ver1.3 mod start
+--            ,gd_accounting_date                                       -- 計上日
+            ,CASE
+               WHEN trunc ( gt_dedctn_cond_tbl(ln_ins_sls_dedctn).start_date_active , 'month') = gd_accounting_date
+                 THEN gt_dedctn_cond_tbl(ln_ins_sls_dedctn).start_date_active
+               WHEN trunc ( gt_dedctn_cond_tbl(ln_ins_sls_dedctn).start_date_active , 'month') < gd_accounting_date
+                 THEN gd_accounting_date
+             END                                                      -- 計上日
+-- Ver1.3 mod end
             ,cv_created_sec                                           -- 作成元区分
             ,NULL                                                     -- 作成元明細ID
             ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).condition_id       -- 控除条件ID
@@ -555,7 +579,10 @@ AS
             ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).condition_line_id  -- 控除詳細ID
             ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).data_type          -- データ種類
             ,cv_status                                                -- ステータス
-            ,NULL                                                     -- 品目コード
+-- Ver1.3 mod start
+--            ,NULL                                                     -- 品目コード
+            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).item_code          -- 品目コード
+-- Ver1.3 mod end
             ,NULL                                                     -- 販売単位
             ,NULL                                                     -- 販売単価
             ,NULL                                                     -- 販売数量
