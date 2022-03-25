@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A40R(body)
  * Description      : 問屋未収単価チェックリスト
  * MD.050           : MD050_COK_024_A40_問屋未収単価チェックリスト.doc
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/01/28    1.0   K.Yoshikawa     新規作成
+ *  2022/03/24    1.1   K.Yoshikawa     単位換算追加
  *
  *****************************************************************************************/
   -- ===============================================
@@ -79,12 +80,24 @@ AS
   cv_token_request_id        CONSTANT VARCHAR2(15)  := 'REQUEST_ID';
   cv_token_count             CONSTANT VARCHAR2(15)  := 'COUNT';
   cv_token_lookup_value_set  CONSTANT VARCHAR2(25)  := 'LOOKUP_VALUE_SET';
+-- 2022/03/24 Ver1.1 ADD Start
+  cv_one                     CONSTANT VARCHAR2(1)  :=  '1';                          -- '1'
+  cv_two                     CONSTANT VARCHAR2(1)  :=  '2';                          -- '2'
+  cv_three                   CONSTANT VARCHAR2(1)  :=  '3';                          -- '3'
+  cv_hon                     CONSTANT VARCHAR2(2)  :=  '本';                         -- 単位:本
+  cv_cs                      CONSTANT VARCHAR2(2)  :=  'CS';                         -- 単位:CS
+  cv_bl                      CONSTANT VARCHAR2(2)  :=  'BL';                         -- 単位:BL
+-- 2022/03/24 Ver1.1 ADD End
   -- プロファイル
   cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';     -- 在庫組織コード_営業組織
   cv_prof_org_id             CONSTANT VARCHAR2(25)  := 'ORG_ID';                    -- 営業単位ID
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)   := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(3)   := '.';
+-- 2022/03/24 Ver1.1 ADD Start
+  cv_sepa_period             CONSTANT VARCHAR2(1)  := '.';
+  cv_sepa_colon              CONSTANT VARCHAR2(1)  := ':';
+-- 2022/03/24 Ver1.1 ADD End
   -- 数値
   cn_number_0                CONSTANT NUMBER        := 0;
   cn_number_1                CONSTANT NUMBER        := 1;
@@ -1426,18 +1439,55 @@ AS
                                          ,xcl.condition_line_id                                                             condition_line_id           --控除詳細ID
                                          ,xcl.enabled_flag_l                                                                enabled_flag_l              --明細有効フラグ
                                          ,xcl.item_code                                                                     item_code                   --品目コード
-                                         ,xcl.demand_en_3                                                                   demand_en_3                 --請求(円)
-                                         ,xcl.shop_pay_en_3                                                                 shop_pay_en_3               --店納(円)
+-- 2022/03/24 Ver1.1 MOD Start
+--                                         ,xcl.demand_en_3                                                                   demand_en_3                 --請求(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.demand_en_3,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           demand_en_3              --請求(円)
+--                                         ,xcl.shop_pay_en_3                                                                 shop_pay_en_3               --店納(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.shop_pay_en_3,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           shop_pay_en_3          --店納(円)
                                          ,xcl.compensation_en_3                                                             compensation_en_3           --補填(円)
                                          ,xcl.wholesale_margin_en_3                                                         wholesale_margin_en_3       --問屋マージン(円)
                                          ,xcl.wholesale_margin_per_3                                                        wholesale_margin_per_3      --問屋マージン(％)
-                                         ,xcl.accrued_en_3                                                                  accrued_en_3                --未収計３(円)
-                                         ,xcl.normal_shop_pay_en_4                                                          normal_shop_pay_en_4        --通常店納(円)
-                                         ,xcl.just_shop_pay_en_4                                                            just_shop_pay_en_4          --今回店納(円)
-                                         ,xcl.just_condition_en_4                                                           just_condition_en_4         --今回条件(円)
+--                                         ,xcl.accrued_en_3                                                                  accrued_en_3                --未収計３(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.accrued_en_3,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           accrued_en_3            --未収計３(円)
+--                                         ,xcl.normal_shop_pay_en_4                                                          normal_shop_pay_en_4        --通常店納(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.normal_shop_pay_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           normal_shop_pay_en_4            --通常店納(円)
+--                                         ,xcl.just_shop_pay_en_4                                                            just_shop_pay_en_4          --今回店納(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.just_shop_pay_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           just_shop_pay_en_4                --今回店納(円)
+--                                         ,xcl.just_condition_en_4                                                           just_condition_en_4         --今回条件(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.just_condition_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           just_condition_en_4               --今回条件(円)
                                          ,xcl.wholesale_adj_margin_en_4                                                     wholesale_adj_margin_en_4   --問屋マージン修正(円)
                                          ,xcl.wholesale_adj_margin_per_4                                                    wholesale_adj_margin_per_4  --問屋マージン修正(％)
-                                         ,xcl.accrued_en_4                                                                  accrued_en_4                --未収計４(円)
+--                                         ,xcl.accrued_en_4                                                                  accrued_en_4                --未収計４(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.accrued_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           accrued_en_4                --未収計４(円)
+-- 2022/03/24 Ver1.1 MOD End
                                          ,flv.attribute2                                                                    dedu_type                   --控除タイプ
                                          ,xca.intro_chain_code2                                                             intro_chain_code2           --控除用チェーンコード（顧客指定）
                                          ,0                                                                                 dedu_est_kbn                --控除見積区分
@@ -1474,18 +1524,55 @@ AS
                                          ,xcl.condition_line_id                                                             condition_line_id           --控除詳細ID
                                          ,xcl.enabled_flag_l                                                                enabled_flag_l              --明細有効フラグ
                                          ,xcl.item_code                                                                     item_code                   --品目コード
-                                         ,xcl.demand_en_3                                                                   demand_en_3                 --請求(円)
-                                         ,xcl.shop_pay_en_3                                                                 shop_pay_en_3               --店納(円)
+-- 2022/03/24 Ver1.1 MOD Start
+--                                         ,xcl.demand_en_3                                                                   demand_en_3                 --請求(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.demand_en_3,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           demand_en_3              --請求(円)
+--                                         ,xcl.shop_pay_en_3                                                                 shop_pay_en_3               --店納(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.shop_pay_en_3,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           shop_pay_en_3          --店納(円)
                                          ,xcl.compensation_en_3                                                             compensation_en_3           --補填(円)
                                          ,xcl.wholesale_margin_en_3                                                         wholesale_margin_en_3       --問屋マージン(円)
                                          ,xcl.wholesale_margin_per_3                                                        wholesale_margin_per_3      --問屋マージン(％)
-                                         ,xcl.accrued_en_3                                                                  accrued_en_3                --未収計３(円)
-                                         ,xcl.normal_shop_pay_en_4                                                          normal_shop_pay_en_4        --通常店納(円)
-                                         ,xcl.just_shop_pay_en_4                                                            just_shop_pay_en_4          --今回店納(円)
-                                         ,xcl.just_condition_en_4                                                           just_condition_en_4         --今回条件(円)
+--                                         ,xcl.accrued_en_3                                                                  accrued_en_3                --未収計３(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.accrued_en_3,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           accrued_en_3            --未収計３(円)
+--                                         ,xcl.normal_shop_pay_en_4                                                          normal_shop_pay_en_4        --通常店納(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.normal_shop_pay_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           normal_shop_pay_en_4            --通常店納(円)
+--                                         ,xcl.just_shop_pay_en_4                                                            just_shop_pay_en_4          --今回店納(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.just_shop_pay_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           just_shop_pay_en_4                --今回店納(円)
+--                                         ,xcl.just_condition_en_4                                                           just_condition_en_4         --今回条件(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.just_condition_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           just_condition_en_4               --今回条件(円)
                                          ,xcl.wholesale_adj_margin_en_4                                                     wholesale_adj_margin_en_4   --問屋マージン修正(円)
                                          ,xcl.wholesale_adj_margin_per_4                                                    wholesale_adj_margin_per_4  --問屋マージン修正(％)
-                                         ,xcl.accrued_en_4                                                                  accrued_en_4                --未収計４(円)
+--                                         ,xcl.accrued_en_4                                                                  accrued_en_4                --未収計４(円)
+                                         ,NVL(ROUND(XXCOK024A40R.get_uom_conversion_f(xcl.item_code
+                                                                                     ,DECODE( g_target_tab( i ).demand_unit_type, cv_one, cv_hon, cv_two, cv_cs, cv_three, cv_bl )
+                                                                                     ,xcl.accrued_en_4,xcl.uom_code)
+                                                   ,2)
+                                              ,0)                                                                           accrued_en_4                --未収計４(円)
+-- 2022/03/24 Ver1.1 MOD End
                                          ,flv.attribute2                                                                    dedu_type                   --控除タイプ
                                          ,xca.intro_chain_code2                                                             intro_chain_code2           --控除用チェーンコード（顧客指定）
                                          ,1                                                                                 dedu_est_kbn                --控除見積区分
@@ -1819,6 +1906,74 @@ AS
         CLOSE lookup_stamp_cur;
       END IF;
   END init;
+--
+-- 2022/03/24 Ver1.1 ADD Start
+  /******************************************************************************
+   *FUNCTION NAME : get_uom_conversion_f
+   *Desctiption   : 単位換算数取得
+   ******************************************************************************/
+  FUNCTION get_uom_conversion_f(
+    iv_item_code       IN VARCHAR2 -- 品目コード
+  , iv_befor_uom_code  IN VARCHAR2 -- 換算前単位コード
+  , in_befor_quantity  IN NUMBER   -- 換算前金額
+  , iv_after_uom_code  IN VARCHAR2 -- 換算後単位コード
+  )
+  RETURN NUMBER              -- 単位換算後金額
+  IS
+  -- =======================================================
+  -- ローカル定数
+  -- =======================================================
+    cv_prg_name       CONSTANT VARCHAR2(30) := 'get_uom_conversion_f'; -- プログラム名
+    cv_profile_option CONSTANT VARCHAR2(30) := 'XXCOK1_ORG_CODE_SALES';
+  -- =======================================================
+  -- ローカル変数
+  -- =======================================================
+    lv_before_uom_code        VARCHAR2(10);       -- 換算前単位コード
+    ln_before_quantity        NUMBER;             -- 換算前金額
+    lv_after_uom_code         VARCHAR2(10);       -- 換算後単位コード
+    ln_after_quantity         NUMBER;             -- 換算後金額
+    lov_item_code             VARCHAR2(20);       -- 品目コード
+    lov_organization_code     VARCHAR2(10);       -- 在庫組織コード
+    lon_inventory_item_id     NUMBER;             -- 品目ＩＤ
+    lon_organization_id       NUMBER;             -- 在庫組織ＩＤ
+    ln_content                NUMBER;             -- 入数
+    lv_errbuf                 VARCHAR2(2000);     -- エラー・メッセージエラー       #固定#
+    lv_retcode                VARCHAR2(1);        -- リターン・コード               #固定#
+    lv_errmsg                 VARCHAR2(2000);     -- ユーザー・エラー・メッセージ   #固定#
+--
+  BEGIN
+--
+    lv_before_uom_code    := iv_befor_uom_code;
+    ln_before_quantity    := in_befor_quantity;
+    lv_after_uom_code     := iv_after_uom_code;
+    lov_item_code         := iv_item_code;
+--
+    lov_organization_code := FND_PROFILE.VALUE( cv_profile_option );
+--
+    xxcos_common_pkg.get_uom_cnv(
+      iv_before_uom_code        => lv_before_uom_code     -- IN            VARCHAR2 -- 換算前単位コード
+    , in_before_quantity        => ln_before_quantity     -- IN            NUMBER   -- 換算前金額
+    , iov_item_code             => lov_item_code          -- IN OUT NOCOPY VARCHAR2 -- 品目コード
+    , iov_organization_code     => lov_organization_code  -- IN OUT NOCOPY VARCHAR2 -- 在庫組織コード
+    , ion_inventory_item_id     => lon_inventory_item_id  -- IN OUT        NUMBER   -- 品目ＩＤ
+    , ion_organization_id       => lon_organization_id    -- IN OUT        NUMBER   -- 在庫組織ＩＤ
+    , iov_after_uom_code        => lv_after_uom_code      -- IN OUT NOCOPY VARCHAR2 -- 換算後単位コード
+    , on_after_quantity         => ln_after_quantity      -- OUT    NOCOPY NUMBER   -- 換算後金額
+    , on_content                => ln_content             -- OUT    NOCOPY NUMBER   -- 入数
+    , ov_errbuf                 => lv_errbuf              -- OUT    NOCOPY VARCHAR2 -- エラー・メッセージエラー     #固定#
+    , ov_retcode                => lv_retcode             -- OUT    NOCOPY VARCHAR2 -- リターン・コード             #固定#
+    , ov_errmsg                 => lv_errmsg              -- OUT    NOCOPY VARCHAR  -- ユーザー・エラー・メッセージ #固定#
+    );
+--
+    RETURN ln_after_quantity;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
+      );
+  END get_uom_conversion_f;
+-- 2022/03/24 Ver1.1 ADD End
 --
   /**********************************************************************************
    * Procedure Name   : submain
