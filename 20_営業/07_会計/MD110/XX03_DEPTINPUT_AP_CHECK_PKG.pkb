@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ap_check_pkg(body)
  * Description            : 部門入力(AP)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AP)共通関数 OCSJ/BFAFIN/MD070/F409
- * Version                : 11.5.10.2.16
+ * Version                : 11.5.10.2.17
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2018/02/07   11.5.10.2.14   [E_本稼動_14663]対応 稟議決裁番号の固定値チェック修正(SPで始まる番号に対応)
  *  2021/04/06   11.5.10.2.15   [E_本稼動_16026]対応 AP部門入力 負債科目計上時の制御
  *  2021/12/17   11.5.10.2.16   [E_本稼動_17678]対応 電子帳簿保存法改正対応
+ *  2022/03/29   11.5.10.2.17   [E_本稼動_17926]対応 部門入力の科目制限
  *
  *****************************************************************************************/
 --
@@ -1557,6 +1558,27 @@ AS
           END IF;
         END IF;
         -- ver 11.5.10.2.10F Add End
+-- ver 11.5.10.2.17 Add Start
+        IF  xx03_invoice_ele_data_rec.request_date IS NULL      AND
+            xx03_invoice_ele_data_rec.orig_invoice_num IS NULL  THEN
+--
+          SELECT  COUNT(*)
+          INTO    ln_count
+          FROM    FND_LOOKUP_VALUES flv
+          WHERE   flv.LOOKUP_TYPE   =       'XXCFO1_FORBIDDEN_ACCOUNT_LIST'
+          AND     flv.LANGUAGE      =       USERENV('LANG')
+          AND     flv.ENABLED_FLAG  =       'Y'
+          AND     flv.LOOKUP_CODE   =       xx03_xpsjlv_rec.segment3  ||  xx03_xpsjlv_rec.segment4
+          AND     TRUNC(SYSDATE)    BETWEEN NVL(FLV.START_DATE_ACTIVE, TO_DATE('1000/01/01','YYYY/MM/DD'))
+                                    AND     NVL(FLV.END_DATE_ACTIVE  , TO_DATE('9999/12/31','YYYY/MM/DD'));
+--
+          IF  ln_count  >=  1 THEN
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO', 'APP-XXCFO1-00063', 'ACC', xx03_xpsjlv_rec.segment3, 'SUB', xx03_xpsjlv_rec.segment4);
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+        END IF;
+-- ver 11.5.10.2.17 Add End
 --2016/11/14 Ver11.5.10.2.13 ADD START
         IF xx03_xpsjlv_rec.attribute7 IS NOT NULL THEN
           --稟議決裁番号形式チェック
