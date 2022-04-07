@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.24
+ * Version                : 11.5.10.2.25
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2019/10/25   11.5.10.2.22   障害 [E_本稼動_16009] 対応
  *  2021/04/28   11.5.10.2.23   障害 [E_本稼動_16026] 対応
  *  2021/12/20   11.5.10.2.24   障害 [E_本稼働_17678] 対応
+ *  2022/03/29   11.5.10.2.25   [E_本稼動_17926]対応 部門入力の科目制限
  *
  *****************************************************************************************/
 --
@@ -2136,6 +2137,27 @@ AS
         END IF;
         -- ver 11.5.10.2.10D Add End
 --
+-- ver 11.5.10.2.25 Add Start
+        IF  xx03_payment_ele_data_rec.request_date IS NULL      AND
+            xx03_payment_ele_data_rec.orig_invoice_num IS NULL  THEN
+--
+          SELECT  COUNT(*)
+          INTO    ln_count
+          FROM    FND_LOOKUP_VALUES flv
+          WHERE   flv.LOOKUP_TYPE   =       'XXCFO1_FORBIDDEN_ACCOUNT_LIST'
+          AND     flv.LANGUAGE      =       USERENV('LANG')
+          AND     flv.ENABLED_FLAG  =       'Y'
+          AND     flv.LOOKUP_CODE   =       xx03_xrsjlv_rec.segment3  ||  xx03_xrsjlv_rec.segment4
+          AND     TRUNC(SYSDATE)    BETWEEN NVL(FLV.START_DATE_ACTIVE, TO_DATE('1000/01/01','YYYY/MM/DD'))
+                                    AND     NVL(FLV.END_DATE_ACTIVE  , TO_DATE('9999/12/31','YYYY/MM/DD'));
+--
+          IF  ln_count  >=  1 THEN
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO', 'APP-XXCFO1-00063', 'ACC', xx03_xrsjlv_rec.segment3, 'SUB', xx03_xrsjlv_rec.segment4);
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+        END IF;
+-- ver 11.5.10.2.25 Add End
 --2016/12/01 Ver11.5.10.2.20 ADD START
         IF ( xx03_xrsjlv_rec.attribute7 IS NOT NULL ) THEN
           --稟議決裁番号形式チェック
