@@ -7,7 +7,7 @@ AS
  * Description      : AP部門入力の伝票のステータスに従い、
  *                  : 控除額の支払 (AP支払) 画面の消込ステータスを更新します。
  * MD.050           : AP部門入力連携 MD050_COK_024_A25
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                    Description
@@ -27,6 +27,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/05/15    1.0   M.Sato           新規作成
  *  2021/09/27    1.1   K.Yoshikawa      E_本稼動_17557
+ *  2022/04/19    1.2   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
  *
  *****************************************************************************************/
 --
@@ -160,6 +161,9 @@ AS
   -- 初期取得
   gd_last_process_date          DATE;                                                 -- 前回処理日時
   gd_this_process_date          DATE;                                                 -- 今回処理日時
+-- 2022/04/19 Ver1.2 ADD Start
+  gd_cancel_gl_date             DATE;                                                 -- 取消GL記帳日
+-- 2022/04/19 Ver1.2 ADD End
   -- 対象件数
   gn_reject_target_cnt          NUMBER;                                               -- 対象件数(却下)
   gn_approval_target_cnt        NUMBER;                                               -- 対象件数(承認)
@@ -239,6 +243,25 @@ AS
     -- 2.今回の処理日時を取得
     -- ============================================================
     gd_this_process_date  := SYSDATE;           -- 今回処理日時
+-- 2022/04/19 Ver1.2 ADD Start
+    -- ============================================================
+    -- 3.AP部門入力カレンダーのOPEN月取得
+    -- ============================================================
+    SELECT
+        MIN(gps.end_date)
+    INTO
+        gd_cancel_gl_date
+    FROM
+        gl_period_statuses  gps ,
+        fnd_application     fa
+    WHERE
+        fa.application_short_name   =   'SQLGL'
+    and gps.application_id          =   fa.application_id
+    and gps.set_of_books_id         =   FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
+    and gps.end_date                >=  TO_DATE('2010/01/01','YYYY/MM/DD')
+    and gps.adjustment_period_flag  =   'N'
+    and NVL(gps.attribute1,'O')     =   'O';
+-- 2022/04/19 Ver1.2 ADD End
 --
   EXCEPTION
 --
@@ -765,6 +788,10 @@ AS
       SET     xdrh.recon_status            = cv_recon_status_cancel         -- 消込スタータス
              ,xdrh.cancellation_date       = TRUNC( g_cancel_slip_tbl(ln_get_cnt).approval_date )
                                                                             -- 取消日
+-- 2022/04/19 Ver1.2 ADD Start
+             ,xdrh.cancel_gl_date          = DECODE(xdrh.gl_if_flag, 'N', xdrh.gl_date, gd_cancel_gl_date)
+                                                                            -- 取消GL記帳日
+-- 2022/04/19 Ver1.2 ADD End
              ,xdrh.last_updated_by         = cn_last_updated_by             -- 最終更新者
              ,xdrh.last_update_date        = cd_last_update_date            -- 最終更新日
              ,xdrh.last_update_login       = cn_last_update_login           -- 最終更新ログイン
