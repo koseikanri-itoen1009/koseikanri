@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -157,6 +157,21 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
       ,XxcsoSpDecisionHeadersVEO.BM2_TAX_KBN
       ,XxcsoSpDecisionHeadersVEO.BM3_TAX_KBN
 -- 2020-06-16 [E_本稼動_15904] Add End
+-- 2022-03-15 [E_本稼動_18060] Add Start
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_PAY_START_DATE
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_PAY_END_DATE
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAYMENT_TYPE
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAY_START_DATE
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAY_END_DATE
+      ,EXTRACT(YEAR FROM XxcsoSpDecisionHeadersVEO.INSTALL_PAY_START_DATE) INSTALL_PAY_START_YEAR
+      ,EXTRACT(MONTH FROM XxcsoSpDecisionHeadersVEO.INSTALL_PAY_START_DATE) INSTALL_PAY_START_MONTH
+      ,EXTRACT(YEAR FROM XxcsoSpDecisionHeadersVEO.INSTALL_PAY_END_DATE) INSTALL_PAY_END_YEAR
+      ,EXTRACT(MONTH FROM XxcsoSpDecisionHeadersVEO.INSTALL_PAY_END_DATE) INSTALL_PAY_END_MONTH
+      ,EXTRACT(YEAR FROM XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAY_START_DATE) AD_ASSETS_PAY_START_YEAR
+      ,EXTRACT(MONTH FROM XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAY_START_DATE) AD_ASSETS_PAY_START_MONTH
+      ,EXTRACT(YEAR FROM XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAY_END_DATE) AD_ASSETS_PAY_END_YEAR
+      ,EXTRACT(MONTH FROM XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAY_END_DATE) AD_ASSETS_PAY_END_MONTH
+-- 2022-03-15 [E_本稼動_18060] Add End
 FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
 WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
    ]]></SQLQuery>
@@ -936,6 +951,140 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       EntityAttrName="Bm3TaxKbn"
       EntityUsage="XxcsoSpDecisionHeadersVEO"
       AliasName="Bm3TaxKbn" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPayStartDate"
+      EntityAttrName="InstallPayStartDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallPayStartDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPayEndDate"
+      EntityAttrName="InstallPayEndDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallPayEndDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPaymentType"
+      EntityAttrName="AdAssetsPaymentType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsPaymentType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPayStartDate"
+      EntityAttrName="AdAssetsPayStartDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsPayStartDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPayEndDate"
+      EntityAttrName="AdAssetsPayEndDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsPayEndDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPayStartYear"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_PAY_START_YEAR"
+      Expression="INSTALL_PAY_START_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPayStartMonth"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_PAY_START_MONTH"
+      Expression="INSTALL_PAY_START_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPayEndYear"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_PAY_END_YEAR"
+      Expression="INSTALL_PAY_END_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallPayEndMonth"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INSTALL_PAY_END_MONTH"
+      Expression="INSTALL_PAY_END_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPayStartYear"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AD_ASSETS_PAY_START_YEAR"
+      Expression="AD_ASSETS_PAY_START_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPayStartMonth"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AD_ASSETS_PAY_START_MONTH"
+      Expression="AD_ASSETS_PAY_START_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPayEndYear"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AD_ASSETS_PAY_END_YEAR"
+      Expression="AD_ASSETS_PAY_END_YEAR"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPayEndMonth"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="AD_ASSETS_PAY_END_MONTH"
+      Expression="AD_ASSETS_PAY_END_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoSpDecisionAllCcLineFullVO"
