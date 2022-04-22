@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionHeadersVEOImpl
 * 概要説明   : SP専決ヘッダエンティティクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者          修正内容
@@ -11,6 +11,7 @@
 * 2014-12-15 1.2  SCSK桐生和幸    [E_本稼動_12565]SP・契約書画面改修対応
 * 2018-05-16 1.3  SCSK小路恭弘    [E_本稼動_14989]ＳＰ項目追加対応
 * 2020-08-21 1.4  SCSK佐々木大和  [E_本稼動_15904]税抜きでの自販機BM計算について
+* 2022-03-15 1.5  SCSK二村悠香    [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -145,10 +146,17 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
   protected static final int BM1TAXKBN = 103;
   protected static final int BM2TAXKBN = 104;
   protected static final int BM3TAXKBN = 105;
-  protected static final int XXCSOSPDECISIONATTACHESEO = 106;
-  protected static final int XXCSOSPDECISIONCUSTSVEO = 107;
-  protected static final int XXCSOSPDECISIONLINESVEO = 108;
-  protected static final int XXCSOSPDECISIONSENDSEO = 109;
+  protected static final int INSTALLPAYSTARTDATE = 106;
+  protected static final int INSTALLPAYENDDATE = 107;
+  protected static final int ADASSETSPAYMENTTYPE = 108;
+  protected static final int ADASSETSPAYSTARTDATE = 109;
+  protected static final int ADASSETSPAYENDDATE = 110;
+  protected static final int XXCSOSPDECISIONATTACHESEO = 111;
+  protected static final int XXCSOSPDECISIONCUSTSVEO = 112;
+  protected static final int XXCSOSPDECISIONLINESVEO = 113;
+  protected static final int XXCSOSPDECISIONSENDSEO = 114;
+
+
 
 
 
@@ -276,6 +284,8 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
 
 
 
@@ -2198,6 +2208,16 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
         return getBm2TaxKbn();
       case BM3TAXKBN:
         return getBm3TaxKbn();
+      case INSTALLPAYSTARTDATE:
+        return getInstallPayStartDate();
+      case INSTALLPAYENDDATE:
+        return getInstallPayEndDate();
+      case ADASSETSPAYMENTTYPE:
+        return getAdAssetsPaymentType();
+      case ADASSETSPAYSTARTDATE:
+        return getAdAssetsPayStartDate();
+      case ADASSETSPAYENDDATE:
+        return getAdAssetsPayEndDate();
       case XXCSOSPDECISIONATTACHESEO:
         return getXxcsoSpDecisionAttachesEO();
       case XXCSOSPDECISIONCUSTSVEO:
@@ -2533,6 +2553,21 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
         return;
       case BM3TAXKBN:
         setBm3TaxKbn((String)value);
+        return;
+      case INSTALLPAYSTARTDATE:
+        setInstallPayStartDate((Date)value);
+        return;
+      case INSTALLPAYENDDATE:
+        setInstallPayEndDate((Date)value);
+        return;
+      case ADASSETSPAYMENTTYPE:
+        setAdAssetsPaymentType((String)value);
+        return;
+      case ADASSETSPAYSTARTDATE:
+        setAdAssetsPayStartDate((Date)value);
+        return;
+      case ADASSETSPAYENDDATE:
+        setAdAssetsPayEndDate((Date)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -3555,6 +3590,97 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
     setAttributeInternal(BM3TAXKBN, value);
   }
 
+
+  /**
+   * 
+   * Gets the attribute value for InstallPayStartDate, using the alias name InstallPayStartDate
+   */
+  public Date getInstallPayStartDate()
+  {
+    return (Date)getAttributeInternal(INSTALLPAYSTARTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for InstallPayStartDate
+   */
+  public void setInstallPayStartDate(Date value)
+  {
+    setAttributeInternal(INSTALLPAYSTARTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for InstallPayEndDate, using the alias name InstallPayEndDate
+   */
+  public Date getInstallPayEndDate()
+  {
+    return (Date)getAttributeInternal(INSTALLPAYENDDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for InstallPayEndDate
+   */
+  public void setInstallPayEndDate(Date value)
+  {
+    setAttributeInternal(INSTALLPAYENDDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for AdAssetsPaymentType, using the alias name AdAssetsPaymentType
+   */
+  public String getAdAssetsPaymentType()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYMENTTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for AdAssetsPaymentType
+   */
+  public void setAdAssetsPaymentType(String value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for AdAssetsPayStartDate, using the alias name AdAssetsPayStartDate
+   */
+  public Date getAdAssetsPayStartDate()
+  {
+    return (Date)getAttributeInternal(ADASSETSPAYSTARTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for AdAssetsPayStartDate
+   */
+  public void setAdAssetsPayStartDate(Date value)
+  {
+    setAttributeInternal(ADASSETSPAYSTARTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for AdAssetsPayEndDate, using the alias name AdAssetsPayEndDate
+   */
+  public Date getAdAssetsPayEndDate()
+  {
+    return (Date)getAttributeInternal(ADASSETSPAYENDDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for AdAssetsPayEndDate
+   */
+  public void setAdAssetsPayEndDate(Date value)
+  {
+    setAttributeInternal(ADASSETSPAYENDDATE, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -3563,6 +3689,9 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {spDecisionHeaderId});
   }
+
+
+
 
 
 
