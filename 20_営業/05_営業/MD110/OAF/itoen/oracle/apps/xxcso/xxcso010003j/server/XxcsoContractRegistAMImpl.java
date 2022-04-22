@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.5
+* バージョン : 2.6
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -25,6 +25,7 @@
 * 2020-10-28 2.4  SCSK佐々木大和 [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *                                [E_本稼動_16410]契約書画面からの銀行口座変更について
 * 2020-12-29 2.5  SCSK小路恭弘   [E_本稼動_16895]送付先コード税区分修正
+* 2022-03-31 2.6  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -2118,6 +2119,20 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
        ,fixedFlag
       )
     );
+// Ver.2.6 Add Start
+      /////////////////////////////////////
+      // 検証処理：支払期間開始日チェック
+      /////////////////////////////////////
+    if ( fixedFlag )
+    {
+      errorList.addAll(
+        XxcsoContractRegistValidateUtils.chkPayStartDate(
+          txn
+         ,mngVo
+        )
+      );        
+    }
+// Ver.2.6 Add End
 // 2015-02-09 [E_本稼動_12565] Add End
     /////////////////////////////////////
     // 検証処理：設置先情報
@@ -4180,6 +4195,337 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     return confirmMsg;
   }
 // V2.2 Y.Sasaki Added END
+// Ver.2.6 Add Start
+  /*****************************************************************************
+   * 設置協賛金支払項目チェック処理
+   *****************************************************************************
+   */
+  public void installPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validateInstallPayItemCheck();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 設置協賛金支払項目チェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validateInstallPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    //変数初期化
+    OAException  confirmMsg      = null;
+    OracleCallableStatement stmt = null;
+    String retCode               = null;
+    String token1  = null;
+    String token2  = null;
+    String token3  = null;
+    String token4  = null;
+    String insSpNumber          = null;
+    String adSpNumber           = null;
+    String insContractNumber    = null;
+    String adContractNumber     = null;
+
+    //インスタンス取得
+    XxcsoContractManagementFullVOImpl contMngVo
+      = getXxcsoContractManagementFullVO1();
+    if ( contMngVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoContractManagementFullVO1"
+        );
+    }
+
+    // 行インスタンス取得
+    XxcsoContractManagementFullVORowImpl contMngVoRow
+      = (XxcsoContractManagementFullVORowImpl) contMngVo.first();
+
+    String accountNumber        = contMngVoRow.getInstallAccountNumber();
+    String spNumber             = contMngVoRow.getSpDecisionNumber();
+
+    if ( !(accountNumber == null || "".equals(accountNumber))
+      && !(spNumber == null || "".equals(spNumber)))
+    {
+      try
+      {
+        StringBuffer sql = new StringBuffer(100);
+ 
+        sql.append("BEGIN");
+        sql.append("  xxcso_010003j_pkg.chk_pay_item   (");
+        sql.append("    iv_account_number          => :1");
+        sql.append("   ,iv_sp_decision_number      => :2");
+        sql.append("   ,ov_ins_contract_number     => :3");
+        sql.append("   ,ov_ins_sp_decision_number  => :4");
+        sql.append("   ,ov_ad_contract_number      => :5");
+        sql.append("   ,ov_ad_sp_decision_number   => :6");
+        sql.append("   ,ov_retcode                 => :7");
+        sql.append("  );");
+        sql.append("END;");
+        XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+        stmt
+          = (OracleCallableStatement)
+              txn.createCallableStatement(sql.toString(), 0);
+
+        stmt.setString(1, contMngVoRow.getInstallAccountNumber());
+        stmt.setString(2, contMngVoRow.getSpDecisionNumber());
+        stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+
+        stmt.execute();
+        insContractNumber = stmt.getString(3);
+        insSpNumber       = stmt.getString(4);
+        adContractNumber  = stmt.getString(5);
+        adSpNumber        = stmt.getString(6);
+        retCode           = stmt.getString(7);
+
+        // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+        if ( !"0".equals(retCode) )
+        {
+          if ( insSpNumber != null && insContractNumber != null ) 
+          {
+
+            token1 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TAX_TYPE;
+                   
+            token2 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_SUPP_PAYMENT_TYPE;
+
+            token3 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
+
+            token4 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
+
+            confirmMsg
+              = XxcsoMessage.createWarningMessage(
+                  XxcsoConstants.APP_XXCSO1_00917
+                 ,XxcsoConstants.TOKEN_ITEM1
+                 ,token1
+                 ,XxcsoConstants.TOKEN_ITEM2
+                 ,token2
+                 ,XxcsoConstants.TOKEN_ITEM3
+                 ,token3
+                 ,XxcsoConstants.TOKEN_ITEM4
+                 ,token4
+                 ,XxcsoConstants.TOKEN_SP_NUMBER
+                 ,insSpNumber
+                 ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+                 ,insContractNumber
+                );
+          }
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CHK_PAY_ITM
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+  /*****************************************************************************
+   * 行政財産使用料支払項目チェック処理
+   *****************************************************************************
+   */
+  public void adAssetsPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validateAdAssetsPayItemCheck();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 行政財産使用料支払項目チェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validateAdAssetsPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    //変数初期化
+    OAException  confirmMsg      = null;
+    OracleCallableStatement stmt = null;
+    String retCode               = null;
+    String token1  = null;
+    String token2  = null;
+    String token3  = null;
+    String token4  = null;
+    String insSpNumber          = null;
+    String adSpNumber           = null;
+    String insContractNumber    = null;
+    String adContractNumber     = null;
+
+    //インスタンス取得
+    XxcsoContractManagementFullVOImpl contMngVo
+      = getXxcsoContractManagementFullVO1();
+    if ( contMngVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoContractManagementFullVO1"
+        );
+    }
+
+    // 行インスタンス取得
+    XxcsoContractManagementFullVORowImpl contMngVoRow
+      = (XxcsoContractManagementFullVORowImpl) contMngVo.first();
+
+    String accountNumber        = contMngVoRow.getInstallAccountNumber();
+    String spNumber             = contMngVoRow.getSpDecisionNumber();
+
+    if ( !(accountNumber == null || "".equals(accountNumber))
+      && !(spNumber == null || "".equals(spNumber)))
+    {
+      try
+      {
+        StringBuffer sql = new StringBuffer(100);
+ 
+        sql.append("BEGIN");
+        sql.append("  xxcso_010003j_pkg.chk_pay_item   (");
+        sql.append("    iv_account_number          => :1");
+        sql.append("   ,iv_sp_decision_number      => :2");
+        sql.append("   ,ov_ins_contract_number     => :3");
+        sql.append("   ,ov_ins_sp_decision_number  => :4");
+        sql.append("   ,ov_ad_contract_number      => :5");
+        sql.append("   ,ov_ad_sp_decision_number   => :6");
+        sql.append("   ,ov_retcode                 => :7");
+        sql.append("  );");
+        sql.append("END;");
+        XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+        stmt
+          = (OracleCallableStatement)
+              txn.createCallableStatement(sql.toString(), 0);
+
+        stmt.setString(1, contMngVoRow.getInstallAccountNumber());
+        stmt.setString(2, contMngVoRow.getSpDecisionNumber());
+        stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+
+        stmt.execute();
+        insContractNumber = stmt.getString(3);
+        insSpNumber       = stmt.getString(4);
+        adContractNumber  = stmt.getString(5);
+        adSpNumber        = stmt.getString(6);
+        retCode           = stmt.getString(7);
+
+        // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+        if ( !"0".equals(retCode) )
+        {
+          if ( adSpNumber != null && adContractNumber != null ) 
+          {
+            token1 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TAX_TYPE;
+                   
+            token2 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_TYPE;
+
+            token3 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_AMT;
+
+            token4 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
+
+            confirmMsg
+              = XxcsoMessage.createWarningMessage(
+                  XxcsoConstants.APP_XXCSO1_00917
+                 ,XxcsoConstants.TOKEN_ITEM1
+                 ,token1
+                 ,XxcsoConstants.TOKEN_ITEM2
+                 ,token2
+                 ,XxcsoConstants.TOKEN_ITEM3
+                 ,token3
+                 ,XxcsoConstants.TOKEN_ITEM4
+                 ,token4
+                 ,XxcsoConstants.TOKEN_SP_NUMBER
+                 ,adSpNumber
+                 ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+                 ,adContractNumber
+                );
+          }
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CHK_PAY_ITM
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// Ver.2.6 Add End
   /**
    * 
    * Container's getter for XxcsoBm1DestinationFullVO1
