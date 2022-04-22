@@ -1,0 +1,15 @@
+/************************************************************************
+ * Copyright(c) 2018, SCSK Corporation. All rights reserved.
+ *
+ * Sequence Name   : xxcso_cust_pay_mng_s01
+ * Description     : å⁄ãqéxï•ä«óùID(é©îÃã@å⁄ãqéxï•ä«óùèÓïÒ)
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/03/24    1.0  R.Oikawa       èââÒçÏê¨(E_ñ{â“ìÆ_18060)
+ ************************************************************************/
+CREATE SEQUENCE xxcso.xxcso_cust_pay_mng_s01 START WITH 1 INCREMENT BY 1 MAXVALUE 999999999999999 MINVALUE 1 NOCYCLE CACHE 20
+/
