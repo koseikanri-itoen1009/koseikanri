@@ -1,7 +1,7 @@
 /*============================================================================
 * ÉtÉ@ÉCÉãñº : XxcsoSpDecisionHeaderFullVORowImpl
 * äTóvê‡ñæ   : SPêÍåàÉwÉbÉ_ìoò^Å^çXêVópÉrÉÖÅ[çsÉNÉâÉX
-* ÉoÅ[ÉWÉáÉì : 1.3
+* ÉoÅ[ÉWÉáÉì : 1.4
 *============================================================================
 * èCê≥óöó
 * ì˙ït       Ver. íSìñé“       èCê≥ì‡óe
@@ -10,6 +10,7 @@
 * 2014-12-30 1.1  SCSKãÀê∂òaçK  [E_ñ{â“ìÆ_12565]SPÅEå_ñÒèëâÊñ â¸èCëŒâû
 * 2018-05-16 1.2  SCSKè¨òHã±çO  [E_ñ{â“ìÆ_14989]ÇrÇoçÄñ⁄í«â¡ëŒâû
 * 2020-08-21 1.3  SCSKç≤ÅXñÿëÂòa[E_ñ{â“ìÆ_15904]ê≈î≤Ç´Ç≈ÇÃé©îÃã@BMåvéZÇ…Ç¬Ç¢Çƒ
+* 2022-03-15 1.4  SCSKìÒë∫óIçÅ  [E_ñ{â“ìÆ_18060]é©îÃã@å⁄ãqï óòâvä«óù
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -139,16 +140,29 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   protected static final int BM1TAXKBN = 108;
   protected static final int BM2TAXKBN = 109;
   protected static final int BM3TAXKBN = 110;
-  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 111;
-  protected static final int XXCSOSPDECISIONATTACHFULLVO = 112;
-  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 113;
-  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 114;
-  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 115;
-  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 116;
-  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 117;
-  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 118;
-  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 119;
-  protected static final int XXCSOSPDECISIONSENDFULLVO = 120;
+  protected static final int INSTALLPAYSTARTDATE = 111;
+  protected static final int INSTALLPAYENDDATE = 112;
+  protected static final int ADASSETSPAYMENTTYPE = 113;
+  protected static final int ADASSETSPAYSTARTDATE = 114;
+  protected static final int ADASSETSPAYENDDATE = 115;
+  protected static final int INSTALLPAYSTARTYEAR = 116;
+  protected static final int INSTALLPAYSTARTMONTH = 117;
+  protected static final int INSTALLPAYENDYEAR = 118;
+  protected static final int INSTALLPAYENDMONTH = 119;
+  protected static final int ADASSETSPAYSTARTYEAR = 120;
+  protected static final int ADASSETSPAYSTARTMONTH = 121;
+  protected static final int ADASSETSPAYENDYEAR = 122;
+  protected static final int ADASSETSPAYENDMONTH = 123;
+  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 124;
+  protected static final int XXCSOSPDECISIONATTACHFULLVO = 125;
+  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 126;
+  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 127;
+  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 128;
+  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 129;
+  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 130;
+  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 131;
+  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 132;
+  protected static final int XXCSOSPDECISIONSENDFULLVO = 133;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1387,6 +1401,32 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return getBm2TaxKbn();
       case BM3TAXKBN:
         return getBm3TaxKbn();
+      case INSTALLPAYSTARTDATE:
+        return getInstallPayStartDate();
+      case INSTALLPAYENDDATE:
+        return getInstallPayEndDate();
+      case ADASSETSPAYMENTTYPE:
+        return getAdAssetsPaymentType();
+      case ADASSETSPAYSTARTDATE:
+        return getAdAssetsPayStartDate();
+      case ADASSETSPAYENDDATE:
+        return getAdAssetsPayEndDate();
+      case INSTALLPAYSTARTYEAR:
+        return getInstallPayStartYear();
+      case INSTALLPAYSTARTMONTH:
+        return getInstallPayStartMonth();
+      case INSTALLPAYENDYEAR:
+        return getInstallPayEndYear();
+      case INSTALLPAYENDMONTH:
+        return getInstallPayEndMonth();
+      case ADASSETSPAYSTARTYEAR:
+        return getAdAssetsPayStartYear();
+      case ADASSETSPAYSTARTMONTH:
+        return getAdAssetsPayStartMonth();
+      case ADASSETSPAYENDYEAR:
+        return getAdAssetsPayEndYear();
+      case ADASSETSPAYENDMONTH:
+        return getAdAssetsPayEndMonth();
       case XXCSOSPDECISIONALLCCLINEFULLVO:
         return getXxcsoSpDecisionAllCcLineFullVO();
       case XXCSOSPDECISIONATTACHFULLVO:
@@ -1749,6 +1789,45 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return;
       case BM3TAXKBN:
         setBm3TaxKbn((String)value);
+        return;
+      case INSTALLPAYSTARTDATE:
+        setInstallPayStartDate((Date)value);
+        return;
+      case INSTALLPAYENDDATE:
+        setInstallPayEndDate((Date)value);
+        return;
+      case ADASSETSPAYMENTTYPE:
+        setAdAssetsPaymentType((String)value);
+        return;
+      case ADASSETSPAYSTARTDATE:
+        setAdAssetsPayStartDate((Date)value);
+        return;
+      case ADASSETSPAYENDDATE:
+        setAdAssetsPayEndDate((Date)value);
+        return;
+      case INSTALLPAYSTARTYEAR:
+        setInstallPayStartYear((String)value);
+        return;
+      case INSTALLPAYSTARTMONTH:
+        setInstallPayStartMonth((String)value);
+        return;
+      case INSTALLPAYENDYEAR:
+        setInstallPayEndYear((String)value);
+        return;
+      case INSTALLPAYENDMONTH:
+        setInstallPayEndMonth((String)value);
+        return;
+      case ADASSETSPAYSTARTYEAR:
+        setAdAssetsPayStartYear((String)value);
+        return;
+      case ADASSETSPAYSTARTMONTH:
+        setAdAssetsPayStartMonth((String)value);
+        return;
+      case ADASSETSPAYENDYEAR:
+        setAdAssetsPayEndYear((String)value);
+        return;
+      case ADASSETSPAYENDMONTH:
+        setAdAssetsPayEndMonth((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -2871,6 +2950,244 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(BM3TAXKBN, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayStartDate
+   */
+  public Date getInstallPayStartDate()
+  {
+    return (Date)getAttributeInternal(INSTALLPAYSTARTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayStartDate
+   */
+  public void setInstallPayStartDate(Date value)
+  {
+    setAttributeInternal(INSTALLPAYSTARTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayEndDate
+   */
+  public Date getInstallPayEndDate()
+  {
+    return (Date)getAttributeInternal(INSTALLPAYENDDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayEndDate
+   */
+  public void setInstallPayEndDate(Date value)
+  {
+    setAttributeInternal(INSTALLPAYENDDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentType
+   */
+  public String getAdAssetsPaymentType()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYMENTTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentType
+   */
+  public void setAdAssetsPaymentType(String value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayStartDate
+   */
+  public Date getAdAssetsPayStartDate()
+  {
+    return (Date)getAttributeInternal(ADASSETSPAYSTARTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayStartDate
+   */
+  public void setAdAssetsPayStartDate(Date value)
+  {
+    setAttributeInternal(ADASSETSPAYSTARTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayEndDate
+   */
+  public Date getAdAssetsPayEndDate()
+  {
+    return (Date)getAttributeInternal(ADASSETSPAYENDDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayEndDate
+   */
+  public void setAdAssetsPayEndDate(Date value)
+  {
+    setAttributeInternal(ADASSETSPAYENDDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayStartYear
+   */
+  public String getInstallPayStartYear()
+  {
+    return (String)getAttributeInternal(INSTALLPAYSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayStartYear
+   */
+  public void setInstallPayStartYear(String value)
+  {
+    setAttributeInternal(INSTALLPAYSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayStartMonth
+   */
+  public String getInstallPayStartMonth()
+  {
+    return (String)getAttributeInternal(INSTALLPAYSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayStartMonth
+   */
+  public void setInstallPayStartMonth(String value)
+  {
+    setAttributeInternal(INSTALLPAYSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayEndYear
+   */
+  public String getInstallPayEndYear()
+  {
+    return (String)getAttributeInternal(INSTALLPAYENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayEndYear
+   */
+  public void setInstallPayEndYear(String value)
+  {
+    setAttributeInternal(INSTALLPAYENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayEndMonth
+   */
+  public String getInstallPayEndMonth()
+  {
+    return (String)getAttributeInternal(INSTALLPAYENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayEndMonth
+   */
+  public void setInstallPayEndMonth(String value)
+  {
+    setAttributeInternal(INSTALLPAYENDMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayStartYear
+   */
+  public String getAdAssetsPayStartYear()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayStartYear
+   */
+  public void setAdAssetsPayStartYear(String value)
+  {
+    setAttributeInternal(ADASSETSPAYSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayStartMonth
+   */
+  public String getAdAssetsPayStartMonth()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayStartMonth
+   */
+  public void setAdAssetsPayStartMonth(String value)
+  {
+    setAttributeInternal(ADASSETSPAYSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayEndYear
+   */
+  public String getAdAssetsPayEndYear()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayEndYear
+   */
+  public void setAdAssetsPayEndYear(String value)
+  {
+    setAttributeInternal(ADASSETSPAYENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayEndMonth
+   */
+  public String getAdAssetsPayEndMonth()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayEndMonth
+   */
+  public void setAdAssetsPayEndMonth(String value)
+  {
+    setAttributeInternal(ADASSETSPAYENDMONTH, value);
+  }
+
+
+
+
 
 
 
