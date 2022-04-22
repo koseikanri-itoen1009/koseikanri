@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2014-12-15 1.11 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.12 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.13 SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加
+* 2022-03-29 1.14 SCSK二村悠香 [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -302,6 +303,12 @@ public class XxcsoSpDecisionConstants
    */
   public static final String ONE_YEAR_PAY  = "1";  //1年払い
   public static final String TOTAL_PAY     = "2";  //総額払い
+// Ver.1.14 Add Start
+  public static final String QUARTER_PAY   = "3";  //四半期払い
+  public static final String HALF_PAY      = "4";  //半年払い
+  public static final String TWO_YEAR_PAY       = "5";  //2年払い
+  public static final String THREE_YEAR_PAY     = "6";  //3年期払い
+// Ver.1.14 Add End
 
   /*****************************************************************************
    * 支払条件（電気代）
@@ -649,5 +656,49 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_INSTALLATION_END_YEAR     = "設置見込み期間終了（年）";
   public static final String
     TOKEN_VALUE_INSTALLATION_END_MONTH    = "設置見込み期間終了（月）";
+
 // 2018-05-16 [E_本稼動_14989] Add End
+// Ver.1.14 Add Start
+  public static final String TAX_TYPE    = "税区分";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAYMENT_TYPE   = "支払条件（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_START_DATE = "支払期間開始日（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_START_YEAR = "支払期間開始日（設置協賛金）（年）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_START_MONTH = "支払期間開始日（設置協賛金）（月）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE   = "支払期間終了日（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_END_YEAR   = "支払期間終了日（設置協賛金）（年）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_END_MONTH   = "支払期間終了日（設置協賛金）（月）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAYMENT_TYPE      = "支払条件（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_START_DATE    = "支払期間開始日（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_START_YEAR    = "支払期間開始日（行政財産使用料）（年）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_START_MONTH    = "支払期間開始日（行政財産使用料）（月）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_END_DATE      = "支払期間終了日（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_END_YEAR      = "支払期間終了日（行政財産使用料）（年）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_END_MONTH      = "支払期間終了日（行政財産使用料）（月）";
+  public static final String
+    TOKEN_VALUE_CHK_PAY_START_DATE          = "支払期間開始日のチェック";
+  public static final String
+    TOKEN_VALUE_CHK_PAY_ITM                 = "支払項目のチェック";
+  public static final String
+    TOKEN_VALUE_CHK_PAY_DATE                = "支払期間大小のチェック";
+  /*****************************************************************************
+   * データ区分
+   *****************************************************************************
+   */
+  public static final String INSTALL_SUPP_KBN = "1";
+  public static final String AD_ASSETS_KBN    = "2";
+// Ver.1.14 Add End
 }
