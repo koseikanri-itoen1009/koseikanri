@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_DEDUCTION_RECON_HEAD
  * Description : çTèúè¡çûÉwÉbÉ_Å[èÓïÒ
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2020/07/08    1.0   SCSK Y.Koh       êVãKçÏê¨
  *  2020/07/27    1.1   SCSK K.Yoshikawa E_ñ{â“ìÆ_17382
+ *  2022/04/19    1.2   SCSK Y.Koh       E_ñ{â“ìÆ_18172  çTèúéxï•ì`ï[éÊè¡éûÇÃç∑äz
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
@@ -23,6 +24,9 @@ CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
     ,cancellation_date              DATE
     ,recon_due_date                 DATE
     ,gl_date                        DATE
+-- 2022/04/19 Ver1.2 ADD Start
+    ,cancel_gl_date                 DATE
+-- 2022/04/19 Ver1.2 ADD End
     ,target_date_end                DATE
     ,interface_div                  VARCHAR2(2)
     ,payee_code                     VARCHAR2(30)
@@ -70,6 +74,10 @@ COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.recon_due_date               
 /
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.gl_date                             IS 'GLãLí†ì˙'
 /
+-- 2022/04/19 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.cancel_gl_date                      IS 'éÊè¡GLãLí†ì˙'
+/
+-- 2022/04/19 Ver1.2 ADD End
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.target_date_end                     IS 'ëŒè€ä˙ä‘(TO)'
 /
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.interface_div                       IS 'òAågêÊ'
