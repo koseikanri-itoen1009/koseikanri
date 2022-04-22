@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 2.4
+* バージョン : 2.5
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -23,6 +23,7 @@
 * 2016-01-06 2.2  SCSK桐生和幸   [E_本稼動_13456]自販機管理システム代替対応
 * 2019-02-19 2.3  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
 * 2020-12-14 2.4  SCSK佐々木大和 [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
+* 2022-03-31 2.5  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -501,10 +502,34 @@ public class XxcsoContractRegistConstants
   public static final String
     TOKEN_VALUE_EMAIL_ADDRESS_CHK       = "メールアドレス形式チェック";
 // [E_本稼動_16642] Add End
+// Ver.2.5 Add Start
+  public static final String
+    TOKEN_VALUE_CHK_PAY_START_DATE      = "支払期間開始日チェック";
+  public static final String
+    TOKEN_VALUE_CHK_PAY_ITM             = "支払項目のチェック";
+  public static final String
+    TOKEN_VALUE_MEMO_RANDUM_INFO_REGION = "ＳＰ専決書覚書情報";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAYMENT_TYPE   = "支払条件（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_START_DATE = "支払期間開始日（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE   = "支払期間終了日（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_AD_INSTALL_SUPP_AMT         = "総額（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAYMENT_TYPE      = "支払条件（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_START_DATE    = "支払期間開始日（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAY_END_DATE      = "支払期間終了日（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_AMT               = "総額（行政財産使用料）";
+  public static final String TAX_TYPE    = "税区分";
+// Ver.2.5 Add End
   // PDF出力時付加文言
   public static final String
     TOKEN_VALUE_PDF_OUT                 = "PDF出力";
   public static final String
     TOKEN_VALUE_START                   = "起動";
-
 }
