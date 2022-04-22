@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_sp_decision_headers
  * Description     : ＳＰ専決ヘッダテーブル
  * MD.070          : 
- * Version         : 1.5
+ * Version         : 1.6
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -15,6 +15,7 @@
  *  2014/12/15    1.3  K.Kiriu       E_本稼動_12565対応(SP・契約書画面改修対応)
  *  2018/05/16    1.4  Y.Shoji       E_本稼動_14989対応(SP項目追加)
  *  2020/08/21    1.5  N.Koyama      E_本稼動_15904対応(BM毎の税区分追加)
+ *  2022/03/15    1.6  H.Futamura    E_本稼動_18060対応
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_sp_decision_headers
 (
@@ -124,6 +125,13 @@ CREATE TABLE xxcso.xxcso_sp_decision_headers
   bm2_tax_kbn                     VARCHAR2(1),
   bm3_tax_kbn                     VARCHAR2(1),
 /* N.Koyama Ver1.5 Add End */
+/* H.Futamura Ver1.6 Add Start */
+  install_pay_start_date          DATE,
+  install_pay_end_date            DATE,
+  ad_assets_supp_payment_type     VARCHAR2(1),
+  ad_assets_pay_start_date        DATE,
+  ad_assets_pay_end_date          DATE,
+/* H.Futamura Ver1.6 Add End */
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
   last_updated_by                 NUMBER(15)        NOT NULL,
@@ -247,6 +255,13 @@ COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.bm1_tax_kbn                   
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.bm2_tax_kbn                            IS 'ＢＭ２税区分';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.bm3_tax_kbn                            IS 'ＢＭ３税区分';
 /* N.Koyama Ver1.5 Add End */
+/* H.Futamura Ver1.6 Add Start */
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_pay_start_date                 IS '支払期間開始日（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_pay_end_date                   IS '支払期間終了日（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_payment_type                 IS '支払条件（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_pay_start_date               IS '支払期間開始日（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_pay_end_date                 IS '支払期間終了日（行政財産使用料）';
+/* H.Futamura Ver1.6 Add End */
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.creation_date                          IS '作成日';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.last_updated_by                        IS '最終更新者';
