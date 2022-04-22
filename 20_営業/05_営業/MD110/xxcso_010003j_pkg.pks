@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
  *  chk_supp_info_change      F    V      送付先変更チェック
  *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
+ *  chk_pay_start_date        P    -      支払期間開始日チェック
+ *  chk_pay_item              P    -      支払項目チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -63,6 +65,7 @@ AS
  *  2019/02/19    1.12  Y.Sasaki         E_本稼動_15349対応
  *  2020/10/28    1.13  Y.Sasaki         E_本稼動_16410,E_本稼動_16293対応
  *  2020/12/14    1.14  Y.Sasaki         E_本稼動_16642対応
+ *  2022/03/30    1.15  H.Futamura       E_本稼動_18060対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -310,5 +313,26 @@ AS
   ) RETURN VARCHAR2;
 /* E_本稼動_16293 Add END   */
 --
+-- Ver.1.15 Add Start
+  PROCEDURE chk_pay_start_date(
+    iv_account_number             IN  VARCHAR2
+   ,iv_sp_decision_number         IN  VARCHAR2
+   ,ov_ins_contract_number        OUT VARCHAR2
+   ,ov_ins_sp_decision_number     OUT VARCHAR2
+   ,ov_ad_contract_number         OUT VARCHAR2
+   ,ov_ad_sp_decision_number      OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+  );
+--
+  PROCEDURE chk_pay_item(
+    iv_account_number             IN  VARCHAR2
+   ,iv_sp_decision_number         IN  VARCHAR2
+   ,ov_ins_contract_number        OUT VARCHAR2
+   ,ov_ins_sp_decision_number     OUT VARCHAR2
+   ,ov_ad_contract_number         OUT VARCHAR2
+   ,ov_ad_sp_decision_number      OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+  );
+-- Ver.1.15 Add End
 END xxcso_010003j_pkg;
 /
