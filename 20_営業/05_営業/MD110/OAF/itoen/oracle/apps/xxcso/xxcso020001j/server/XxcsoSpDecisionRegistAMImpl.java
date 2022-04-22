@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.21
+* バージョン : 1.22
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -28,6 +28,7 @@
 * 2020-10-28 1.19 SCSK佐々木大和[E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 * 2020-11-05 1.20 SCSK佐々木大和[E_本稼動_15904]追加対応第3弾 定価換算率計算式修正
 * 2020-11-17 1.21 SCSK佐々木大和[E_本稼動_15904]追加対応第3弾 定価換算率計算式修正 対応不要のため削除
+* 2022-04-21 1.22 SCSK二村悠香  [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -37,6 +38,7 @@ import oracle.apps.fnd.framework.OAException;
 import oracle.jbo.server.ViewLinkImpl;
 import oracle.jbo.domain.BlobDomain;
 import oracle.jbo.domain.Number;
+import oracle.jbo.domain.Date;
 import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.NUMBER;
@@ -76,6 +78,14 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   public XxcsoSpDecisionRegistAMImpl()
   {
   }
+
+// Ver.1.22 Add Start
+  /*****************************************************************************
+   * 出力メッセージ
+   *****************************************************************************
+   */
+  private OAException mMessage = null;
+// Ver.1.22 Add End
 
   /*****************************************************************************
    * アプリケーション・モジュールの初期化（詳細）処理
@@ -599,14 +609,7 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[START]");
 
-    if ( ! getTransaction().isDirty() )
-    {
-      throw XxcsoMessage.createNotChangedMessage();
-    }
-    
-    List errorList = new ArrayList();
-    
-    // インスタンス取得
+// Ver.1.22 Add Start
     XxcsoSpDecisionHeaderFullVOImpl headerVo
       = getXxcsoSpDecisionHeaderFullVO1();
     if ( headerVo == null )
@@ -617,6 +620,109 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         );
     }
 
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+      
+    // 設置協賛金、行政財産使用料の支払期間開始年月、支払期間終了年月チェック   
+    XxcsoSpDecisionValidateUtils.chkInstallPayAdAssetsPayYearMonth(txn,headerRow,false);
+    
+    //画面項目 支払期間開始日（設置協賛金）
+    Date installPayStartDateScreen 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getInstallPayStartYear(),
+                headerRow.getInstallPayStartMonth());
+
+    //画面項目 支払期間終了日（設置協賛金）
+    Date installPayEndDateScreen 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getInstallPayEndYear(),
+                headerRow.getInstallPayEndMonth());
+
+    //画面項目　支払期間開始日（行政財産使用料）
+    Date adAssetsPayStartDateScreen 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getAdAssetsPayStartYear(),
+                headerRow.getAdAssetsPayStartMonth());
+
+    //画面項目　支払期間終了日（行政財産使用料）            
+    Date adAssetsPayEndDateScreen 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getAdAssetsPayEndYear(),
+                headerRow.getAdAssetsPayEndMonth());
+
+    //DB 支払期間開始日（設置協賛金）
+    Date installPayStartDate = headerRow.getInstallPayStartDate();
+    //DB 支払期間終了日（設置協賛金）
+    Date installPayEndDate = headerRow.getInstallPayEndDate();
+    //DB 支払期間開始日（行政財産使用料）
+    Date adAssetsPayStartDate = headerRow.getAdAssetsPayStartDate();
+    //DB 支払期間終了日（行政財産使用料）
+    Date adAssetsPayEndDate =  headerRow.getAdAssetsPayEndDate();
+
+    XxcsoUtils.debug(txn, "[installPayStartDateScreen:]" + installPayStartDateScreen);
+    XxcsoUtils.debug(txn, "[installPayEndDateScreen:]" + installPayEndDateScreen);
+    XxcsoUtils.debug(txn, "[adAssetsPayStartDateScreen:]" + adAssetsPayStartDateScreen);
+    XxcsoUtils.debug(txn, "[adAssetsPayEndDateScreen:]" + adAssetsPayEndDateScreen);
+    XxcsoUtils.debug(txn, "[installPayStartDate:]" + installPayStartDate);
+    XxcsoUtils.debug(txn, "[installPayEndDate:]" + installPayEndDate);
+    XxcsoUtils.debug(txn, "[adAssetsPayStartDate:]" + adAssetsPayStartDate);
+    XxcsoUtils.debug(txn, "[adAssetsPayEndDate:]" + adAssetsPayEndDate);
+
+    // 支払期間開始日（設置協賛金）が画面項目とDBで異なるかチェック
+    if((installPayStartDateScreen != null && installPayStartDate != null 
+        && installPayStartDateScreen.compareTo(installPayStartDate) != 0)
+        || (installPayStartDateScreen != null && installPayStartDate == null)
+        || (installPayStartDateScreen == null && installPayStartDate != null))
+    {
+       headerRow.setInstallPayStartDate(installPayStartDateScreen);
+    }
+    
+    // 支払期間終了日（設置協賛金）が画面項目とDBで異なるかチェック
+    if((installPayEndDateScreen != null && installPayEndDate != null 
+        && installPayEndDateScreen.compareTo(installPayEndDate) != 0)
+        || (installPayEndDateScreen != null && installPayEndDate == null)
+        || (installPayEndDateScreen == null && installPayEndDate != null))
+    {
+        headerRow.setInstallPayEndDate(installPayEndDateScreen);
+    }
+
+    // 支払期間開始日（行政財産使用料）が画面項目とDBで異なるかチェック
+    if((adAssetsPayStartDateScreen != null && adAssetsPayStartDate != null 
+        && adAssetsPayStartDateScreen.compareTo(adAssetsPayStartDate) != 0)
+        || (adAssetsPayStartDateScreen != null && adAssetsPayStartDate == null)
+        || (adAssetsPayStartDateScreen == null && adAssetsPayStartDate != null))
+    {
+        headerRow.setAdAssetsPayStartDate(adAssetsPayStartDateScreen);
+    }
+    
+    // 支払期間終了日（行政財産使用料）が画面項目とDBで異なるかチェック
+    if((adAssetsPayEndDateScreen != null && adAssetsPayEndDate != null 
+        && adAssetsPayEndDateScreen.compareTo(adAssetsPayEndDate) != 0)
+        || (adAssetsPayEndDateScreen != null && adAssetsPayEndDate == null)
+        || (adAssetsPayEndDateScreen == null && adAssetsPayEndDate != null))
+    {
+        headerRow.setAdAssetsPayEndDate(adAssetsPayEndDateScreen);
+    }
+// Ver.1.22 Add End
+
+    if ( ! getTransaction().isDirty() )
+    {
+      throw XxcsoMessage.createNotChangedMessage();
+    }
+// Ver.1.22 Del Start     
+//    List errorList = new ArrayList();
+    // インスタンス取得
+//    XxcsoSpDecisionHeaderFullVOImpl headerVo
+//      = getXxcsoSpDecisionHeaderFullVO1();
+//    if ( headerVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "getXxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+// Ver.1.22 Del End 
+
     XxcsoSpDecRequestFullVOImpl requestVo
       = getXxcsoSpDecRequestFullVO1();
     if ( requestVo == null )
@@ -626,9 +732,12 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "XxcsoSpDecisionHeaderFullVO1"
         );
     }
-    
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+// Ver.1.22 Del Start    
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+// Ver.1.22 Del End
+
     XxcsoSpDecRequestFullVORowImpl requestRow
       = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
 
@@ -636,7 +745,14 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     requestRow.setOperationMode(null);
 
     validateAll(false);
-    
+
+// Ver.1.22 Add Start
+    headerRow.setInstallPayStartDate(installPayStartDateScreen);
+    headerRow.setInstallPayEndDate(installPayEndDateScreen);
+    headerRow.setAdAssetsPayStartDate(adAssetsPayStartDateScreen);
+    headerRow.setAdAssetsPayEndDate(adAssetsPayEndDateScreen);
+// Ver.1.22 Add End
+
     commit();
 
     OAException msg
@@ -677,86 +793,105 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     return returnValue;
   }
 
-  
-  /*****************************************************************************
+// Ver.1.22 Add Start
+    /*****************************************************************************
    * 提出ボタン押下処理
    *****************************************************************************
    */
-  public HashMap handleSubmitButton()
+  public void handleSubmitButton()
   {
     OADBTransaction txn = getOADBTransaction();
 
     XxcsoUtils.debug(txn, "[START]");
 
-    XxcsoSpDecisionHeaderFullVOImpl headerVo
-      = getXxcsoSpDecisionHeaderFullVO1();
-    if ( headerVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError(
-          "getXxcsoSpDecisionHeaderFullVO1"
-        );
-    }
-
-    XxcsoSpDecRequestFullVOImpl requestVo
-      = getXxcsoSpDecRequestFullVO1();
-    if ( requestVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError(
-          "XxcsoSpDecisionHeaderFullVO1"
-        );
-    }
-    
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
-    XxcsoSpDecRequestFullVORowImpl requestRow
-      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
-
-    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_SUBMIT);
-
     validateAll(true);
-
-    commit();
-
-    OAException msg
-      = XxcsoMessage.createConfirmMessage(
-          XxcsoConstants.APP_XXCSO1_00001
-         ,XxcsoConstants.TOKEN_RECORD
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DECISION
-            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DEC_NUM
-            + headerRow.getSpDecisionNumber()
-            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
-         ,XxcsoConstants.TOKEN_ACTION
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT
-        );
-
-    HashMap params = new HashMap(2);
-    params.put(
-      XxcsoConstants.EXECUTE_MODE
-     ,XxcsoSpDecisionConstants.DETAIL_MODE
-    );
-    params.put(
-      XxcsoConstants.TRANSACTION_KEY1
-     ,headerRow.getSpDecisionHeaderId()
-    );
-
-    HashMap returnValue = new HashMap(2);
-    returnValue.put(
-      XxcsoSpDecisionConstants.PARAM_URL_PARAM
-     ,params
-    );
-    returnValue.put(
-      XxcsoSpDecisionConstants.PARAM_MESSAGE
-     ,msg
-    );
+    chkPayStartDate();
     
     XxcsoUtils.debug(txn, "[END]");
 
-    return returnValue;
-  }
+  } 
+// Ver.1.22 Add End
 
+// Ver.1.22 Del Start
+//  /*****************************************************************************
+//   * 提出ボタン押下処理
+//   *****************************************************************************
+//   */
+//  public HashMap handleSubmitButton()
+//  {
+//    OADBTransaction txn = getOADBTransaction();
+//
+//    XxcsoUtils.debug(txn, "[START]");
+//
+//    XxcsoSpDecisionHeaderFullVOImpl headerVo
+//      = getXxcsoSpDecisionHeaderFullVO1();
+//    if ( headerVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "getXxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecRequestFullVOImpl requestVo
+//      = getXxcsoSpDecRequestFullVO1();
+//    if ( requestVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+//    
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+//    XxcsoSpDecRequestFullVORowImpl requestRow
+//      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
+//
+//    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_SUBMIT);
+//
+//    validateAll(true);
+//
+//    commit();
+//
+//    OAException msg
+//      = XxcsoMessage.createConfirmMessage(
+//          XxcsoConstants.APP_XXCSO1_00001
+//         ,XxcsoConstants.TOKEN_RECORD
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DECISION
+//            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DEC_NUM
+//            + headerRow.getSpDecisionNumber()
+//            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+//         ,XxcsoConstants.TOKEN_ACTION
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT
+//        );
+//
+//    HashMap params = new HashMap(2);
+//    params.put(
+//      XxcsoConstants.EXECUTE_MODE
+//     ,XxcsoSpDecisionConstants.DETAIL_MODE
+//    );
+//    params.put(
+//      XxcsoConstants.TRANSACTION_KEY1
+//     ,headerRow.getSpDecisionHeaderId()
+//    );
+//
+//    HashMap returnValue = new HashMap(2);
+//    returnValue.put(
+//      XxcsoSpDecisionConstants.PARAM_URL_PARAM
+//     ,params
+//    );
+//    returnValue.put(
+//      XxcsoSpDecisionConstants.PARAM_MESSAGE
+//     ,msg
+//    );
+//    
+//    XxcsoUtils.debug(txn, "[END]");
+//
+//    return returnValue;
+//  } 
+// Ver.1.22 Del End
   
   /*****************************************************************************
    * 確認ボタン押下処理
@@ -917,86 +1052,102 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     return returnValue;
   }
 
-  
-  /*****************************************************************************
+// Ver.1.22 Add Start
+   /*****************************************************************************
    * 承認ボタン押下処理
    *****************************************************************************
    */
-  public HashMap handleApproveButton()
+  public void handleApproveButton()
   {
     OADBTransaction txn = getOADBTransaction();
 
-    XxcsoUtils.debug(txn, "[START]");
-
-    XxcsoSpDecisionHeaderFullVOImpl headerVo
-      = getXxcsoSpDecisionHeaderFullVO1();
-    if ( headerVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError(
-          "getXxcsoSpDecisionHeaderFullVO1"
-        );
-    }
-
-    XxcsoSpDecRequestFullVOImpl requestVo
-      = getXxcsoSpDecRequestFullVO1();
-    if ( requestVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError(
-          "XxcsoSpDecisionHeaderFullVO1"
-        );
-    }
-    
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
-    XxcsoSpDecRequestFullVORowImpl requestRow
-      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
-
-    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_APPROVE);
-
     validateAll(true);
-
-    commit();
-
-    OAException msg
-      = XxcsoMessage.createConfirmMessage(
-          XxcsoConstants.APP_XXCSO1_00001
-         ,XxcsoConstants.TOKEN_RECORD
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DECISION
-            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DEC_NUM
-            + headerRow.getSpDecisionNumber()
-            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
-         ,XxcsoConstants.TOKEN_ACTION
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE
-        );
-
-    HashMap params = new HashMap(2);
-    params.put(
-      XxcsoConstants.EXECUTE_MODE
-     ,XxcsoSpDecisionConstants.DETAIL_MODE
-    );
-    params.put(
-      XxcsoConstants.TRANSACTION_KEY1
-     ,headerRow.getSpDecisionHeaderId()
-    );
-
-    HashMap returnValue = new HashMap(2);
-    returnValue.put(
-      XxcsoSpDecisionConstants.PARAM_URL_PARAM
-     ,params
-    );
-    returnValue.put(
-      XxcsoSpDecisionConstants.PARAM_MESSAGE
-     ,msg
-    );
+    chkPayStartDate();
     
     XxcsoUtils.debug(txn, "[END]");
+  } 
+// Ver.1.22 Add End
 
-    return returnValue;
-  }
-
+// Ver.1.22 Del Start
+//  /*****************************************************************************
+//   * 承認ボタン押下処理
+//   *****************************************************************************
+//   */
+//  public HashMap handleApproveButton()
+//  {
+//    OADBTransaction txn = getOADBTransaction();
+//
+//    XxcsoUtils.debug(txn, "[START]");
+//
+//    XxcsoSpDecisionHeaderFullVOImpl headerVo
+//      = getXxcsoSpDecisionHeaderFullVO1();
+//    if ( headerVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "getXxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecRequestFullVOImpl requestVo
+//      = getXxcsoSpDecRequestFullVO1();
+//    if ( requestVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+//    
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+//    XxcsoSpDecRequestFullVORowImpl requestRow
+//      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
+//
+//    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_APPROVE);
+//
+//    validateAll(true);
+//
+//    commit();
+//
+//    OAException msg
+//      = XxcsoMessage.createConfirmMessage(
+//          XxcsoConstants.APP_XXCSO1_00001
+//         ,XxcsoConstants.TOKEN_RECORD
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DECISION
+//            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DEC_NUM
+//            + headerRow.getSpDecisionNumber()
+//            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+//         ,XxcsoConstants.TOKEN_ACTION
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE
+//        );
+//
+//    HashMap params = new HashMap(2);
+//    params.put(
+//      XxcsoConstants.EXECUTE_MODE
+//     ,XxcsoSpDecisionConstants.DETAIL_MODE
+//    );
+//    params.put(
+//      XxcsoConstants.TRANSACTION_KEY1
+//     ,headerRow.getSpDecisionHeaderId()
+//    );
+//
+//    HashMap returnValue = new HashMap(2);
+//    returnValue.put(
+//      XxcsoSpDecisionConstants.PARAM_URL_PARAM
+//     ,params
+//    );
+//    returnValue.put(
+//      XxcsoSpDecisionConstants.PARAM_MESSAGE
+//     ,msg
+//    );
+//    
+//    XxcsoUtils.debug(txn, "[END]");
+//
+//    return returnValue;
+//  }
+// Ver.1.22 Del End
   
   /*****************************************************************************
    * 否決ボタン押下処理
@@ -2100,7 +2251,7 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
 // 2014-12-15 [E_本稼動_12565] Add Start
   /*****************************************************************************
-   * 行政財産使用変更イベント処理
+   * 支払区分（行政財産使用料）変更イベント処理
    *****************************************************************************
    */
   public void handleAdAssetsTypeChange()
@@ -2126,6 +2277,36 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[END]");
   }
+
+// Ver.1.22 Add Start
+  /*****************************************************************************
+   * 支払方法（行政財産使用料）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleAdAssetsPaymentTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectAdAssetsPaymentType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+// Ver.1.22 Add End
 
   /*****************************************************************************
    * 支払区分（設置協賛金）変更イベント処理
@@ -3024,7 +3205,10 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     installSuppPaymentTypeVO.initQuery(
       "XXCSO1_SP_INST_SUPP_PAY_TYPE"
-     ,"lookup_code"
+// Ver.1.22 Mod Start
+     //,"lookup_code"
+     ,"attribute1"
+// Ver.1.22 Mod End
     );
 
     // 支払方法（電気代）
@@ -3107,6 +3291,23 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       "XXCSO1_SP_INTRO_CHG_PAY_TYPE"
      ,"lookup_code"
     );
+
+// Ver.1.22 Add Start
+    // 支払方法（行政財産使用料）
+    XxcsoLookupListVOImpl adAssetsPaymentTypeVO
+      = getXxcsoAdAssetsPaymentTypeVO();
+    if ( adAssetsPaymentTypeVO == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoAdAssetsPaymentTypeVO");
+    }
+
+    adAssetsPaymentTypeVO.initQuery(
+      "XXCSO1_SP_AD_ASSETS_PAY_TYPE"
+     ,"attribute1"
+    );
+// Ver.1.22 Add End
+
 // 2014-12-15 [E_本稼動_12565] Add End
 
     // 電気代
@@ -3542,8 +3743,8 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoUtils.debug(txn, "[START]");
     
-    List errorList = new ArrayList();
-    
+    List errorList = new ArrayList();  
+
     // インスタンス取得
     XxcsoSpDecisionHeaderFullVOImpl headerVo
       = getXxcsoSpDecisionHeaderFullVO1();
@@ -4431,7 +4632,7 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         );
       }
     }
-    // [E_本稼動?16293] Add Start
+    // [E_本稼動_16293] Add Start
     /////////////////////////////////////
     // 検証処理：BM1/BM2/BM3の仕入先無効日チェック
     /////////////////////////////////////
@@ -4663,6 +4864,443 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txn, "[END]");
   }
 
+// Ver.1.22 Add Start
+  /*****************************************************************************
+   * 支払期間開始日チェック
+   *****************************************************************************
+   */
+    private void chkPayStartDate()
+    {
+
+      OADBTransaction txn = getOADBTransaction();
+
+      XxcsoUtils.debug(txn, "[START]");
+
+      List errorList = new ArrayList();
+      
+      //インスタンス取得
+      XxcsoSpDecisionHeaderFullVOImpl headerVo
+        = getXxcsoSpDecisionHeaderFullVO1();
+      if ( headerVo == null )
+      {
+        throw
+          XxcsoMessage.createInstanceLostError(
+            "XxcsoSpDecisionHeaderFullVO1"
+          );
+      }
+
+      XxcsoSpDecisionInstCustFullVOImpl installVo
+        = getXxcsoSpDecisionInstCustFullVO1();
+      if ( installVo == null )
+      {
+        throw
+          XxcsoMessage.createInstanceLostError(
+            "XxcsoSpDecisionInstCustFullVO1"
+          );
+      }
+      
+      errorList.addAll(
+        XxcsoSpDecisionValidateUtils.chkPayStartDate(
+           txn
+          ,headerVo
+          ,installVo
+        )
+      );
+
+      if ( errorList.size() > 0 )
+      {
+        OAException.raiseBundledOAException(errorList);
+      }
+
+      XxcsoUtils.debug(txn, "[END]");
+    }
+// Ver.1.22 Add End
+
+
+// Ver.1.22 Add Start
+  /*****************************************************************************
+   * メッセージを取得します。
+   * @return mMessage
+   *****************************************************************************
+   */
+  public OAException getMessage()
+  {
+    return mMessage;
+  }
+
+  /*****************************************************************************
+   * 設置協賛金支払項目チェック処理
+   *****************************************************************************
+   */
+  public void installPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validateInstallPayItemCheck();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 設置協賛金支払項目チェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validateInstallPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    //変数初期化
+    OAException  confirmMsg      = null;
+    OracleCallableStatement stmt = null;
+    String retCode               = null;
+    String contractNumber        = null;
+    String spNumber              = null; 
+    String token1  = null;
+    String token2  = null;
+    String token3  = null;
+    String token4  = null;
+
+    //インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionInstCustFullVOImpl installVo
+      = getXxcsoSpDecisionInstCustFullVO1();
+    if ( installVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionInstCustFullVO1"
+        );
+    }
+
+    // 行インスタンス取得
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl) headerVo.first();
+
+    XxcsoSpDecisionInstCustFullVORowImpl installRow
+      = (XxcsoSpDecisionInstCustFullVORowImpl) installVo.first();
+
+    String installSuppType   = headerRow.getInstallSuppType();
+
+    Date installPayStartDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+              headerRow.getInstallPayStartYear(),
+              headerRow.getInstallPayStartMonth());
+              
+    Date installPayEndDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+              headerRow.getInstallPayEndYear(),
+              headerRow.getInstallPayEndMonth());
+    
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(installSuppType) )
+    {
+      try
+      {
+        StringBuffer sql = new StringBuffer(100);
+ 
+        sql.append("BEGIN");
+        sql.append("  xxcso_020001j_pkg.chk_pay_item(");
+        sql.append("    iv_account_number            => :1");
+        sql.append("   ,id_pay_start_date            => :2");
+        sql.append("   ,id_pay_end_date              => :3");
+        sql.append("   ,iv_payment_type              => :4");
+        sql.append("   ,in_amt                       => :5");
+        sql.append("   ,iv_data_kbn                  => :6");
+        sql.append("   ,iv_tax_type                  => :7");
+        sql.append("   ,ov_contract_number           => :8");
+        sql.append("   ,ov_sp_decision_number        => :9");
+        sql.append("   ,ov_retcode                   => :10");
+        sql.append("  );");
+        sql.append("END;");
+
+        XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+        stmt
+          = (OracleCallableStatement)
+              txn.createCallableStatement(sql.toString(), 0);
+
+        stmt.setString(1, installRow.getInstallAccountNumber());
+        stmt.setDATE(2, installPayStartDate);
+        stmt.setDATE(3, installPayEndDate);
+        stmt.setString(4,headerRow.getInstallSuppPaymentType());
+        stmt.setString(5,headerRow.getInstallSuppAmt().replaceAll(",", ""));
+        stmt.setString(6, XxcsoSpDecisionConstants.INSTALL_SUPP_KBN);
+        stmt.setString(7, headerRow.getTaxType());
+        stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(10, OracleTypes.VARCHAR);
+
+        stmt.execute();
+        contractNumber = stmt.getString(8);
+        spNumber       = stmt.getString(9);
+        retCode        = stmt.getString(10);
+
+        // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+        if ( !"0".equals(retCode) )
+        {
+
+          token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TAX_TYPE;
+                 
+          token2 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAYMENT_TYPE;
+
+          token3 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
+
+          token4 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
+
+          confirmMsg
+            = XxcsoMessage.createWarningMessage(
+                XxcsoConstants.APP_XXCSO1_00917
+               ,XxcsoConstants.TOKEN_ITEM1
+               ,token1
+               ,XxcsoConstants.TOKEN_ITEM2
+               ,token2
+               ,XxcsoConstants.TOKEN_ITEM3
+               ,token3
+               ,XxcsoConstants.TOKEN_ITEM4
+               ,token4
+               ,XxcsoConstants.TOKEN_SP_NUMBER
+               ,spNumber
+               ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+               ,contractNumber
+              );
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CHK_PAY_ITM
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+  /*****************************************************************************
+   * 行政財産使用料支払項目チェック処理
+   *****************************************************************************
+   */
+  public void adAssetsPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validateAdAssetsPayItemCheck();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 行政財産使用料支払項目チェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validateAdAssetsPayItemCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    //変数初期化
+    OAException  confirmMsg      = null;
+    OracleCallableStatement stmt = null;
+    String retCode               = null;
+    String contractNumber        = null;
+    String spNumber              = null; 
+    String token1  = null;
+    String token2  = null;
+    String token3  = null;  
+    String token4  = null; 
+
+    //インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionInstCustFullVOImpl installVo
+      = getXxcsoSpDecisionInstCustFullVO1();
+    if ( installVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionInstCustFullVO1"
+        );
+    }
+
+    // 行インスタンス取得
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl) headerVo.first();
+
+    XxcsoSpDecisionInstCustFullVORowImpl installRow
+      = (XxcsoSpDecisionInstCustFullVORowImpl) installVo.first();
+
+    String adAssetsType      = headerRow.getAdAssetsType();
+             
+    Date adAssetsPayStartDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+              headerRow.getAdAssetsPayStartYear(),
+              headerRow.getAdAssetsPayStartMonth());
+              
+    Date adAssetsPayEndDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+              headerRow.getAdAssetsPayEndYear(),
+              headerRow.getAdAssetsPayEndMonth());
+    
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
+    {
+      try
+      {
+        StringBuffer sql = new StringBuffer(100);
+ 
+        sql.append("BEGIN");
+        sql.append("  xxcso_020001j_pkg.chk_pay_item(");
+        sql.append("    iv_account_number            => :1");
+        sql.append("   ,id_pay_start_date            => :2");
+        sql.append("   ,id_pay_end_date              => :3");
+        sql.append("   ,iv_payment_type              => :4");
+        sql.append("   ,in_amt                       => :5");
+        sql.append("   ,iv_data_kbn                  => :6");
+        sql.append("   ,iv_tax_type                  => :7");
+        sql.append("   ,ov_contract_number           => :8");
+        sql.append("   ,ov_sp_decision_number        => :9");
+        sql.append("   ,ov_retcode                   => :10");
+        sql.append("  );");
+        sql.append("END;");
+
+        XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+        stmt
+          = (OracleCallableStatement)
+              txn.createCallableStatement(sql.toString(), 0);
+
+        stmt.setString(1, installRow.getInstallAccountNumber());
+        stmt.setDATE(2, adAssetsPayStartDate);
+        stmt.setDATE(3, adAssetsPayEndDate);       
+        stmt.setString(4, headerRow.getAdAssetsPaymentType());
+        stmt.setString(5, headerRow.getAdAssetsAmt().replaceAll(",", ""));
+        stmt.setString(6, XxcsoSpDecisionConstants.AD_ASSETS_KBN);
+        stmt.setString(7, headerRow.getTaxType());
+        stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(10, OracleTypes.VARCHAR);
+
+        stmt.execute();
+        contractNumber = stmt.getString(8);
+        spNumber       = stmt.getString(9);
+        retCode        = stmt.getString(10);
+
+        // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+        if ( !"0".equals(retCode) )
+        {
+          token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TAX_TYPE;
+                 
+          token2 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_TYPE;
+
+          token3 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
+
+          token4 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
+
+          confirmMsg
+            = XxcsoMessage.createWarningMessage(
+                XxcsoConstants.APP_XXCSO1_00917
+               ,XxcsoConstants.TOKEN_ITEM1
+               ,token1
+               ,XxcsoConstants.TOKEN_ITEM2
+               ,token2
+               ,XxcsoConstants.TOKEN_ITEM3
+               ,token3
+               ,XxcsoConstants.TOKEN_ITEM4
+               ,token4
+               ,XxcsoConstants.TOKEN_SP_NUMBER
+               ,spNumber
+               ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+               ,contractNumber
+              );
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_CHK_PAY_ITM
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// Ver.1.22 Add End
+
   /*****************************************************************************
    * コミット処理です。
    *****************************************************************************
@@ -4735,6 +5373,125 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     XxcsoUtils.debug(txn, "[END]");
   }
 
+// Ver.1.22 Add Start
+  /*****************************************************************************
+   * 確認ダイアログOKボタン押下時処理
+   * @param   actionValue 提出or承認の文字列
+   * @return  HashMap     再表示用情報格納Map
+   *****************************************************************************
+   */
+  public HashMap handleConfirmOkButton(String actionValue)
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "getXxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecRequestFullVOImpl requestVo
+      = getXxcsoSpDecRequestFullVO1();
+    if ( requestVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+    
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    Date installPayStartDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getInstallPayStartYear(),
+                headerRow.getInstallPayStartMonth());
+              
+    Date installPayEndDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getInstallPayEndYear(),
+                headerRow.getInstallPayEndMonth());
+              
+    Date adAssetsPayStartDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getAdAssetsPayStartYear(),
+                headerRow.getAdAssetsPayStartMonth());
+              
+    Date adAssetsPayEndDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getAdAssetsPayEndYear(),
+                headerRow.getAdAssetsPayEndMonth());
+
+    // 支払期間開始日（設置協賛金）
+    headerRow.setInstallPayStartDate(installPayStartDate);
+    // 支払期間終了日（設置協賛金）
+    headerRow.setInstallPayEndDate(installPayEndDate);
+    // 支払期間開始日（行政財産使用料）
+    headerRow.setAdAssetsPayStartDate(adAssetsPayStartDate);
+    // 支払期間終了日（行政財産使用料）
+    headerRow.setAdAssetsPayEndDate(adAssetsPayEndDate);
+
+    XxcsoSpDecRequestFullVORowImpl requestRow
+      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
+
+    
+    if ( XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT.equals(actionValue) )
+    {
+      requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_SUBMIT);
+    }
+    else if( XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE.equals(actionValue) )
+    {
+      requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_APPROVE);
+    }
+
+    commit();
+
+    OAException msg
+      = XxcsoMessage.createConfirmMessage(
+          XxcsoConstants.APP_XXCSO1_00001
+         ,XxcsoConstants.TOKEN_RECORD
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DECISION
+            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_SP_DEC_NUM
+            + headerRow.getSpDecisionNumber()
+            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+         ,XxcsoConstants.TOKEN_ACTION
+         ,actionValue
+        );
+
+    HashMap params = new HashMap(2);
+    params.put(
+      XxcsoConstants.EXECUTE_MODE
+     ,XxcsoSpDecisionConstants.DETAIL_MODE
+    );
+    params.put(
+      XxcsoConstants.TRANSACTION_KEY1
+     ,headerRow.getSpDecisionHeaderId()
+    );
+
+    HashMap returnValue = new HashMap(2);
+    returnValue.put(
+      XxcsoSpDecisionConstants.PARAM_URL_PARAM
+     ,params
+    );
+    returnValue.put(
+      XxcsoSpDecisionConstants.PARAM_MESSAGE
+     ,msg
+    );
+    
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+
+  }
+// Ver.1.22 Add End
 
   /**
    * 
@@ -4745,8 +5502,6 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     launchTester("itoen.oracle.apps.xxcso.xxcso020001j.server", "XxcsoSpDecisionRegistAMLocal");
   }
 
-
-
   /**
    * 
    * Container's getter for XxcsoInstallLocationListVO
@@ -4755,8 +5510,6 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoInstallLocationListVO");
   }
-
-
 
   /**
    * 
@@ -4776,7 +5529,6 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoMakerCodeListVO");
   }
 
-
   /**
    * 
    * Container's getter for XxcsoConditionBizTypeListVO
@@ -4785,8 +5537,6 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoConditionBizTypeListVO");
   }
-
-
 
   /**
    * 
@@ -4914,8 +5664,6 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoApplicationTypeListVO");
   }
 
-
-
   /**
    * 
    * Container's getter for XxcsoAllContainerTypeListVO
@@ -4933,26 +5681,6 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoSpDecisionHeaderFullVOImpl)findViewObject("XxcsoSpDecisionHeaderFullVO1");
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   /**
    * 
@@ -5537,6 +6265,15 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   public XxcsoLookupListVOImpl getXxcsoBM2TaxListVO1()
   {
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM2TaxListVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoAdAssetsPaymentTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoAdAssetsPaymentTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoAdAssetsPaymentTypeVO");
   }
 
 
