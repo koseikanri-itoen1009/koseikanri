@@ -1346,97 +1346,6 @@ HISTORY
                                           </oa:cellFormat>
                                        </ui:contents>
                                     </oa:rowLayout>
-                                    <oa:rowLayout id="OtherConditionRlRN05">
-                                       <ui:contents>
-                                          <oa:cellFormat id="OtherConditionCfRN0501" hAlign="end">
-                                             <ui:contents>
-                                                <oa:messageStyledText id="AdAssetsTypeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsTypeLabel"/>
-                                             </ui:contents>
-                                          </oa:cellFormat>
-                                          <oa:cellFormat id="OtherConditionCfRN0502">
-                                             <ui:contents>
-                                                <oa:flowLayout id="AdAssetsTypeFIRN">
-                                                   <ui:contents>
-                                                      <oa:rowLayout id="AdAssetsTypeRIRN">
-                                                         <ui:contents>
-                                                            <oa:messageCheckBox id="AdAssetsTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsType" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsTypeViewRender}" readOnly="true" checkedValue="1" unCheckedValue="0"/>
-                                                            <oa:messageCheckBox id="AdAssetsType" checkedValue="1" unCheckedValue="0" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsType" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsTypeRender}" styleClass="OraInstructionText" defaultValue="0">
-                                                               <ui:primaryClientAction>
-                                                                  <ui:firePartialAction event="AdAssetsTypeChange" id="firePartialAction44"/>
-                                                               </ui:primaryClientAction>
-                                                            </oa:messageCheckBox>
-                                                            <oa:spacer id="AdAssetsTypeSpacer" width="10"/>
-                                                            <oa:tip id="AdAssetsTypeHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsHint"/>
-                                                         </ui:contents>
-                                                      </oa:rowLayout>
-                                                   </ui:contents>
-                                                </oa:flowLayout>
-                                             </ui:contents>
-                                          </oa:cellFormat>
-                                       </ui:contents>
-                                    </oa:rowLayout>
-                                    <oa:rowLayout id="OtherConditionRlRN06" rendered="${oa.XxcsoSpDecisionInitVO1.OtherConditionRlRN06Render}">
-                                       <ui:contents>
-                                          <oa:cellFormat id="OtherConditionCfRN0601" hAlign="end">
-                                             <ui:contents>
-                                                <oa:messageStyledText id="AdAssetsAmtLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AllAmtLabel" required="uiOnly"/>
-                                             </ui:contents>
-                                          </oa:cellFormat>
-                                          <oa:cellFormat id="OtherConditionCfRN0602">
-                                             <ui:contents>
-                                                <oa:flowLayout id="AdAssetsAmtFIRN">
-                                                   <ui:contents>
-                                                      <oa:rowLayout id="AdAssetsAmtRIRN">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="AdAssetsAmtView" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsAmt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsAmt" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsAmtViewRender}" maximumLength="10"/>
-                                                            <oa:messageTextInput id="AdAssetsAmt" columns="11" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsAmt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsAmt" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsAmtRender}" maximumLength="10"/>
-                                                            <oa:spacer id="AdAssetsAmtSpacer" width="10"/>
-                                                            <oa:staticStyledText id="AdAssetsAmtEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/EnLabel"/>
-                                                            <oa:spacer id="AdAssetsAmtEndLabelSpacer" width="10"/>
-                                                            <oa:messageStyledText id="AdAssetsAmtThisTimeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ThisTimeLabel" required="uiOnly"/>
-                                                            <oa:messageStyledText id="AdassetsThisTimeView" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsThisTime" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsThisTime" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsThisTimeViewRender}" maximumLength="10"/>
-                                                            <oa:messageTextInput id="AdassetsThisTime" columns="11" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsThisTime" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsThisTime" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsThisTimeRender}" maximumLength="10"/>
-                                                            <oa:spacer id="AdassetsThisTimeSpacer" width="10"/>
-                                                            <oa:staticStyledText id="AdAssetsThisTimeEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/EnLabel"/>
-                                                            <oa:spacer id="AdAssetsThisTimeEndLabelSpacer" width="10"/>
-                                                            <oa:messageStyledText id="AdAssetsPaymentYearView" required="uiOnly" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentYear" maximumLength="2" columns="3" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentYearViewRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentYear" styleClass="OraDataText"/>
-                                                            <oa:messageTextInput id="AdAssetsPaymentYear" required="uiOnly" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentYear" maximumLength="2" columns="3" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentYearRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentYear"/>
-                                                            <oa:spacer id="AdAssetsPaymentYearSpacer" width="10"/>
-                                                            <oa:staticStyledText id="AdAssetsPaymentYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel1"/>
-                                                            <oa:spacer id="AdAssetsPaymentYearEndLabelSpacer" width="10"/>
-                                                            <oa:messageStyledText id="AdAssetsPaymentDateLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" required="uiOnly"/>
-                                                            <oa:messageStyledText id="AdAssetsPaymentDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentDate" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentDateViewRender}" styleClass="OraDataText"/>
-                                                            <oa:messageTextInput id="AdAssetsPaymentDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="AdAssetsPaymentDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentDate" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentDateRender}"/>
-                                                         </ui:contents>
-                                                      </oa:rowLayout>
-                                                   </ui:contents>
-                                                </oa:flowLayout>
-                                             </ui:contents>
-                                          </oa:cellFormat>
-                                       </ui:contents>
-                                    </oa:rowLayout>
-                                    <oa:rowLayout id="OtherConditionRlRN07" rendered="${oa.XxcsoSpDecisionInitVO1.OtherConditionRlRN07Render}">
-                                       <ui:contents>
-                                          <oa:cellFormat id="OtherConditionCfRN0701">
-                                             <ui:contents>
-                                                <oa:spacer id="AdAssetsInfoLabelSpacer"/>
-                                             </ui:contents>
-                                          </oa:cellFormat>
-                                          <oa:cellFormat id="OtherConditionCfRN0702">
-                                             <ui:contents>
-                                                <oa:flowLayout id="AdAssetsInfoLabelFIRN">
-                                                   <ui:contents>
-                                                      <oa:messageStyledText id="AdAssetsInfoLabel1" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel1"/>
-                                                      <oa:messageStyledText id="AdAssetsInfoLabel2" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel2"/>
-                                                      <oa:messageStyledText id="AdAssetsInfoLabel3" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel3"/>
-                                                      <oa:messageStyledText id="AdAssetsInfoLabel4" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel4"/>
-                                                      <oa:messageStyledText id="AdAssetsInfoLabel5" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel5"/>
-                                                   </ui:contents>
-                                                </oa:flowLayout>
-                                             </ui:contents>
-                                          </oa:cellFormat>
-                                       </ui:contents>
-                                    </oa:rowLayout>
                                     <oa:rowLayout id="OtherConditionRlRN08">
                                        <ui:contents>
                                           <oa:cellFormat id="OtherConditionCfRN0801" hAlign="end" vAlign="top">
@@ -1517,9 +1426,44 @@ HISTORY
                                                                         <oa:messageStyledText id="InstallSuppPaymentYearEndLabel1" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel1" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentYearEndLabel1Render}"/>
                                                                         <oa:messageStyledText id="InstallSuppPaymentYearEndLabel2" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentYearEndLabel2Render}"/>
                                                                         <oa:spacer id="InstallSuppPaymentYearEndLabelSpacer" width="10"/>
+                                                                        <!--
                                                                         <oa:messageStyledText id="InstallSuppPaymentDateLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" required="uiOnly"/>
-                                                                        <oa:messageStyledText id="InstallSuppPaymentDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallSuppPaymentDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallSuppPaymentDate" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateViewRender}" styleClass="OraDataText"/>
-                                                                        <oa:messageTextInput id="InstallSuppPaymentDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="InstallSuppPaymentDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallSuppPaymentDate" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateRender}"/>
+                                                                        -->
+                                                                        <oa:messageStyledText id="InstallSuppPaymentDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallSuppPaymentDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="InstallSuppPaymentDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="InstallSuppPaymentDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateRender}" required="uiOnly"/>
+                                                                        <oa:spacer id="InstallSuppPaymentDateLabelSpacer" width="10"/>
+                                                                        
+                                                                        <!--
+                                                                        <oa:messageStyledText id="InstallPayStartDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayStartDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayStartDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayStartDateViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="InstallPayStartDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="InstallPayStartDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayStartDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayStartDateRender}" required="uiOnly"/>
+                                                                        <oa:spacer id="InstallPayStartDateLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="InstallPayEndDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayEndDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayEndDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayEndDateViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="InstallPayEndDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="InstallPayEndDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayEndDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayEndDateRender}" required="uiOnly"/>
+                                                                        -->
+                                                                        <!-- 設置協賛金開始 -->
+                                                                        <oa:messageStyledText id="InstallPayStartLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayStartLabel" required="uiOnly"/>
+                                                                        <oa:messageStyledText id="InstallPayStartYearView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayStartYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayStartYear" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateViewRender}"/>
+                                                                        <oa:messageTextInput id="InstallPayStartYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayStartYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayStartYear" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateRender}"/>
+                                                                        <oa:spacer id="InstallPayStartYearSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="InstallPayStartYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                                        <oa:spacer id="InstallPayStartYearEndLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="InstallPayStartMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayStartMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateViewRender}"/>
+                                                                        <oa:messageTextInput id="InstallPayStartMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayStartMonth" rendered="${oa.XxcsoSpDecisionInitVO1.InstallSuppPaymentDateRender}"/>
+                                                                        <oa:spacer id="InstallPayStartMonthSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="InstallPayStartMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                                        <oa:spacer id="InstallPayStartMonthEndSpacer" width="10"/>
+                                                                        <!-- 設置協賛金終了 -->  
+                                                                        <oa:staticStyledText id="InstallPayStartEndSepareteLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractStartEndSeparete"/>
+                                                                        <oa:spacer id="InstallPayEndSepareteLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="InstallPayEndYearView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayEndYear" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayEndDateViewRender}"/>
+                                                                        <oa:messageTextInput id="InstallPayEndYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayEndYear" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayEndDateRender}"/>
+                                                                        <oa:spacer id="InstallPayEndYearSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="InstallPayEndYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                                        <oa:spacer id="InstallPayEndYearEndLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="InstallPayEndMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayEndMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayEndDateViewRender}"/>
+                                                                        <oa:messageTextInput id="InstallPayEndMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPayEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallPayEndMonth" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPayEndDateRender}"/>
+                                                                        <oa:spacer id="InstallPayEndMonthSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="InstallPayEndMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
                                                                      </ui:contents>
                                                                   </oa:rowLayout>
                                                                </ui:contents>
@@ -1699,6 +1643,130 @@ HISTORY
                                                             <oa:flowLayout id="IntroChgInfoLabelFIRN">
                                                                <ui:contents>
                                                                   <oa:messageStyledText id="IntroChgInfoLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/IntroChgInfoLabel"/>
+                                                               </ui:contents>
+                                                            </oa:flowLayout>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:tableLayout>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:header>
+                              <oa:header id="AdAssetsHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsHdrRN">
+                                 <ui:contents>
+                                    <oa:tip id="AdAssetsTypeHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel2" text="行政財産使用料の支払は年度毎にSP申請して下さい。"/>
+                                    <oa:messageCheckBox id="AdAssetsTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsTypeLabel" checkedValue="1" unCheckedValue="0" styleClass="OraDataText" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsType" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsTypeViewRender}" readOnly="true"/>
+                                    <oa:messageCheckBox id="AdAssetsType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsTypeLabel" checkedValue="1" unCheckedValue="0" styleClass="OraInstructionText" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsType" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsTypeRender}" defaultValue="0">
+                                       <ui:primaryClientAction>
+                                          <ui:firePartialAction event="AdAssetsTypeChange" id="firePartialAction451"/>
+                                       </ui:primaryClientAction>
+                                    </oa:messageCheckBox>
+                                    <oa:header id="AdAssetsInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentType" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentTypeHdrRNRender}">
+                                       <ui:contents>
+                                          <oa:messageChoice id="AdAssetsPaymentTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentType" prompt="" defaultValue="1" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentTypeViewRender}" styleClass="OraDataText" readOnly="true" pickListViewName="XxcsoAdAssetsPaymentTypeVO" pickListValAttr="LookupCode" pickListDispAttr="Meaning" allowBlankValue="false"/>
+                                          <oa:messageChoice id="AdAssetsPaymentType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentType" pickListViewName="XxcsoAdAssetsPaymentTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentType" prompt="" allowBlankValue="false" defaultValue="1" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentTypeRender}">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="AdAssetsPaymentTypeChange" id="firePartialAction481"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageChoice>
+                                          <oa:tableLayout id="AdAssetsInfoTIRN" hAlign="left">
+                                             <ui:contents>
+                                                <oa:rowLayout id="AdAssetsInfoRIRN01">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="AdAssetsInfoCfRN0101" hAlign="end">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="AdAssetsAmtLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AllAmtLabel" required="uiOnly"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="AdAssetsInfoCfRN0102">
+                                                         <ui:contents>
+                                                            <oa:flowLayout id="AdAssetsAmtFIRN">
+                                                               <ui:contents>
+                                                                  <oa:rowLayout id="AdAssetsAmtRIRN">
+                                                                     <ui:contents>
+                                                                        <oa:messageStyledText id="AdAssetsAmtView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsAmt" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsAmt" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsAmtViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="AdAssetsAmt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsAmt" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsAmt" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsAmtRender}" columns="11" maximumLength="10"/>
+                                                                        <oa:spacer id="AdAssetsAmtSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="AdAssetsAmtEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/EnLabel"/>
+                                                                        <oa:spacer id="AdAssetsAmtEndLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsThisTimeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ThisTimeLabel" required="uiOnly" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsThisTimeLabelRender}"/>
+                                                                        <oa:messageStyledText id="AdAssetsThisTimeView" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsThisTime" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsThisTime" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsThisTimeViewRender}" maximumLength="10"/>
+                                                                        <oa:messageTextInput id="AdAssetsThisTime" columns="11" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsThisTime" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsThisTime" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsThisTimeRender}" maximumLength="10"/>
+                                                                        <oa:spacer id="AdAssetsThisTimeSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsThisTimeEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/EnLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsThisTimeEndLabelRender}"/>
+                                                                        <oa:spacer id="AdAssetsThisTimeEndLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsPaymentYearView" required="uiOnly" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentYear" maximumLength="2" columns="3" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentYearViewRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentYear" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="AdAssetsPaymentYear" required="uiOnly" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentYear" maximumLength="2" columns="3" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentYearRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPaymentYear"/>
+                                                                        <oa:spacer id="AdAssetsPaymentYearSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsPaymentYearEndLabel1" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel1" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentYearEndLabel1Render}"/>
+                                                                        <oa:messageStyledText id="AdAssetsPaymentYearEndLabel2" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentYearEndLabel2Render}"/>
+                                                                        <oa:spacer id="AdAssetsPaymentYearEndLabelSpacer" width="10"/>
+                                                                        <!--
+                                                                        <oa:messageStyledText id="AdAssetsPaymentDateLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" required="uiOnly"/>
+                                                                        -->
+                                                                        <oa:messageStyledText id="AdAssetsPaymentDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPaymentDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentDateViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="AdAssetsPaymentDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="AdAssetsPaymentDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPaymentDateRender}" required="uiOnly"/>
+                                                                        <oa:spacer id="AdAssetsPaymentDateLabelSpacer" width="10"/>
+                                                                        <!--
+                                                                        <oa:messageStyledText id="AdAssetsPayStartDateLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayStartDateLabel" required="uiOnly"/>
+                                                                        -->
+                                                                        <!--
+                                                                        <oa:messageStyledText id="AdAssetsPayStartDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayStartDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayStartDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayStartDateViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="AdAssetsPayStartDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="AdAssetsPayStartDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayStartDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayStartDateRender}" required="uiOnly"/>
+                                                                        <oa:spacer id="AdAssetsPayStartDateLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsPayEndDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayEndDate" dataType="DATE" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayEndDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayEndDateViewRender}" styleClass="OraDataText"/>
+                                                                        <oa:messageTextInput id="AdAssetsPayEndDate" viewName="XxcsoSpDecisionHeaderFullVO1" dataType="DATE" viewAttr="AdAssetsPayEndDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PayEndDateLabel" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayEndDateRender}" required="uiOnly"/>
+                                                                        -->
+                                                                        <!-- 行政財産使用料開始 -->
+                                                                        <oa:messageStyledText id="AdAssetsPayStartLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayStartLabel" required="uiOnly"/>
+                                                                        <oa:messageStyledText id="AdAssetsPayStartYearView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayStartYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayStartYear" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayStartDateViewRender}"/>
+                                                                        <oa:messageTextInput id="AdAssetsPayStartYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayStartYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayStartYear" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayStartDateRender}"/>
+                                                                        <oa:spacer id="AdAssetsPayStartYearSpacer" width="10"/>                                                                       
+                                                                        <oa:staticStyledText id="AdAssetsPayStartYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                                        <oa:spacer id="AdAssetsPayStartYearEndLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsPayStartMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayStartMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayStartDateViewRender}"/>
+                                                                        <oa:messageTextInput id="AdAssetsPayStartMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayStartMonth" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayStartDateRender}"/>
+                                                                        <oa:spacer id="AdAssetsPayStartMonthSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="AdAssetsPayStartMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                                        <oa:spacer id="AdAssetsPayStartMonthEndSpacer" width="10"/>
+                                                                        <!-- 行政財産使用料終了 -->  
+                                                                        <oa:staticStyledText id="AdAssetsPayStartEndSepareteLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractStartEndSeparete"/>
+                                                                        <oa:spacer id="AdAssetsPayEndSepareteLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsPayEndYearView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayEndYear" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayEndDateViewRender}"/>
+                                                                        <oa:messageTextInput id="AdAssetsPayEndYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayEndYear" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayEndDateRender}"/>
+                                                                        <oa:spacer id="AdAssetsPayEndYearSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="AdAssetsPayEndYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                                        <oa:spacer id="AdAssetsPayEndYearEndLabelSpacer" width="10"/>
+                                                                        <oa:messageStyledText id="AdAssetsPayEndMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayEndMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayEndDateViewRender}"/>
+                                                                        <oa:messageTextInput id="AdAssetsPayEndMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsPayEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="AdAssetsPayEndMonth" rendered="${oa.XxcsoSpDecisionInitVO1.AdAssetsPayEndDateRender}"/>
+                                                                        <oa:spacer id="AdAssetsPayyEndMonthSpacer" width="10"/>
+                                                                        <oa:staticStyledText id="AdAssetsPayEndMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                                     </ui:contents>
+                                                                  </oa:rowLayout>
+                                                               </ui:contents>
+                                                            </oa:flowLayout>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                                <oa:rowLayout id="AdAssetsInfoRIRN02">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="AdAssetsInfoCfRN0201">
+                                                         <ui:contents>
+                                                            <oa:spacer id="AdAssetsInfoLabelSpacer"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="AdAssetsInfoCfRN0202">
+                                                         <ui:contents>
+                                                            <oa:flowLayout id="AdAssetsInfoLabelFIRN">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="AdAssetsInfoLabel1" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel1"/>
+                                                                  <oa:messageStyledText id="AdAssetsInfoLabel2" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel3"/>
+                                                                  <oa:messageStyledText id="AdAssetsInfoLabel3" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel4"/>
+                                                                  <oa:messageStyledText id="AdAssetsInfoLabel4" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AdAssetsInfoLabel5"/>
                                                                </ui:contents>
                                                             </oa:flowLayout>
                                                          </ui:contents>
