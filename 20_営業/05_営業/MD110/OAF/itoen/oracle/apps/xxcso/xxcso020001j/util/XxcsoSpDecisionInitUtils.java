@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2016-01-07 1.6  SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.7  SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加対応
 * 2020-08-21 1.8  SCSK佐々木大和[E_本稼動_15904]税抜き自販機BM計算対応
+* 2022-04-21 1.9  SCSK二村悠香 [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -516,6 +517,21 @@ public class XxcsoSpDecisionInitUtils
     headerRow.setBm2TaxKbn(             headerRow2.getBm2TaxKbn()             );
     headerRow.setBm3TaxKbn(             headerRow2.getBm3TaxKbn()             );
 // [E_本稼動_15904] Add End
+// Ver.1.9 Add Start
+    headerRow.setAdAssetsPaymentType(headerRow2.getAdAssetsPaymentType());
+    headerRow.setInstallPayStartDate(headerRow2.getInstallPayStartDate());
+    headerRow.setInstallPayEndDate(headerRow2.getInstallPayEndDate());
+    headerRow.setAdAssetsPayStartDate(headerRow2.getAdAssetsPayStartDate());
+    headerRow.setAdAssetsPayEndDate(headerRow2.getAdAssetsPayEndDate());
+    headerRow.setInstallPayStartYear(headerRow2.getInstallPayStartYear());
+    headerRow.setInstallPayStartMonth(headerRow2.getInstallPayStartMonth());
+    headerRow.setInstallPayEndYear(headerRow2.getInstallPayEndYear());
+    headerRow.setInstallPayEndMonth(headerRow2.getInstallPayEndMonth());
+    headerRow.setAdAssetsPayStartYear(headerRow2.getAdAssetsPayStartYear());
+    headerRow.setAdAssetsPayStartMonth(headerRow2.getAdAssetsPayStartMonth());
+    headerRow.setAdAssetsPayEndYear(headerRow2.getAdAssetsPayEndYear());
+    headerRow.setAdAssetsPayEndMonth(headerRow2.getAdAssetsPayEndMonth());    
+// Ver.1.9 Add End
     
     // 設置先行を作成
     installVo.first();
