@@ -1,7 +1,7 @@
 /*=============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.31
+* バージョン : 1.32
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -41,7 +41,8 @@
 * 2020-08-21 1.29 SCSK佐々木大和 [E_本稼動_15904]税抜きでの自販機BM計算について
 * 2020-10-28 1.30 SCSK佐々木大和 [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *                                [E_本稼動_16410]契約書画面からの銀行口座変更について
-* 2020-12-14 1.31 SCSK佐々木大和 [E_本稼動_16642]送付先コードに紐付くメールアドレスについて 
+* 2020-12-14 1.31 SCSK佐々木大和 [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
+* 2022-03-29 1.32 SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -300,6 +301,11 @@ public class XxcsoConstants
 // [E_本稼動_16642] Add Start
   public static final String APP_XXCSO1_00914    = "APP-XXCSO1-00914";
 // [E_本稼動_16642] Add End
+// Ver.1.32 Add Start
+  public static final String APP_XXCSO1_00916    = "APP-XXCSO1-00916";
+  public static final String APP_XXCSO1_00917    = "APP-XXCSO1-00917";
+  public static final String APP_XXCSO1_00920    = "APP-XXCSO1-00920";
+// Ver.1.32 Add End
 
 
   /*****************************************************************************
@@ -368,6 +374,17 @@ public class XxcsoConstants
 // [E_本稼動_15904] Add Start
   public static final String TOKEN_BM_KBN        = "BM_KBN";
 // [E_本稼動_15904] Add End
+// Ver.1.32 Add Start
+  public static final String TOKEN_ITEM1         = "ITEM1";
+  public static final String TOKEN_ITEM2         = "ITEM2";
+  public static final String TOKEN_ITEM3         = "ITEM3";
+  public static final String TOKEN_ITEM4         = "ITEM4";
+  public static final String TOKEN_DATE1         = "DATE1";
+  public static final String TOKEN_DATE2         = "DATE2";
+  public static final String TOKEN_SP_NUMBER     = "SP_NUMBER";
+  public static final String TOKEN_CONTRACT_NUMBER = "CONTRACT_NUMBER";
+// Ver.1.32 Add End
+
   /*****************************************************************************
    * トークン値
    *****************************************************************************
@@ -414,6 +431,16 @@ public class XxcsoConstants
   public static final String
     TOKEN_VALUE_WARN6                  = "警告6";
 // V1.28 Y.Sasaki Added END
+// Ver.1.32 Add Start
+  public static final String
+    TOKEN_VALUE_WARN7                  = "警告7";
+  public static final String
+    TOKEN_VALUE_WARN8                  = "警告8";
+  public static final String
+    TOKEN_VALUE_WARN9                  = "警告9";
+  public static final String
+    TOKEN_VALUE_WARN10                 = "警告10";
+// Ver.1.32 Add End
   public static final String
     TOKEN_VALUE_CSV_CREATE             = "CSVファイル作成";
   public static final String
