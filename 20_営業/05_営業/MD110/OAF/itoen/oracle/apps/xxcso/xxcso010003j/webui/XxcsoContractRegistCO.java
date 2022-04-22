@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -14,6 +14,7 @@
 * 2013-04-01 1.5  SCSK桐生和幸   [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
 * 2015-02-02 1.6  SCSK山下翔太   [E_本稼動_12565]SP専決・契約書画面改修
 * 2019-02-19 1.7  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
+* 2022-03-31 1.8  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -243,7 +244,6 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       // 送付先情報変更チェック
       am.invokeMethod("suppllierChangeCheck");
       confirmMsg = (OAException)am.invokeMethod("getMessage");
-
       if (confirmMsg != null)
       {
         this.createConfirmDialogWarn(
@@ -253,6 +253,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         );
       }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+      // 設置協賛金支払項目チェック
+      am.invokeMethod("installPayItemCheck");
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialogWarn(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN7
+        );
+      }
+      // 行政財産使用料支払項目チェック
+      am.invokeMethod("adAssetsPayItemCheck");
+      // メッセージの取得
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialogWarn(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN8
+        );
+      }
+// Ver.1.8 Add End
       else
       {
         // AMへのパラメータ作成
@@ -340,6 +365,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN9
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+// Ver.1.8 Add End
 // 2010-02-09 [E_本稼動_01538] Mod Start
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
@@ -505,7 +555,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         }
 // v1.7 Y.Sasaki Added END
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
-
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN9
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+// Ver.1.8 Add End
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -577,6 +651,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN9
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+// Ver.1.8 Add End
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -631,6 +730,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN9
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+// Ver.1.8 Add End
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -675,6 +799,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN9
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+// Ver.1.8 Add End
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
 // v1.7 Y.Sasaki Modified START
@@ -706,6 +855,94 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       // 確定ボタン(送付先情報変更チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_WARN5.equals(actionValue) )
       {
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN9
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+// Ver.1.8 Add End
+        // マスタ連携待ちチェック
+        am.invokeMethod("cooperateWaitCheck");
+        // メッセージの取得
+// Ver1.8 Mod Start
+//        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+// Ver1.8 Mod End
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogCooperate(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_DECISION
+          );
+        }
+        // AMへのパラメータ作成
+        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_DECISION };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      }
+// v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+      // 確定ボタン(設置協賛金支払項目チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN9.equals(actionValue) )
+      {
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN10
+          );
+        }
+        // マスタ連携待ちチェック
+        am.invokeMethod("cooperateWaitCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogCooperate(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_DECISION
+          );
+        }
+        // AMへのパラメータ作成
+        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_DECISION };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      }
+      // 確定ボタン(行政財産使用料支払項目チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN10.equals(actionValue) )
+      {
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -726,7 +963,7 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
         this.redirect(pageContext, returnMap);
       }
-// v1.7 Y.Sasaki Added END
+// Ver.1.8 Add End
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
       // 適用ボタン(複数顧客指定送付先)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_SAVE.equals(actionValue) )
@@ -784,6 +1021,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN7
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN8
+          );
+        }
+// Ver.1.8 Add End
         else
         {
           // AMへのパラメータ作成
@@ -838,6 +1100,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN7
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN8
+          );
+        }
+// Ver.1.8 Add End
         else
         {
           // AMへのパラメータ作成
@@ -882,6 +1169,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
            ,XxcsoConstants.TOKEN_VALUE_WARN4
           );
         }
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN7
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN8
+          );
+        }
+// Ver.1.8 Add End
         else
         {
 // v1.7 Y.Sasaki Added END
@@ -915,6 +1227,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // v1.7 Y.Sasaki Added END
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN7
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN8
+          );
+        }
+// Ver.1.8 Add End
         // AMへのパラメータ作成
         Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
 
@@ -927,6 +1264,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       // 適用ボタン(送付先情報変更チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_WARN4.equals(actionValue) )
       {
+// Ver1.8 Add Start
+        // 設置協賛金支払項目チェック
+        am.invokeMethod("installPayItemCheck");
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN7
+          );
+        }
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN8
+          );
+        }
+// Ver.1.8 Add End
         // AMへのパラメータ作成
         Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
 
@@ -936,6 +1298,42 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         this.redirect(pageContext, returnMap);
       
       }
+// Ver1.8 Add Start
+      // 適用ボタン(設置協賛金支払項目チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN7.equals(actionValue) )
+      {
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+            ,XxcsoConstants.TOKEN_VALUE_WARN8
+          );
+        }
+        // AMへのパラメータ作成
+        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      }
+      // 適用ボタン(設置協賛金支払項目チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN8.equals(actionValue) )
+      {
+        // AMへのパラメータ作成
+        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      }
+// Ver1.8 Add End
 // v1.7 Y.Sasaki Added END
       // PDF作成ボタン(銀行口座変更チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_WARN3.equals(actionValue) )
