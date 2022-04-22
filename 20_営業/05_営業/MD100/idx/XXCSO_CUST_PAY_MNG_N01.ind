@@ -1,0 +1,15 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_cust_pay_mng_n01
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/03/24    1.0  R.Oikawa       èââÒçÏê¨(E_ñ{â“ìÆ_18060)
+ ************************************************************************/
+CREATE INDEX xxcso.xxcso_cust_pay_mng_n01 ON xxcso.xxcso_cust_pay_mng (account_number, data_kbn, pay_start_date, send_flag) TABLESPACE xxidx2
+/
