@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionReflectUtils
 * 概要説明   : SP専決反映ユーティリティクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2013-04-19 1.6  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-12-15 1.7  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2020-08-21 1.8  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機ＢＭ計算について
+* 2022-03-29 1.9  SCSK二村悠香  [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -948,7 +949,7 @@ public class XxcsoSpDecisionReflectUtils
 
 // 2014-12-15 [E_本稼動_12565] Add Start
   /*****************************************************************************
-   * 行政財産使用変更時情報反映
+   * 支払区分（行政財産使用料）変更時情報反映
    * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
    *****************************************************************************
    */
@@ -984,8 +985,73 @@ public class XxcsoSpDecisionReflectUtils
       {
         headerRow.setAdAssetsPaymentDate(null);
       }
+// Ver.1.9 Add Start
+      if ( isDiffer(headerRow.getAdAssetsPaymentType(), null) )
+      {
+        headerRow.setAdAssetsPaymentType(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPayStartDate(), null) )
+      {
+        headerRow.setAdAssetsPayStartDate(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPayEndDate(), null) )
+      {
+        headerRow.setAdAssetsPayEndDate(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPayStartYear(), null) )
+      {
+        headerRow.setAdAssetsPayStartYear(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPayStartMonth(), null) )
+      {
+        headerRow.setAdAssetsPayStartMonth(null);
+      }
+      
+      if ( isDiffer(headerRow.getAdAssetsPayEndYear(), null) )
+      {
+        headerRow.setAdAssetsPayEndYear(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPayEndMonth(), null) )
+      {
+        headerRow.setAdAssetsPayEndMonth(null);
+      }      
+// Ver.1.9 Add End
     }
   }
+
+// Ver.1.9 Add Start
+  /*****************************************************************************
+   * 支払方法（行政財産使用料）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectAdAssetsPaymentType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String adAssetsPaymentType = headerRow.getAdAssetsPaymentType();
+    if ( XxcsoSpDecisionConstants.TOTAL_PAY.equals(adAssetsPaymentType)
+      || XxcsoSpDecisionConstants.TWO_YEAR_PAY.equals(adAssetsPaymentType)
+      || XxcsoSpDecisionConstants.THREE_YEAR_PAY.equals(adAssetsPaymentType))
+    {
+      if ( isDiffer(headerRow.getAdAssetsThisTime(), null) )
+      {
+        headerRow.setAdAssetsThisTime(null);
+      }
+    }
+  }
+// Ver.1.9 Add End
 
   /*****************************************************************************
    * 支払区分（設置協賛金）変更時情報反映
@@ -1029,6 +1095,36 @@ public class XxcsoSpDecisionReflectUtils
       {
         headerRow.setInstallSuppPaymentDate(null);
       }
+// Ver.1.9 Add Start
+      if ( isDiffer(headerRow.getInstallPayStartDate(), null) )
+      {
+        headerRow.setInstallPayStartDate(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallPayEndDate(), null) )
+      {
+        headerRow.setInstallPayEndDate(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallPayStartYear(), null) )
+      {
+        headerRow.setInstallPayStartYear(null);
+      }
+      if ( isDiffer(headerRow.getInstallPayStartMonth(), null) )
+      {
+        headerRow.setInstallPayStartMonth(null);
+      }
+      
+      if ( isDiffer(headerRow.getInstallPayEndYear(), null) )
+      {
+        headerRow.setInstallPayEndYear(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallPayEndMonth(), null) )
+      {
+        headerRow.setInstallPayEndMonth(null);
+      }
+// Ver.1.9 Add End
     }
   }
 
@@ -1048,7 +1144,11 @@ public class XxcsoSpDecisionReflectUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
 
     String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
-    if ( XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType) )
+    if ( XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType)
+// Ver.1.9 Add Start
+      || XxcsoSpDecisionConstants.TWO_YEAR_PAY.equals(installSuppPaymentType)
+      || XxcsoSpDecisionConstants.THREE_YEAR_PAY.equals(installSuppPaymentType))
+// Ver.1.9 Add End
     {
       if ( isDiffer(headerRow.getInstallSuppThisTime(), null) )
       {
