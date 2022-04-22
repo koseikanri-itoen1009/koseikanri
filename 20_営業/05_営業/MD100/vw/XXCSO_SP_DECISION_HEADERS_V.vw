@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_sp_decision_headers_v
  * Description     : 画面用：SP専決登録画面用ビュー
  * MD.070          : 
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@
  *  2015/01/30    1.1  K.Kiriu       [E_本稼動_12565]SP・契約書画面改修対応 
  *  2018/05/16    1.2  Y.Shoji       [E_本稼動_14989]SP項目追加対応 
  *  2020/08/21    1.3  Y.Sasaki      [E_本稼動_15904]SP項目追加対応
+ *  2022/03/15    1.4  H.Futamura    [E_本稼動_18060]対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sp_decision_headers_v
 (
@@ -128,6 +129,13 @@ CREATE OR REPLACE VIEW apps.xxcso_sp_decision_headers_v
 ,BM2_TAX_KBN
 ,BM3_TAX_KBN
 -- E_本稼動_15904 Add End
+-- E_本稼動_18060 Add Start
+,INSTALL_PAY_START_DATE
+,INSTALL_PAY_END_DATE
+,AD_ASSETS_PAYMENT_TYPE
+,AD_ASSETS_PAY_START_DATE
+,AD_ASSETS_PAY_END_DATE
+-- E_本稼動_18060 Add End
 )
 AS
 SELECT
@@ -243,6 +251,13 @@ SELECT
 ,BM2_TAX_KBN
 ,BM3_TAX_KBN
 -- E_本稼動_15904 Add End
+-- E_本稼動_18060 Add Start
+,INSTALL_PAY_START_DATE
+,INSTALL_PAY_END_DATE
+,AD_ASSETS_PAYMENT_TYPE
+,AD_ASSETS_PAY_START_DATE
+,AD_ASSETS_PAY_END_DATE
+-- E_本稼動_18060 Add End
 FROM XXCSO_SP_DECISION_HEADERS
 WITH READ ONLY
 ;
