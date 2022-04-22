@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.23
+* バージョン : 1.24
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -31,6 +31,7 @@
 * 2018-05-16 1.21 SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加
 * 2020-08-21 1.22 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 * 2020-10-28 1.23 SCSK佐々木大和[E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
+* 2022-04-21 1.24 SCSK二村悠香 [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -70,6 +71,9 @@ import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSelCcLineFullV
 import com.sun.java.util.collections.List;
 import com.sun.java.util.collections.ArrayList;
 import java.sql.SQLException;
+// Ver.1.24 Add Start
+import oracle.jbo.domain.Date;
+// Ver.1.24 Add End
 
 /*******************************************************************************
  * SP専決書登録画面用のデータを検証するためのユーティリティクラスです。
@@ -1992,83 +1996,83 @@ public class XxcsoSpDecisionValidateUtils
     }
 
 // 2018-05-16 [E_本稼動_14989] Add End
-    String adAssetsType = headerRow.getAdAssetsType();
-
-    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
-    {
+// Ver.1.24 Del Start
+    //String adAssetsType = headerRow.getAdAssetsType();
+    //if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
+    //{
       /////////////////////////////////////
       // その他条件：総額（行政財産使用料）
       /////////////////////////////////////
-      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
-      errorList
-        = utils.checkStringToNumber(
-            errorList
-           ,headerRow.getAdAssetsAmt()
-           ,token1
-           ,0
-           ,8
-           ,true
-           ,true
-           ,submitFlag
-           ,0
-          );
+    //  token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+    //          + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+    //          + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
+    //  errorList
+    //    = utils.checkStringToNumber(
+    //        errorList
+    //       ,headerRow.getAdAssetsAmt()
+    //       ,token1
+    //       ,0
+    //       ,8
+    //       ,true
+    //       ,true
+    //       ,submitFlag
+    //       ,0
+    //      );
       /////////////////////////////////////
       // その他条件：今回支払（行政財産使用料）
       /////////////////////////////////////
-      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_THIS_TIME;
-      errorList
-        = utils.checkStringToNumber(
-            errorList
-           ,headerRow.getAdAssetsThisTime()
-           ,token1
-           ,0
-           ,8
-           ,true
-           ,true
-           ,submitFlag
-           ,0
-          );
+    //  token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+    //          + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+    //          + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_THIS_TIME;
+    //  errorList
+    //    = utils.checkStringToNumber(
+    //        errorList
+    //       ,headerRow.getAdAssetsThisTime()
+    //       ,token1
+    //       ,0
+    //       ,8
+    //       ,true
+    //       ,true
+    //       ,submitFlag
+    //       ,0
+    //      );
       /////////////////////////////////////
       // その他条件：支払年数（行政財産使用料）
       /////////////////////////////////////
-      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_YEAR;
-      errorList
-        = utils.checkStringToNumber(
-            errorList
-           ,headerRow.getAdAssetsPaymentYear()
-           ,token1
-           ,0
-           ,2
-           ,true
-           ,true
-           ,submitFlag
-           ,0
-          );
+    //  token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+    //          + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+    //          + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_YEAR;
+    //  errorList
+    //    = utils.checkStringToNumber(
+    //        errorList
+    //       ,headerRow.getAdAssetsPaymentYear()
+    //       ,token1
+    //       ,0
+    //       ,2
+    //       ,true
+    //       ,true
+    //       ,submitFlag
+    //       ,0
+    //      );
 
       /////////////////////////////////////
       // その他条件：支払期日（行政財産使用料）
       /////////////////////////////////////
-      if ( submitFlag )
-      {
-        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_DATE;
-        errorList
-          = utils.requiredCheck(
-              errorList
-             ,headerRow.getAdAssetsPaymentDate()
-             ,token1
-             ,0
-            );
-      }
-    }
-
+    //  if ( submitFlag )
+    //  {
+    //    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+    //            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+    //            + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_DATE;
+    //    errorList
+    //      = utils.requiredCheck(
+    //          errorList
+    //         ,headerRow.getAdAssetsPaymentDate()
+    //         ,token1
+    //         ,0
+    //        );
+    //  }
+    //}
+// Ver.1.24 Del End
 // 2014-12-15 [E_本稼動_12565] Add End
     XxcsoUtils.debug(txn, "[END]");
 
@@ -2141,7 +2145,10 @@ public class XxcsoSpDecisionValidateUtils
     
     List errorList = new ArrayList();
     String token1 = null;
-    
+// Ver.1.24 Add Start
+    String token2 = null;
+// Ver.1.24 Add End
+XxcsoUtils.debug(txn, "覚書情報提出ボタンフラグ："+submitFlag);    
     /////////////////////////////////////
     // 各行を取得
     /////////////////////////////////////
@@ -2153,10 +2160,11 @@ public class XxcsoSpDecisionValidateUtils
     String installSuppType   = headerRow.getInstallSuppType();
     String electricType      = headerRow.getElectricType();
     String introChgType      = headerRow.getIntroChgType();
-
+XxcsoUtils.debug(txn, "設置協賛金チェック："+installSuppType);
     // 設置協賛金
     if ( XxcsoSpDecisionConstants.CHECK_YES.equals(installSuppType) )
     {
+XxcsoUtils.debug(txn, "設置協賛金総額："+headerRow.getInstallSuppAmt()); 
       /////////////////////////////////////
       // 覚書情報：総額（設置協賛金）
       /////////////////////////////////////
@@ -2171,14 +2179,20 @@ public class XxcsoSpDecisionValidateUtils
            ,0
            ,8
            ,true
-           ,true
+// Ver.1.24 Mod Start
+//           ,true
+           ,false
+// Ver.1.24 Mod End
            ,submitFlag
            ,0
           );
 
       String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
-
-      if ( XxcsoSpDecisionConstants.ONE_YEAR_PAY.equals(installSuppPaymentType) )
+      if ( XxcsoSpDecisionConstants.ONE_YEAR_PAY.equals(installSuppPaymentType) 
+// Ver.1.24 Add Start
+        || XxcsoSpDecisionConstants.QUARTER_PAY.equals(installSuppPaymentType)
+        || XxcsoSpDecisionConstants.HALF_PAY.equals(installSuppPaymentType))
+// Ver.1.24 Add End
       {
         /////////////////////////////////////
         // 覚書情報：今回支払（設置協賛金）
@@ -2186,6 +2200,11 @@ public class XxcsoSpDecisionValidateUtils
         token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                 + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_THIS_TIME;
+// Ver.1.24 Add Start
+        token2 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
+// Ver.1.24 Add End
         errorList
           = utils.checkStringToNumber(
               errorList
@@ -2194,10 +2213,57 @@ public class XxcsoSpDecisionValidateUtils
              ,0
              ,8
              ,true
-             ,true
+// Ver.1.24 Mod Start
+//             ,true
+             ,false
+// Ver.1.24 Mod End
              ,submitFlag
              ,0
-            );
+            ); 
+// Ver.1.24 Add Start
+        if ( !(headerRow.getInstallSuppThisTime() == null || "".equals(headerRow.getInstallSuppThisTime()) )
+          && !(headerRow.getInstallSuppAmt() == null || "".equals(headerRow.getInstallSuppAmt()) ))
+        {
+          String installSuppAmt = headerRow.getInstallSuppAmt().replaceAll(",", "");
+          int intInstallSuppAmt = Integer.parseInt(installSuppAmt);
+
+          if ( intInstallSuppAmt == 0 )
+          { 
+            headerRow.setInstallSuppThisTime("0");
+          }
+
+          String installSuppThisTime = headerRow.getInstallSuppThisTime().replaceAll(",", "");
+          int intInstallSuppThisTime = Integer.parseInt(installSuppThisTime);
+
+          if ( intInstallSuppThisTime > intInstallSuppAmt )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00487
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token2
+                 ,XxcsoConstants.TOKEN_MIN_VALUE
+                 ,token1
+                );
+
+            errorList.add(error);          
+          }
+
+          if ( intInstallSuppAmt > 0 && intInstallSuppThisTime == 0 )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00487
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                 ,XxcsoConstants.TOKEN_MIN_VALUE
+                 ,"０"
+                );
+
+            errorList.add(error);
+          }
+        }
+// Ver.1.24 Add End
       }
 
       /////////////////////////////////////
@@ -2206,6 +2272,7 @@ public class XxcsoSpDecisionValidateUtils
       token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
               + XxcsoConstants.TOKEN_VALUE_DELIMITER1
               + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAYMENT_YEAR;
+
       errorList
         = utils.checkStringToNumber(
             errorList
@@ -2214,10 +2281,26 @@ public class XxcsoSpDecisionValidateUtils
            ,0
            ,2
            ,true
-           ,true
+// Ver.1.24 Mod Start
+//           ,true
+           ,false
+// Ver.1.24 Mod End
            ,submitFlag
            ,0
           );
+
+// Ver.1.24 Mod Start
+      if ( !(headerRow.getInstallSuppAmt() == null || "".equals(headerRow.getInstallSuppAmt()) )
+        && !(headerRow.getInstallSuppPaymentYear() == null || "".equals(headerRow.getInstallSuppPaymentYear()) ))
+      {
+        String installSuppAmt = headerRow.getInstallSuppAmt().replaceAll(",", "");
+        int intInstallSuppAmt = Integer.parseInt(installSuppAmt);
+          if ( intInstallSuppAmt == 0 )
+          { 
+            headerRow.setInstallSuppPaymentYear("0");
+          }
+      }
+// Ver.1.24 Mod End
 
       /////////////////////////////////////
       // 覚書情報：支払期日（設置協賛金）
@@ -2235,6 +2318,171 @@ public class XxcsoSpDecisionValidateUtils
              ,0
             );
       }
+// Ver.1.24 Add Start
+      ///////////////////////////////////////
+      // 覚書情報：支払期間開始日（設置協賛金）（年）
+    ///////////////////////////////////////
+      if ( submitFlag )
+      {
+        List installPayStartYearList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_YEAR;
+        installPayStartYearList
+          = utils.checkStringToNumber(
+              installPayStartYearList
+             ,headerRow.getInstallPayStartYear()
+             ,token1
+             ,0
+             ,4
+             ,true
+             ,true
+             ,true
+             ,0
+            );     
+
+        if(installPayStartYearList.size() == 0)
+        {
+          // 支払期間開始日（設置協賛金）（年）が西暦であるかチェック
+          if ( ! isYear( headerRow.getInstallPayStartYear() ) )
+          {
+            installPayStartYearList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00720
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }
+        }
+
+        errorList.addAll(installPayStartYearList);          
+        
+      }      
+      ///////////////////////////////////////
+      // 覚書情報：支払期間開始日（設置協賛金）（月）
+      ///////////////////////////////////////
+      if ( submitFlag )
+      {      
+        List installPayStartMonthList = new ArrayList();
+
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_MONTH;
+        installPayStartMonthList
+          = utils.checkStringToNumber(
+              installPayStartMonthList
+             ,headerRow.getInstallPayStartMonth()
+             ,token1
+             ,0
+             ,2
+             ,true
+             ,true
+             ,true
+             ,0
+            );
+
+        if(installPayStartMonthList.size() == 0)
+        {
+          // 支払期間開始日（設置協賛金）（月）が12以下であるかチェック
+          if ( ! isMonth( headerRow.getInstallPayStartMonth() ) )
+          {
+            installPayStartMonthList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00719
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }     
+        }
+
+        errorList.addAll(installPayStartMonthList);          
+      }    
+      ///////////////////////////////////////
+      // 覚書情報：支払期間終了日（設置協賛金）(年)
+      ///////////////////////////////////////
+      if ( submitFlag )
+      {
+        List installPayEndYearhList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_YEAR;
+        installPayEndYearhList
+          = utils.checkStringToNumber(
+              installPayEndYearhList
+             ,headerRow.getInstallPayEndYear()
+             ,token1
+             ,0
+             ,4
+             ,true
+             ,true
+             ,true
+             ,0
+            );
+
+        if(installPayEndYearhList.size() == 0)
+        {
+          // 支払期間終了日（設置協賛金）（年）が西暦であるかチェック
+          if ( ! isYear( headerRow.getInstallPayEndYear() ) )
+          {
+            installPayEndYearhList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00720
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          } 
+        }
+
+        errorList.addAll(installPayEndYearhList);          
+
+      }
+      ///////////////////////////////////////
+      // 覚書情報：支払期間終了日（設置協賛金）(月)
+      ///////////////////////////////////////
+      if ( submitFlag )
+      {
+
+        List installPayEndMonthList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_MONTH;
+        installPayEndMonthList
+          = utils.checkStringToNumber(
+              installPayEndMonthList
+             ,headerRow.getInstallPayEndMonth()
+             ,token1
+             ,0
+             ,2
+             ,true
+             ,true
+             ,true
+             ,0
+            ); 
+
+        if(installPayEndMonthList.size() == 0)
+        {
+          // 支払期間終了日（設置協賛金）（月）が12以下であるかチェック
+          if ( ! isMonth( headerRow.getInstallPayEndMonth() ) )
+          {
+            installPayEndMonthList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00719
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }
+        }
+
+        errorList.addAll(installPayEndMonthList);          
+      }
+// Ver.1.24 Add End
     }
 
     // 電気代
@@ -2553,6 +2801,317 @@ public class XxcsoSpDecisionValidateUtils
           errorList.add(error);
         }
     }
+
+// Ver.1.24 Add Start
+    // 行政財産使用料
+    String adAssetsType = headerRow.getAdAssetsType();
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
+    {
+      /////////////////////////////////////
+      // 覚書情報：総額（行政財産使用料）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getAdAssetsAmt()
+           ,token1
+           ,0
+           ,8
+           ,true
+           ,false
+           ,submitFlag
+           ,0
+          );
+
+      String adAssetsPaymentType = headerRow.getAdAssetsPaymentType();
+      if ( XxcsoSpDecisionConstants.ONE_YEAR_PAY.equals(adAssetsPaymentType)
+        || XxcsoSpDecisionConstants.QUARTER_PAY.equals(adAssetsPaymentType)
+        || XxcsoSpDecisionConstants.HALF_PAY.equals(adAssetsPaymentType))
+      {
+      /////////////////////////////////////
+      // 覚書情報：今回支払（行政財産使用料）
+      /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_THIS_TIME;
+
+        token2 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
+
+        errorList
+          = utils.checkStringToNumber(
+              errorList
+             ,headerRow.getAdAssetsThisTime()
+             ,token1
+             ,0
+             ,8
+             ,true
+             ,false
+             ,submitFlag
+             ,0
+            );
+
+        if ( !(headerRow.getAdAssetsThisTime() == null || "".equals(headerRow.getAdAssetsThisTime()) )
+          && !(headerRow.getAdAssetsAmt() == null || "".equals(headerRow.getAdAssetsAmt()) ))
+        {
+          String adAmt = headerRow.getAdAssetsAmt().replaceAll(",", "");
+          int intAdAmt = Integer.parseInt(adAmt);
+
+          if ( intAdAmt == 0 )
+          { 
+            headerRow.setAdAssetsThisTime("0");
+          }
+          
+          String adThisTime = headerRow.getAdAssetsThisTime().replaceAll(",", "");
+          int intAdThisTime = Integer.parseInt(adThisTime);
+          
+          if ( intAdThisTime > intAdAmt )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00487
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token2
+                 ,XxcsoConstants.TOKEN_MIN_VALUE
+                 ,token1
+                );
+
+            errorList.add(error);          
+          }
+
+          if ( intAdAmt > 0 && intAdThisTime == 0 )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00487
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                 ,XxcsoConstants.TOKEN_MIN_VALUE
+                 ,"０"
+                );
+
+            errorList.add(error);
+          }
+        }
+      }
+
+      /////////////////////////////////////
+      // 覚書情報：支払年数（行政財産使用料）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_YEAR;
+      
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getAdAssetsPaymentYear()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,false
+           ,submitFlag
+           ,0
+          );
+
+      if ( !(headerRow.getAdAssetsAmt() == null || "".equals(headerRow.getAdAssetsAmt()) )
+        && !(headerRow.getAdAssetsPaymentYear() == null || "".equals(headerRow.getAdAssetsPaymentYear()) ))
+      {
+        String adAmt = headerRow.getAdAssetsAmt().replaceAll(",", "");
+        int intAdAmt = Integer.parseInt(adAmt);
+          if ( intAdAmt == 0 )
+          { 
+            headerRow.setAdAssetsPaymentYear("0");
+          }
+      }
+
+      /////////////////////////////////////
+      // 覚書情報：支払期日（行政財産使用料）
+      /////////////////////////////////////
+      if ( submitFlag )
+      {
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_DATE;
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,headerRow.getAdAssetsPaymentDate()
+             ,token1
+             ,0
+            );
+      }
+
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間開始日（行政財産使用料）（年）
+      ///////////////////////////////////////////
+      if ( submitFlag )
+      {
+
+        List adAssetsPayStartYearList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_YEAR;
+        adAssetsPayStartYearList
+          = utils.checkStringToNumber(
+              adAssetsPayStartYearList
+             ,headerRow.getAdAssetsPayStartYear()
+             ,token1
+             ,0
+             ,4
+             ,true
+             ,true
+             ,true
+             ,0
+            );  
+
+        if( adAssetsPayStartYearList.size() == 0 )
+        {
+           // 支払期間開始日（行政財産使用料）（年）が西暦であるかチェック
+          if ( ! isYear( headerRow.getAdAssetsPayStartYear() ) )
+          {
+            adAssetsPayStartYearList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00720
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }              
+        }
+
+        errorList.addAll(adAssetsPayStartYearList);          
+
+      }
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間開始日（行政財産使用料）（月）
+      ///////////////////////////////////////////
+      if ( submitFlag )
+      {
+        List adAssetsPayStartMonthList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_MONTH;
+        adAssetsPayStartMonthList
+          = utils.checkStringToNumber(
+              adAssetsPayStartMonthList
+             ,headerRow.getAdAssetsPayStartMonth()
+             ,token1
+             ,0
+             ,2
+             ,true
+             ,true
+             ,true
+             ,0
+            );   
+
+        if( adAssetsPayStartMonthList.size() == 0 )
+        {
+          // 支払期間開始日（行政財産使用料）（月）が12以下であるかチェック
+          if ( ! isMonth( headerRow.getAdAssetsPayStartMonth() ) )
+          {
+            adAssetsPayStartMonthList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00719
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }	  
+        }
+
+        errorList.addAll(adAssetsPayStartMonthList);          
+
+      }
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間終了日（行政財産使用料）（年）
+      ///////////////////////////////////////////
+      if ( submitFlag )
+      {
+        List adAssetsPayEndYearList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_YEAR;
+        adAssetsPayEndYearList
+          = utils.checkStringToNumber(
+              adAssetsPayEndYearList
+             ,headerRow.getAdAssetsPayEndYear()
+             ,token1
+             ,0
+             ,4
+             ,true
+             ,true
+             ,true
+             ,0
+            ); 
+
+        if( adAssetsPayEndYearList.size() == 0 )
+        {
+          // 支払期間終了日（行政財産使用料）（年）が西暦であるかチェック
+          if ( ! isYear( headerRow.getAdAssetsPayEndYear() ) )
+          {
+            adAssetsPayEndYearList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00720
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }	 
+        }
+
+        errorList.addAll(adAssetsPayEndYearList);          
+      }
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間終了日（行政財産使用料）（月）
+      ///////////////////////////////////////////
+      if ( submitFlag )
+      {
+        List adAssetsPayEndMonthList = new ArrayList();
+        
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_MONTH;        
+        adAssetsPayEndMonthList
+          = utils.checkStringToNumber(
+              adAssetsPayEndMonthList
+             ,headerRow.getAdAssetsPayEndMonth()
+             ,token1
+             ,0
+             ,2
+             ,true
+             ,true
+             ,true
+             ,0
+            ); 
+
+        if( adAssetsPayEndMonthList.size() == 0 )
+        {
+          // 支払期間終了日（行政財産使用料）（月）が12以下であるかチェック
+          if ( ! isMonth( headerRow.getAdAssetsPayEndMonth() ) )
+          {
+            adAssetsPayEndMonthList.add(
+                XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00719
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }
+        }
+
+        errorList.addAll(adAssetsPayEndMonthList);          
+      }
+    }
+// Ver.1.24 Add End
 
     XxcsoUtils.debug(txn, "[END]");
 
@@ -4491,6 +5050,53 @@ public class XxcsoSpDecisionValidateUtils
 
       sql.delete(0, sql.length());
 // 2010-03-01 [E_本稼動_01678] Add End
+
+// Ver.1.24 Add Start
+      /////////////////////////////////////
+      // 承認権限レベル番号６
+      /////////////////////////////////////
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_020001j_pkg.get_appr_auth_level_num_6(:2);");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.NUMBER);
+      stmt.setString(2, headerRow.getAdAssetsAmt());
+
+      stmt.execute();
+
+      returnValue = stmt.getNUMBER(1);
+      XxcsoUtils.debug(
+        txn, "return = " + returnValue.stringValue()
+      );
+
+      XxcsoUtils.debug(
+        txn, "lastApprAuthLevel = " + lastApprAuthLevel.stringValue()
+      );
+
+      checkValue = returnValue.compareTo(lastApprAuthLevel);
+      XxcsoUtils.debug(
+        txn, "return.comareTo(lastApprAuthLevel) = " + checkValue
+      );
+          
+      if ( checkValue > 0 )
+      {
+        lastApprAuthLevel = returnValue;
+      }
+
+      if ( stmt != null )
+      {
+        stmt.close();
+      }
+
+      sql.delete(0, sql.length());
+// Ver.1.24 Add End
+
       if ( lastApprAuthLevel.compareTo(NUMBER.zero()) == 0 )
       {
         /////////////////////////////////////
@@ -7827,4 +8433,762 @@ public class XxcsoSpDecisionValidateUtils
     return errorList;
   }
 // [E_本稼動_16293] Add End
+// Ver.1.24 Add Start
+  /*****************************************************************************
+   * 支払期間開始日チェック
+   * @param txn                 OADBTransactionインスタンス
+   * @param headerVo            SP専決ヘッダ登録／更新用ビューインスタンス
+   * @param installVo           設置先登録／更新用ビューインスタンス
+   * @return List               エラーリスト
+   *****************************************************************************
+   */
+  public static List chkPayStartDate(
+    OADBTransaction                     txn
+   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+   ,XxcsoSpDecisionInstCustFullVOImpl   installVo
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+    XxcsoSpDecisionInstCustFullVORowImpl installRow
+      = (XxcsoSpDecisionInstCustFullVORowImpl)installVo.first();
+
+    // 変数の初期化
+    List errorList = new ArrayList();
+    OracleCallableStatement stmt = null; 
+    String retCode = null;
+    String token1  = null;
+    String token2  = null;
+    String contractNumber = null;
+    String spNumber = null;
+    Date   installPayStartMon  = null;
+    Date   installPayEndMon    = null;
+    Date   adAssetsPayStartMon = null;
+    Date   adAssetsPayEndMon   = null;
+
+    String installSuppType      = headerRow.getInstallSuppType();
+    String adAssetsType         = headerRow.getAdAssetsType();
+
+    // 支払期間開始日（設置協賛金）
+    Date installPayStartDate = makeDate(
+              headerRow.getInstallPayStartYear(),
+              headerRow.getInstallPayStartMonth());
+
+    // 支払期間終了日（設置協賛金）          
+    Date installPayEndDate = makeDate(
+              headerRow.getInstallPayEndYear(),
+              headerRow.getInstallPayEndMonth());
+
+    // 支払期間開始日（行政財産使用料）          
+    Date adAssetsPayStartDate = makeDate(
+              headerRow.getAdAssetsPayStartYear(),
+              headerRow.getAdAssetsPayStartMonth());
+
+    // 支払期間終了日（行政財産使用料）          
+    Date adAssetsPayEndDate = makeDate(
+              headerRow.getAdAssetsPayEndYear(),
+              headerRow.getAdAssetsPayEndMonth());
+
+    // 設置協賛金
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(installSuppType) )
+    {
+      if ( !(installPayStartDate == null || "".equals(installPayStartDate))
+        && !(installPayEndDate == null || "".equals(installPayEndDate)))
+      {
+        // 支払期間大小チェック
+        try
+        {
+          StringBuffer sql = new StringBuffer(100);
+
+          sql.append("BEGIN");
+          sql.append("  xxcso_020001j_pkg.chk_pay_date(");
+          sql.append("    id_pay_start_date      => :1");
+          sql.append("   ,id_pay_end_date        => :2");
+          sql.append("   ,ov_retcode             => :3");
+          sql.append("  );");
+          sql.append("END;");
+
+          XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.setDATE(1, installPayStartDate);
+          stmt.setDATE(2, installPayEndDate);
+          stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+
+          stmt.execute();
+          retCode            = stmt.getString(3);
+          // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+          if ( !"0".equals(retCode) )
+          {
+            token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
+
+            token2 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_DATE;
+
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00920
+                 ,XxcsoConstants.TOKEN_DATE1
+                 ,token1
+                 ,XxcsoConstants.TOKEN_DATE2
+                 ,token2
+                );
+            errorList.add(error);          
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CHK_PAY_DATE
+             );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+
+        // 支払期間開始日チェック
+        try
+        {
+          StringBuffer sql = new StringBuffer(100);
+ 
+          sql.append("BEGIN");
+          sql.append("  xxcso_020001j_pkg.chk_pay_start_date(");
+          sql.append("    iv_account_number      => :1");
+          sql.append("   ,id_pay_start_date      => :2");
+          sql.append("   ,id_pay_end_date        => :3");
+          sql.append("   ,iv_data_kbn            => :4");
+          sql.append("   ,od_pay_start_date      => :5");
+          sql.append("   ,od_pay_end_date        => :6");
+          sql.append("   ,ov_contract_number     => :7");
+          sql.append("   ,ov_sp_decision_number  => :8");
+          sql.append("   ,ov_retcode             => :9");
+          sql.append("  );");
+          sql.append("END;");
+
+          XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.setString(1, installRow.getInstallAccountNumber());
+          stmt.setDATE(2, installPayStartDate);
+          stmt.setDATE(3, installPayEndDate);
+          stmt.setString(4, XxcsoSpDecisionConstants.INSTALL_SUPP_KBN);
+          stmt.registerOutParameter(5, OracleTypes.DATE);
+          stmt.registerOutParameter(6, OracleTypes.DATE);
+          stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+
+          stmt.execute();
+          installPayStartMon = new Date(stmt.getDate(5));
+          installPayEndMon   = new Date(stmt.getDate(6));
+          contractNumber     = stmt.getString(7);
+          spNumber           = stmt.getString(8);
+          retCode            = stmt.getString(9);
+
+          // 支払期間開始日、支払期間終了日に当月の1日を設定
+          headerRow.setInstallPayStartDate((Date)installPayStartMon);
+          headerRow.setInstallPayEndDate((Date)installPayEndMon);
+
+          // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+          if ( !"0".equals(retCode) )
+          {
+            token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_DATE;
+
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00916
+                 ,XxcsoConstants.TOKEN_ITEM
+                 ,token1
+                 ,XxcsoConstants.TOKEN_SP_NUMBER
+                 ,spNumber
+                 ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+                 ,contractNumber
+              );
+            errorList.add(error);
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CHK_PAY_START_DATE
+             );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+
+    // 行政財産使用料
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
+    {
+      if ( !(adAssetsPayStartDate == null || "".equals(adAssetsPayStartDate))
+        && !(adAssetsPayEndDate == null || "".equals(adAssetsPayEndDate)))
+      {
+        // 支払期間大小チェック
+        try
+        {
+          StringBuffer sql = new StringBuffer(100);
+
+          sql.append("BEGIN");
+          sql.append("  xxcso_020001j_pkg.chk_pay_date(");
+          sql.append("    id_pay_start_date      => :1");
+          sql.append("   ,id_pay_end_date        => :2");
+          sql.append("   ,ov_retcode             => :3");
+          sql.append("  );");
+          sql.append("END;");
+
+          XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.setDATE(1, adAssetsPayStartDate);
+          stmt.setDATE(2, adAssetsPayEndDate);
+          stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+
+          stmt.execute();
+          retCode            = stmt.getString(3);
+          // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+          if ( !"0".equals(retCode) )
+          {
+            token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
+
+            token2 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_DATE;
+
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00920
+                 ,XxcsoConstants.TOKEN_DATE1
+                 ,token1
+                 ,XxcsoConstants.TOKEN_DATE2
+                 ,token2
+                );
+            errorList.add(error);          
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CHK_PAY_DATE
+             );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+
+        // 支払期間開始日チェック
+        try
+        {
+          StringBuffer sql = new StringBuffer(100);
+ 
+          sql.append("BEGIN");
+          sql.append("  xxcso_020001j_pkg.chk_pay_start_date(");
+          sql.append("    iv_account_number      => :1");
+          sql.append("   ,id_pay_start_date      => :2");
+          sql.append("   ,id_pay_end_date        => :3");
+          sql.append("   ,iv_data_kbn            => :4");
+          sql.append("   ,od_pay_start_date      => :5");
+          sql.append("   ,od_pay_end_date        => :6");
+          sql.append("   ,ov_contract_number     => :7");
+          sql.append("   ,ov_sp_decision_number  => :8");
+          sql.append("   ,ov_retcode             => :9");
+          sql.append("  );");
+          sql.append("END;");
+
+          XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.setString(1, installRow.getInstallAccountNumber());
+          stmt.setDATE(2, adAssetsPayStartDate);
+          stmt.setDATE(3, adAssetsPayEndDate);
+          stmt.setString(4, XxcsoSpDecisionConstants.AD_ASSETS_KBN);
+          stmt.registerOutParameter(5, OracleTypes.DATE);
+          stmt.registerOutParameter(6, OracleTypes.DATE);
+          stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+
+          stmt.execute();
+          adAssetsPayStartMon = new Date(stmt.getDate(5));
+          adAssetsPayEndMon   = new Date(stmt.getDate(6));
+          contractNumber      = stmt.getString(7);
+          spNumber            = stmt.getString(8);
+          retCode             = stmt.getString(9);
+
+          // 支払期間開始日、支払期間終了日に当月の1日を設定
+          headerRow.setAdAssetsPayStartDate((Date)adAssetsPayStartMon);
+          headerRow.setAdAssetsPayEndDate((Date)adAssetsPayEndMon);
+
+          // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+          if ( !"0".equals(retCode) )
+          {
+            token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_DATE;
+
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00916
+                 ,XxcsoConstants.TOKEN_ITEM
+                 ,token1
+                 ,XxcsoConstants.TOKEN_SP_NUMBER
+                 ,spNumber
+                 ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+                 ,contractNumber
+              );
+            errorList.add(error);
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CHK_PAY_START_DATE
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+    return errorList;
+ }
+
+   /*****************************************************************************
+   * 支払期間開始年月、支払期間終了年月チェック
+   * @param txn                 OADBTransactionインスタンス
+   * @param headerRow           SP専決ヘッダ登録／更新用ビュー行
+   * @param requiredCheckFlag   必須フラグ
+   *****************************************************************************
+   */
+    public static void chkInstallPayAdAssetsPayYearMonth(
+      OADBTransaction                     txn
+     ,XxcsoSpDecisionHeaderFullVORowImpl headerRow
+     ,boolean                             requiredCheckFlag 
+    )
+    {
+
+      XxcsoUtils.debug(txn, "[START]");
+      
+      XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
+      String token1  = null;
+      List errorList = new ArrayList();
+
+      ///////////////////////////////////////      
+      // 覚書情報：支払期間開始日（設置協賛金）（年）
+      ///////////////////////////////////////
+      List installPayStartYearList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_YEAR;
+      installPayStartYearList
+        = utils.checkStringToNumber(
+            installPayStartYearList
+           ,headerRow.getInstallPayStartYear()
+           ,token1
+           ,0
+           ,4
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          ); 
+
+      if( installPayStartYearList.size() == 0 )
+      {
+        // 支払期間開始日（設置協賛金）（年）が西暦であるかチェック
+        if ( ! isYear( headerRow.getInstallPayStartYear() ) )
+        {
+          installPayStartYearList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00720
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }
+      }
+      
+      errorList.addAll(installPayStartYearList);
+               
+      ///////////////////////////////////////
+      // 覚書情報：支払期間開始日（設置協賛金）（月）
+      ///////////////////////////////////////
+      List installPayStartMonthList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_MONTH;
+      installPayStartMonthList
+        = utils.checkStringToNumber(
+            installPayStartMonthList
+           ,headerRow.getInstallPayStartMonth()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          ); 
+
+      if( installPayStartMonthList.size() == 0 )
+      {
+        // 支払期間開始日（設置協賛金）（月）が12以下であるかチェック
+        if ( ! isMonth( headerRow.getInstallPayStartMonth() ) )
+        {
+          installPayStartMonthList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00719
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }    
+      }
+
+      errorList.addAll(installPayStartMonthList);
+      
+      ///////////////////////////////////////
+      // 覚書情報：支払期間終了日（設置協賛金）(年)
+      ///////////////////////////////////////
+      List installPayStartEndYearList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_YEAR;
+      installPayStartEndYearList
+        = utils.checkStringToNumber(
+            installPayStartEndYearList
+           ,headerRow.getInstallPayEndYear()
+           ,token1
+           ,0
+           ,4
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          ); 
+
+      if( installPayStartEndYearList.size() == 0 )
+      {
+        // 支払期間終了日（設置協賛金）（年）が西暦であるかチェック
+        if ( ! isYear( headerRow.getInstallPayEndYear() ) )
+        {
+          installPayStartEndYearList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00720
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        } 
+      }
+
+      errorList.addAll(installPayStartEndYearList);        
+     
+      ///////////////////////////////////////
+      // 覚書情報：支払期間終了日（設置協賛金）(月)
+      ///////////////////////////////////////
+      List installPayStartEndMonthList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_MONTH;
+      installPayStartEndMonthList
+        = utils.checkStringToNumber(
+            installPayStartEndMonthList
+           ,headerRow.getInstallPayEndMonth()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          );  
+
+      if(installPayStartEndMonthList.size() == 0)
+      {
+        // 支払期間終了日（設置協賛金）（月）が12以下であるかチェック
+        if ( ! isMonth( headerRow.getInstallPayEndMonth() ) )
+        {
+          installPayStartEndMonthList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00719
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }  
+      }
+
+      errorList.addAll(installPayStartEndMonthList);        
+      
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間開始日（行政財産使用料）（年）
+      ///////////////////////////////////////////
+      List adAssetsPayStartYearList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_YEAR;
+      adAssetsPayStartYearList
+        = utils.checkStringToNumber(
+            adAssetsPayStartYearList
+           ,headerRow.getAdAssetsPayStartYear()
+           ,token1
+           ,0
+           ,4
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          );
+      if(adAssetsPayStartYearList.size() == 0)
+      {
+        // 支払期間開始日（行政財産使用料）（年）が西暦であるかチェック
+        if ( ! isYear( headerRow.getAdAssetsPayStartYear() ) )
+        {
+          adAssetsPayStartYearList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00720
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }         
+      }
+
+      errorList.addAll(adAssetsPayStartYearList);        
+
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間開始日（行政財産使用料）（月）
+      ///////////////////////////////////////////
+      List adAssetsPayStartMonthList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_MONTH;
+      adAssetsPayStartMonthList
+        = utils.checkStringToNumber(
+            adAssetsPayStartMonthList
+           ,headerRow.getAdAssetsPayStartMonth()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          );
+
+      if(adAssetsPayStartMonthList.size() == 0)
+      {
+        // 支払期間開始日（行政財産使用料）（月）が12以下であるかチェック
+        if ( ! isMonth( headerRow.getAdAssetsPayStartMonth() ) )
+        {
+          adAssetsPayStartMonthList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00719
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }
+      }
+
+      errorList.addAll(adAssetsPayStartMonthList);       
+
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間終了日（行政財産使用料）（年）
+      ///////////////////////////////////////////
+      List adAssetsPayEndYearList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_YEAR;
+      adAssetsPayEndYearList
+        = utils.checkStringToNumber(
+            adAssetsPayEndYearList
+           ,headerRow.getAdAssetsPayEndYear()
+           ,token1
+           ,0
+           ,4
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          ); 
+
+      if( adAssetsPayEndYearList.size() == 0 )
+      {
+        // 支払期間終了日（行政財産使用料）（年）が西暦であるかチェック
+        if ( ! isYear( headerRow.getAdAssetsPayEndYear() ) )
+        {
+          adAssetsPayEndYearList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00720
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }
+      }
+
+      errorList.addAll(adAssetsPayEndYearList);        
+      
+      ///////////////////////////////////////////
+      // 覚書情報：支払期間終了日（行政財産使用料）（月）
+      ///////////////////////////////////////////
+      List adAssetsPayEndMonthList = new ArrayList();
+      
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_MONTH;        
+      adAssetsPayEndMonthList
+        = utils.checkStringToNumber(
+            adAssetsPayEndMonthList
+           ,headerRow.getAdAssetsPayEndMonth()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,true
+           ,requiredCheckFlag
+           ,0
+          ); 
+      if(adAssetsPayEndMonthList.size() == 0)
+      {
+        // 支払期間終了日（行政財産使用料）（月）が12以下であるかチェック
+        if ( ! isMonth( headerRow.getAdAssetsPayEndMonth() ) )
+        {
+          adAssetsPayEndMonthList.add(
+              XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00719
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }
+      }
+
+      errorList.addAll(adAssetsPayEndMonthList);        
+      
+      if ( errorList.size() > 0 )
+      {
+        OAException.raiseBundledOAException(errorList);
+      }
+
+      XxcsoUtils.debug(txn, "[END]");
+    }
+
+    
+  /*****************************************************************************
+   * 年、月からYYYY-MM-01を作成する
+   * @param   strYear    年の文字列
+   * @param   strMonth   月の文字列
+   * @return  Date     年-月-01
+   *****************************************************************************
+   */
+   public static Date makeDate(String strYear,String strMonth)
+   {
+
+     Date returnDate = null;
+     String dateStr = "";
+   
+     if( strYear != null && strMonth != null )
+     {
+          dateStr = strYear + "-" + strMonth + "-01";
+     }
+
+     if(!"".equals(dateStr))
+     {
+          returnDate = new Date(dateStr);
+     }
+    
+    return returnDate;
+    
+   } 
+// Ver.1.24 Add End
 }
