@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.18
+* バージョン : 1.19
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者           修正内容
@@ -28,6 +28,7 @@
 * 2020-10-28 1.17 SCSK佐々木大和   [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *                                  [E_本稼動_16410]契約書画面からの銀行口座変更について
 * 2020-12-14 1.18 SCSK佐々木大和   [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
+* 2022-03-31 1.19 SCSK二村悠香     [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -3348,6 +3349,7 @@ public class XxcsoContractRegistValidateUtils
         
       }
     }
+
   XxcsoUtils.debug(txn, "[END]");
   
   return errorList;
@@ -6296,4 +6298,146 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
  }
 // 2009-04-27 [ST障害T1_0708] Add End
+// Ver.1.19 Add Start
+  /*****************************************************************************
+   * 支払期間開始日チェック
+   * @param txn                 OADBTransactionインスタンス
+   * @param contMngVo           契約先テーブル情報用ビューインスタンス
+   * @return List               エラーリスト
+   *****************************************************************************
+   */
+  public static List chkPayStartDate(
+    OADBTransaction                     txn
+   ,XxcsoContractManagementFullVOImpl   mngVo
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoContractManagementFullVORowImpl mngVoRow
+      = (XxcsoContractManagementFullVORowImpl) mngVo.first();
+
+    // 変数の初期化
+    List errorList = new ArrayList();
+    OracleCallableStatement stmt = null; 
+    String retCode = null;
+    String token1  = null;
+    String token2  = null;
+    String insSpNumber          = null;
+    String adSpNumber           = null;
+    String insContractNumber    = null;
+    String adContractNumber     = null;
+
+    String accountNumber        = mngVoRow.getInstallAccountNumber();
+    String spNumber             = mngVoRow.getSpDecisionNumber();
+
+    if ( !(accountNumber == null || "".equals(accountNumber))
+      && !(spNumber == null || "".equals(spNumber)))
+    {
+      try
+      {
+        StringBuffer sql = new StringBuffer(100);
+ 
+        sql.append("BEGIN");
+        sql.append("  xxcso_010003j_pkg.chk_pay_start_date(");
+        sql.append("    iv_account_number          => :1");
+        sql.append("   ,iv_sp_decision_number      => :2");
+        sql.append("   ,ov_ins_contract_number     => :3");
+        sql.append("   ,ov_ins_sp_decision_number  => :4");
+        sql.append("   ,ov_ad_contract_number      => :5");
+        sql.append("   ,ov_ad_sp_decision_number   => :6");
+        sql.append("   ,ov_retcode                 => :7");
+        sql.append("  );");
+        sql.append("END;");
+
+        XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+        stmt
+          = (OracleCallableStatement)
+              txn.createCallableStatement(sql.toString(), 0);
+
+        stmt.setString(1, mngVoRow.getInstallAccountNumber());
+        stmt.setString(2, mngVoRow.getSpDecisionNumber());
+        stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+
+        stmt.execute();
+        insSpNumber       = stmt.getString(3);
+        insContractNumber = stmt.getString(4);
+        adSpNumber        = stmt.getString(5);
+        adContractNumber  = stmt.getString(6);
+        retCode           = stmt.getString(7);
+
+        // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+        if ( !"0".equals(retCode) )
+        {
+          if ( insSpNumber != null && insContractNumber != null ) 
+          {
+            token1 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_START_DATE;
+
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00916
+                 ,XxcsoConstants.TOKEN_ITEM
+                 ,token1
+                 ,XxcsoConstants.TOKEN_SP_NUMBER
+                 ,insSpNumber
+                 ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+                 ,insContractNumber
+                );
+            errorList.add(error);              
+          }
+          if ( adSpNumber != null && adContractNumber != null ) 
+          {
+            token2 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_PAY_START_DATE;
+
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00916
+                 ,XxcsoConstants.TOKEN_ITEM
+                 ,token2
+                 ,XxcsoConstants.TOKEN_SP_NUMBER
+                 ,adSpNumber
+                 ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
+                 ,adContractNumber
+              );
+            errorList.add(error);              
+          }
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_CHK_PAY_START_DATE
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    return errorList;
+ }
+// Ver.1.19 Add End
 }
