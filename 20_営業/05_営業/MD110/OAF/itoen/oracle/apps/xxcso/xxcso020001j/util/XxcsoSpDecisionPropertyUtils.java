@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2016-01-07 1.10 SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.11 SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
 * 2020-08-21 1.12 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
+* 2022-03-29 1.13 SCSK二村悠香  [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -495,11 +496,13 @@ public class XxcsoSpDecisionPropertyUtils
 // 2018-05-16 [E_本稼動_14989] Add End
     initRow.setBiddingItemViewRender(              Boolean.FALSE );
     initRow.setCancellBeforeMaturityViewRender(    Boolean.FALSE );
-    initRow.setAdAssetsTypeViewRender(             Boolean.FALSE );
-    initRow.setAdAssetsAmtViewRender(              Boolean.FALSE );
-    initRow.setAdAssetsThisTimeViewRender(         Boolean.FALSE );
-    initRow.setAdAssetsPaymentYearViewRender(      Boolean.FALSE );
-    initRow.setAdAssetsPaymentDateViewRender(      Boolean.FALSE );
+// Ver.1.13 Del Start
+    //initRow.setAdAssetsTypeViewRender(             Boolean.FALSE );
+    //initRow.setAdAssetsAmtViewRender(              Boolean.FALSE );
+    //initRow.setAdAssetsThisTimeViewRender(         Boolean.FALSE );
+    //initRow.setAdAssetsPaymentYearViewRender(      Boolean.FALSE );
+    //initRow.setAdAssetsPaymentDateViewRender(      Boolean.FALSE );
+// Ver.1.13 Del End
     /////////////////////////////////////
     // 覚書情報リージョン
     /////////////////////////////////////
@@ -510,6 +513,10 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setInstallSuppThisTimeViewRender(      Boolean.FALSE );
     initRow.setInstallSuppPaymentYearViewRender(   Boolean.FALSE );
     initRow.setInstallSuppPaymentDateViewRender(   Boolean.FALSE );
+// Ver.1.13 Add Start
+    initRow.setInstallPayStartDateViewRender(      Boolean.FALSE );
+    initRow.setInstallPayEndDateViewRender(        Boolean.FALSE );
+// Ver.1.13 Add End
     initRow.setElectricTypeViewRender(             Boolean.FALSE );  // 電気代リージョン
     initRow.setElectricPaymentTypeViewRender(      Boolean.FALSE );
     initRow.setElectricityTypeViewRender(          Boolean.FALSE );
@@ -535,7 +542,16 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setIntroChgTransNameViewRender(        Boolean.FALSE );
     initRow.setIntroChgTransNameAltViewRender(     Boolean.FALSE );
 // 2014-12-15 [E_本稼動_12565] Add End
-
+// Ver.1.13 Add Start
+    initRow.setAdAssetsTypeViewRender(             Boolean.FALSE );  // 行政財産使用料リージョン
+    initRow.setAdAssetsPaymentTypeViewRender(      Boolean.FALSE );
+    initRow.setAdAssetsAmtViewRender(              Boolean.FALSE );
+    initRow.setAdAssetsThisTimeViewRender(         Boolean.FALSE );
+    initRow.setAdAssetsPaymentYearViewRender(      Boolean.FALSE );
+    initRow.setAdAssetsPaymentDateViewRender(      Boolean.FALSE );
+    initRow.setAdAssetsPayStartDateViewRender(     Boolean.FALSE );
+    initRow.setAdAssetsPayEndDateViewRender(       Boolean.FALSE );
+// Ver.1.13 Add End
     /////////////////////////////////////
     // BM1リージョン
     /////////////////////////////////////
@@ -948,11 +964,13 @@ public class XxcsoSpDecisionPropertyUtils
 // 2018-05-16 [E_本稼動_14989] Add End
     initRow.setBiddingItemRender(                  Boolean.FALSE );
     initRow.setCancellBeforeMaturityRender(        Boolean.FALSE );
-    initRow.setAdAssetsTypeRender(                 Boolean.FALSE );
-    initRow.setAdAssetsAmtRender(                  Boolean.FALSE );
-    initRow.setAdAssetsThisTimeRender(             Boolean.FALSE );
-    initRow.setAdAssetsPaymentYearRender(          Boolean.FALSE );
-    initRow.setAdAssetsPaymentDateRender(          Boolean.FALSE );
+// Ver.1.13 Del Start
+//    initRow.setAdAssetsTypeRender(                 Boolean.FALSE );
+//    initRow.setAdAssetsAmtRender(                  Boolean.FALSE );
+//    initRow.setAdAssetsThisTimeRender(             Boolean.FALSE );
+//    initRow.setAdAssetsPaymentYearRender(          Boolean.FALSE );
+//    initRow.setAdAssetsPaymentDateRender(          Boolean.FALSE );
+// Ver.1.13 Del End
     /////////////////////////////////////
     // 覚書情報リージョン
     /////////////////////////////////////
@@ -963,6 +981,10 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setInstallSuppThisTimeRender(          Boolean.FALSE );
     initRow.setInstallSuppPaymentYearRender(       Boolean.FALSE );
     initRow.setInstallSuppPaymentDateRender(       Boolean.FALSE );
+// Ver.1.13 Add Start
+    initRow.setInstallPayStartDateRender(          Boolean.FALSE );
+    initRow.setInstallPayEndDateRender(            Boolean.FALSE );
+// Ver.1.13 Add End
     initRow.setElectricTypeRender(                 Boolean.FALSE );  // 電気代リージョン
     initRow.setElectricPaymentTypeRender(          Boolean.FALSE );
     initRow.setElectricityTypeRender(              Boolean.FALSE );
@@ -988,7 +1010,17 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setIntroChgTransNameRender(            Boolean.FALSE );
     initRow.setIntroChgTransNameAltRender(         Boolean.FALSE );
 // 2014-12-15 [E_本稼動_12565] Add End
-    
+// Ver.1.13 Add Start
+    initRow.setAdAssetsTypeRender(                 Boolean.FALSE );
+    initRow.setAdAssetsPaymentTypeRender(          Boolean.FALSE );
+    initRow.setAdAssetsAmtRender(                  Boolean.FALSE );
+    initRow.setAdAssetsThisTimeRender(             Boolean.FALSE );
+    initRow.setAdAssetsPaymentYearRender(          Boolean.FALSE );
+    initRow.setAdAssetsPaymentDateRender(          Boolean.FALSE );
+    initRow.setAdAssetsPayStartDateRender(         Boolean.FALSE ); 
+    initRow.setAdAssetsPayEndDateRender(           Boolean.FALSE ); 
+// Ver.1.13 Add End
+
     /////////////////////////////////////
     // BM1リージョン
     /////////////////////////////////////
@@ -1432,16 +1464,44 @@ public class XxcsoSpDecisionPropertyUtils
     
 // 2014-12-15 [E_本稼動_12565] Add Start
     /////////////////////////////////////
-    // 行政財産使用により、表示／非表示を設定
+    // 支払区分（行政財産使用料）により、表示／非表示を設定
     /////////////////////////////////////
     String adAssetsType = headerRow.getAdAssetsType();
     if (     XxcsoSpDecisionConstants.CHECK_NO.equals(adAssetsType)
           || adAssetsType == null
        )
     {
-      initRow.setOtherConditionRlRN06Render(         Boolean.FALSE );
-      initRow.setOtherConditionRlRN07Render(         Boolean.FALSE );
+// Ver.1.13 Del Start
+      //initRow.setOtherConditionRlRN06Render(         Boolean.FALSE );
+      //initRow.setOtherConditionRlRN07Render(         Boolean.FALSE );
+// Ver.1.13 Del End
+// Ver.1.13 Add Start
+      initRow.setAdAssetsPaymentTypeHdrRNRender(     Boolean.FALSE );
+// Ver.1.13 Add End
     }
+
+// Ver.1.13 Add Start
+    /////////////////////////////////////
+    // 支払条件（行政財産使用料）により、表示／非表示を設定
+    /////////////////////////////////////
+    String adAssetsPaymentType = headerRow.getAdAssetsPaymentType();
+    if (  (   XxcsoSpDecisionConstants.TOTAL_PAY.equals(adAssetsPaymentType)
+          ||  XxcsoSpDecisionConstants.TWO_YEAR_PAY.equals(adAssetsPaymentType)
+          ||  XxcsoSpDecisionConstants.THREE_YEAR_PAY.equals(adAssetsPaymentType))
+          && adAssetsPaymentType != null
+       )
+    {
+      initRow.setAdAssetsThisTimeLabelRender(        Boolean.FALSE );
+      initRow.setAdAssetsThisTimeRender(             Boolean.FALSE );
+      initRow.setAdAssetsThisTimeViewRender(         Boolean.FALSE );
+      initRow.setAdAssetsThisTimeEndLabelRender(     Boolean.FALSE );
+      initRow.setAdAssetsPaymentYearEndLabel1Render( Boolean.FALSE );
+    }
+    else
+    {
+      initRow.setAdAssetsPaymentYearEndLabel2Render( Boolean.FALSE  );
+    }
+// Ver.1.13 Add End
 
     /////////////////////////////////////
     //  支払区分（設置協賛金）により、表示／非表示を設定
@@ -1458,7 +1518,11 @@ public class XxcsoSpDecisionPropertyUtils
     // 支払条件（設置協賛金）により、表示／非表示を設定
     /////////////////////////////////////
     String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
-    if (     XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType)
+    if (  (  XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType)
+// Ver.1.13 Add Start
+          ||  XxcsoSpDecisionConstants.TWO_YEAR_PAY.equals(installSuppPaymentType)
+          ||  XxcsoSpDecisionConstants.THREE_YEAR_PAY.equals(installSuppPaymentType))
+// Ver.1.13 Add End
           && installSuppPaymentType != null
        )
     {
@@ -2145,18 +2209,20 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBiddingItemViewRender(            Boolean.TRUE  );
     initRow.setCancellBeforeMaturityRender(      Boolean.TRUE  );  //中途解約条項
     initRow.setCancellBeforeMaturityViewRender(  Boolean.TRUE  );
-    initRow.setAdAssetsTypeRender(               Boolean.TRUE  );  //行政財産使用
-    initRow.setAdAssetsTypeViewRender(           Boolean.TRUE  );
-    initRow.setOtherConditionRlRN06Render(       Boolean.TRUE  );
-    initRow.setAdAssetsAmtRender(                Boolean.TRUE  );
-    initRow.setAdAssetsAmtViewRender(            Boolean.TRUE  );
-    initRow.setAdAssetsThisTimeRender(           Boolean.TRUE  );
-    initRow.setAdAssetsThisTimeViewRender(       Boolean.TRUE  );
-    initRow.setAdAssetsPaymentYearRender(        Boolean.TRUE  );
-    initRow.setAdAssetsPaymentYearViewRender(    Boolean.TRUE  );
-    initRow.setAdAssetsPaymentDateRender(        Boolean.TRUE  );
-    initRow.setAdAssetsPaymentDateViewRender(    Boolean.TRUE  );
-    initRow.setOtherConditionRlRN07Render(       Boolean.TRUE  );
+// Ver.1.13 Del Start
+    //initRow.setAdAssetsTypeRender(               Boolean.TRUE  );  //行政財産使用
+    //initRow.setAdAssetsTypeViewRender(           Boolean.TRUE  );
+    //initRow.setOtherConditionRlRN06Render(       Boolean.TRUE  );
+    //initRow.setAdAssetsAmtRender(                Boolean.TRUE  );
+    //initRow.setAdAssetsAmtViewRender(            Boolean.TRUE  );
+    //initRow.setAdAssetsThisTimeRender(           Boolean.TRUE  );
+    //initRow.setAdAssetsThisTimeViewRender(       Boolean.TRUE  );
+    //initRow.setAdAssetsPaymentYearRender(        Boolean.TRUE  );
+    //initRow.setAdAssetsPaymentYearViewRender(    Boolean.TRUE  );
+    //initRow.setAdAssetsPaymentDateRender(        Boolean.TRUE  );
+    //initRow.setAdAssetsPaymentDateViewRender(    Boolean.TRUE  );
+    //initRow.setOtherConditionRlRN07Render(       Boolean.TRUE  );
+// Ver.1.13 Del End
     // 覚書情報リージョン
     initRow.setTaxTypeRender(                    Boolean.TRUE  );
     initRow.setTaxTypeViewRender(                Boolean.TRUE  );
@@ -2177,6 +2243,12 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setInstallSuppPaymentYearEndLabel2Render( Boolean.TRUE  );
     initRow.setInstallSuppPaymentDateRender(     Boolean.TRUE  );
     initRow.setInstallSuppPaymentDateViewRender( Boolean.TRUE  );
+// Ver.1.13 Add Start
+    initRow.setInstallPayStartDateRender(        Boolean.TRUE  );
+    initRow.setInstallPayStartDateViewRender(    Boolean.TRUE  );
+    initRow.setInstallPayEndDateRender(          Boolean.TRUE  );
+    initRow.setInstallPayEndDateViewRender(      Boolean.TRUE  );
+// Ver.1.13 Add End
     initRow.setElectricTypeRender(               Boolean.TRUE  );  // 電気代リージョン
     initRow.setElectricTypeViewRender(           Boolean.TRUE  );
     initRow.setElectricPaymentTypeHdrRNRender(   Boolean.TRUE  );
@@ -2237,6 +2309,29 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setIntroChgInfoRIRN01Render(         Boolean.TRUE  );
     initRow.setIntroChgInfoRIRN02Render(         Boolean.TRUE  );
 // 2014-12-15 [E_本稼動_12565] Add End
+// Ver.1.13 Add Start
+    initRow.setAdAssetsTypeRender(               Boolean.TRUE  );  //行政財産使用
+    initRow.setAdAssetsTypeViewRender(           Boolean.TRUE  );
+    initRow.setAdAssetsPaymentTypeHdrRNRender(   Boolean.TRUE  );
+    initRow.setAdAssetsPaymentTypeRender(        Boolean.TRUE  );
+    initRow.setAdAssetsPaymentTypeViewRender(    Boolean.TRUE  );
+    initRow.setAdAssetsAmtRender(                Boolean.TRUE  );
+    initRow.setAdAssetsAmtViewRender(            Boolean.TRUE  );
+    initRow.setAdAssetsThisTimeRender(           Boolean.TRUE  );
+    initRow.setAdAssetsThisTimeViewRender(       Boolean.TRUE  );
+    initRow.setAdAssetsThisTimeLabelRender(      Boolean.TRUE  );
+    initRow.setAdAssetsThisTimeEndLabelRender(   Boolean.TRUE  );
+    initRow.setAdAssetsPaymentYearRender(        Boolean.TRUE  );
+    initRow.setAdAssetsPaymentYearViewRender(    Boolean.TRUE  );
+    initRow.setAdAssetsPaymentYearEndLabel1Render( Boolean.TRUE  );
+    initRow.setAdAssetsPaymentYearEndLabel2Render( Boolean.TRUE  );
+    initRow.setAdAssetsPaymentDateRender(        Boolean.TRUE  );
+    initRow.setAdAssetsPaymentDateViewRender(    Boolean.TRUE  );
+    initRow.setAdAssetsPayStartDateRender(       Boolean.TRUE  );
+    initRow.setAdAssetsPayStartDateViewRender(   Boolean.TRUE  );
+    initRow.setAdAssetsPayEndDateRender(         Boolean.TRUE  );
+    initRow.setAdAssetsPayEndDateViewRender(     Boolean.TRUE  );
+// Ver.1.13 Add End
     // BM1リージョン
     initRow.setBm1InfoHdrRNRender(               Boolean.TRUE  );
     initRow.setBm1SendTypeRender(                Boolean.TRUE  );
