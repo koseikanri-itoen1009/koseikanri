@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoValidateUtils
 * 概要説明   : 【アドオン：営業・営業領域】共通検証関数クラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-11 1.0  SCS小川浩    新規作成
 * 2009-06-15 1.1  SCS柳平直人  [ST障害T1_1068]禁則文字チェックリスト削除
 * 2009-09-25 1.2  SCS阿部大輔  [I_E_534,I_E_548]電話番号のハイフン対応
+* 2022-04-04 1.3  SCSK二村悠香 [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -433,6 +434,7 @@ public class XxcsoValidateUtils
     //小数の桁数チェック
     String integerString = dotSplitString[0];
     String floatString   = null;
+ 
     if ( dotSplitString.length == 2 )
     {
       floatString = dotSplitString[1];
@@ -641,25 +643,53 @@ public class XxcsoValidateUtils
     if ( minusCheckFlag && doubleStringRep < (double)0 )
     {
       OAException error = null;
-      
-      if ( columnIndex == 0 )
+
+// Ver.1.3 Add Start
+      if ( zeroCheckFlag )
       {
-        error = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00126
-                 ,XxcsoConstants.TOKEN_COLUMN
-                 ,columnName
-                );
+// Ver.1.3 Add End
+        if ( columnIndex == 0 )
+        {
+          error = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00126
+                   ,XxcsoConstants.TOKEN_COLUMN
+                   ,columnName
+                  );
+        }
+        else
+        {
+          error = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00410
+                   ,XxcsoConstants.TOKEN_COLUMN
+                   ,columnName
+                   ,XxcsoConstants.TOKEN_INDEX
+                   ,String.valueOf(columnIndex)
+                  );
+        }
       }
+// Ver.1.3 Add Start
       else
       {
-        error = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00410
-                 ,XxcsoConstants.TOKEN_COLUMN
-                 ,columnName
-                 ,XxcsoConstants.TOKEN_INDEX
-                 ,String.valueOf(columnIndex)
-                );
+        if ( columnIndex == 0 )
+        {
+          error = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00315
+                   ,XxcsoConstants.TOKEN_ENTRY
+                   ,columnName
+                  );
+        }
+        else
+        {
+          error = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00409
+                   ,XxcsoConstants.TOKEN_ENTRY
+                   ,columnName
+                   ,XxcsoConstants.TOKEN_INDEX
+                   ,String.valueOf(columnIndex)
+                  );
+        }        
       }
+// Ver.1.3 Add End
       
       errorList.add(error);
     }
