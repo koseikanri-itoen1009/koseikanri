@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  get_appr_auth_level_num_3 F    N     承認権限レベル番号３取得
  *  get_appr_auth_level_num_4 F    N     承認権限レベル番号４取得
  *  get_appr_auth_level_num_5 F    N     承認権限レベル番号５取得
+ *  get_appr_auth_level_num_6 F    N     承認権限レベル番号６取得
  *  get_appr_auth_level_num_0 F    N     承認権限レベル番号（デフォルト）取得
  *  chk_double_byte_kana      F    V     全角カナチェック（共通関数ラッピング）
  *  chk_tel_format            F    V     電話番号チェック（共通関数ラッピング）
@@ -40,6 +41,11 @@ AS
  *  chk_cust_site_uses        P    -     顧客使用目的チェック
  *  chk_validate_db           P    -     ＤＢ更新判定チェック
  *  get_contract_end_period   F    V     契約終了期間取得
+ *  get_required_check_flag   F    N     工期、設置見込み期間必須フラグ取得
+ *  chk_vendor_inbalid        P    -     仕入先無効日チェック
+ *  chk_pay_start_date        P    -     支払期間開始日チェック
+ *  chk_pay_item              P    -     支払項目チェック
+ *  chk_pay_date              P    -     支払期間大小チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -58,6 +64,7 @@ AS
  *  2018/05/16    1.8   Y.Shoji          [E_本稼動_14989]ＳＰ項目追加
  *  2020/10/28    1.9   Y.Sasaki         [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
  *  2020/11/05    1.10  Y.Sasaki         [E_本稼動_15904]定額換算率の修正
+ *  2022/04/05    1.11  H.Futamura       [E_本稼動_18060]自販機顧客別利益管理
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -438,5 +445,46 @@ AS
    ,ov_retcode                    OUT VARCHAR2
   );
 -- E_本稼動_16293 Add END
+--
+-- Ver.1.11 Add Start
+  -- 支払期間開始日チェック
+  PROCEDURE chk_pay_start_date(
+    iv_account_number             IN  VARCHAR2
+   ,id_pay_start_date             IN  DATE
+   ,id_pay_end_date               IN  DATE
+   ,iv_data_kbn                   IN  VARCHAR2
+   ,od_pay_start_date             OUT DATE
+   ,od_pay_end_date               OUT DATE
+   ,ov_contract_number            OUT VARCHAR2
+   ,ov_sp_decision_number         OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+  );
+--
+  -- 支払項目チェック
+  PROCEDURE chk_pay_item(
+    iv_account_number             IN  VARCHAR2
+   ,id_pay_start_date             IN  DATE
+   ,id_pay_end_date               IN  DATE
+   ,iv_payment_type               IN  VARCHAR2
+   ,in_amt                        IN  NUMBER
+   ,iv_data_kbn                   IN  VARCHAR2
+   ,iv_tax_type                   IN  VARCHAR2
+   ,ov_contract_number            OUT VARCHAR2
+   ,ov_sp_decision_number         OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+  );
+--
+  -- 承認権限レベル番号６取得
+  FUNCTION get_appr_auth_level_num_6(
+    iv_ad_assets_amt              IN  VARCHAR2
+  ) RETURN NUMBER;
+--
+  -- 支払期間大小チェック
+  PROCEDURE chk_pay_date(
+    id_pay_start_date             IN  DATE
+   ,id_pay_end_date               IN  DATE
+   ,ov_retcode                    OUT VARCHAR2
+  );
+-- Ver.1.11 Add End
 END xxcso_020001j_pkg;
 /
