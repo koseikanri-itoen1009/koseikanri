@@ -1,0 +1,92 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_cust_pay_mng
+ * Description     : 自販機顧客支払管理情報テーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/03/24    1.0  R.Oikawa       初回作成(E_本稼動_18060)
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_cust_pay_mng (
+     cust_pay_mng_id                NUMBER        NOT NULL
+    ,account_number                 VARCHAR2(9)   NOT NULL
+    ,payment_date                   VARCHAR2(6)   NOT NULL
+    ,plan_actual_kbn                VARCHAR2(10)  NOT NULL
+    ,acct_code                      VARCHAR2(5)   NOT NULL
+    ,acct_name                      VARCHAR2(240)
+    ,sub_acct_code                  VARCHAR2(5)
+    ,sub_acct_name                  VARCHAR2(240)
+    ,payment_amt                    NUMBER        NOT NULL
+    ,data_kbn                       VARCHAR2(1)   NOT NULL
+    ,pay_start_date                 DATE          NOT NULL
+    ,pay_end_date                   DATE
+    ,total_amt                      NUMBER(15)    NOT NULL
+    ,send_flag                      VARCHAR2(1)   NOT NULL
+    ,contract_number                VARCHAR2(12)  NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,CONSTRAINT xxcso_cust_pay_mng_pk PRIMARY KEY ( cust_pay_mng_id )
+     USING INDEX TABLESPACE xxidx2
+    )
+/
+COMMENT ON TABLE xxcso.xxcso_cust_pay_mng IS '自販機顧客支払管理情報テーブル'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.cust_pay_mng_id                             IS '顧客支払管理ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.account_number                              IS '顧客コード'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.payment_date                                IS '年月'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.plan_actual_kbn                             IS '予実区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.acct_code                                   IS '勘定科目'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.acct_name                                   IS '勘定科目名'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.sub_acct_code                               IS '補助科目'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.sub_acct_name                               IS '補助科目名'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.payment_amt                                 IS '金額'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.data_kbn                                    IS 'データ区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.pay_start_date                              IS '支払期間開始日'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.pay_end_date                                IS '支払期間終了日'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.total_amt                                   IS '税抜き総額'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.send_flag                                   IS '送信フラグ'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.contract_number                             IS '契約書番号'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.created_by                                  IS '作成者'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.creation_date                               IS '作成日'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.last_updated_by                             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.last_update_date                            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.last_update_login                           IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.request_id                                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.program_id                                  IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.program_update_date                         IS 'プログラム更新日'
+/
