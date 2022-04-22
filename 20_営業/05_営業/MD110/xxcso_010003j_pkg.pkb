@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  chk_vendor_inbalid        F    V      仕入先無効日チェック
  *  chk_not_include_kana      F    B      半角ｶﾅ文字が含まれていないチェック（※外部呼出し不可）
  *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
+ *  chk_pay_start_date        P    -      支払期間開始日チェック
+ *  chk_pay_item              P    -      支払項目チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -73,6 +75,7 @@ AS
  *  2020/10/28    1.19  Y.Sasaki         E_本稼動_16293、E_本稼動_16410対応
  *  2020/12/14    1.20  Y.Sasaki         E_本稼動_16642対応
  *  2021/03/02    1.21  K.Kanada         E_本稼動_16642対応(T4不具合対応)
+ *  2022/04/06    1.22  H.Futamura       E_本稼動_18060対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -2722,5 +2725,518 @@ AS
   END chk_email_address;
 /* [E_本稼動_16642] Add END */
 --
+-- Ver.1.22 Add Start
+  /**********************************************************************************
+   * Function Name    : chk_pay_start_date
+   * Description      : 支払期間開始日チェック
+   ***********************************************************************************/
+  PROCEDURE chk_pay_start_date(
+    iv_account_number             IN  VARCHAR2  -- 顧客コード
+   ,iv_sp_decision_number         IN  VARCHAR2  -- ＳＰ専決書番号
+   ,ov_ins_contract_number        OUT VARCHAR2  -- 契約書番号（設置協賛金）
+   ,ov_ins_sp_decision_number     OUT VARCHAR2  -- ＳＰ専決書番号（設置協賛金）
+   ,ov_ad_contract_number         OUT VARCHAR2  -- 契約書番号（行政財産使用料）
+   ,ov_ad_sp_decision_number      OUT VARCHAR2  -- ＳＰ専決書番号（行政財産使用料）
+   ,ov_retcode                    OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                   CONSTANT VARCHAR2(100)   := 'chk_pay_start_date';
+    cv_target                     CONSTANT VARCHAR2(1)     := '0';
+    cv_plan                       CONSTANT VARCHAR2(1)     := '1';
+    cv_yes                        CONSTANT VARCHAR2(1)     := '1';
+    cv_install                    CONSTANT VARCHAR2(1)     := '1';
+    cv_ad_assets                  CONSTANT VARCHAR2(1)     := '2';
+--
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cd_process_date              CONSTANT DATE            := TRUNC(xxcso_util_common_pkg.get_online_sysdate()); -- 業務日付
+--
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lt_max_ins_pay_start_date     xxcso_cust_pay_mng.pay_start_date%TYPE;
+    lt_max_ad_pay_start_date      xxcso_cust_pay_mng.pay_start_date%TYPE;
+    lt_install_supp_type          xxcso_sp_decision_headers.install_supp_payment_type%TYPE;
+    lt_install_pay_start_date     xxcso_sp_decision_headers.install_pay_start_date%TYPE;
+    lt_install_pay_end_date       xxcso_sp_decision_headers.install_pay_end_date%TYPE;
+    lt_ad_assets_type             xxcso_sp_decision_headers.ad_assets_payment_type%TYPE;
+    lt_ad_assets_pay_start_date   xxcso_sp_decision_headers.ad_assets_pay_start_date%TYPE;
+    lt_ad_assets_pay_end_date     xxcso_sp_decision_headers.ad_assets_pay_end_date%TYPE;
+    lt_ins_contract_number        xxcso_contract_managements.contract_number%TYPE;
+    lt_ins_sp_decision_number     xxcso_sp_decision_headers.sp_decision_number%TYPE;
+    lt_ad_contract_number         xxcso_contract_managements.contract_number%TYPE;
+    lt_ad_sp_decision_number      xxcso_sp_decision_headers.sp_decision_number%TYPE;
+    ld_process_date               DATE;
+--
+  BEGIN
+--
+    --初期化
+    ov_retcode                  := xxcso_common_pkg.gv_status_normal;
+    lt_max_ins_pay_start_date   := NULL;
+    lt_max_ad_pay_start_date    := NULL;
+    lt_install_supp_type        := NULL;
+    lt_install_pay_start_date   := NULL;
+    lt_install_pay_end_date     := NULL;
+    lt_ad_assets_type           := NULL;
+    lt_ad_assets_pay_start_date := NULL;
+    lt_ad_assets_pay_end_date   := NULL;
+    lt_ins_contract_number      := NULL;
+    lt_ins_sp_decision_number   := NULL;
+    lt_ad_contract_number       := NULL;
+    lt_ad_sp_decision_number    := NULL;
+--
+    -- 業務日付を当月の1日に設定
+    ld_process_date   := TO_DATE(TO_CHAR(cd_process_date,'YYYYMM'),'YYYYMM');
+--
+    BEGIN
+      SELECT xsdh.install_supp_type        AS install_supp_type
+            ,xsdh.install_pay_start_date   AS install_pay_start_date
+            ,xsdh.install_pay_end_date     AS install_pay_end_date
+            ,xsdh.ad_assets_type           AS ad_assets_type
+            ,xsdh.ad_assets_pay_start_date AS ad_assets_pay_start_date
+            ,xsdh.ad_assets_pay_end_date   AS ad_assets_pay_end_date
+      INTO   lt_install_supp_type
+            ,lt_install_pay_start_date
+            ,lt_install_pay_end_date
+            ,lt_ad_assets_type
+            ,lt_ad_assets_pay_start_date
+            ,lt_ad_assets_pay_end_date
+      FROM  xxcso_sp_decision_headers  xsdh
+      WHERE xsdh.sp_decision_number = iv_sp_decision_number;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lt_install_supp_type        := NULL;
+        lt_install_pay_start_date   := NULL;
+        lt_install_pay_end_date     := NULL;
+        lt_ad_assets_type           := NULL;
+        lt_ad_assets_pay_start_date := NULL;
+        lt_ad_assets_pay_end_date   := NULL;
+    END;
+--
+    -- 設置協賛金の場合
+    IF ( NVL(lt_install_supp_type,'Z') = cv_yes ) THEN
+      BEGIN
+        -- 支払期間開始日のチェック
+        SELECT MAX(xcpm.pay_start_date)  AS pay_start_date
+        INTO   lt_max_ins_pay_start_date
+        FROM  xxcso_cust_pay_mng     xcpm
+        WHERE xcpm.account_number    = iv_account_number
+          AND xcpm.plan_actual_kbn   = cv_plan
+          AND xcpm.send_flag         = cv_target
+          AND xcpm.data_kbn          = cv_install
+          AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+            BETWEEN lt_install_pay_start_date AND lt_install_pay_end_date
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_max_ins_pay_start_date       := NULL;
+      END;
+--
+      IF ( lt_max_ins_pay_start_date IS NOT NULL AND lt_max_ins_pay_start_date <> lt_install_pay_start_date ) THEN
+        IF ( lt_max_ins_pay_start_date <> ld_process_date ) THEN
+          BEGIN
+--
+            SELECT MAX(xcpm.contract_number)  AS contract_number
+            INTO   lt_ins_contract_number
+            FROM  xxcso_cust_pay_mng     xcpm
+            WHERE xcpm.account_number    = iv_account_number
+              AND xcpm.plan_actual_kbn   = cv_plan
+              AND xcpm.send_flag         = cv_target
+              AND xcpm.data_kbn          = cv_install
+              AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+                BETWEEN lt_install_pay_start_date AND lt_install_pay_end_date
+              AND xcpm.pay_start_date    = lt_max_ins_pay_start_date;
+--
+            SELECT xsdh.sp_decision_number
+            INTO   lt_ins_sp_decision_number
+            FROM  xxcso_sp_decision_headers  xsdh
+                 ,xxcso_contract_managements xcm
+            WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+              AND xcm.contract_number        = lt_ins_contract_number
+              AND xcm.install_account_number = iv_account_number;
+--
+            IF ( iv_sp_decision_number <> lt_ins_sp_decision_number ) THEN
+              ov_retcode := xxcso_common_pkg.gv_status_error;
+              ov_ins_contract_number    := lt_ins_contract_number;
+              ov_ins_sp_decision_number := lt_ins_sp_decision_number;
+            END IF;
+--
+          EXCEPTION
+            WHEN OTHERS THEN
+              xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+          END;
+        END IF;
+      END IF;
+    END IF;
+    -- 行政財産使用料の場合
+    IF ( NVL(lt_ad_assets_type,'Z') = cv_yes ) THEN
+      BEGIN
+        -- 支払期間開始日のチェック
+        SELECT MAX(xcpm.pay_start_date)  AS pay_start_date
+        INTO   lt_max_ad_pay_start_date
+        FROM  xxcso_cust_pay_mng     xcpm
+        WHERE xcpm.account_number    = iv_account_number
+          AND xcpm.plan_actual_kbn   = cv_plan
+          AND xcpm.send_flag         = cv_target
+          AND xcpm.data_kbn          = cv_ad_assets
+          AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+            BETWEEN lt_ad_assets_pay_start_date AND lt_ad_assets_pay_end_date
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_max_ad_pay_start_date       := NULL;
+      END;
+--
+      IF ( lt_max_ad_pay_start_date IS NOT NULL AND lt_max_ad_pay_start_date <> lt_ad_assets_pay_start_date ) THEN
+        IF ( lt_max_ad_pay_start_date <> ld_process_date ) THEN
+          BEGIN
+--
+            SELECT MAX(xcpm.contract_number)  AS contract_number
+            INTO   lt_ad_contract_number
+            FROM  xxcso_cust_pay_mng     xcpm
+            WHERE xcpm.account_number    = iv_account_number
+              AND xcpm.plan_actual_kbn   = cv_plan
+              AND xcpm.send_flag         = cv_target
+              AND xcpm.data_kbn          = cv_ad_assets
+              AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+                BETWEEN lt_ad_assets_pay_start_date AND lt_ad_assets_pay_end_date
+              AND xcpm.pay_start_date    = lt_max_ad_pay_start_date;
+--
+            SELECT xsdh.sp_decision_number
+            INTO   lt_ad_sp_decision_number
+            FROM  xxcso_sp_decision_headers  xsdh
+                 ,xxcso_contract_managements xcm
+            WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+              AND xcm.contract_number        = lt_ad_contract_number
+              AND xcm.install_account_number = iv_account_number;
+--
+            IF ( iv_sp_decision_number <> lt_ad_sp_decision_number ) THEN
+              ov_retcode := xxcso_common_pkg.gv_status_error;
+              ov_ad_contract_number    := lt_ad_contract_number;
+              ov_ad_sp_decision_number := lt_ad_sp_decision_number;
+            END IF;
+--
+          EXCEPTION
+            WHEN OTHERS THEN
+              xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+          END;
+        END IF;
+      END IF;
+    END IF;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_pay_start_date;
+--
+  /**********************************************************************************
+   * Function Name    : chk_pay_item
+   * Description      : 支払項目チェック
+   ***********************************************************************************/
+  PROCEDURE chk_pay_item(
+    iv_account_number             IN  VARCHAR2  -- 顧客コード
+   ,iv_sp_decision_number         IN  VARCHAR2  -- ＳＰ専決書番号
+   ,ov_ins_contract_number        OUT VARCHAR2  -- 契約書番号（設置協賛金）
+   ,ov_ins_sp_decision_number     OUT VARCHAR2  -- ＳＰ専決書番号（設置協賛金）
+   ,ov_ad_contract_number         OUT VARCHAR2  -- 契約書番号（行政財産使用料）
+   ,ov_ad_sp_decision_number      OUT VARCHAR2  -- ＳＰ専決書番号（行政財産使用料）
+   ,ov_retcode                    OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                   CONSTANT VARCHAR2(100)   := 'chk_pay_item';
+    cv_target                     CONSTANT VARCHAR2(1)     := '0';
+    cv_plan                       CONSTANT VARCHAR2(1)     := '1';
+    cv_install                    CONSTANT VARCHAR2(1)     := '1';
+    cv_ad_assets                  CONSTANT VARCHAR2(1)     := '2';
+    cv_ZZZ                        CONSTANT VARCHAR2(3)     := 'ZZZ';
+    cv_99999999                   CONSTANT NUMBER          := 99999999;
+    cv_yyyymmdd                   CONSTANT DATE            := TO_DATE('29991231','YYYYMMDD');
+    cv_yes                        CONSTANT VARCHAR2(1)     := '1';
+    cv_prf_elec_fee_item_code     CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE'; --XXCOS:変動電気代品目コード
+    cv_tax_type_1                 CONSTANT xxcso_sp_decision_headers.tax_type%TYPE      := '1'; -- 税込み
+--
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lt_install_supp_type             xxcso_sp_decision_headers.install_supp_type%TYPE;
+    lt_install_pay_start_date        xxcso_sp_decision_headers.install_pay_start_date%TYPE;
+    lt_install_pay_end_date          xxcso_sp_decision_headers.install_pay_end_date%TYPE;
+    lt_install_supp_payment_type     xxcso_sp_decision_headers.install_supp_payment_type%TYPE;
+    lt_install_supp_amt              xxcso_sp_decision_headers.install_supp_amt%TYPE;
+    lt_ad_assets_type                xxcso_sp_decision_headers.ad_assets_type%TYPE;
+    lt_ad_assets_pay_start_date      xxcso_sp_decision_headers.ad_assets_pay_start_date%TYPE;
+    lt_ad_assets_pay_end_date        xxcso_sp_decision_headers.ad_assets_pay_end_date%TYPE;
+    lt_ad_assets_payment_type        xxcso_sp_decision_headers.ad_assets_payment_type%TYPE;
+    lt_ad_assets_amt                 xxcso_sp_decision_headers.ad_assets_amt%TYPE;
+    lt_ins_contract_number           xxcso_contract_managements.contract_number%TYPE;
+    lt_ins_sp_decision_number_pre    xxcso_sp_decision_headers.sp_decision_number%TYPE;
+    lt_install_pay_start_date_pre    xxcso_sp_decision_headers.install_pay_start_date%TYPE;
+    lt_install_pay_end_date_pre      xxcso_sp_decision_headers.install_pay_end_date%TYPE;
+    lt_install_payment_type_pre      xxcso_sp_decision_headers.install_supp_payment_type%TYPE;
+    lt_install_amt_pre               xxcso_sp_decision_headers.install_supp_amt%TYPE;
+    lt_ad_contract_number            xxcso_contract_managements.contract_number%TYPE;
+    lt_ad_sp_decision_number_pre     xxcso_sp_decision_headers.sp_decision_number%TYPE;
+    lt_ad_pay_start_date_pre         xxcso_sp_decision_headers.ad_assets_pay_start_date%TYPE;
+    lt_ad_pay_end_date_pre           xxcso_sp_decision_headers.ad_assets_pay_end_date%TYPE;
+    lt_ad_payment_type_pre           xxcso_sp_decision_headers.ad_assets_payment_type%TYPE;
+    lt_ad_amt_pre                    xxcso_sp_decision_headers.ad_assets_amt%TYPE;
+    lt_tax_type                      xxcso_sp_decision_headers.tax_type%TYPE;              -- 税区分
+    lt_tax_type_pre                  xxcso_sp_decision_headers.tax_type%TYPE;              -- 税区分（修正前）
+    lt_total_amt                     xxcso_cust_pay_mng.total_amt%TYPE;                    -- 総額（税抜き）
+    lt_prf_elec_fee_item_code        xxcso_qt_ap_tax_rate_v.item_code%TYPE;                -- 変動電気代品目コード
+    ln_tax_rate                      xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;              -- 税率
+    ln_amt_without_tax               xxcso_cust_pay_mng.total_amt%TYPE;                    -- 税抜き金額
+--
+  BEGIN
+--
+    --初期化
+    ov_retcode                    := xxcso_common_pkg.gv_status_normal;
+    lt_install_supp_type          := NULL;
+    lt_install_pay_start_date     := NULL;
+    lt_install_pay_end_date       := NULL;
+    lt_install_supp_payment_type  := NULL;
+    lt_install_supp_amt           := NULL;
+    lt_ad_assets_type             := NULL;
+    lt_ad_assets_pay_start_date   := NULL;
+    lt_ad_assets_pay_end_date     := NULL;
+    lt_ad_assets_payment_type     := NULL;
+    lt_ad_assets_amt              := NULL;
+    lt_ins_contract_number        := NULL;
+    lt_ins_sp_decision_number_pre := NULL;
+    lt_install_pay_start_date_pre := NULL;
+    lt_install_pay_end_date_pre   := NULL;
+    lt_install_payment_type_pre   := NULL;
+    lt_install_amt_pre            := NULL;
+    lt_ad_contract_number         := NULL;
+    lt_ad_sp_decision_number_pre  := NULL;
+    lt_ad_pay_start_date_pre      := NULL;
+    lt_ad_pay_end_date_pre        := NULL;
+    lt_ad_payment_type_pre        := NULL;
+    lt_ad_amt_pre                 := NULL;
+    lt_tax_type                   := NULL;
+    ln_tax_rate                   := 0;
+    ln_amt_without_tax            := 0;
+--
+    BEGIN
+      SELECT xsdh.install_supp_type         AS install_supp_type
+            ,xsdh.install_pay_start_date    AS install_pay_start_date
+            ,xsdh.install_pay_end_date      AS install_pay_end_date
+            ,xsdh.install_supp_payment_type AS install_supp_payment_type
+            ,xsdh.install_supp_amt          AS install_supp_amt
+            ,xsdh.ad_assets_type            AS ad_assets_type
+            ,xsdh.ad_assets_pay_start_date  AS ad_assets_pay_start_date
+            ,xsdh.ad_assets_pay_end_date    AS ad_assets_pay_end_date
+            ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
+            ,xsdh.ad_assets_amt             AS ad_assets_amt
+            ,xsdh.tax_type                  AS tax_type
+      INTO   lt_install_supp_type
+            ,lt_install_pay_start_date
+            ,lt_install_pay_end_date
+            ,lt_install_supp_payment_type
+            ,lt_install_supp_amt
+            ,lt_ad_assets_type
+            ,lt_ad_assets_pay_start_date
+            ,lt_ad_assets_pay_end_date
+            ,lt_ad_assets_payment_type
+            ,lt_ad_assets_amt
+            ,lt_tax_type
+      FROM  xxcso_sp_decision_headers  xsdh
+      WHERE xsdh.sp_decision_number = iv_sp_decision_number;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lt_install_supp_type          := NULL;
+        lt_install_pay_start_date     := NULL;
+        lt_install_pay_end_date       := NULL;
+        lt_install_supp_payment_type  := NULL;
+        lt_install_supp_amt           := NULL;
+        lt_ad_assets_type             := NULL;
+        lt_ad_assets_pay_start_date   := NULL;
+        lt_ad_assets_pay_end_date     := NULL;
+        lt_ad_assets_payment_type     := NULL;
+        lt_ad_assets_amt              := NULL;
+        lt_tax_type                   := NULL;
+    END;
+--
+    IF ( NVL(lt_install_supp_type,'Z') = cv_yes ) THEN
+      BEGIN
+        -- 最新の契約管理番号取得
+        SELECT MAX(xcpm.contract_number)  AS contract_number,
+               MAX(total_amt)             AS total_amt
+        INTO   lt_ins_contract_number,
+               lt_total_amt
+        FROM  xxcso_cust_pay_mng     xcpm
+        WHERE xcpm.account_number    = iv_account_number
+          AND xcpm.plan_actual_kbn   = cv_plan
+          AND xcpm.send_flag         = cv_target
+          AND xcpm.data_kbn          = cv_install
+          AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+            BETWEEN lt_install_pay_start_date AND lt_install_pay_end_date
+          AND xcpm.contract_number = (
+                                      SELECT MAX(xcpm.contract_number)  AS contract_number
+                                      FROM  xxcso_cust_pay_mng     xcpm
+                                      WHERE xcpm.account_number    = iv_account_number
+                                        AND xcpm.plan_actual_kbn   = cv_plan
+                                        AND xcpm.send_flag         = cv_target
+                                        AND xcpm.data_kbn          = cv_install
+                                        AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+                                          BETWEEN lt_install_pay_start_date AND lt_install_pay_end_date
+                                     )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_ins_contract_number       := NULL;
+          lt_total_amt                 := NULL;
+      END;
+--
+      IF ( lt_ins_contract_number IS NOT NULL ) THEN
+        BEGIN
+          -- 設置協賛金の場合
+          SELECT xsdh.sp_decision_number
+                ,xsdh.install_pay_start_date    AS install_pay_start_date
+                ,xsdh.install_pay_end_date      AS install_pay_end_date
+                ,xsdh.install_supp_payment_type AS install_supp_payment_type
+                ,xsdh.install_supp_amt          AS install_supp_amt
+                ,xsdh.tax_type                  AS tax_type
+          INTO   lt_ins_sp_decision_number_pre
+                ,lt_install_pay_start_date_pre
+                ,lt_install_pay_end_date_pre
+                ,lt_install_payment_type_pre
+                ,lt_install_amt_pre
+                ,lt_tax_type_pre
+          FROM  xxcso_sp_decision_headers  xsdh
+               ,xxcso_contract_managements xcm
+          WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+            AND xcm.contract_number        = lt_ins_contract_number
+            AND xcm.install_account_number = iv_account_number
+            ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lt_ins_sp_decision_number_pre := NULL;
+            lt_install_pay_start_date_pre := NULL;
+            lt_install_pay_end_date_pre   := NULL;
+            lt_install_payment_type_pre   := NULL;
+            lt_install_amt_pre            := NULL;
+            lt_tax_type_pre               := NULL;
+        END;
+--
+        -- プロファイルの取得(XXCOS:変動電気代品目コード)
+        lt_prf_elec_fee_item_code := FND_PROFILE.VALUE(cv_prf_elec_fee_item_code);
+--
+        BEGIN
+          -- 税率取得
+          SELECT  NVL(xqatrv.ap_tax_rate, 0)  tax_rate        -- 税率
+          INTO    ln_tax_rate
+          FROM    xxcso_qt_ap_tax_rate_v xqatrv
+          WHERE   xqatrv.item_code = lt_prf_elec_fee_item_code
+            AND   lt_install_pay_start_date  
+                    BETWEEN xqatrv.start_date_histories AND NVL(xqatrv.end_date_histories, lt_install_pay_start_date);
+        EXCEPTION
+          WHEN OTHERS THEN
+            ln_tax_rate := NULL;
+            ov_ins_contract_number    := lt_ins_contract_number;
+            ov_ins_sp_decision_number := lt_ins_sp_decision_number_pre;
+            ov_retcode := xxcso_common_pkg.gv_status_error;
+        END;
+--
+        IF ( ov_retcode = xxcso_common_pkg.gv_status_normal ) THEN
+          -- 税込みで金額<>0の場合、税抜き金額を算出
+          IF ( lt_tax_type = cv_tax_type_1
+            AND lt_install_supp_amt <> 0 ) THEN
+              ln_amt_without_tax := ROUND(lt_install_supp_amt / ln_tax_rate);
+          ELSE
+              ln_amt_without_tax := lt_install_supp_amt;
+          END IF;
+        END IF;
+--
+        IF ( iv_sp_decision_number <> lt_ins_sp_decision_number_pre ) THEN
+          IF (( lt_install_supp_payment_type <> NVL(lt_install_payment_type_pre,cv_ZZZ) ) OR
+              ( lt_tax_type = lt_tax_type_pre AND lt_install_supp_amt <> NVL(lt_install_amt_pre,cv_99999999) ) OR
+              ( lt_install_pay_end_date <> NVL(lt_install_pay_end_date_pre,cv_yyyymmdd) ) OR
+              ( lt_tax_type <> lt_tax_type_pre AND ln_amt_without_tax <> NVL(lt_total_amt, 0))
+             ) THEN
+            ov_ins_contract_number    := lt_ins_contract_number;
+            ov_ins_sp_decision_number := lt_ins_sp_decision_number_pre;
+            ov_retcode := xxcso_common_pkg.gv_status_error;
+          END IF;
+        END IF;
+      END IF;
+    END IF;
+--
+      -- 行政財産使用料の場合
+    IF ( NVL(lt_ad_assets_type,'Z') = cv_yes ) THEN
+      BEGIN
+        -- 最新の契約管理番号取得
+        SELECT MAX(xcpm.contract_number)  AS contract_number
+        INTO   lt_ad_contract_number
+        FROM  xxcso_cust_pay_mng     xcpm
+        WHERE xcpm.account_number    = iv_account_number
+          AND xcpm.plan_actual_kbn   = cv_plan
+          AND xcpm.send_flag         = cv_target
+          AND xcpm.data_kbn          = cv_ad_assets
+          AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+            BETWEEN lt_ad_assets_pay_start_date AND lt_ad_assets_pay_end_date;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_ad_contract_number       := NULL;
+      END;
+--
+      BEGIN
+        SELECT xsdh.sp_decision_number
+              ,xsdh.ad_assets_pay_start_date  AS ad_assets_pay_start_date
+              ,xsdh.ad_assets_pay_end_date    AS ad_assets_pay_end_date
+              ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
+              ,xsdh.ad_assets_amt             AS ad_assets_amt
+        INTO   lt_ad_sp_decision_number_pre
+              ,lt_ad_pay_start_date_pre
+              ,lt_ad_pay_end_date_pre
+              ,lt_ad_payment_type_pre
+              ,lt_ad_amt_pre
+        FROM  xxcso_sp_decision_headers  xsdh
+             ,xxcso_contract_managements xcm
+        WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+          AND xcm.contract_number        = lt_ad_contract_number
+          AND xcm.install_account_number = iv_account_number;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_ad_sp_decision_number_pre := NULL;
+          lt_ad_pay_start_date_pre     := NULL;
+          lt_ad_pay_end_date_pre       := NULL;
+          lt_ad_payment_type_pre       := NULL;
+          lt_ad_amt_pre                := NULL;
+      END;
+--
+      IF ( iv_sp_decision_number <> lt_ad_sp_decision_number_pre ) THEN
+        IF (( lt_ad_assets_payment_type <> NVL(lt_ad_payment_type_pre,cv_ZZZ) ) OR
+            ( lt_ad_assets_amt <> NVL(lt_ad_amt_pre,cv_99999999) ) OR
+            ( lt_ad_assets_pay_end_date <> NVL(lt_ad_pay_end_date_pre,cv_yyyymmdd) )) THEN
+          ov_ad_contract_number    := lt_ad_contract_number;
+          ov_ad_sp_decision_number := lt_ad_sp_decision_number_pre;
+          ov_retcode := xxcso_common_pkg.gv_status_error;
+        END IF;
+      END IF;
+    END IF;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_pay_item;
+-- Ver.1.22 Add End
 END xxcso_010003j_pkg;
 /
