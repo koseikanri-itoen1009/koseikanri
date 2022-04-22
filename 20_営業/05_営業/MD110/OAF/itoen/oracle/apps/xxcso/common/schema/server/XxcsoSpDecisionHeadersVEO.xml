@@ -9,7 +9,7 @@
    BindingStyle="Oracle"
    BatchThreshold="100"
    UseGlueCode="false"
-   CodeGenFlag="4"
+   CodeGenFlag="5"
    RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEOImpl"
    DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
    CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
@@ -1260,6 +1260,83 @@
       <DesignTime>
          <Attr Name="_DisplaySize" Value="20" />
       </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="Bm1TaxKbn"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="BM1_TAX_KBN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="Bm2TaxKbn"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="BM2_TAX_KBN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="Bm3TaxKbn"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="BM3_TAX_KBN"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallPayStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="INSTALL_PAY_START_DATE"
+      ColumnType="DATE"
+      SQLType="DATE"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+   </Attribute>
+   <Attribute
+      Name="InstallPayEndDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="INSTALL_PAY_END_DATE"
+      ColumnType="DATE"
+      SQLType="DATE"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+   </Attribute>
+   <Attribute
+      Name="AdAssetsPaymentType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="AD_ASSETS_PAYMENT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+   </Attribute>
+   <Attribute
+      Name="AdAssetsPayStartDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="AD_ASSETS_PAY_START_DATE"
+      ColumnType="DATE"
+      SQLType="DATE"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+   </Attribute>
+   <Attribute
+      Name="AdAssetsPayEndDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="AD_ASSETS_PAY_END_DATE"
+      ColumnType="DATE"
+      SQLType="DATE"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
    </Attribute>
    <AccessorAttribute
       Name="XxcsoSpDecisionAttachesEO"
