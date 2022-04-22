@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A37C(body)
  * Description      : 控除データIF出力（情報系）
  * MD.050           : 控除データIF出力（情報系） MD050_COK_024_A37
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2021/04/23    1.1   K.Yoshikawa      main新規作成
  *  2021/06/30    1.2   T.Nishikawa      [E_本稼動_17306] 入金値引訂正変動対価区分対応
  *  2021/08/04    1.3   T.Nishikawa      [E_本稼動_17409] GL記帳日追加対応
+ *  2022/04/19    1.4   SCSK Y.Koh        E_本稼動_18172  控除支払伝票取消時の差額
  *
  *****************************************************************************************/
 --
@@ -174,7 +175,9 @@ AS
   gn_target_header_id_ed_3       NUMBER;                                        -- 販売控除ID (至)控除赤（速報戻し）
 -- 2021/08/04 Ver1.3 Add Start
   gd_max_gl_date                 DATE;                                          -- 設定済最大GL記帳日
-  gd_gl_date                     DATE;                                          -- 直近のオープンしている会計期間の終了日
+-- 2022/04/19 Ver1.4 DEL Start
+--  gd_gl_date                     DATE;                                          -- 直近のオープンしている会計期間の終了日
+-- 2022/04/19 Ver1.4 DEL End
 -- 2021/08/04 Ver1.3 Add End
 --
   /**********************************************************************************
@@ -421,15 +424,17 @@ AS
     FROM    xxcok_sales_deduction xsd
     WHERE   xsd.gl_date  IS NOT NULL;
 --
-    --直近のオープンしている会計期間の終了日取得
-    lv_step := 'A-1.8';
-    SELECT MIN(gps.end_date)  min_end_date
-    INTO   gd_gl_date
-    FROM   gl_period_statuses  gps
-    WHERE  gps.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
-    AND    gps.application_id         = 101
-    AND    gps.adjustment_period_flag = 'N'
-    AND    gps.closing_status         = 'O';
+-- 2022/04/19 Ver1.4 DEL Start
+--    --直近のオープンしている会計期間の終了日取得
+--    lv_step := 'A-1.8';
+--    SELECT MIN(gps.end_date)  min_end_date
+--    INTO   gd_gl_date
+--    FROM   gl_period_statuses  gps
+--    WHERE  gps.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
+--    AND    gps.application_id         = 101
+--    AND    gps.adjustment_period_flag = 'N'
+--    AND    gps.closing_status         = 'O';
+-- 2022/04/19 Ver1.4 DEL End
 --
 -- 2021/08/04 Ver1.3 Add End
 --
@@ -1222,7 +1227,18 @@ AS
               ld_gl_date := null;
           END;
         ELSIF (lt_csv_deduction_tab( i ).status = cv_status_cancel ) THEN
-          ld_gl_date := gd_gl_date;
+-- 2022/04/19 Ver1.4 MOD Start
+          BEGIN
+            SELECT DECODE(xdrh.interface_div,'AP',xdrh.cancel_gl_date,'WP',xdrh.gl_date)
+            INTO   ld_gl_date
+            FROM   xxcok_deduction_recon_head  xdrh
+            WHERE  xdrh.recon_slip_num   = lt_csv_deduction_tab( i ).recon_slip_num;
+          EXCEPTION
+            WHEN  NO_DATA_FOUND THEN
+              ld_gl_date := null;
+          END;
+--          ld_gl_date := gd_gl_date;
+-- 2022/04/19 Ver1.4 MOD End
         END IF;
       ELSIF (lt_csv_deduction_tab( i ).source_category = cv_source_category_o ) THEN
         ld_gl_date := null;
