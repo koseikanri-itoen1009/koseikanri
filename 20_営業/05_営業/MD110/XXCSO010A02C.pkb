@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  upd_install_at         設置先顧客情報更新処理(A-11)
  *  upd_install_base       物件情報更新処理(A-12)
  *  upd_cont_manage_aft    契約情報更新処理(A-13)
+ *  ins_cust_pay_mng       自販機顧客支払管理情報作成処理(A-15)
+ *  reg_cust_pay_mng       自販機顧客支払管理情報登録処理(A-16)
  *  submain                メイン処理プロシージャ
  *                           契約管理情報取得処理(A-3)
  *                           仕入先情報取得処理(A-4)
@@ -91,6 +93,7 @@ AS
  *  2019-06-14    1.24  N.Miyamoto       E_本稼動_15472軽減税率対応
  *  2020-08-21    1.25  M.Sato           E_本稼動_15904対応
  *  2020-12-14    1.26  R.Oikawa         E_本稼動_16642対応
+ *  2022-03-28    1.27  R.Oikawa         E_本稼動_18060対応
  *
  *****************************************************************************************/
   --
@@ -204,6 +207,18 @@ AS
 -- 2019/06/14 V1.24 N.Miyamoto ADD START
   ct_prf_elec_fee_item_code CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE'; --XXCOS:変動電気代品目コード
 -- 2019/06/14 V1.24 N.Miyamoto ADD END
+  -- 2022/03/28 Ver.1.27 ADD START
+  cv_acct_code_type         CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCSO1_ACCT_CODE';         -- 自販機顧客支払管理の勘定科目
+  cv_tax_rate_type          CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCSO1_TAX_RATE';          -- 消費税率
+  cv_data_kbn_install_supp  CONSTANT xxcso_cust_pay_mng.data_kbn%TYPE             := '1'; -- 設置協賛金
+  cv_data_kbn_ad_assets     CONSTANT xxcso_cust_pay_mng.data_kbn%TYPE             := '2'; -- 行政財産使用料
+  cv_send_flag_0            CONSTANT xxcso_cust_pay_mng.send_flag%TYPE            := '0'; -- 送信対象
+  cv_send_flag_1            CONSTANT xxcso_cust_pay_mng.send_flag%TYPE            := '1'; -- 送信対象外
+  cv_tax_type_1             CONSTANT xxcso_sp_decision_headers.tax_type%TYPE      := '1'; -- 税込み
+  cv_tax_type_2             CONSTANT xxcso_sp_decision_headers.tax_type%TYPE      := '2'; -- 税抜き
+  cv_plan_kbn               CONSTANT VARCHAR2(6)                                  := '1'; -- 予定
+  cv_actual_kbn             CONSTANT VARCHAR2(6)                                  := '2'; -- 実績
+  -- 2022/03/28 Ver.1.27 ADD END
   --
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011'; -- 業務処理日付取得エラー
@@ -232,6 +247,11 @@ AS
 -- 2019/06/14 V1.24 N.Miyamoto ADD START
   cv_tkn_number_20 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014'; -- プロファイルオプション値取得エラーメッセージ
 -- 2019/06/14 V1.24 N.Miyamoto ADD END
+  -- 2022/03/28 Ver.1.27 ADD START
+  cv_tkn_number_21 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00919';  -- 支払期間開始日変更エラー
+  cv_tkn_number_22 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00126';  -- 正の値チェックエラー
+  cv_tkn_number_23 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00918';  -- 支払期間開始日・終了日大小チェックメッセージ
+  -- 2022/03/28 Ver.1.27 ADD END
   --
   -- トークンコード
   cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';
@@ -252,6 +272,11 @@ AS
 -- 2019/06/14 V1.24 N.Miyamoto ADD START
   cv_tkn_prf              CONSTANT VARCHAR2(20) := 'PROF_NAME';                             --プロファイル
 -- 2019/06/14 V1.24 N.Miyamoto ADD END
+  -- 2022/03/28 Ver.1.27 ADD START
+  cv_tkn_column           CONSTANT VARCHAR2(20) := 'COLUMN';
+  cv_tkn_contract_number  CONSTANT VARCHAR2(20) := 'CONTRACT_NUMBER';
+  cv_tkn_contract_number2 CONSTANT VARCHAR2(20) := 'CONTRACT_NUMBER2';
+  -- 2022/03/28 Ver.1.27 ADD END
   --
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1  CONSTANT VARCHAR2(200) := '<< 業務処理日付取得処理 >>';
@@ -4394,6 +4419,860 @@ AS
     --
   END upd_cont_manage_aft;
   --
+  -- 2022/03/28 Ver.1.27 ADD START
+  --
+  /**********************************************************************************
+   * Procedure Name   : ins_cust_pay_mng
+   * Description      : 自販機顧客支払管理情報作成処理(A-15)
+   ***********************************************************************************/
+  PROCEDURE ins_cust_pay_mng(
+     iv_data_kbn               IN         xxcso_cust_pay_mng.data_kbn%TYPE                       -- データ区分
+    ,iv_plan_actual_kbn        IN         xxcso_cust_pay_mng.plan_actual_kbn%TYPE                -- 予実区分名
+    ,iv_account_number         IN         xxcso_cust_pay_mng.account_number%TYPE                 -- 顧客コード
+    ,id_pay_start_date         IN         xxcso_cust_pay_mng.pay_start_date%TYPE                 -- 支払期間開始日
+    ,id_pay_end_date           IN         xxcso_cust_pay_mng.pay_end_date%TYPE                   -- 支払期間終了日
+    ,in_total_amt              IN         xxcso_cust_pay_mng.total_amt%TYPE                      -- 税抜き総額
+    ,id_contract_effect_date   IN         xxcso_contract_managements.contract_effect_date%TYPE   -- 契約書発効日
+    ,iv_contract_number        IN         xxcso_contract_managements.contract_number%TYPE        -- 契約書番号
+    ,ov_errbuf                 OUT NOCOPY VARCHAR2                                               -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode                OUT NOCOPY VARCHAR2                                               -- リターン・コード             --# 固定 #
+    ,ov_errmsg                 OUT NOCOPY VARCHAR2                                               -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT    VARCHAR2(100) := 'ins_cust_pay_mng'; -- プログラム名
+    --
+    --#####################  固定ローカル変数宣言部 START   ########################
+    --
+    lv_errbuf  VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);    -- リターン・コード
+    lv_errmsg  VARCHAR2(5000); -- ユーザー・エラー・メッセージ
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    --
+    -- トークン用定数
+    cv_tkn_value_cust_pay_mng   CONSTANT VARCHAR2(50)  := '自販機顧客支払管理情報テーブル';
+    cv_tkn_value_acct           CONSTANT VARCHAR2(50)  := '勘定科目が';
+    cv_tkn_value_sub_acct       CONSTANT VARCHAR2(50)  := '補助科目が';
+    --
+    cv_date_format              CONSTANT VARCHAR2(21)  := 'YYYYMMDD';     -- 日付フォーマット
+    cv_first_day                CONSTANT VARCHAR2(2)   := '01';           -- 月初
+    -- *** ローカル・レコード ***
+--
+--    -- *** ローカル変数 ***
+    ln_crt_data_cnt        NUMBER;                                 -- 登録レコード数
+    ln_loop_cnt            NUMBER;                                 -- ループカウント数
+    ln_payment_amt         xxcso_cust_pay_mng.payment_amt%TYPE;    -- 按分金額
+    ln_first_payment_amt   xxcso_cust_pay_mng.payment_amt%TYPE;    -- 按分金額（初月）
+    ln_set_payment_amt     xxcso_cust_pay_mng.payment_amt%TYPE;    -- 按分金額（インサート用）
+    lv_payment_date        xxcso_cust_pay_mng.payment_date%TYPE;   -- 年月
+    lv_acct_code           xxcso_cust_pay_mng.acct_code%TYPE;      -- 勘定科目
+    lv_sub_acct_code       xxcso_cust_pay_mng.sub_acct_code%TYPE;  -- 補助科目
+    lv_acct_name           xxcso_cust_pay_mng.acct_name%TYPE;      -- 勘定科目名
+    lv_sub_acct_name       xxcso_cust_pay_mng.sub_acct_name%TYPE;  -- 補助科目名
+    ld_acct_day            DATE;                                   -- 勘定科目判定日
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- 変数の初期化
+    ln_crt_data_cnt       := 0;
+    ln_loop_cnt           := 0;
+    ln_payment_amt        := 0;
+    ln_first_payment_amt  := 0;
+    ln_set_payment_amt    := 0;
+    --
+    -- 作成レコード数取得
+    ln_crt_data_cnt := MONTHS_BETWEEN( TRUNC( id_pay_end_date, cv_month_format ), TRUNC( id_pay_start_date, cv_month_format ) ) + 1;
+    --
+    -- 支払期間開始日・終了日大小チェック
+    IF ( ln_crt_data_cnt <= 0 ) THEN
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+               ,iv_name         => cv_tkn_number_23         -- メッセージコード
+               ,iv_token_name1  => cv_tkn_contract_number   -- トークンコード1
+               ,iv_token_value1 => iv_contract_number       -- トークン値1
+             );
+      --
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- 金額＝0以外の場合に按分する
+    IF ( in_total_amt = 0 ) THEN
+      ln_payment_amt       := 0;
+      ln_first_payment_amt := 0;
+    ELSE
+      -- 按分金額の算出
+      ln_payment_amt := ROUND( in_total_amt / ln_crt_data_cnt );
+      --
+      -- 按分金額（初月）の算出
+      ln_first_payment_amt := ln_payment_amt + in_total_amt - ( ln_payment_amt * ln_crt_data_cnt );
+      --
+    END IF;
+    -- ======================================
+    -- 自販機顧客支払管理情報テーブル作成処理
+    -- ======================================
+    <<cust_pay_mng_loop>>
+    FOR j IN 1..ln_crt_data_cnt LOOP
+      -- 変数の初期化
+      lv_payment_date       := NULL;
+      lv_acct_code          := NULL;
+      lv_sub_acct_code      := NULL;
+      lv_acct_name          := NULL;
+      lv_sub_acct_name      := NULL;
+      --
+      -- 年月の編集
+      lv_payment_date := SUBSTRB( TO_CHAR( ADD_MONTHS( id_pay_start_date, ln_loop_cnt ), cv_date_format ), 1,6 );
+      --
+      -- 勘定科目取得
+      -- 勘定科目判定日設定
+      ld_acct_day := TO_DATE( lv_payment_date || cv_first_day, cv_date_format );
+      --
+      BEGIN
+        SELECT  flvv.attribute2                 acct_code,      -- 勘定科目
+                flvv.attribute3                 sub_acct_code,  -- 補助科目
+                xaav.aff_account_name           acct_name,      -- 勘定科目名
+                xasav.aff_sub_account_name      sub_acct_name   -- 補助科目名
+        INTO    lv_acct_code,
+                lv_sub_acct_code,
+                lv_acct_name,
+                lv_sub_acct_name
+        FROM    fnd_lookup_values_vl flvv,                      -- 参照タイプテーブル
+                xxcff_aff_account_v  xaav,                      -- 科目マスタ
+                xxcff_aff_sub_account_v xasav                   -- 補助科目マスタ
+        WHERE   flvv.lookup_type          =  cv_acct_code_type
+        AND     flvv.attribute1           =  iv_data_kbn
+        AND     flvv.enabled_flag         =  cv_flag_yes
+        AND     flvv.start_date_active    <= ld_acct_day        -- 開始日
+        AND     (flvv.end_date_active     IS NULL               -- 終了日
+                  OR flvv.end_date_active >=  ld_acct_day       -- 終了日
+                )
+        AND     flvv.attribute2           = xaav.aff_account_code
+        AND     flvv.attribute2           = xasav.aff_account_name
+        AND     flvv.attribute3           = xasav.aff_sub_account_code;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_04         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_acct        -- トークン値1
+                         ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
+                         ,iv_token_value2 => cv_acct_code_type          -- トークン値2
+                       );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- 按分金額をセット
+      IF ( ln_loop_cnt = 0 ) THEN
+        ln_set_payment_amt := ln_first_payment_amt;
+      ELSE
+        ln_set_payment_amt := ln_payment_amt;
+      END IF;
+      --
+      BEGIN
+        -- 自販機顧客支払管理情報テーブル作成処理
+        INSERT INTO xxcso_cust_pay_mng(
+                       cust_pay_mng_id                                 -- 顧客支払管理ID
+                      ,payment_date                                    -- 年月
+                      ,plan_actual_kbn                                 -- 予実区分名
+                      ,acct_code                                       -- 勘定科目
+                      ,acct_name                                       -- 勘定科目名
+                      ,sub_acct_code                                   -- 補助科目
+                      ,sub_acct_name                                   -- 補助科目名
+                      ,payment_amt                                     -- 金額
+                      ,data_kbn                                        -- データ区分
+                      ,account_number                                  -- 顧客コード
+                      ,pay_start_date                                  -- 支払期間開始日
+                      ,pay_end_date                                    -- 支払期間終了日
+                      ,total_amt                                       -- 税抜き総額
+                      ,send_flag                                       -- 送信フラグ
+                      ,contract_number                                 -- 契約書番号
+                      ,created_by                                      -- 作成者
+                      ,creation_date                                   -- 作成日
+                      ,last_updated_by                                 -- 最終更新者
+                      ,last_update_date                                -- 最終更新日
+                      ,last_update_login                               -- 最終更新ログイン
+                      ,request_id                                      -- 要求ID
+                      ,program_application_id                          -- コンカレント・プログラム・アプリケーションID
+                      ,program_id                                      -- コンカレント・プログラムID
+                      ,program_update_date                             -- プログラム更新日
+                    )
+           VALUES (
+                       xxcso_cust_pay_mng_s01.NEXTVAL                  -- 顧客支払管理ID
+                      ,lv_payment_date                                 -- 年月
+                      ,iv_plan_actual_kbn                              -- 予実区分名
+                      ,lv_acct_code                                    -- 勘定科目
+                      ,lv_acct_name                                    -- 勘定科目名
+                      ,lv_sub_acct_code                                -- 補助科目
+                      ,lv_sub_acct_name                                -- 補助科目名
+                      ,ln_set_payment_amt                              -- 金額
+                      ,iv_data_kbn                                     -- データ区分
+                      ,iv_account_number                               -- 顧客コード
+                      ,id_pay_start_date                               -- 支払期間開始日
+                      ,id_pay_end_date                                 -- 支払期間終了日
+                      ,in_total_amt                                    -- 税抜き総額
+                      ,cv_send_flag_0                                  -- 送信対象
+                      ,iv_contract_number                              -- 契約書番号
+                      ,cn_created_by                                   -- 作成者
+                      ,cd_creation_date                                -- 作成日
+                      ,cn_last_updated_by                              -- 最終更新者
+                      ,cd_last_update_date                             -- 最終更新日
+                      ,cn_last_update_login                            -- 最終更新ログイン
+                      ,cn_request_id                                   -- 要求ID
+                      ,cn_program_application_id                       -- コンカレント・プログラム・アプリケーションID
+                      ,cn_program_id                                   -- コンカレント・プログラムID
+                      ,cd_program_update_date                          -- プログラム更新日
+                 );
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_06            -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action               -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_cust_pay_mng   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_error_message        -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                     -- トークン値2
+                      );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- カウントアップ
+      ln_loop_cnt := ln_loop_cnt + 1;
+      --
+    END LOOP cust_pay_mng_loop;
+    --
+  EXCEPTION
+    --
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_expt THEN
+      -- *** 共通関数例外ハンドラ ***
+      ov_errbuf  := SUBSTRB(cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000);
+      ov_retcode := cv_status_error;
+      ov_errmsg  := ov_errbuf;
+      --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      ov_errmsg  := ov_errbuf;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      ov_errmsg  := ov_errbuf;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END ins_cust_pay_mng;
+  --
+  /**********************************************************************************
+   * Procedure Name   : reg_cust_pay_mng
+   * Description      : 自販機顧客支払管理情報登録処理(A-16)
+   ***********************************************************************************/
+  PROCEDURE reg_cust_pay_mng(
+     it_sp_decision_header_id  IN         xxcso_contract_managements.sp_decision_header_id%TYPE  -- ＳＰ専決ヘッダＩＤ
+    ,it_contract_management_id IN         xxcso_contract_managements.contract_management_id%TYPE -- 自動販売機設置契約書ＩＤ
+    ,ov_errbuf                 OUT NOCOPY VARCHAR2                                               -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode                OUT NOCOPY VARCHAR2                                               -- リターン・コード             --# 固定 #
+    ,ov_errmsg                 OUT NOCOPY VARCHAR2                                               -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100) := 'reg_cust_pay_mng'; -- プログラム名
+    --
+    --#####################  固定ローカル変数宣言部 START   ########################
+    --
+    lv_errbuf  VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);    -- リターン・コード
+    lv_errmsg  VARCHAR2(5000); -- ユーザー・エラー・メッセージ
+    --
+    --###########################  固定部 END   ####################################
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    --
+    -- トークン用定数
+    cv_tkn_value_table       CONSTANT VARCHAR2(50)  := '自販機顧客支払管理情報テーブル';
+    cv_tkn_value_start_date  CONSTANT VARCHAR2(30)  := '支払期間開始日';
+    cv_tkn_value_tax         CONSTANT VARCHAR2(30)  := '税率';
+    --
+    cv_date_format           CONSTANT VARCHAR2(21)  := 'YYYYMM';     -- 日付フォーマット
+    --
+    -- *** ローカル・レコード ***
+    CURSOR sp_decision_headers_cur
+    IS
+      SELECT xcm1.install_account_number              account_number,            -- 設置先顧客コード
+             NVL(xsdh.tax_type, cv_tax_type_1)        tax_type,                  -- 覚書税区分
+             xsdh.install_pay_start_date              install_pay_start_date,    -- 支払期間開始日（設置協賛金）
+             xsdh.install_pay_end_date                install_pay_end_date,      -- 支払期間終了日（設置協賛金）
+             NVL(xsdh.install_supp_type, cv_flag_off) install_supp_type,         -- 支払区分（設置協賛金）
+             NVL(xsdh.install_supp_amt, 0)            install_supp_amt,          -- 総額（設置協賛金）
+             xsdh.ad_assets_pay_start_date            ad_assets_pay_start_date,  -- 支払期間開始日（行政財産使用料）
+             xsdh.ad_assets_pay_end_date              ad_assets_pay_end_date,    -- 支払期間終了日（行政財産使用料）
+             NVL(xsdh.ad_assets_type, cv_flag_off)    ad_assets_type,            -- 支払区分（行政財産使用料）
+             NVL(xsdh.ad_assets_amt, 0)               ad_assets_amt,             -- 総額（行政財産使用料）
+             xcm1.contract_effect_date                contract_effect_date,      -- 契約書発効日
+             xcm1.contract_number                     contract_number            -- 契約書番号
+      FROM   xxcso_sp_decision_headers   xsdh                                    -- SP専決ヘッダ
+           , xxcso_contract_managements  xcm1                                    -- 契約管理テーブル
+      WHERE  xsdh.sp_decision_header_id  = xcm1.sp_decision_header_id
+      AND    xsdh.sp_decision_header_id  = it_sp_decision_header_id
+      AND    xcm1.contract_management_id = it_contract_management_id
+      AND    ( NVL(xsdh.install_supp_type, cv_flag_off)    = cv_flag_on
+        OR     NVL(xsdh.ad_assets_type, cv_flag_off )      = cv_flag_on );
+--
+--    -- *** ローカル変数 ***
+    ln_crt_data_cnt        NUMBER;         -- 登録レコード数
+    ln_cnt                 NUMBER;         -- 件数
+    lv_insert_flag         VARCHAR2(1);    -- 新規作成フラグ
+    lv_update_flag         VARCHAR2(1);    -- 更新フラグ
+    ln_tax_rate            xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;  -- 税率
+    ln_amt_without_tax     xxcso_cust_pay_mng.total_amt%TYPE;        -- 税抜き金額
+    lv_account_number      xxcso_cust_pay_mng.account_number%TYPE;   -- 顧客コード
+    ld_pay_start_date      xxcso_cust_pay_mng.pay_start_date%TYPE;   -- 支払期間開始日
+    ld_pay_end_date        xxcso_cust_pay_mng.pay_end_date%TYPE;     -- 支払期間終了日
+    ln_total_amt           xxcso_cust_pay_mng.total_amt%TYPE;        -- 税抜き総額
+    ln_actual_total_amt    xxcso_cust_pay_mng.total_amt%TYPE;        -- 税抜き総額(実績)
+    lv_contract_number     xxcso_cust_pay_mng.contract_number%TYPE;  -- 契約書番号
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- 変数の初期化
+    ln_crt_data_cnt     := 0;
+    ln_amt_without_tax  := 0;
+    ln_cnt              := 0;
+    ln_tax_rate         := 0;
+    lv_insert_flag      := cv_flag_off;
+    lv_update_flag      := cv_flag_off;
+    lv_account_number   := NULL;
+    ld_pay_start_date   := NULL;
+    ld_pay_end_date     := NULL;
+    ln_total_amt        := NULL;
+    ln_actual_total_amt := NULL;
+    lv_contract_number  := NULL;
+    -- 
+    -- 契約情報取得
+    <<sp_decision_headers_loop>>
+    FOR lt_sp_decision_headers_rec IN sp_decision_headers_cur LOOP
+      --
+      -- 税率取得
+      BEGIN
+        SELECT  NVL(xqatrv.ap_tax_rate, 0)  tax_rate        -- 税率
+        INTO    ln_tax_rate
+        FROM    xxcso_qt_ap_tax_rate_v xqatrv
+        WHERE   xqatrv.item_code = gt_prf_elec_fee_item_code
+          AND   lt_sp_decision_headers_rec.contract_effect_date  
+                  BETWEEN xqatrv.start_date_histories AND NVL(xqatrv.end_date_histories, lt_sp_decision_headers_rec.contract_effect_date);
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                   ,iv_name         => cv_tkn_number_19         -- メッセージコード
+                 );
+          --
+          RAISE global_api_expt;
+      END;
+      --
+      -- 税率チェック
+      IF ( ln_tax_rate < 0 ) THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_22         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_column            -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_tax         -- トークン値1
+                     );
+        --
+        RAISE global_api_expt;
+      END IF;
+      --
+      -- 設置協賛金情報あり
+      IF ( lt_sp_decision_headers_rec.install_supp_type = cv_flag_on ) THEN
+        --
+        -- 税込みで金額<>0の場合、税抜き金額を算出
+        IF ( lt_sp_decision_headers_rec.tax_type = cv_tax_type_1
+          AND lt_sp_decision_headers_rec.install_supp_amt <> 0 ) THEN
+            ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.install_supp_amt / ln_tax_rate);
+        ELSE
+            ln_amt_without_tax := lt_sp_decision_headers_rec.install_supp_amt;
+        END IF;
+        --
+        -- 最新の送信対象を自販機顧客支払管理情報から取得
+        BEGIN
+          SELECT xcpm.account_number   account_number,   -- 顧客コード
+                 xcpm.pay_start_date   pay_start_date,   -- 支払期間開始日
+                 xcpm.pay_end_date     pay_end_date,     -- 支払期間終了日
+                 xcpm.total_amt        total_amt,        -- 税抜き総額
+                 xcpm.contract_number  contract_number   -- 契約書番号
+          INTO   lv_account_number,
+                 ld_pay_start_date,
+                 ld_pay_end_date,
+                 ln_total_amt,
+                 lv_contract_number
+          FROM   xxcso_cust_pay_mng xcpm
+          WHERE  xcpm.data_kbn       = cv_data_kbn_install_supp
+          AND    xcpm.account_number = lt_sp_decision_headers_rec.account_number
+          AND    xcpm.send_flag      = cv_send_flag_0
+          AND    xcpm.pay_start_date = (
+                                        SELECT MAX(xcpm2.pay_start_date)
+                                        FROM   xxcso_cust_pay_mng xcpm2
+                                        WHERE  xcpm2.data_kbn       = cv_data_kbn_install_supp
+                                        AND    xcpm2.account_number = lt_sp_decision_headers_rec.account_number
+                                        AND    xcpm2.send_flag      = cv_send_flag_0
+                                       )
+          AND    ROWNUM = 1;
+          --
+          -- 実績レコード存在確認
+          BEGIN
+            SELECT xcpm.total_amt
+            INTO   ln_actual_total_amt
+            FROM   xxcso_cust_pay_mng xcpm
+            WHERE  xcpm.data_kbn        =  cv_data_kbn_install_supp  -- データ区分（設置協賛金）
+            AND    xcpm.account_number  =  lv_account_number         -- 顧客コード
+            AND    xcpm.pay_start_date  =  ld_pay_start_date         -- 支払期間開始日（設置協賛金）
+            AND    xcpm.send_flag       =  cv_send_flag_0            -- 送信対象
+            AND    xcpm.plan_actual_kbn =  cv_actual_kbn             -- 予実区分名（実績）
+            AND    ROWNUM = 1;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- 実績が無い場合は未設定
+              ln_actual_total_amt := NULL;
+          END;
+          --
+          -- 支払期間開始日、支払期間終了日、税抜き総額の組合せが存在する（変更なし）
+          IF ( lt_sp_decision_headers_rec.install_pay_start_date   = ld_pay_start_date
+            AND  lt_sp_decision_headers_rec.install_pay_end_date   = ld_pay_end_date
+            AND  ln_amt_without_tax                                = ln_total_amt ) THEN
+            -- 何もしない
+            NULL;
+            --
+          ELSE
+            -- 期間を新しく追加作成するパターン
+            IF ( lt_sp_decision_headers_rec.install_pay_start_date > ld_pay_end_date ) THEN
+              -- ★自販機顧客支払管理情報テーブル登録処理
+              lv_insert_flag := cv_flag_on;
+              --
+            -- 支払期間終了日または金額が変更されたパターン
+            ELSIF ( lt_sp_decision_headers_rec.install_pay_start_date  =  ld_pay_start_date
+              AND   ( lt_sp_decision_headers_rec.install_pay_end_date  <> ld_pay_end_date
+                OR    ln_amt_without_tax                               <> ln_total_amt )) THEN
+              -- ★自販機顧客支払管理情報テーブル登録処理
+              lv_insert_flag := cv_flag_on;
+              --
+              -- ★自販機顧客支払管理情報テーブル更新処理
+              lv_update_flag := cv_flag_on;
+              --
+            -- 支払期間開始日が変更されたパターン
+            ELSIF ( lt_sp_decision_headers_rec.install_pay_start_date  <>  ld_pay_start_date ) THEN
+              -- 業務日付と支払期間開始日を比較し、同月の場合は変更可能
+              IF ( TO_CHAR( ld_pay_start_date, cv_date_format ) = TO_CHAR( cd_process_date, cv_date_format ) ) THEN
+                -- 実績が存在する場合はエラーを出力
+                IF ( ln_actual_total_amt IS NULL ) THEN
+                  -- ★自販機顧客支払管理情報テーブル登録処理
+                  lv_insert_flag := cv_flag_on;
+                  --
+                  -- ★自販機顧客支払管理情報テーブル更新処理
+                  lv_update_flag := cv_flag_on;
+                  --
+                ELSE
+                  -- 更新不可エラーを出力
+                  lv_errbuf := xxccp_common_pkg.get_msg(
+                                  iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                                 ,iv_name         => cv_tkn_number_21                            -- メッセージコード
+                                 ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
+                                 ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
+                                 ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
+                                 ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
+                                 ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
+                                 ,iv_token_value3 => lv_contract_number                          -- トークン値3
+                               );
+                  --
+                  RAISE global_api_expt;
+                  --
+                END IF;
+              ELSE
+                -- 更新不可エラーを出力
+                lv_errbuf := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_21                            -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
+                               ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
+                               ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
+                               ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
+                               ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
+                               ,iv_token_value3 => lv_contract_number                          -- トークン値3
+                             );
+                --
+                RAISE global_api_expt;
+                --
+              END IF;
+              --
+            END IF;
+            --
+          END IF;
+          --
+        EXCEPTION
+         WHEN NO_DATA_FOUND THEN
+           -- 対象顧客でのレコードなし
+           -- ★自販機顧客支払管理情報テーブル登録処理
+           lv_insert_flag := cv_flag_on;
+        END;
+        --
+        --  送信対象に変更があるため既存レコードを対象外にUPDATEする
+        IF ( lv_update_flag = cv_flag_on ) THEN
+          --
+          UPDATE xxcso_cust_pay_mng xcpm
+          SET    xcpm.send_flag              =  cv_send_flag_1,            -- 送信対象
+                 xcpm.last_updated_by        =  cn_last_updated_by,        -- 最終更新者
+                 xcpm.last_update_date       =  cd_last_update_date,       -- 最終更新日
+                 xcpm.last_update_login      =  cn_last_update_login,      -- 最終更新ログイン
+                 xcpm.request_id             =  cn_request_id,             -- 要求ID
+                 xcpm.program_application_id =  cn_program_application_id, -- コンカレント・プログラム・アプリケーションID
+                 xcpm.program_id             =  cn_program_id,             -- コンカレント・プログラムID
+                 xcpm.program_update_date    =  cd_program_update_date     -- プログラム更新日
+          WHERE  xcpm.data_kbn               =  cv_data_kbn_install_supp   -- データ区分（設置協賛金）
+          AND    xcpm.account_number         =  lv_account_number          -- 顧客コード
+          AND    xcpm.pay_start_date         =  ld_pay_start_date          -- 支払期間開始日（設置協賛金）
+          AND    xcpm.send_flag              =  cv_send_flag_0;            -- 送信対象
+        END IF;
+        --
+        --  作成フラグが作成になっている場合、契約書の情報でレコードをINSERTする
+        IF ( lv_insert_flag = cv_flag_on ) THEN
+          -- ===================================
+          -- A-15.自販機顧客支払管理情報作成処理
+          -- ===================================
+          ins_cust_pay_mng(
+             iv_data_kbn               => cv_data_kbn_install_supp                          -- データ区分（設置協賛金）
+            ,iv_plan_actual_kbn        => cv_plan_kbn                                       -- 予実区分名（予定）
+            ,iv_account_number         => lt_sp_decision_headers_rec.account_number         -- 顧客コード
+            ,id_pay_start_date         => lt_sp_decision_headers_rec.install_pay_start_date -- 支払期間開始日
+            ,id_pay_end_date           => lt_sp_decision_headers_rec.install_pay_end_date   -- 支払期間終了日
+            ,in_total_amt              => ln_amt_without_tax                                -- 税抜き総額
+            ,id_contract_effect_date   => lt_sp_decision_headers_rec.contract_effect_date   -- 契約書発効日
+            ,iv_contract_number        => lt_sp_decision_headers_rec.contract_number        -- 契約書番号
+            ,ov_errbuf                 => lv_errbuf                                         -- エラー・メッセージ           --# 固定 #
+            ,ov_retcode                => lv_retcode                                        -- リターン・コード             --# 固定 #
+            ,ov_errmsg                 => lv_errmsg                                         -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+          --
+          -- 実績が存在する場合、コピー処理を行う
+          IF ( ln_actual_total_amt IS NOT NULL ) THEN
+            -- ===================================
+            -- A-15.自販機顧客支払管理情報作成処理
+            -- ===================================
+            ins_cust_pay_mng(
+               iv_data_kbn               => cv_data_kbn_install_supp                          -- データ区分（設置協賛金）
+              ,iv_plan_actual_kbn        => cv_actual_kbn                                     -- 予実区分名（実績）
+              ,iv_account_number         => lt_sp_decision_headers_rec.account_number         -- 顧客コード
+              ,id_pay_start_date         => lt_sp_decision_headers_rec.install_pay_start_date -- 支払期間開始日
+              ,id_pay_end_date           => lt_sp_decision_headers_rec.install_pay_end_date   -- 支払期間終了日
+              ,in_total_amt              => ln_actual_total_amt                               -- 税抜き総額
+              ,id_contract_effect_date   => lt_sp_decision_headers_rec.contract_effect_date   -- 契約書発効日
+              ,iv_contract_number        => lt_sp_decision_headers_rec.contract_number        -- 契約書番号
+              ,ov_errbuf                 => lv_errbuf                                         -- エラー・メッセージ           --# 固定 #
+              ,ov_retcode                => lv_retcode                                        -- リターン・コード             --# 固定 #
+              ,ov_errmsg                 => lv_errmsg                                         -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            --
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+              --
+            END IF;
+          END IF;
+          --
+        END IF;
+        --
+      END IF;
+      --
+      --
+      -- 行政財産使用料情報あり
+      IF ( lt_sp_decision_headers_rec.ad_assets_type = cv_flag_on ) THEN
+        -- 変数の初期化
+        ln_crt_data_cnt     := 0;
+        ln_amt_without_tax  := 0;
+        ln_cnt              := 0;
+        lv_insert_flag      := cv_flag_off;
+        lv_update_flag      := cv_flag_off;
+        lv_account_number   := NULL;
+        ld_pay_start_date   := NULL;
+        ld_pay_end_date     := NULL;
+        ln_total_amt        := NULL;
+        ln_actual_total_amt := NULL;
+        lv_contract_number  := NULL;
+        --
+        -- 税込みで金額<>0の場合、税抜き金額を算出
+        IF ( lt_sp_decision_headers_rec.ad_assets_amt <> 0 ) THEN
+            ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.ad_assets_amt / ln_tax_rate);
+        ELSE
+            ln_amt_without_tax := lt_sp_decision_headers_rec.ad_assets_amt;
+        END IF;
+        --
+        -- 最新の送信対象を自販機顧客支払管理情報から取得
+        BEGIN
+          SELECT xcpm.account_number   account_number,   -- 顧客コード
+                 xcpm.pay_start_date   pay_start_date,   -- 支払期間開始日
+                 xcpm.pay_end_date     pay_end_date,     -- 支払期間終了日
+                 xcpm.total_amt        total_amt,        -- 税抜き総額
+                 xcpm.contract_number  contract_number   -- 契約書番号
+          INTO   lv_account_number,
+                 ld_pay_start_date,
+                 ld_pay_end_date,
+                 ln_total_amt,
+                 lv_contract_number
+          FROM   xxcso_cust_pay_mng xcpm
+          WHERE  xcpm.data_kbn       = cv_data_kbn_ad_assets
+          AND    xcpm.account_number = lt_sp_decision_headers_rec.account_number
+          AND    xcpm.send_flag      = cv_send_flag_0
+          AND    xcpm.pay_start_date = (
+                                        SELECT MAX(xcpm2.pay_start_date)
+                                        FROM   xxcso_cust_pay_mng xcpm2
+                                        WHERE  xcpm2.data_kbn       = cv_data_kbn_ad_assets
+                                        AND    xcpm2.account_number = lt_sp_decision_headers_rec.account_number
+                                        AND    xcpm2.send_flag      = cv_send_flag_0
+                                       )
+          AND    ROWNUM = 1;
+          --
+          -- 実績レコード存在確認
+          BEGIN
+            SELECT xcpm.total_amt
+            INTO   ln_actual_total_amt
+            FROM   xxcso_cust_pay_mng xcpm
+            WHERE  xcpm.data_kbn        =  cv_data_kbn_ad_assets     -- データ区分（行政財産使用料）
+            AND    xcpm.account_number  =  lv_account_number         -- 顧客コード
+            AND    xcpm.pay_start_date  =  ld_pay_start_date         -- 支払期間開始日（行政財産使用料）
+            AND    xcpm.send_flag       =  cv_send_flag_0            -- 送信対象
+            AND    xcpm.plan_actual_kbn =  cv_actual_kbn             -- 予実区分名（実績）
+            AND    ROWNUM               = 1;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- 実績が無い場合は未設定
+              ln_actual_total_amt := NULL;
+          END;
+          --
+          -- 支払期間開始日、支払期間終了日、税抜き総額の組合せが存在する（変更なし）
+          IF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date   = ld_pay_start_date
+            AND  lt_sp_decision_headers_rec.ad_assets_pay_end_date   = ld_pay_end_date
+            AND  ln_amt_without_tax                                  = ln_total_amt ) THEN
+            -- 何もしない
+            NULL;
+            --
+          ELSE
+            -- 期間を新しく追加作成するパターン
+            IF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date > ld_pay_end_date ) THEN
+              -- ★自販機顧客支払管理情報テーブル登録処理
+              lv_insert_flag := cv_flag_on;
+              --
+            -- 支払期間終了日または金額が変更されたパターン
+            ELSIF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date  =  ld_pay_start_date
+              AND   ( lt_sp_decision_headers_rec.ad_assets_pay_end_date  <> ld_pay_end_date
+                OR    ln_amt_without_tax                                 <> ln_total_amt )) THEN
+              -- ★自販機顧客支払管理情報テーブル登録処理
+              lv_insert_flag := cv_flag_on;
+              --
+              -- ★自販機顧客支払管理情報テーブル更新処理
+              lv_update_flag := cv_flag_on;
+              --
+            -- 支払期間開始日が変更されたパターン
+            ELSIF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date  <>  ld_pay_start_date ) THEN
+              -- 業務日付と支払期間開始日を比較し、同月の場合は変更可能
+              IF ( TO_CHAR( ld_pay_start_date, cv_date_format ) = TO_CHAR( cd_process_date, cv_date_format ) ) THEN
+                -- 実績が存在する場合はエラーを出力
+                IF ( ln_actual_total_amt IS NULL ) THEN
+                  -- ★自販機顧客支払管理情報テーブル登録処理
+                  lv_insert_flag := cv_flag_on;
+                  --
+                  -- ★自販機顧客支払管理情報テーブル更新処理
+                  lv_update_flag := cv_flag_on;
+                  --
+                ELSE
+                  -- 更新不可エラーを出力
+                  lv_errbuf := xxccp_common_pkg.get_msg(
+                                  iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                                 ,iv_name         => cv_tkn_number_21                            -- メッセージコード
+                                 ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
+                                 ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
+                                 ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
+                                 ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
+                                 ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
+                                 ,iv_token_value3 => lv_contract_number                          -- トークン値3
+                               );
+                  --
+                  RAISE global_api_expt;
+                  --
+                END IF;
+              ELSE
+                -- 更新不可エラーを出力
+                lv_errbuf := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_21                            -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
+                               ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
+                               ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
+                               ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
+                               ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
+                               ,iv_token_value3 => lv_contract_number                          -- トークン値3
+                             );
+                --
+                RAISE global_api_expt;
+                --
+              END IF;
+              --
+            END IF;
+            --
+          END IF;
+          --
+        EXCEPTION
+         WHEN NO_DATA_FOUND THEN
+           -- 対象顧客でのレコードなし
+           -- ★自販機顧客支払管理情報テーブル登録処理
+           lv_insert_flag := cv_flag_on;
+        END;
+        --
+        --  送信対象に変更があるため既存レコードを対象外にUPDATEする
+        IF ( lv_update_flag = cv_flag_on ) THEN
+          --
+          UPDATE xxcso_cust_pay_mng xcpm
+          SET    xcpm.send_flag              =  cv_send_flag_1,            -- 送信対象
+                 xcpm.last_updated_by        =  cn_last_updated_by,        -- 最終更新者
+                 xcpm.last_update_date       =  cd_last_update_date,       -- 最終更新日
+                 xcpm.last_update_login      =  cn_last_update_login,      -- 最終更新ログイン
+                 xcpm.request_id             =  cn_request_id,             -- 要求ID
+                 xcpm.program_application_id =  cn_program_application_id, -- コンカレント・プログラム・アプリケーションID
+                 xcpm.program_id             =  cn_program_id,             -- コンカレント・プログラムID
+                 xcpm.program_update_date    =  cd_program_update_date     -- プログラム更新日
+          WHERE  xcpm.data_kbn               =  cv_data_kbn_ad_assets      -- データ区分（行政財産使用料）
+          AND    xcpm.account_number         =  lv_account_number          -- 顧客コード
+          AND    xcpm.pay_start_date         =  ld_pay_start_date          -- 支払期間開始日（行政財産使用料）
+          AND    xcpm.send_flag              =  cv_send_flag_0;            -- 送信対象
+        END IF;
+        --
+        --  作成フラグが作成になっている場合、契約書の情報でレコードをINSERTする
+        IF ( lv_insert_flag = cv_flag_on ) THEN
+          -- ===================================
+          -- A-15.自販機顧客支払管理情報作成処理
+          -- ===================================
+          ins_cust_pay_mng(
+             iv_data_kbn               => cv_data_kbn_ad_assets                               -- データ区分（行政財産使用料）
+            ,iv_plan_actual_kbn        => cv_plan_kbn                                         -- 予実区分名（予定）
+            ,iv_account_number         => lt_sp_decision_headers_rec.account_number           -- 顧客コード
+            ,id_pay_start_date         => lt_sp_decision_headers_rec.ad_assets_pay_start_date -- 支払期間開始日
+            ,id_pay_end_date           => lt_sp_decision_headers_rec.ad_assets_pay_end_date   -- 支払期間終了日
+            ,in_total_amt              => ln_amt_without_tax                                  -- 税抜き総額
+            ,id_contract_effect_date   => lt_sp_decision_headers_rec.contract_effect_date     -- 契約書発効日
+            ,iv_contract_number        => lt_sp_decision_headers_rec.contract_number          -- 契約書番号
+            ,ov_errbuf                 => lv_errbuf                                           -- エラー・メッセージ           --# 固定 #
+            ,ov_retcode                => lv_retcode                                          -- リターン・コード             --# 固定 #
+            ,ov_errmsg                 => lv_errmsg                                           -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+          --
+          -- 実績が存在する場合、コピー処理を行う
+          IF ( ln_actual_total_amt IS NOT NULL ) THEN
+            -- ===================================
+            -- A-15.自販機顧客支払管理情報作成処理
+            -- ===================================
+            ins_cust_pay_mng(
+               iv_data_kbn               => cv_data_kbn_ad_assets                               -- データ区分（行政財産使用料）
+              ,iv_plan_actual_kbn        => cv_actual_kbn                                       -- 予実区分名（実績）
+              ,iv_account_number         => lt_sp_decision_headers_rec.account_number           -- 顧客コード
+              ,id_pay_start_date         => lt_sp_decision_headers_rec.ad_assets_pay_start_date -- 支払期間開始日
+              ,id_pay_end_date           => lt_sp_decision_headers_rec.ad_assets_pay_end_date   -- 支払期間終了日
+              ,in_total_amt              => ln_actual_total_amt                                 -- 税抜き総額
+              ,id_contract_effect_date   => lt_sp_decision_headers_rec.contract_effect_date     -- 契約書発効日
+              ,iv_contract_number        => lt_sp_decision_headers_rec.contract_number          -- 契約書番号
+              ,ov_errbuf                 => lv_errbuf                                           -- エラー・メッセージ           --# 固定 #
+              ,ov_retcode                => lv_retcode                                          -- リターン・コード             --# 固定 #
+              ,ov_errmsg                 => lv_errmsg                                           -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            --
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+              --
+            END IF;
+          END IF;
+          --
+        END IF;
+        --
+      END IF;
+      --
+    END LOOP sp_decision_headers_loop;
+    --
+  EXCEPTION
+    --
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_expt THEN
+      -- *** 共通関数例外ハンドラ ***
+      ov_errbuf  := SUBSTRB(cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000);
+      ov_retcode := cv_status_error;
+      ov_errmsg  := ov_errbuf;
+      --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      ov_errmsg  := ov_errbuf;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      ov_errmsg  := ov_errbuf;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END reg_cust_pay_mng;
+  -- 2022/03/28 Ver.1.27 ADD END
   --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -4835,6 +5714,24 @@ AS
               --
             END IF;
             --
+            -- 2022/03/28 Ver.1.27 ADD START
+            -- ===================================
+            -- A-16.自販機顧客支払管理情報登録処理
+            -- ===================================
+            reg_cust_pay_mng(
+               it_sp_decision_header_id  => lt_contract_management_rec.sp_decision_header_id  -- ＳＰ専決ヘッダＩＤ
+              ,it_contract_management_id => lt_contract_management_rec.contract_management_id -- 自動販売機設置契約書ＩＤ
+              ,ov_errbuf                 => lv_errbuf                                         -- エラー・メッセージ           --# 固定 #
+              ,ov_retcode                => lv_retcode                                        -- リターン・コード             --# 固定 #
+              ,ov_errmsg                 => lv_errmsg                                         -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            --
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE mst_coalition_expt;
+              --
+            END IF;
+            --
+            -- 2022/03/28 Ver.1.27 ADD END
             -- =========================================
             -- A-11.設置先顧客情報更新処理
             -- =========================================
