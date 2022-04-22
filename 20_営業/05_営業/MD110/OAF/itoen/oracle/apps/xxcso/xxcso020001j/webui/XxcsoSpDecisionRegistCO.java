@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchCO
 * 概要説明   : SP専決登録画面コントローラクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2015-01-30 1.3  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.4  SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 * 2020-08-21 1.5  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
+* 2022-03-29 1.6  SCSK二村悠香 [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.webui;
@@ -34,6 +35,9 @@ import itoen.oracle.apps.xxcso.xxcso020001j.util.XxcsoSpDecisionConstants;
 import java.io.Serializable;
 import com.sun.java.util.collections.HashMap;
 import oracle.cabo.ui.data.DataObject;
+// Ver.1.6 Add Start
+import java.util.Hashtable;
+// Ver.1.6 Add End
 
 /*******************************************************************************
  * SP専決登録画面のコントローラクラスです。
@@ -66,6 +70,14 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
       OADialogPage dialogPage = new OADialogPage(STATE_LOSS_ERROR);
       pageContext.redirectToDialogPage(dialogPage);
     }
+
+// Ver.1.22 Add Start
+    // ダイアログページからの遷移時は即終了
+    if ( pageContext.getParameter(XxcsoConstants.TOKEN_ACTION) != null)
+    {
+      return;
+    }
+// Ver.1.22 Add End
 
     String executeMode
       = XxcsoUtils.getUrlParameter(pageContext, XxcsoConstants.EXECUTE_MODE);
@@ -213,7 +225,38 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
     if ( pageContext.getParameter("SubmitButton") != null )
     {
       // 提出ボタン押下イベント
-      HashMap returnValue = (HashMap)am.invokeMethod("handleSubmitButton");
+      am.invokeMethod("handleSubmitButton");
+
+// Ver1.6 Add Start
+      // 設置協賛金支払項目チェック
+      am.invokeMethod("installPayItemCheck");
+      // メッセージの取得
+      OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialog(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN1
+        );
+      }
+      // 行政財産使用料支払項目チェック
+      am.invokeMethod("adAssetsPayItemCheck");
+      // メッセージの取得
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialog(
+          pageContext
+         ,confirmMsg
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT
+        );
+      }
+
+      Serializable[] okButtonParams    = { XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT };
+      HashMap returnValue
+        = (HashMap) am.invokeMethod("handleConfirmOkButton", okButtonParams);
+// Ver.1.6 Add End
 
       HashMap params
         = (HashMap)returnValue.get(XxcsoSpDecisionConstants.PARAM_URL_PARAM);
@@ -269,8 +312,40 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
     if ( pageContext.getParameter("ApproveButton") != null )
     {
       // 承認ボタン押下イベント
-      HashMap returnValue = (HashMap)am.invokeMethod("handleApproveButton");
+      am.invokeMethod("handleApproveButton");
 
+// Ver1.6 Add Start
+      // 設置協賛金支払項目チェック
+      am.invokeMethod("installPayItemCheck");
+      // メッセージの取得
+      OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialog(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN2
+        );
+      }
+      // 行政財産使用料支払項目チェック
+      am.invokeMethod("adAssetsPayItemCheck");
+      // メッセージの取得
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialog(
+          pageContext
+         ,confirmMsg
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE
+        );
+      }
+
+      // AMへのパラメータ作成
+      Serializable[] okButtonParams    = { XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE };
+      HashMap returnValue
+        = (HashMap) am.invokeMethod("handleConfirmOkButton", okButtonParams);
+// Ver.1.6 Add End
+      
       HashMap params
         = (HashMap)returnValue.get(XxcsoSpDecisionConstants.PARAM_URL_PARAM);
       OAException msg
@@ -526,10 +601,16 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
 // 2015-01-30 [E_本稼動_12565] Add Start
     if ( "AdAssetsTypeChange".equals(event) )
     {
-      // 行政財産使用変更イベント
+      // 支払区分（行政財産使用料）変更イベント
       am.invokeMethod("handleAdAssetsTypeChange");
     }
-
+// Ver.1.6 Add Start
+    if ( "AdAssetsPaymentTypeChange".equals(event) )
+    {
+      // 支払方法（行政財産使用料）変更イベント
+      am.invokeMethod("handleAdAssetsPaymentTypeChange");
+    }
+// Ver.1.6 Add End
     if ( "InstallSuppTypeChange".equals(event) )
     {
       // 支払区分（設置協賛金）変更イベント
@@ -616,6 +697,93 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
       am.invokeMethod("handleBm3PaymentTypeChange");
     }
 
+// Ver.1.6 Add Start
+    /////////////////////////////////////
+    // 確認ダイアログでのOKボタン
+    /////////////////////////////////////
+    if ( pageContext.getParameter("ConfirmOkButton") != null )
+    {
+      String actionValue
+        = pageContext.getParameter(XxcsoConstants.TOKEN_ACTION);
+
+      XxcsoUtils.debug(pageContext, "ConfirmOkButton");
+      XxcsoUtils.debug(pageContext, "TOKEN_ACTION= " + actionValue);
+
+      // 提出ボタン設置協賛金支払項目チェックのYesボタン
+      if ( XxcsoConstants.TOKEN_VALUE_WARN1.equals(actionValue) )
+      {
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialog(
+            pageContext
+           ,confirmMsg
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT
+          );
+        }
+        else
+        {
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT };
+          //コミット  
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+          redirect(pageContext,returnMap); 
+        
+        }
+      }
+      // 承認ボタン設置協賛金支払項目チェックのYesボタン
+      else if(XxcsoConstants.TOKEN_VALUE_WARN2.equals(actionValue))
+      {
+        // 行政財産使用料支払項目チェック
+        am.invokeMethod("adAssetsPayItemCheck");
+        // メッセージの取得
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialog(
+            pageContext
+           ,confirmMsg
+           ,XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE
+          );
+        }
+        else
+        {
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE };
+          //コミット  
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params); 
+          redirect(pageContext,returnMap); 
+        }
+      } 
+      // 提出ボタン行政財産使用料支払項目チェックのYesボタン
+      else if(XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT.equals(actionValue))
+      {
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoSpDecisionConstants.TOKEN_VALUE_SUBMIT };
+          //コミット  
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+          redirect(pageContext,returnMap); 
+      }
+      // 承認ボタン行政財産使用料支払項目チェックのYesボタン
+      else if(XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE.equals(actionValue))
+      {
+          // AMへのパラメータ作成
+          Serializable[] params    = { XxcsoSpDecisionConstants.TOKEN_VALUE_APPROVE };
+          //コミット  
+          HashMap returnMap
+            = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+          redirect(pageContext,returnMap); 
+      }
+    }
+// Ver.1.6 Add End
+    
     ////////////////////////////////////////
     // 後処理
     ////////////////////////////////////////
@@ -666,4 +834,80 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
       }
     }
   }
+// Ver1.6 Add Start
+    /*****************************************************************************
+   * 確認ダイアログ生成処理
+   * @param pageContext ページコンテキスト
+   * @param confirmMsg  確認画面表示用メッセージ
+   *****************************************************************************
+   */
+  private void createConfirmDialog(
+    OAPageContext pageContext
+   ,OAException   confirmMsg
+   ,String        actionValue
+  )
+  {
+      // ダイアログを生成
+      OADialogPage confirmDialog
+        = new OADialogPage(
+            OAException.CONFIRMATION
+           ,confirmMsg
+           ,null
+           ,""
+           ,""
+          );
+          
+      String ok = pageContext.getMessage("AK", "FWK_TBX_T_YES", null);
+      String no = pageContext.getMessage("AK", "FWK_TBX_T_NO", null);
+
+      confirmDialog.setOkButtonItemName("ConfirmOkButton");
+      confirmDialog.setOkButtonToPost(true);
+      confirmDialog.setNoButtonToPost(true);
+      confirmDialog.setPostToCallingPage(true);
+      confirmDialog.setOkButtonLabel(ok);
+      confirmDialog.setNoButtonLabel(no);
+
+      Hashtable param = new Hashtable(1);
+      param.put(XxcsoConstants.TOKEN_ACTION, actionValue);
+
+      confirmDialog.setFormParameters(param);
+
+      pageContext.redirectToDialogPage(confirmDialog);
+  }
+
+    /*****************************************************************************
+   * 再表示時処理
+   * @param pageContext ページコンテキスト
+   * @param HashMap     param設定値
+   *****************************************************************************
+   */
+  private void redirect(
+    OAPageContext pageContext
+   ,HashMap map
+  )
+  {
+      HashMap params
+        = (HashMap)map.get(XxcsoSpDecisionConstants.PARAM_URL_PARAM);
+      OAException msg
+        = (OAException)map.get(XxcsoSpDecisionConstants.PARAM_MESSAGE);
+
+      params.put(
+        XxcsoConstants.TRANSACTION_KEY2
+        ,pageContext.getParameter(XxcsoConstants.TRANSACTION_KEY2)
+      );
+
+      XxcsoUtils.debug(pageContext, "URL PARAM = " + params.toString());
+
+      pageContext.removeParameter(XxcsoConstants.TOKEN_ACTION);
+      pageContext.putDialogMessage(msg);
+      pageContext.forwardImmediately(
+        XxcsoConstants.FUNC_SP_DECISION_REGIST_PG
+       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+       ,null
+       ,params
+       ,true
+       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+      );
+  }
+// Ver1.6 Add End
 }
