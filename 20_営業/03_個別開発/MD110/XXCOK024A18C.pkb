@@ -7,7 +7,7 @@ AS
  * Description      : 控除額の支払・入金相殺データが承認されたデータを対象に、控除消込情報を基に、
  *                    控除情報から消込仕訳情報を抽出してGL仕訳の作成し、一般会計OIFに連携する処理
  * MD.050           : 控除データ決済仕訳情報取得 MD050_COK_024_A18
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -30,6 +30,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/11/24    1.0   H.Ishii          新規作成
  *  2021/05/18    1.1   SCSK K.Yoshikawa GROUP_ID追加対応
+ *  2022/04/19    1.2   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
  *
  *****************************************************************************************/
 --
@@ -519,7 +520,11 @@ AS
   IS
     SELECT drh.deduction_recon_head_id  deduction_recon_head_id  -- 控除消込ヘッダーID
           ,drh.recon_slip_num           recon_slip_num           -- 支払伝票番号
-          ,LAST_DAY(drh.gl_date)        gl_date                  -- GL記帳日
+-- 2022/04/19 Ver1.2 MOD Start
+          ,DECODE(drh.interface_div,'AP',drh.cancel_gl_date,'WP',drh.gl_date)
+                                                                 -- 取消GL記帳日
+--          ,LAST_DAY(drh.gl_date)        gl_date                  -- GL記帳日
+-- 2022/04/19 Ver1.2 MOD End
           ,gjb.name                     b_name                   -- バッチ名
           ,gjb.description              b_description            -- バッチ摘要
           ,gjh.name                     h_name                   -- 仕訳名
@@ -2008,35 +2013,50 @@ AS
     <<recon_dedu_loop>>
     FOR i IN 1..gt_recon_dedu_cancel_tbl.COUNT LOOP
 --
-      -- 会計期間よりクロージングステータスを取得
-      SELECT gps.closing_status
-      INTO   lv_closing_status
+-- 2022/04/19 Ver1.2 MOD Start
+      ld_gl_date	:=	gt_recon_dedu_cancel_tbl(i).gl_date;
+--
+      SELECT gps.period_name
+      INTO   lv_period_name
       FROM   gl_period_statuses  gps
-      WHERE  gps.set_of_books_id        = gn_set_bks_id
-      AND    gps.period_name            = gt_recon_dedu_cancel_tbl(i).period_name
-      AND    gps.application_id         = 101
-      AND    gps.adjustment_period_flag = cv_n_flag
+      WHERE  gps.set_of_books_id        =   gn_set_bks_id
+      AND    gps.start_date             <=  ld_gl_date
+      AND    gps.end_date               >=  ld_gl_date
+      AND    gps.application_id         =   101
+      AND    gps.adjustment_period_flag =   cv_n_flag
+      AND    gps.closing_status         =   cv_o_flag
       ;
 --
-      -- クロージングステータスが「C:クローズ」の場合
-      IF (lv_closing_status = cv_c_flag) THEN
---
-        -- 直近のオープンしている会計期間、終了日を取得
-        SELECT MIN(gps.period_name)
-              ,MIN(gps.end_date)
-        INTO   lv_period_name
-              ,ld_gl_date
-        FROM   gl_period_statuses  gps
-        WHERE  gps.set_of_books_id        = gn_set_bks_id
-        AND    gps.end_date               > gt_recon_dedu_cancel_tbl(i).gl_date
-        AND    gps.application_id         = 101
-        AND    gps.adjustment_period_flag = cv_n_flag
-        AND    gps.closing_status         = cv_o_flag
-        ;
-      ELSE
-        lv_period_name  := gt_recon_dedu_cancel_tbl(i).period_name;
-        ld_gl_date      := gt_recon_dedu_cancel_tbl(i).gl_date;
-      END IF;
+--      -- 会計期間よりクロージングステータスを取得
+--      SELECT gps.closing_status
+--      INTO   lv_closing_status
+--      FROM   gl_period_statuses  gps
+--      WHERE  gps.set_of_books_id        = gn_set_bks_id
+--      AND    gps.period_name            = gt_recon_dedu_cancel_tbl(i).period_name
+--      AND    gps.application_id         = 101
+--      AND    gps.adjustment_period_flag = cv_n_flag
+--      ;
+----
+--      -- クロージングステータスが「C:クローズ」の場合
+--      IF (lv_closing_status = cv_c_flag) THEN
+----
+--        -- 直近のオープンしている会計期間、終了日を取得
+--        SELECT MIN(gps.period_name)
+--              ,MIN(gps.end_date)
+--        INTO   lv_period_name
+--              ,ld_gl_date
+--        FROM   gl_period_statuses  gps
+--        WHERE  gps.set_of_books_id        = gn_set_bks_id
+--        AND    gps.end_date               > gt_recon_dedu_cancel_tbl(i).gl_date
+--        AND    gps.application_id         = 101
+--        AND    gps.adjustment_period_flag = cv_n_flag
+--        AND    gps.closing_status         = cv_o_flag
+--        ;
+--      ELSE
+--        lv_period_name  := gt_recon_dedu_cancel_tbl(i).period_name;
+--        ld_gl_date      := gt_recon_dedu_cancel_tbl(i).gl_date;
+--      END IF;
+-- 2022/04/19 Ver1.2 MOD End
 --
       BEGIN
         INSERT INTO gl_interface(
