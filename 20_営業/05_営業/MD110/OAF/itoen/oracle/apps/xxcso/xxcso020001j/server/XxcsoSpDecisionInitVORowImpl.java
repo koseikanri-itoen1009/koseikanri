@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionInitVORowImpl
 * 概要説明   : SP専決初期化用ビュー行クラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2016-01-07 1.3  SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.4  SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
 * 2020-08-21 1.5  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
+* 2022-04-05 1.6  SCSK二村悠香  [E_本稼動_18060]自販機顧客別利益管理
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -385,6 +386,21 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   protected static final int BM2TAXKBNVIEWRENDER = 353;
   protected static final int BM3TAXKBNVIEWRENDER = 354;
   protected static final int BMTAXVIEWRENDER = 355;
+  protected static final int INSTALLPAYSTARTDATEVIEWRENDER = 356;
+  protected static final int INSTALLPAYSTARTDATERENDER = 357;
+  protected static final int INSTALLPAYENDDATEVIEWRENDER = 358;
+  protected static final int INSTALLPAYENDDATERENDER = 359;
+  protected static final int ADASSETSPAYMENTTYPEHDRRNRENDER = 360;
+  protected static final int ADASSETSPAYMENTTYPEVIEWRENDER = 361;
+  protected static final int ADASSETSPAYMENTTYPERENDER = 362;
+  protected static final int ADASSETSTHISTIMELABELRENDER = 363;
+  protected static final int ADASSETSTHISTIMEENDLABELRENDER = 364;
+  protected static final int ADASSETSPAYMENTYEARENDLABEL1RENDER = 365;
+  protected static final int ADASSETSPAYMENTYEARENDLABEL2RENDER = 366;
+  protected static final int ADASSETSPAYSTARTDATEVIEWRENDER = 367;
+  protected static final int ADASSETSPAYSTARTDATERENDER = 368;
+  protected static final int ADASSETSPAYENDDATEVIEWRENDER = 369;
+  protected static final int ADASSETSPAYENDDATERENDER = 370;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1200,6 +1216,36 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getBm3TaxKbnViewRender();
       case BMTAXVIEWRENDER:
         return getBMTaxViewRender();
+      case INSTALLPAYSTARTDATEVIEWRENDER:
+        return getInstallPayStartDateViewRender();
+      case INSTALLPAYSTARTDATERENDER:
+        return getInstallPayStartDateRender();
+      case INSTALLPAYENDDATEVIEWRENDER:
+        return getInstallPayEndDateViewRender();
+      case INSTALLPAYENDDATERENDER:
+        return getInstallPayEndDateRender();
+      case ADASSETSPAYMENTTYPEHDRRNRENDER:
+        return getAdAssetsPaymentTypeHdrRNRender();
+      case ADASSETSPAYMENTTYPEVIEWRENDER:
+        return getAdAssetsPaymentTypeViewRender();
+      case ADASSETSPAYMENTTYPERENDER:
+        return getAdAssetsPaymentTypeRender();
+      case ADASSETSTHISTIMELABELRENDER:
+        return getAdAssetsThisTimeLabelRender();
+      case ADASSETSTHISTIMEENDLABELRENDER:
+        return getAdAssetsThisTimeEndLabelRender();
+      case ADASSETSPAYMENTYEARENDLABEL1RENDER:
+        return getAdAssetsPaymentYearEndLabel1Render();
+      case ADASSETSPAYMENTYEARENDLABEL2RENDER:
+        return getAdAssetsPaymentYearEndLabel2Render();
+      case ADASSETSPAYSTARTDATEVIEWRENDER:
+        return getAdAssetsPayStartDateViewRender();
+      case ADASSETSPAYSTARTDATERENDER:
+        return getAdAssetsPayStartDateRender();
+      case ADASSETSPAYENDDATEVIEWRENDER:
+        return getAdAssetsPayEndDateViewRender();
+      case ADASSETSPAYENDDATERENDER:
+        return getAdAssetsPayEndDateRender();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -2277,6 +2323,51 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return;
       case BMTAXVIEWRENDER:
         setBMTaxViewRender((Boolean)value);
+        return;
+      case INSTALLPAYSTARTDATEVIEWRENDER:
+        setInstallPayStartDateViewRender((Boolean)value);
+        return;
+      case INSTALLPAYSTARTDATERENDER:
+        setInstallPayStartDateRender((Boolean)value);
+        return;
+      case INSTALLPAYENDDATEVIEWRENDER:
+        setInstallPayEndDateViewRender((Boolean)value);
+        return;
+      case INSTALLPAYENDDATERENDER:
+        setInstallPayEndDateRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTTYPEHDRRNRENDER:
+        setAdAssetsPaymentTypeHdrRNRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTTYPEVIEWRENDER:
+        setAdAssetsPaymentTypeViewRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTTYPERENDER:
+        setAdAssetsPaymentTypeRender((Boolean)value);
+        return;
+      case ADASSETSTHISTIMELABELRENDER:
+        setAdAssetsThisTimeLabelRender((Boolean)value);
+        return;
+      case ADASSETSTHISTIMEENDLABELRENDER:
+        setAdAssetsThisTimeEndLabelRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTYEARENDLABEL1RENDER:
+        setAdAssetsPaymentYearEndLabel1Render((Boolean)value);
+        return;
+      case ADASSETSPAYMENTYEARENDLABEL2RENDER:
+        setAdAssetsPaymentYearEndLabel2Render((Boolean)value);
+        return;
+      case ADASSETSPAYSTARTDATEVIEWRENDER:
+        setAdAssetsPayStartDateViewRender((Boolean)value);
+        return;
+      case ADASSETSPAYSTARTDATERENDER:
+        setAdAssetsPayStartDateRender((Boolean)value);
+        return;
+      case ADASSETSPAYENDDATEVIEWRENDER:
+        setAdAssetsPayEndDateViewRender((Boolean)value);
+        return;
+      case ADASSETSPAYENDDATERENDER:
+        setAdAssetsPayEndDateRender((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -8692,6 +8783,276 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   public void setBMTaxViewRender(Boolean value)
   {
     setAttributeInternal(BMTAXVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayStartDateViewRender
+   */
+  public Boolean getInstallPayStartDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLPAYSTARTDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayStartDateViewRender
+   */
+  public void setInstallPayStartDateViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLPAYSTARTDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayStartDateRender
+   */
+  public Boolean getInstallPayStartDateRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLPAYSTARTDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayStartDateRender
+   */
+  public void setInstallPayStartDateRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLPAYSTARTDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayEndDateViewRender
+   */
+  public Boolean getInstallPayEndDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLPAYENDDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayEndDateViewRender
+   */
+  public void setInstallPayEndDateViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLPAYENDDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallPayEndDateRender
+   */
+  public Boolean getInstallPayEndDateRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLPAYENDDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallPayEndDateRender
+   */
+  public void setInstallPayEndDateRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLPAYENDDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentTypeHdrRNRender
+   */
+  public Boolean getAdAssetsPaymentTypeHdrRNRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTTYPEHDRRNRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentTypeHdrRNRender
+   */
+  public void setAdAssetsPaymentTypeHdrRNRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTTYPEHDRRNRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentTypeViewRender
+   */
+  public Boolean getAdAssetsPaymentTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentTypeViewRender
+   */
+  public void setAdAssetsPaymentTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentTypeRender
+   */
+  public Boolean getAdAssetsPaymentTypeRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentTypeRender
+   */
+  public void setAdAssetsPaymentTypeRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsThisTimeLabelRender
+   */
+  public Boolean getAdAssetsThisTimeLabelRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSTHISTIMELABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsThisTimeLabelRender
+   */
+  public void setAdAssetsThisTimeLabelRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSTHISTIMELABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsThisTimeEndLabelRender
+   */
+  public Boolean getAdAssetsThisTimeEndLabelRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSTHISTIMEENDLABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsThisTimeEndLabelRender
+   */
+  public void setAdAssetsThisTimeEndLabelRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSTHISTIMEENDLABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentYearEndLabel1Render
+   */
+  public Boolean getAdAssetsPaymentYearEndLabel1Render()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTYEARENDLABEL1RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentYearEndLabel1Render
+   */
+  public void setAdAssetsPaymentYearEndLabel1Render(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTYEARENDLABEL1RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentYearEndLabel2Render
+   */
+  public Boolean getAdAssetsPaymentYearEndLabel2Render()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTYEARENDLABEL2RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentYearEndLabel2Render
+   */
+  public void setAdAssetsPaymentYearEndLabel2Render(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTYEARENDLABEL2RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayStartDateViewRender
+   */
+  public Boolean getAdAssetsPayStartDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYSTARTDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayStartDateViewRender
+   */
+  public void setAdAssetsPayStartDateViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYSTARTDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayStartDateRender
+   */
+  public Boolean getAdAssetsPayStartDateRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYSTARTDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayStartDateRender
+   */
+  public void setAdAssetsPayStartDateRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYSTARTDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayEndDateViewRender
+   */
+  public Boolean getAdAssetsPayEndDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYENDDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayEndDateViewRender
+   */
+  public void setAdAssetsPayEndDateViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYENDDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPayEndDateRender
+   */
+  public Boolean getAdAssetsPayEndDateRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYENDDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPayEndDateRender
+   */
+  public void setAdAssetsPayEndDateRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYENDDATERENDER, value);
   }
 
 
