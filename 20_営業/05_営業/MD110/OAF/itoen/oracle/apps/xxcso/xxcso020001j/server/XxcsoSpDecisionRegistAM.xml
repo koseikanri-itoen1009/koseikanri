@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
 
 <AppModule
@@ -265,6 +265,10 @@
    <ViewUsage
       Name="XxcsoBM1TaxListVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoBM1TaxListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoAdAssetsPaymentTypeVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
    </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoSpDecHeaderInstCustVL1"
