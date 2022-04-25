@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,8 @@ AS
  *  put_account_warning    p 顧客紐付け警告出力                      (A-8)
 -- Modify 2009.09.10 Ver1.3 End
  *  update_work_table      p ワークテーブルデータ更新                (A-9)
+ *                           終了処理                                (A-10)
+ *  chk_bill_red_dept      p 請求書朱印部門チェック処理              (A-11)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -45,6 +47,7 @@ AS
  *  2013/11/25    1.10 SCSK 桐生 和幸   [E_本稼動_11330] 税別内訳出力対応
  *  2014/03/27    1.11 SCSK 山下 翔太   [E_本稼動_11617] 請求書出力形式が業者委託の顧客対応
  *  2019/07/25    1.12 SCSK 郭 有司     [E_本稼動_15472] 対応
+ *  2022/04/12    1.13 SCSK 冨江 広大   [E_本稼動_18096] 対応
  *
  *****************************************************************************************/
 --
@@ -229,6 +232,9 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
   cv_lookup_type           CONSTANT VARCHAR2(30) := 'XXCFR1_TAX_CATEGORY';     -- 税分類
 -- 2019/07/25 Ver1.12 ADD End
+-- Ver1.13 add start
+  cv_bill_red_dept         CONSTANT VARCHAR2(30) := 'XXCFR1_BILL_RED_DEPT';    --請求書朱印部門
+-- Ver1.13 add end
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -268,6 +274,9 @@ AS
 -- Modify 2009.09.10 Ver1.3 Start
   gv_warning_flag       VARCHAR2(1) := cv_status_no;               -- 顧客紐付け警告存在フラグ
 -- Modify 2009.09.10 Ver1.3 End
+-- Ver1.13 add start
+  gv_bill_red_flag      VARCHAR2(1) := '0';                        -- 請求書朱印部門存在フラグ
+-- Ver1.13 add end
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -619,6 +628,92 @@ AS
 --
   END chk_inv_all_dept;
 --
+-- Ver1.13 add start
+  /**********************************************************************************
+   * Procedure Name   : chk_bill_red_dept
+   * Description      : 請求書朱印部門チェック処理(A-11)
+   ***********************************************************************************/
+  PROCEDURE chk_bill_red_dept(
+    ov_errbuf           OUT VARCHAR2,   -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,   -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_bill_red_dept'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --請求書朱印部門チェック処理
+      BEGIN
+        SELECT '1' AS bill_red_flag
+        INTO   gv_bill_red_flag
+        FROM   fnd_lookup_values flv
+        WHERE  flv.lookup_type  = cv_bill_red_dept
+        AND    flv.lookup_code  = gt_user_dept
+        AND    TRUNC(SYSDATE) BETWEEN NVL( flv.start_date_active, TRUNC(SYSDATE) )
+                              AND     NVL( flv.end_date_active, TRUNC(SYSDATE) )
+        AND    flv.enabled_flag = cv_enabled_yes
+        AND    flv.language     = USERENV( 'LANG' )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf
+                           ,1
+                           ,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_bill_red_dept;
+--
+-- Ver1.13 add end
 -- Modify 2009.09.10 Ver1.3 Start
   /**********************************************************************************
    * Procedure Name   : put_account_warning(A-8)
@@ -2887,6 +2982,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_svf_form_name  CONSTANT  VARCHAR2(20) := 'XXCFR003A16S.xml';  -- フォーム様式ファイル名
+-- Ver1.13 add start
+    cv_svf_form_name2 CONSTANT  VARCHAR2(20) := 'XXCFR003A16S_2.xml';-- フォーム様式ファイル名
+-- Ver1.13 add end
     cv_svf_query_name CONSTANT  VARCHAR2(20) := 'XXCFR003A16S.vrq';  -- クエリー様式ファイル名
     cv_output_mode    CONSTANT  VARCHAR2(1)   := '1';                -- 出力区分(=1：PDF出力）
     cv_extension_pdf  CONSTANT  VARCHAR2(4)  := '.pdf';              -- 拡張子（pdf）
@@ -2902,6 +3000,9 @@ AS
     lv_user_name       VARCHAR2(240) := NULL;
     lv_resp_name       VARCHAR2(240) := NULL;
     lv_svf_errmsg      VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- Ver1.13 add start
+    lv_svf_form_name   VARCHAR2(20);    -- フォーム様式ファイル名
+-- Ver1.13 add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -2931,6 +3032,15 @@ AS
     -- ファイルIDの設定
       lv_file_id := cv_pkg_name;
 --
+-- Ver1.13 add start
+    -- フォーム様式ファイル名設定
+      IF (gv_bill_red_flag = cv_status_yes) THEN
+        lv_svf_form_name := cv_svf_form_name2;
+      ELSE
+        lv_svf_form_name := cv_svf_form_name;
+      END IF;
+--
+-- Ver1.13 add end
     xxccp_svfcommon_pkg.submit_svf_request(
        ov_errbuf       => lv_errbuf             -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode            -- リターン・コード             --# 固定 #
@@ -2939,7 +3049,10 @@ AS
       ,iv_file_name    => lv_svf_file_name      -- 出力ファイル名
       ,iv_file_id      => lv_file_id            -- 帳票ID
       ,iv_output_mode  => cv_output_mode        -- 出力区分(=1：PDF出力）
-      ,iv_frm_file     => cv_svf_form_name      -- フォーム様式ファイル名
+-- Ver1.13 mod start
+--      ,iv_frm_file     => cv_svf_form_name      -- フォーム様式ファイル名
+      ,iv_frm_file     => lv_svf_form_name      -- フォーム様式ファイル名
+-- Ver1.13 mod end
       ,iv_vrq_file     => cv_svf_query_name     -- クエリー様式ファイル名
       ,iv_org_id       => gn_org_id             -- ORG_ID
       ,iv_user_name    => lv_user_name          -- ログイン・ユーザ名
@@ -3234,6 +3347,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Ver1.13 add start
+    -- =====================================================
+    --  請求書朱印部門チェック処理 (A-11)
+    -- =====================================================
+    chk_bill_red_dept(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+--Ver1.13 add end
     -- =====================================================
     --  ワークテーブルデータ登録 (A-4)
     -- =====================================================
