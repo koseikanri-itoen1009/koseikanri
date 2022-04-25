@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜(店舗別内訳)
  * MD.050           : MD050_CFR_003_A19_標準請求書税抜(店舗別内訳)
  * MD.070           : MD050_CFR_003_A19_標準請求書税抜(店舗別内訳)
- * Version          : 1.93
+ * Version          : 1.94
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  delete_work_table      p ワークテーブルデータ削除                (A-9)
  *  exec_submit_req        p 店舗別明細出力要求発行処理              (A-13)
  *  func_wait_for_request  p コンカレント終了待機処理                (A-14)
+ *  chk_bill_red_dept      p 請求書朱印部門チェック処理              (A-15)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -44,6 +45,7 @@ AS
  *  2016/09/06    1.91 SCSK 小路 恭弘   障害票「E_本稼動_13849」対応
  *  2018/10/25    1.92 SCSK 奈良 和宏   障害票「E_本稼動_15307」対応
  *  2019/08/09    1.93 SCSK 郭 有司     障害票「E_本稼動_15472」対応
+ *  2022/04/12    1.94 SCSK 冨江 広大   障害票「E_本稼動_18096」対応
  *
  *****************************************************************************************/
 --
@@ -271,6 +273,15 @@ AS
   cv_bill_type_13    CONSTANT VARCHAR2(2)   := '13';              -- 請求書Dヘッダ
   cv_bill_type_15    CONSTANT VARCHAR2(2)   := '15';              -- 請求書D税抜明細
 -- Ver.1.92 [障害E_本稼動_15307] ADD END
+-- Ver1.94 add start
+  cv_bill_type_05_2    CONSTANT VARCHAR2(4)   := '05_2';          -- 朱印請求書A税抜ヘッダ
+  cv_bill_type_06_2    CONSTANT VARCHAR2(4)   := '06_2';          -- 朱印請求書A税抜明細
+  cv_bill_type_07_2    CONSTANT VARCHAR2(4)   := '07_2';          -- 朱印請求書B税抜ヘッダ
+  cv_bill_type_08_2    CONSTANT VARCHAR2(4)   := '08_2';          -- 朱印請求書B税抜明細
+  cv_bill_type_11_2    CONSTANT VARCHAR2(4)   := '11_2';          -- 朱印請求書C税抜ヘッ
+  cv_bill_type_13_2    CONSTANT VARCHAR2(4)   := '13_2';          -- 朱印請求書Dヘッダ
+  cv_bill_type_15_2    CONSTANT VARCHAR2(4)   := '15_2';          -- 朱印請求書D税抜明細
+-- Ver1.94 add end
 --
   -- コンカレントdevステータス
   cv_dev_status_normal  CONSTANT VARCHAR2(6)  := 'NORMAL';  -- '正常'
@@ -377,6 +388,9 @@ AS
 -- Ver.1.92 [障害E_本稼動_15307] ADD END
   gn_req_cnt            NUMBER;                                    -- 店舗別明細出力要求発行数
 -- Add 2015.07.31 Ver1.80 End
+-- Ver1.94 add start
+  gv_bill_red_flag      VARCHAR2(1) := '0';                        -- 請求書朱印部門存在チェック
+-- Ver1.94 add end
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -760,6 +774,93 @@ AS
 --
   END chk_inv_all_dept;
 --
+-- Ver1.94 add start
+  /**********************************************************************************
+   * Procedure Name   : chk_bill_red_dept
+   * Description      : 請求書朱印部門チェック処理(A-15)
+   ***********************************************************************************/
+  PROCEDURE chk_bill_red_dept(
+    ov_errbuf           OUT VARCHAR2,   -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,   -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_bill_red_dept'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    cv_bill_red_dept         CONSTANT VARCHAR2(30) := 'XXCFR1_BILL_RED_DEPT';    --請求書朱印部門
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --請求書朱印部門チェック処理
+      BEGIN
+        SELECT '1' AS bill_red_flag
+        INTO   gv_bill_red_flag
+        FROM   fnd_lookup_values flv
+        WHERE  flv.lookup_type  = cv_bill_red_dept
+        AND    flv.lookup_code  = gt_user_dept
+        AND    TRUNC(SYSDATE) BETWEEN NVL( flv.start_date_active, TRUNC(SYSDATE) )
+                              AND     NVL( flv.end_date_active, TRUNC(SYSDATE) )
+        AND    flv.enabled_flag = cv_enabled_yes
+        AND    flv.language     = USERENV( 'LANG' )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf
+                           ,1
+                           ,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_bill_red_dept;
+--
+-- Ver1.94 add end
   /**********************************************************************************
    * Procedure Name   : put_account_warning
    * Description      : 顧客紐付け警告出力
@@ -6916,6 +7017,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_svf_form_name  CONSTANT  VARCHAR2(20) := 'XXCFR003A19S.xml';  -- フォーム様式ファイル名
+-- Ver1.94 add start
+    cv_svf_form_name2 CONSTANT  VARCHAR2(20) := 'XXCFR003A19S_2.xml';-- フォーム様式ファイル名
+-- Ver1.94 add end
     cv_svf_query_name CONSTANT  VARCHAR2(20) := 'XXCFR003A19S.vrq';  -- クエリー様式ファイル名
     cv_output_mode    CONSTANT  VARCHAR2(1)   := '1';                -- 出力区分(=1：PDF出力）
     cv_extension_pdf  CONSTANT  VARCHAR2(4)  := '.pdf';              -- 拡張子（pdf）
@@ -6928,6 +7032,9 @@ AS
     lv_user_name       VARCHAR2(240) := NULL;
     lv_resp_name       VARCHAR2(240) := NULL;
     lv_svf_errmsg      VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- Ver1.94 add start
+    lv_svf_form_name   VARCHAR2(20);    -- フォーム様式ファイル名
+-- Ver1.94 add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -6957,6 +7064,15 @@ AS
     -- ファイルIDの設定
       lv_file_id := cv_pkg_name;
 --
+-- Ver1.94 add start
+    -- フォーム様式ファイル名設定
+      IF (gv_bill_red_flag = cv_status_yes) THEN
+        lv_svf_form_name := cv_svf_form_name2;
+      ELSE
+        lv_svf_form_name := cv_svf_form_name;
+      END IF;
+--
+-- Ver1.94 add end
     xxccp_svfcommon_pkg.submit_svf_request(
        ov_errbuf       => lv_errbuf             -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode            -- リターン・コード             --# 固定 #
@@ -6965,7 +7081,10 @@ AS
       ,iv_file_name    => lv_svf_file_name      -- 出力ファイル名
       ,iv_file_id      => lv_file_id            -- 帳票ID
       ,iv_output_mode  => cv_output_mode        -- 出力区分(=1：PDF出力）
-      ,iv_frm_file     => cv_svf_form_name      -- フォーム様式ファイル名
+-- Ver1.94 mod start
+--      ,iv_frm_file     => cv_svf_form_name      -- フォーム様式ファイル名
+      ,iv_frm_file     => lv_svf_form_name      -- フォーム様式ファイル名
+-- Ver1.94 mod end
       ,iv_vrq_file     => cv_svf_query_name     -- クエリー様式ファイル名
       ,iv_org_id       => gn_org_id             -- ORG_ID
       ,iv_user_name    => lv_user_name          -- ログイン・ユーザ名
@@ -8186,6 +8305,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Ver1.94 add start
+    -- =====================================================
+    --  請求書朱印部門取得処理 (A-15)
+    -- =====================================================
+    chk_bill_red_dept(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+--Ver1.94 add end
     -- =======================================================================================
     --  対象顧客取得処理(A-4)、売掛管理先顧客取得処理(A-5)、ワークテーブルデータ登録(A-6)
     -- =======================================================================================
@@ -8242,140 +8375,278 @@ AS
     -- =====================================================
     --  店舗別明細出力要求発行処理 (A-13)
     -- =====================================================
-    -- 明細0件フラグA＝1の場合
-    IF ( gv_target_a_flag = cv_taget_flag_1 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：05の要求発行
-      exec_submit_req(
-         cv_bill_type_05           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_a_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    -- 明細0件フラグA＝2の場合
-    ELSIF ( gv_target_a_flag =  cv_taget_flag_2 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：05の要求発行
-      exec_submit_req(
-         cv_bill_type_05           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_a_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：06の要求発行
-      exec_submit_req(
-         cv_bill_type_06           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_a_l         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    END IF;
+--Ver1.94 add start
+    IF ( gv_bill_red_flag = cv_status_yes ) THEN
+      -- 明細0件フラグA＝1の場合
+      IF ( gv_target_a_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：05_2の要求発行
+        exec_submit_req(
+           cv_bill_type_05_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_a_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグA＝2の場合
+      ELSIF ( gv_target_a_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：05_2の要求発行
+        exec_submit_req(
+           cv_bill_type_05_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_a_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：06_2の要求発行
+        exec_submit_req(
+           cv_bill_type_06_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_a_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
 --
-    -- 明細0件フラグB＝1の場合
-    IF ( gv_target_b_flag = cv_taget_flag_1 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：07の要求発行
-      exec_submit_req(
-         cv_bill_type_07           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_b_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    -- 明細0件フラグB＝2の場合
-    ELSIF ( gv_target_b_flag =  cv_taget_flag_2 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：07の要求発行
-      exec_submit_req(
-         cv_bill_type_07           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_b_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：08の要求発行
-      exec_submit_req(
-         cv_bill_type_08           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_b_l         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    END IF;
+      -- 明細0件フラグB＝1の場合
+      IF ( gv_target_b_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：07_2の要求発行
+        exec_submit_req(
+           cv_bill_type_07_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_b_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグB＝2の場合
+      ELSIF ( gv_target_b_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：07_2の要求発行
+        exec_submit_req(
+           cv_bill_type_07_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_b_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：08_2の要求発行
+        exec_submit_req(
+           cv_bill_type_08_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_b_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
+--
+      -- 明細0件フラグC＝1の場合
+      IF ( gv_target_c_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：11_2の要求発行
+        exec_submit_req(
+           cv_bill_type_11_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_c_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグC＝2の場合
+      ELSIF ( gv_target_c_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：11_2の要求発行
+        exec_submit_req(
+           cv_bill_type_11_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_c_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：12の要求発行
+        exec_submit_req(
+           cv_bill_type_12           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_c_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
+--
+      -- 明細0件フラグD＝1の場合
+      IF ( gv_target_d_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：13_2の要求発行
+        exec_submit_req(
+           cv_bill_type_13_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_d_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグD＝2の場合
+      ELSIF ( gv_target_d_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：13_2の要求発行
+        exec_submit_req(
+           cv_bill_type_13_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_d_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：15_2の要求発行
+        exec_submit_req(
+           cv_bill_type_15_2         -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_d_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
+    ELSE
+--Ver1.94 add end
+      -- 明細0件フラグA＝1の場合
+      IF ( gv_target_a_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：05の要求発行
+        exec_submit_req(
+           cv_bill_type_05           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_a_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグA＝2の場合
+      ELSIF ( gv_target_a_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：05の要求発行
+        exec_submit_req(
+           cv_bill_type_05           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_a_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：06の要求発行
+        exec_submit_req(
+           cv_bill_type_06           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_a_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
+--
+      -- 明細0件フラグB＝1の場合
+      IF ( gv_target_b_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：07の要求発行
+        exec_submit_req(
+           cv_bill_type_07           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_b_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグB＝2の場合
+      ELSIF ( gv_target_b_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：07の要求発行
+        exec_submit_req(
+           cv_bill_type_07           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_b_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：08の要求発行
+        exec_submit_req(
+           cv_bill_type_08           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_b_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
 --
 -- Add 2016.04.04 Ver1.90 Start
-    -- 明細0件フラグC＝1の場合
-    IF ( gv_target_c_flag = cv_taget_flag_1 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：11の要求発行
-      exec_submit_req(
-         cv_bill_type_11           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_c_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    -- 明細0件フラグC＝2の場合
-    ELSIF ( gv_target_c_flag =  cv_taget_flag_2 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：11の要求発行
-      exec_submit_req(
-         cv_bill_type_11           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_c_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：12の要求発行
-      exec_submit_req(
-         cv_bill_type_12           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_c_l         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    END IF;
+      -- 明細0件フラグC＝1の場合
+      IF ( gv_target_c_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：11の要求発行
+        exec_submit_req(
+           cv_bill_type_11           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_c_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグC＝2の場合
+      ELSIF ( gv_target_c_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：11の要求発行
+        exec_submit_req(
+           cv_bill_type_11           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_c_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：12の要求発行
+        exec_submit_req(
+           cv_bill_type_12           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_c_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
 --
 -- Add 2016.04.04 Ver1.90 End
 -- Ver.1.92 [障害E_本稼動_15307] ADD START
-    -- 明細0件フラグD＝1の場合
-    IF ( gv_target_d_flag = cv_taget_flag_1 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：13の要求発行
-      exec_submit_req(
-         cv_bill_type_13           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_d_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-    -- 明細0件フラグD＝2の場合
-    ELSIF ( gv_target_d_flag =  cv_taget_flag_2 ) THEN
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：13の要求発行
-      exec_submit_req(
-         cv_bill_type_13           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_d_h         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
-      gn_req_cnt := gn_req_cnt + 1;
-      -- 請求書タイプ：15の要求発行
-      exec_submit_req(
-         cv_bill_type_15           -- 請求書タイプ
-        ,gn_req_cnt                -- 要求発行数
-        ,gn_target_cnt_d_l         -- 対象件数
-        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
-        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
-        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグD＝1の場合
+      IF ( gv_target_d_flag = cv_taget_flag_1 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：13の要求発行
+        exec_submit_req(
+           cv_bill_type_13           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_d_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 明細0件フラグD＝2の場合
+      ELSIF ( gv_target_d_flag =  cv_taget_flag_2 ) THEN
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：13の要求発行
+        exec_submit_req(
+           cv_bill_type_13           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_d_h         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+        gn_req_cnt := gn_req_cnt + 1;
+        -- 請求書タイプ：15の要求発行
+        exec_submit_req(
+           cv_bill_type_15           -- 請求書タイプ
+          ,gn_req_cnt                -- 要求発行数
+          ,gn_target_cnt_d_l         -- 対象件数
+          ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+          ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
+-- Ver1.94 add start
     END IF;
+-- Ver1.94 add end
 --
 -- Ver.1.92 [障害E_本稼動_15307] ADD END
     -- =====================================================
