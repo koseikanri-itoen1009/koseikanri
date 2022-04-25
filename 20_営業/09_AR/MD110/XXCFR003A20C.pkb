@@ -22,6 +22,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- --------------------------------------------
  *  2015/07/23    1.0   SCSK 小路 恭弘   新規作成
+ *  2022/04/11    1.1   SCSK 冨江 広大   [E_本稼動_18096] 対応
  *
  *****************************************************************************************/
 --
@@ -148,7 +149,10 @@ AS
 --
     -- *** ローカル変数 ***
     lv_param_msg                VARCHAR2(5000);                         -- パラメータ出力用
-    lv_file_id                  VARCHAR2(3);                            -- 帳票ID
+-- Ver1.1 mod start
+--    lv_file_id                  VARCHAR2(3);                            -- 帳票ID
+    lv_file_id                  VARCHAR2(5);                            -- 帳票ID
+-- Ver1.1 mod end
 --
   BEGIN
 --
@@ -218,7 +222,10 @@ AS
     -- 帳票フォームファイル名編集
     ov_svf_file_xml := cv_svf_name || lv_file_id || cv_xml;
     -- 帳票クエリーファイル名編集
-    ov_svf_file_vrq := cv_svf_name || lv_file_id || cv_vrq;
+-- Ver1.1 mod start
+--    ov_svf_file_vrq := cv_svf_name || lv_file_id || cv_vrq;
+    ov_svf_file_vrq := cv_svf_name || SUBSTR(lv_file_id,1,3) || cv_vrq;
+-- Ver 1.1 mod end
 --
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
