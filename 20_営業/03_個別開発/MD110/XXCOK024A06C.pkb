@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A06C (body)
  * Description      : 販売控除情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : 販売控除データGL連携 MD050_COK_024_A06
- * Version          : 1.3
+ * Version          : 1.4
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -29,6 +29,7 @@ AS
  *  2021/05/19    1.1   K.Yoshikawa      グループID追加対応
  *  2021/06/25    1.2   K.Tomie          E_本稼働_17279対応
  *  2021/08/26    1.3   H.Futamura       E_本稼動_17468対応
+ *  2022/04/25    1.4   K.Yoshikawa      E_本稼動_18146対応
  *
  *****************************************************************************************/
 --
@@ -778,11 +779,14 @@ AS
           -- チェーン
 --Ver 1.2 mod start
 --          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
-          SELECT /*+ LEADING(flv XSD flv2 flv1)
-                     INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
-                     USE_HASH(XSD)
-                     USE_HASH(flv1)
-                     USE_HASH(flv2)*/
+-- Ver 1.4 mod start
+--          SELECT /*+ LEADING(flv XSD flv2 flv1)
+--                     INDEX(XSD XXCOK_SALES_DEDUCTION_N04)
+--                     USE_HASH(XSD)
+--                     USE_HASH(flv1)
+--                     USE_HASH(flv2)*/
+          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N08)*/
+-- Ver 1.4 mod end
 --Ver 1.2 mod end
                  xsd.sales_deduction_id         sales_deduction_id    -- 販売控除ID
                 ,CASE
@@ -832,9 +836,15 @@ AS
           AND    flv2.language                            = USERENV('LANG')                               -- 言語：USERENV('LANG')
           AND    flv2.enabled_flag                        = cv_y_flag                                     -- 使用可能：Y
           AND    xsd.deduction_chain_code                IS NOT NULL                                      -- チェーンコード
+-- Ver 1.4 add start
+          AND    xsd.customer_code_to                    IS NULL                                          -- 振替先顧客コード
+-- Ver 1.4 add end
           UNION ALL
           -- 企業
-          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+-- Ver 1.4 mod start
+--          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+          SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N08) */
+-- Ver 1.4 mod end
                  xsd.sales_deduction_id         sales_deduction_id    -- 販売控除ID
                 ,CASE
                    WHEN flv.attribute2 = cv_teigaku_code THEN
@@ -878,6 +888,10 @@ AS
           AND    xsd.gl_if_flag                          IN (cv_n_flag, cv_r_flag)                        -- GL連携フラグ N：未連携、R：再送
           AND    xsd.source_category                     IN (cv_u_flag, cv_f_flag)                        -- 作成元区分 U:アップロード、F:定額控除
           AND    xsd.corp_code                           IS NOT NULL                                      -- 企業コード
+-- Ver 1.4 add start
+          AND    xsd.deduction_chain_code                IS NULL                                          -- チェーンコード
+          AND    xsd.customer_code_to                    IS NULL                                          -- 振替先顧客コード
+-- Ver 1.4 add end
          ) ;
 
     --==================================
