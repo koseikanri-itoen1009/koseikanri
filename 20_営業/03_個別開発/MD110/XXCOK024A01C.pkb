@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2022/02/15    1.7   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
  *  2022/03/09    1.8   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応(メッセージ変更)
  *                                       E_本稼動_17939【収益認識】定額協賛金(既存メッセージ不具合修正)
+ *  2022/05/02    1.9   SCSK Y.Koh       E_本稼動_18148  定額協賛金の控除マスタアップロード
  *
  *****************************************************************************************/
 --
@@ -184,6 +185,9 @@ AS
   cv_data_type_div_est              CONSTANT VARCHAR2(1)  :=  'E';    -- データ種類区分(見積)
 -- 2022/02/15 Ver1.7 ADD End
 --
+-- 2022/05/02 Ver1.9 ADD Start
+  cv_condition_cls_fix              CONSTANT VARCHAR2(3)  :=  '010';  -- 控除区分(定額条件)
+-- 2022/05/02 Ver1.9 ADD End
   cv_condition_type_req             CONSTANT VARCHAR2(3)  :=  '010';  -- 控除タイプ(請求額×料率(％))
   cv_condition_type_sale            CONSTANT VARCHAR2(3)  :=  '020';  -- 控除タイプ(販売数量×金額)
   cv_condition_type_ws_fix          CONSTANT VARCHAR2(3)  :=  '030';  -- 控除タイプ(問屋未収（定額）)
@@ -322,9 +326,9 @@ AS
 -- Ver1.5 Add Start
   cv_msg_cok_10805                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10805';  -- 控除マスタ削除エラー
 -- Ver1.5 Add End
--- 2022/03/xx Ver1.8 ADD Start
+-- 2022/03/09 Ver1.8 ADD Start
   cv_msg_cok_10835                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10835';  -- マスタ未登録エラー
--- 2022/03/xx Ver1.8 ADD End
+-- 2022/03/09 Ver1.8 ADD End
 --
   cv_tkn_coi_10634                  CONSTANT VARCHAR2(20) := 'APP-XXCOI1-10634';  -- ファイルアップロードIF
   cv_prf_org_err_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
@@ -2564,10 +2568,10 @@ AS
             IF ln_dummy = 0 OR (ld_before_start_date IS NULL AND  ld_before_end_date IS NULL )THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
                              iv_application  => cv_msg_kbn_cok
--- 2022/03/xx Ver1.8 MOD Start
+-- 2022/03/09 Ver1.8 MOD Start
                            , iv_name         => cv_msg_cok_10835
 --                           , iv_name         => cv_msg_cok_10600
--- 2022/03/xx Ver1.8 MOD End
+-- 2022/03/09 Ver1.8 MOD End
                            , iv_token_name1  => cv_col_name_tok
                            , iv_token_value1 => cv_msg_condition_no
                            , iv_token_name2  => cv_col_value_tok
@@ -2607,10 +2611,10 @@ AS
           IF ln_dummy = 0 THEN
             lv_errmsg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_msg_kbn_cok
--- 2022/03/xx Ver1.8 MOD Start
+-- 2022/03/09 Ver1.8 MOD Start
                          , iv_name         => cv_msg_cok_10835
 --                         , iv_name         => cv_msg_cok_10600
--- 2022/03/xx Ver1.8 MOD End
+-- 2022/03/09 Ver1.8 MOD End
                          , iv_token_name1  => cv_col_name_tok
                          , iv_token_value1 => cv_msg_condition_no
                          , iv_token_name2  => cv_col_value_tok
@@ -4490,6 +4494,65 @@ AS
               END;
             END IF;
 --
+-- 2022/05/02 Ver1.9 ADD Start
+            IF g_cond_tmp_chk_rec.condition_cls = cv_condition_cls_fix  THEN
+--
+            -- 控除区分が010(定額条件)の場合
+--
+              -- 90.品目コードが設定されている場合エラー
+              IF g_cond_tmp_chk_rec.item_code  IS NOT NULL THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_kbn_cok
+                             , iv_name         => cv_msg_cok_10598
+                             , iv_token_name1  => cv_col_name_tok
+                             , iv_token_value1 => cv_msg_item_code
+                             );
+                ln_cnt  :=  ln_cnt + 1;
+                g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+              END IF;
+--
+            ELSE
+--
+            -- 控除区分が010(定額条件)以外の場合
+--
+              -- 91.品目コードが未設定の場合エラー
+              IF g_cond_tmp_chk_rec.item_code  IS NULL THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_msg_kbn_cok
+                             , iv_name         => cv_msg_cok_10606
+                             , iv_token_name1  => cv_col_name_tok
+                             , iv_token_value1 => cv_msg_item_code
+                             );
+                ln_cnt  :=  ln_cnt + 1;
+                g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+--
+              -- 92.品目コードがマスタに存在しない場合エラー
+              ELSE
+                BEGIN
+                  SELECT  1       AS  dummy
+                  INTO    ln_dummy
+                  FROM    mtl_system_items_b  msib
+                  WHERE   msib.segment1         = g_cond_tmp_chk_rec.item_code
+                  AND     msib.organization_id  = gt_org_id
+                  ;
+                EXCEPTION
+                  WHEN NO_DATA_FOUND THEN
+                    lv_errmsg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_msg_kbn_cok
+                                 , iv_name         => cv_msg_cok_10600
+                                 , iv_token_name1  => cv_col_name_tok
+                                 , iv_token_value1 => cv_msg_item_code
+                                 , iv_token_name2  => cv_col_value_tok
+                                 , iv_token_value2 => g_cond_tmp_chk_rec.item_code
+                                 );
+                    ln_cnt  :=  ln_cnt + 1;
+                    g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+                END;
+              END IF;
+--
+            END IF;
+--
+-- 2022/05/02 Ver1.9 ADD End
             --85.控除額（本体）が未設定の場合エラー
             IF g_cond_tmp_chk_rec.deduction_amount IS NULL THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
@@ -4991,6 +5054,10 @@ AS
         END IF;
       END IF;
 --
+-- 2022/05/02 Ver1.9 ADD Start
+      IF ( g_cond_tmp_rec.condition_type IN( cv_condition_type_req, cv_condition_type_sale, cv_condition_type_ws_fix
+                                        , cv_condition_type_ws_add, cv_condition_type_spons, cv_condition_type_pre_spons ) ) THEN
+-- 2022/05/02 Ver1.9 ADD End
       IF ( g_cond_tmp_rec.process_type_line = cv_process_insert ) THEN
         --  マスタ重複(控除番号検索）
         ln_dummy  :=  0;
@@ -5010,46 +5077,51 @@ AS
              iv_application  => cv_msg_kbn_cok
            , iv_name         => cv_msg_cok_10608
            , iv_token_name1  => cv_col_name_tok
--- 2022/03/xx Ver1.8 MOD Start
+-- 2022/03/09 Ver1.8 MOD Start
            , iv_token_value1 => cv_msg_item_code
 --           , iv_token_value1 => cv_msg_target_cate
--- 2022/03/xx Ver1.8 MOD End
+-- 2022/03/09 Ver1.8 MOD End
            );
           ln_cnt  :=  ln_cnt + 1;
           g_message_list_tab( g_cond_tmp_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
         END IF;
       END IF;
---
-      IF ( g_cond_tmp_rec.process_type_line = cv_process_insert ) THEN
-        --  CSV側で異なる行がないかチェック
-        ln_dummy  :=  0;
-        SELECT  COUNT(1)      AS  cnt
-        INTO    ln_dummy
-        FROM    xxcok_condition_temp    xct
-        WHERE   xct.condition_no        =  g_cond_tmp_rec.condition_no
-        AND     xct.item_code           =  g_cond_tmp_rec.item_code
-        AND     xct.request_id          =  cn_request_id
-        AND     xct.process_type_line   =  cv_process_insert
-        AND     xct.rowid              <>  g_cond_tmp_rec.row_id
-        ;
---
-        IF ( ln_dummy <> 0 ) THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-             iv_application  => cv_msg_kbn_cok
--- 2022/03/xx Ver1.8 MOD Start
-           , iv_name         => cv_msg_cok_10608
---           , iv_name         => cv_msg_cok_10609
--- 2022/03/xx Ver1.8 MOD End
-           , iv_token_name1  => cv_col_name_tok
--- 2022/03/xx Ver1.8 MOD Start
-           , iv_token_value1 => cv_msg_item_code
---           , iv_token_value1 => cv_msg_target_cate
--- 2022/03/xx Ver1.8 MOD End
-           );
-          ln_cnt  :=  ln_cnt + 1;
-          g_message_list_tab( g_cond_tmp_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
-        END IF;
+-- 2022/05/02 Ver1.9 ADD Start
       END IF;
+-- 2022/05/02 Ver1.9 ADD End
+--
+-- 2022/05/02 Ver1.9 DEL Start
+--      IF ( g_cond_tmp_rec.process_type_line = cv_process_insert ) THEN
+--        --  CSV側で異なる行がないかチェック
+--        ln_dummy  :=  0;
+--        SELECT  COUNT(1)      AS  cnt
+--        INTO    ln_dummy
+--        FROM    xxcok_condition_temp    xct
+--        WHERE   xct.condition_no        =  g_cond_tmp_rec.condition_no
+--        AND     xct.item_code           =  g_cond_tmp_rec.item_code
+--        AND     xct.request_id          =  cn_request_id
+--        AND     xct.process_type_line   =  cv_process_insert
+--        AND     xct.rowid              <>  g_cond_tmp_rec.row_id
+--        ;
+----
+--        IF ( ln_dummy <> 0 ) THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--             iv_application  => cv_msg_kbn_cok
+---- 2022/03/09 Ver1.8 MOD Start
+--           , iv_name         => cv_msg_cok_10608
+----           , iv_name         => cv_msg_cok_10609
+---- 2022/03/09 Ver1.8 MOD End
+--           , iv_token_name1  => cv_col_name_tok
+---- 2022/03/09 Ver1.8 MOD Start
+--           , iv_token_value1 => cv_msg_item_code
+----           , iv_token_value1 => cv_msg_target_cate
+---- 2022/03/09 Ver1.8 MOD End
+--           );
+--          ln_cnt  :=  ln_cnt + 1;
+--          g_message_list_tab( g_cond_tmp_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+--        END IF;
+--      END IF;
+-- 2022/05/02 Ver1.9 DEL End
 -- 2022/02/15 Ver1.7 ADD Start
       END IF;
 -- 2022/02/15 Ver1.7 ADD End
