@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common5_pkg(body)
  * Description            : 共通関数5
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数5.xls
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2018/06/18    1.1   H.Sasaki        不具合対応(E_本稼動_15154)
  *  2019/07/25    1.2   E.Yazaki        不具合対応(E_本稼動_15550)
  *  2020/07/30    1.3   Y.Shoji         E_本稼動_16375対応
+ *  2022/05/12    1.4   K.Tomie         E_本稼動_16375対応(障害対応)
  *
  *****************************************************************************************/
 --
@@ -324,6 +325,9 @@ AS
       AND    itp.lot_id     =  in_lot_id      -- ロットID
       AND    itp.lot_id     =  ilm.lot_id
       AND    ilm.attribute7 <> iv_unit_price  -- 単価違い
+-- Ver1.4 add start
+      AND    ilm.attribute7 <> 0              -- 単価が0円の場合はチェックしない
+-- Ver1.4 add end
       ;
 --
       -- 単価違いが存在しない場合
@@ -338,6 +342,9 @@ AS
         AND    itc.lot_id     =  in_lot_id      -- ロットID
         AND    itc.lot_id     =  ilm.lot_id
         AND    ilm.attribute7 <> iv_unit_price  -- 単価違い
+-- Ver1.4 add start
+        AND    ilm.attribute7   <> 0              -- 単価が0円の場合はチェックしない
+-- Ver1.4 add end
         ;
       END IF;
 --
