@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_packing_info_v
  * Description     : 納品予定更新(荷番情報)画面view
- * Version         : 1.3
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2010/06/16    1.1   H.Sasaki        [E_本稼動_03075]拠点選択対応
  *  2021/07/21    1.2   H.Futamura      E_本稼動_17296対応
  *  2021/08/17    1.3   H.Futamura      E_本稼動_17296再対応
+ *  2022/05/11    1.4   R.Oikawa        E_本稼動_18246対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_dlv_packing_info_v(
    edi_header_info_id          -- EDIヘッダ情報.EDIヘッダ情報ID
@@ -54,6 +55,9 @@ CREATE OR REPLACE VIEW xxcos_dlv_packing_info_v(
   ,edi_qty_in_case             -- EDI明細情報.入数
 -- Ver1.3 Mod END
 -- Ver1.2 Add END
+-- Ver1.4 Add START
+  ,delivery_center_code        -- EDIヘッダ情報.納入センターコード
+-- Ver1.4 Add END
 )
 AS
   SELECT xeh.edi_header_info_id          edi_header_info_id      -- EDIヘッダ情報.EDIヘッダ情報ID
@@ -114,6 +118,9 @@ AS
         ,xel.qty_in_case                 edi_qty_in_case         -- EDI明細情報.入数
 -- Ver1.3 Mod END
 -- Ver1.2 Add END
+-- Ver1.4 Add START
+        ,xeh.delivery_center_code        delivery_center_code    -- EDIヘッダ情報.納入センターコード
+-- Ver1.4 Add END
   FROM   xxcos_edi_headers     xeh   -- EDIヘッダ情報
         ,xxcos_edi_lines       xel   -- EDI明細情報
         ,oe_order_headers_all  ooha  -- 受注ヘッダ
@@ -181,5 +188,8 @@ COMMENT ON COLUMN xxcos_dlv_packing_info_v.category                IS 'カテゴリ'
 COMMENT ON COLUMN xxcos_dlv_packing_info_v.edi_qty_in_case         IS 'EDI入数';
 -- Ver1.3 Mod END
 -- Ver1.2 Add END
+-- Ver1.4 Add START
+COMMENT ON COLUMN xxcos_dlv_packing_info_v.delivery_center_code    IS '納入センターコード';
+-- Ver1.4 Add END
 --
 COMMENT ON TABLE  xxcos_dlv_packing_info_v                         IS  '納品予定更新(荷番情報)画面view';
