@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -94,6 +94,7 @@ AS
  *  2020-08-21    1.25  M.Sato           E_本稼動_15904対応
  *  2020-12-14    1.26  R.Oikawa         E_本稼動_16642対応
  *  2022-03-28    1.27  R.Oikawa         E_本稼動_18060対応
+ *  2022-05-19    1.28  R.Oikawa         E_本稼動_18060本番障害対応
  *
  *****************************************************************************************/
   --
@@ -4881,6 +4882,14 @@ AS
             -- 何もしない
             NULL;
             --
+-- 2022/05/19 Ver.1.28 ADD START
+          -- 支払期間開始日、支払期間終了日どちらかがNULLはスキップ
+          ELSIF ( lt_sp_decision_headers_rec.install_pay_start_date   IS NULL
+             OR   lt_sp_decision_headers_rec.install_pay_end_date     IS NULL ) THEN
+            -- 何もしない
+            NULL;
+            --
+-- 2022/05/19 Ver.1.28 ADD END
           ELSE
             -- 期間を新しく追加作成するパターン
             IF ( lt_sp_decision_headers_rec.install_pay_start_date > ld_pay_end_date ) THEN
@@ -4949,8 +4958,16 @@ AS
         EXCEPTION
          WHEN NO_DATA_FOUND THEN
            -- 対象顧客でのレコードなし
-           -- ★自販機顧客支払管理情報テーブル登録処理
-           lv_insert_flag := cv_flag_on;
+-- 2022/05/19 Ver.1.28 MOD START
+--           -- ★自販機顧客支払管理情報テーブル登録処理
+--           lv_insert_flag := cv_flag_on;
+           -- 支払期間開始日、支払期間終了日どちらかがNULLはスキップ
+           IF ( lt_sp_decision_headers_rec.install_pay_start_date   IS NOT NULL
+             AND   lt_sp_decision_headers_rec.install_pay_end_date  IS NOT NULL ) THEN
+               -- ★自販機顧客支払管理情報テーブル登録処理
+               lv_insert_flag := cv_flag_on;
+           END IF;
+-- 2022/05/19 Ver.1.28 MOD END
         END;
         --
         --  送信対象に変更があるため既存レコードを対象外にUPDATEする
@@ -5096,6 +5113,14 @@ AS
             -- 何もしない
             NULL;
             --
+-- 2022/05/19 Ver.1.28 ADD START
+          -- 支払期間開始日、支払期間終了日どちらかがNULLはスキップ
+          ELSIF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date   IS NULL
+            OR  lt_sp_decision_headers_rec.ad_assets_pay_end_date       IS NULL ) THEN
+            -- 何もしない
+            NULL;
+            --
+-- 2022/05/19 Ver.1.28 ADD END
           ELSE
             -- 期間を新しく追加作成するパターン
             IF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date > ld_pay_end_date ) THEN
@@ -5164,8 +5189,16 @@ AS
         EXCEPTION
          WHEN NO_DATA_FOUND THEN
            -- 対象顧客でのレコードなし
-           -- ★自販機顧客支払管理情報テーブル登録処理
-           lv_insert_flag := cv_flag_on;
+-- 2022/05/19 Ver.1.28 MOD START
+--           -- ★自販機顧客支払管理情報テーブル登録処理
+--           lv_insert_flag := cv_flag_on;
+           -- 支払期間開始日、支払期間終了日どちらかがNULLはスキップ
+           IF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date   IS NOT NULL
+            AND  lt_sp_decision_headers_rec.ad_assets_pay_end_date    IS NOT NULL ) THEN
+              -- ★自販機顧客支払管理情報テーブル登録処理
+              lv_insert_flag := cv_flag_on;
+           END IF;
+-- 2022/05/19 Ver.1.28 MOD END
         END;
         --
         --  送信対象に変更があるため既存レコードを対象外にUPDATEする
