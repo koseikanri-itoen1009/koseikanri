@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -91,6 +91,9 @@ AS
  *  2017/10/18    1.30  S.Niki           [E_本稼動_14671] 自拠点セキュリティ変更
  *  2018/01/23    1.31  H.Sasaki         [E_本稼動_14788] 変動電気代アップロード時、受注のステータスを記帳済で作成する
  *  2018/02/22    1.32  K.Kiriu          [E_本稼動_14788] T4障害対応
+ *  2022/05/12    1.33  M.Akachi         [E_本稼動_18054] 
+ *                                         ・ 行Noのチェック桁数を2桁から3桁に変更
+ *                                         ・ 顧客発注番号、オーダーNo全角チェック追加
  *
  *****************************************************************************************/
 --
@@ -429,6 +432,10 @@ AS
   ct_msg_get_ordup_biz_ctr      CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-13866';                                 -- XXCOS:受注アップロード事務センター(メッセージ文字列)
 -- ************** 2018/01/23 V1.31 Added END      *************** --
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+  ct_msg_get_full_width_char_err    CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-15355';                                 --全角文字チェックエラーメッセージ
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
 --
   --トークン
   cv_tkn_profile                    CONSTANT  VARCHAR2(512) := 'PROFILE';                            --プロファイル名
@@ -594,7 +601,10 @@ AS
   cn_order_date_dlength             CONSTANT  NUMBER        := 8;                                    --発注日
   cn_delivery_date_dlength          CONSTANT  NUMBER        := 8;                                    --納品日
   cn_order_number_dlength           CONSTANT  NUMBER        := 16;                                   --オーダーNo.
-  cn_line_number_dlength            CONSTANT  NUMBER        := 2;                                    --行No.
+-- ************** 2022/05/12 1.33 M.Akachi MOD START  ************** --
+--  cn_line_number_dlength            CONSTANT  NUMBER        := 2;                                    --行No.
+  cn_line_number_dlength            CONSTANT  NUMBER        := 3;                                    --行No.
+-- ************** 2022/05/12 1.33 M.Akachi MOD END    ************** --
   cn_order_roses_qty_dlength        CONSTANT  NUMBER        := 7;                                    --発注バラ数
   cn_multiple_store_code_dlength    CONSTANT  NUMBER        := 4;                                    --チェーン店コード
   cn_sej_article_code_dlength       CONSTANT  NUMBER        := 13;                                   --SEJ商品コード
@@ -2001,6 +2011,9 @@ AS
     lv_key_info   VARCHAR2(5000);  --key情報
     ln_time       NUMBER;
     lv_err_msg    VARCHAR2(32767);  --エラーメッセージ
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --    
+    lb_chk_return   BOOLEAN DEFAULT TRUE; -- チェック結果戻り値用
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
 --
     -- *** ローカル・カーソル ***
     -- *** ローカル・レコード ***
@@ -2222,6 +2235,31 @@ AS
       END IF;
       --
 -- ************** 2010/12/03 1.21 H.Sekine ADD END    ************** --
+--
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- オーダーNo 全角チェック
+    -- ===============================================
+      lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                         iv_chk_char  => gr_order_work_data(in_cnt)(cn_order_number)
+                       );
+      IF ( lb_chk_return = FALSE ) THEN
+          --ワーニングメッセージ作成
+          lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                          iv_application   => ct_xxcos_appl_short_name,
+                          iv_name          => ct_msg_get_full_width_char_err,
+                          iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                          iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                          iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                          iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                          iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                          iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                          iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                          iv_token_value4  => gr_order_work_data(cn_item_header)(cn_order_number)              --項目名
+                        ) || cv_line_feed;
+      END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
+--
 -- ************** Ver1.28 ADD START *************** --
       --オーダーNo.
       xxccp_common_pkg2.upload_item_check(
@@ -2260,6 +2298,29 @@ AS
         ov_order_number := gr_order_work_data(in_cnt)(cn_order_number); -- 6.<オーダーNo.>
       END IF;
 --
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- 顧客発注番号 全角チェック
+    -- ===============================================
+      lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                         iv_chk_char  => gr_order_work_data(in_cnt)(cn_cust_po_number_stand)
+                       );
+      IF ( lb_chk_return = FALSE ) THEN
+          --ワーニングメッセージ作成
+          lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                          iv_application   => ct_xxcos_appl_short_name,
+                          iv_name          => ct_msg_get_full_width_char_err,
+                          iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                          iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                          iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                          iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                          iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                          iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                          iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                          iv_token_value4  => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand)      --項目名
+                        ) || cv_line_feed;
+      END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
       --顧客発注番号
       xxccp_common_pkg2.upload_item_check(
         iv_item_name    => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand), -- 1.項目名称(日本語名)         -- 必須
@@ -2685,6 +2746,29 @@ AS
       ------------------------------------
       -- 国際CSV、見本CSV、広告宣伝費CSV(項目チェック)
       ------------------------------------
+ -- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- オーダーNo 全角チェック
+    -- ===============================================
+        lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                           iv_chk_char  => gr_order_work_data(in_cnt)(cn_order_number)
+                         );
+        IF ( lb_chk_return = FALSE ) THEN
+            --ワーニングメッセージ作成
+            lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                            iv_application   => ct_xxcos_appl_short_name,
+                            iv_name          => ct_msg_get_full_width_char_err, 
+                            iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                            iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                            iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                            iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                            iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                            iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                            iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                            iv_token_value4  => gr_order_work_data(cn_item_header)(cn_order_number)              --項目名
+                          ) || cv_line_feed;
+        END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
         --オーダーNo.
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_order_number),  -- 1.項目名称(日本語名)         -- 必須
@@ -2722,6 +2806,29 @@ AS
           ov_order_number := gr_order_work_data(in_cnt)(cn_order_number); -- 6.<オーダーNo.>
         END IF;
 --
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- 顧客発注番号 全角チェック
+    -- ===============================================
+        lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                           iv_chk_char  => gr_order_work_data(in_cnt)(cn_cust_po_number_stand)
+                         );
+        IF ( lb_chk_return = FALSE ) THEN
+            --ワーニングメッセージ作成
+            lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                            iv_application   => ct_xxcos_appl_short_name,
+                            iv_name          => ct_msg_get_full_width_char_err,
+                            iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                            iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                            iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                            iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                            iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                            iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                            iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                            iv_token_value4  => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand)      --項目名
+                          ) || cv_line_feed;
+        END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
         --顧客発注番号
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand), -- 1.項目名称(日本語名)         -- 必須
@@ -3001,6 +3108,29 @@ AS
         --
         END IF;
 --
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- 顧客発注番号 全角チェック
+    -- ===============================================
+        lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                           iv_chk_char  => gr_order_work_data(in_cnt)(cn_cust_po_number_stand)
+                         );
+        IF ( lb_chk_return = FALSE ) THEN
+            --ワーニングメッセージ作成
+            lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                            iv_application   => ct_xxcos_appl_short_name,
+                            iv_name          => ct_msg_get_full_width_char_err,
+                            iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                            iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                            iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                            iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                            iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                            iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                            iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                            iv_token_value4  => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand)      --項目名
+                          ) || cv_line_feed;
+        END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
         --顧客発注番号
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand), -- 1.項目名称(日本語名)         -- 必須
@@ -3080,6 +3210,29 @@ AS
         ------------------------------------
         -- 通常訂正CSV、返品訂正CSV、返品CSV (項目チェック)
         ------------------------------------
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- 顧客発注番号 全角チェック
+    -- ===============================================
+        lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                           iv_chk_char  => gr_order_work_data(in_cnt)(cn_cust_po_number_stand)
+                         );
+        IF ( lb_chk_return = FALSE ) THEN
+            --ワーニングメッセージ作成
+            lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                            iv_application   => ct_xxcos_appl_short_name,
+                            iv_name          => ct_msg_get_full_width_char_err,
+                            iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                            iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                            iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                            iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                            iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                            iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                            iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                            iv_token_value4  => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand)      --項目名
+                          ) || cv_line_feed;
+        END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
         --顧客発注番号
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand), -- 1.項目名称(日本語名)         -- 必須
@@ -3120,6 +3273,29 @@ AS
           ov_cust_po_number := gr_order_work_data(in_cnt)(cn_cust_po_number_stand);
         END IF;
       --
+-- ************** 2022/05/12 1.33 M.Akachi ADD START  ************** --
+    -- ===============================================
+    -- オーダーNo 全角チェック
+    -- ===============================================
+        lb_chk_return := xxccp_common_pkg.chk_single_byte(
+                           iv_chk_char  => gr_order_work_data(in_cnt)(cn_order_number)
+                         );
+        IF ( lb_chk_return = FALSE ) THEN
+            --ワーニングメッセージ作成
+            lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                            iv_application   => ct_xxcos_appl_short_name,
+                            iv_name          => ct_msg_get_full_width_char_err,
+                            iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                            iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                            iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                            iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                            iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                            iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                            iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                            iv_token_value4  => gr_order_work_data(cn_item_header)(cn_order_number)              --項目名
+                          ) || cv_line_feed;
+        END IF;
+-- ************** 2022/05/12 1.33 M.Akachi ADD END    ************** --
 -- ************** Ver1.29 ADD START *************** --
         --オーダーNo.
         xxccp_common_pkg2.upload_item_check(
