@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2021/03/03    1.32  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 追加対応
  *  2021/06/02    1.33  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 再追加対応
  *  2021/06/10    1.34  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 再々追加対応
+ *  2022/05/10    1.35  M.Akachi         [E_本稼動_18097]納品書チェックリスト改修対応
  *
  *****************************************************************************************/
 --
@@ -2153,7 +2154,10 @@ AS
             lt_confirmation := lv_check_mark;
 --
           ELSIF ( lt_st_date <= iv_delivery_date ) THEN            -- 定価適用開始 <= 納品日
-            IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
+-- 2022/05/10 Ver.1.35 Mod Start          
+--            IF ( lt_plice_new < lt_standard_unit_price ) THEN      -- 定価(新) < 基準単価
+            IF ( lt_plice_new < lt_standard_unit_price AND lt_plice_new <> 0 ) THEN      -- 定価(新) < 基準単価 かつ 定価(新)<>0
+-- 2022/05/10 Ver.1.35 Mod End
               lt_confirmation := lv_check_mark;
             ELSE
               lt_confirmation := NULL;
