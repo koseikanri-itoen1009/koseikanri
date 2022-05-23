@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2018/07/27    1.28  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *  2019/06/25    1.29  N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
+ *  2022/05/17    1.31  R.Oikawa         [E_本稼動_18288]納品予定プルーフリスト性能改善
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -155,6 +156,10 @@ AS
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
   ct_prf_org_id                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'ORG_ID';                              --ORG_ID
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- Ver1.31 Add Start
+  ct_prf_ordered_date_from        CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ORDERED_DATE_FROM';            --XXCOS:納品予定プルーフリスト店舗納品日（下限）
+  ct_prf_ordered_date_to          CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ORDERED_DATE_TO';              --XXCOS:納品予定プルーフリスト店舗納品日（上限）
+-- Ver1.31 Add End
 --
   --メッセージ
   ct_msg_if_header                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00094';                    --XXCCP:ヘッダレコード識別子
@@ -326,6 +331,10 @@ AS
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
    ,org_id                   fnd_profile_option_values.profile_option_value%TYPE --ORG_ID
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- Ver1.31 Add Start
+   ,ordered_date_from        fnd_profile_option_values.profile_option_value%TYPE --店舗納品日（下限）
+   ,ordered_date_to          fnd_profile_option_values.profile_option_value%TYPE --店舗納品日（上限）
+-- Ver1.31 Add End
   );
   --納品拠点情報格納レコード
   TYPE g_base_rtype IS RECORD (
@@ -1047,7 +1056,47 @@ AS
     END IF;
 --
 -- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
-
+-- Ver1.31 Add Start
+    --==============================================================
+    -- プロファイルの取得(XXCOS:納品予定プルーフリスト店舗納品日（下限）)
+    --==============================================================
+    l_prf_rec.ordered_date_from := FND_PROFILE.VALUE(ct_prf_ordered_date_from);
+    IF (l_prf_rec.ordered_date_from IS NULL) THEN
+      lb_error  := TRUE;
+      lt_tkn    := xxccp_common_pkg.get_msg(cv_apl_name, ct_prf_ordered_date_from);
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     cv_apl_name
+                    ,ct_msg_prf
+                    ,cv_tkn_prf
+                    ,lt_tkn
+                   );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_errmsg
+      );
+      lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+    END IF;
+--
+    --==============================================================
+    -- プロファイルの取得(XXCOS:納品予定プルーフリスト店舗納品日（上限）)
+    --==============================================================
+    l_prf_rec.ordered_date_to := FND_PROFILE.VALUE(ct_prf_ordered_date_to);
+    IF (l_prf_rec.ordered_date_to IS NULL) THEN
+      lb_error  := TRUE;
+      lt_tkn    := xxccp_common_pkg.get_msg(cv_apl_name, ct_prf_ordered_date_to);
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     cv_apl_name
+                    ,ct_msg_prf
+                    ,cv_tkn_prf
+                    ,lt_tkn
+                   );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_errmsg
+      );
+      lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+    END IF;
+-- Ver1.31 Add End
     IF (lb_error) THEN
       lv_errmsg := NULL;
       RAISE global_api_expt;
@@ -2343,17 +2392,25 @@ AS
 ---- 2009/02/16 T.Nakamura Ver.1.3 add end
 --
               SELECT
---******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+-- Ver1.31 Mod Start
+----******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+--                    /*+
+--                      LEADING ( xeh )
+--                      USE_NL  ( xlvv_t.flv )
+---- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+----                      USE_NL  ( ore )
+---- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
+--                      USE_NL  ( ottt_h )
+--                      INDEX   ( ooha oe_order_headers_n7 )
+--                    */
+----******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                     /*+
                       LEADING ( xeh )
                       USE_NL  ( xlvv_t.flv )
--- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
---                      USE_NL  ( ore )
--- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
                       USE_NL  ( ottt_h )
                       INDEX   ( ooha oe_order_headers_n7 )
                     */
---******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+-- Ver1.31 Mod End
                     TO_CHAR(ooha.header_id)                                             header_id                     --ヘッダID(更新キー)
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
                     ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
@@ -4282,19 +4339,28 @@ AS
 --******************************************* 2019/07/16 1.30 S.Kuwako ADD END   *************************************
 -- 2009/06/22 1.11 M.Sano MOD End
               UNION ALL
--- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
---              SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
+-- Ver1.31 Mod Start
+---- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
+----              SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
+--              SELECT /*+
+---- 2012/01/06 K.Kiriu Ver1.23 Mod Start
+----                          USE_NL( xciv xciv.mcix xciv.mci xlvv.flv xlvv2.flv xlvv_t.flv )
+--                          USE_NL( xlvv.flv xlvv2.flv xlvv_t.flv )
+---- 2012/01/06 K.Kiriu Ver1.23 Mod End
+---- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
+----                          USE_NL( ore )
+---- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
+--                     */
+--                     TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
+---- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
               SELECT /*+
--- 2012/01/06 K.Kiriu Ver1.23 Mod Start
---                          USE_NL( xciv xciv.mcix xciv.mci xlvv.flv xlvv2.flv xlvv_t.flv )
-                          USE_NL( xlvv.flv xlvv2.flv xlvv_t.flv )
--- 2012/01/06 K.Kiriu Ver1.23 Mod End
--- 2011/04/28 T.Ishiwata Ver.1.21 DEL START
---                          USE_NL( ore )
--- 2011/04/28 T.Ishiwata Ver.1.21 DEL END
+                         leading(ooha.ooha)
+                         use_nl(xlvv.flv)
+                         use_nl(xlvv2.flv)
+                         use_nl(xlvv_t.flv)
                      */
                      TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
--- ******************** 2010/03/24 1.17 M.Hirose MOD END   ************************* --
+-- Ver1.31 Mod End
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
                     ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
                     ,xlvv.attribute12                                                   outbound_flag                 --EDI外OUTBOUND可否
@@ -4869,7 +4935,14 @@ AS
                     ,oola.ordered_item                                                  ordered_item                  -- 受注明細品目コード
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     --受注ヘッダ情報インラインビュー
-              FROM (SELECT ooha.header_id                                               header_id
+-- Ver1.31 Mod Start
+--              FROM (SELECT ooha.header_id                                               header_id
+              FROM (SELECT 
+                           /*+ leading(ooha oos)
+                               index(ooha XXCOS_OE_ORDER_HEADERS_ALL_N10)
+                            */
+                            ooha.header_id                                               header_id
+-- Ver1.31 Mod End
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
                            ,ooha.org_id                                                 org_id
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
@@ -4925,6 +4998,10 @@ AS
                     AND     ooha.request_date      >= TO_DATE(i_input_rec.shop_delivery_date_from,cv_date_fmt)      -- 納品日From
                     AND     ooha.request_date       < TO_DATE(i_input_rec.shop_delivery_date_to  ,cv_date_fmt) + 1  -- 納品日To
 -- ******************** 2010/03/24 1.17 M.Hirose INS END   ************************* --
+-- Ver1.31 Add Start
+                    AND     ooha.ordered_date >= TO_DATE(i_input_rec.shop_delivery_date_from,cv_date_fmt) - g_prf_rec.ordered_date_from
+                    AND     ooha.ordered_date < TO_DATE(i_input_rec.shop_delivery_date_from,cv_date_fmt) + g_prf_rec.ordered_date_to + 1
+-- Ver1.31 Add End
                     )                                                                   ooha
                     --OPM品目情報インラインビュー
                   ,(SELECT  iimb.item_id                                                item_id
