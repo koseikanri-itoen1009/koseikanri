@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A20C(body)
  * Description      : 控除データアップロード
  * MD.050           : 控除データアップロード MD050_COK_024_A20
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/04/27    1.0   Y.Nakajima       新規作成
+ *  2022/05/20    1.1   SCSK Y.Koh       E_本稼動_18280対応
  *
  *****************************************************************************************/
 --
@@ -110,12 +111,25 @@ AS
   cn_deduction_unit_price       CONSTANT NUMBER := 9;   -- 控除単価
   cn_deduction_quantity         CONSTANT NUMBER := 10;  -- 控除数量
   cn_deduction_amount           CONSTANT NUMBER := 11;  -- 控除額
-  cn_tax_code                   CONSTANT NUMBER := 12;  -- 税コード
-  cn_deduction_tax_amount       CONSTANT NUMBER := 13;  -- 控除税額
-  cn_remarks                    CONSTANT NUMBER := 14;  -- 備考
-  cn_application_no             CONSTANT NUMBER := 15;  -- 申請書No
-  cn_c_header                   CONSTANT NUMBER := 15;  -- CSVファイル項目数（取得対象）
-  cn_c_header_all               CONSTANT NUMBER := 15;  -- CSVファイル項目数（全項目）
+-- 2022/05/20 Ver1.1 MOD Start
+  cn_compensation               CONSTANT NUMBER := 12;  -- 補填
+  cn_margin                     CONSTANT NUMBER := 13;  -- 問屋マージン
+  cn_sales_promotion_expenses   CONSTANT NUMBER := 14;  -- 拡売
+  cn_margin_reduction           CONSTANT NUMBER := 15;  -- 問屋マージン減額
+  cn_tax_code                   CONSTANT NUMBER := 16;  -- 税コード
+  cn_deduction_tax_amount       CONSTANT NUMBER := 17;  -- 控除税額
+  cn_remarks                    CONSTANT NUMBER := 18;  -- 備考
+  cn_application_no             CONSTANT NUMBER := 19;  -- 申請書No
+  cn_paid_flag                  CONSTANT NUMBER := 20;  -- 支払済フラグ
+  cn_c_header                   CONSTANT NUMBER := 20;  -- CSVファイル項目数（取得対象）
+  cn_c_header_all               CONSTANT NUMBER := 20;  -- CSVファイル項目数（全項目）
+--  cn_tax_code                   CONSTANT NUMBER := 12;  -- 税コード
+--  cn_deduction_tax_amount       CONSTANT NUMBER := 13;  -- 控除税額
+--  cn_remarks                    CONSTANT NUMBER := 14;  -- 備考
+--  cn_application_no             CONSTANT NUMBER := 15;  -- 申請書No
+--  cn_c_header                   CONSTANT NUMBER := 15;  -- CSVファイル項目数（取得対象）
+--  cn_c_header_all               CONSTANT NUMBER := 15;  -- CSVファイル項目数（全項目）
+-- 2022/05/20 Ver1.1 MOD End
 --
   cv_condition_type_ws_fix      CONSTANT VARCHAR2(3)  :=  '030';  -- 控除タイプ(問屋未収（定額）)
   cv_condition_type_ws_add      CONSTANT VARCHAR2(3)  :=  '040';  -- 控除タイプ(問屋未収（追加）)
@@ -211,6 +225,13 @@ AS
      ,remarks                   xxcok_sales_deduction.remarks%TYPE                        -- 備考
      ,application_no            xxcok_sales_deduction.application_no%TYPE                 -- 申請書No.
      ,tax_rate                  xxcok_sales_deduction.tax_rate%TYPE                       -- 税率
+-- 2022/05/20 Ver1.1 ADD Start
+     ,compensation              xxcok_sales_deduction.compensation%TYPE                   -- 補填
+     ,margin                    xxcok_sales_deduction.margin%TYPE                         -- 問屋マージン
+     ,sales_promotion_expenses  xxcok_sales_deduction.sales_promotion_expenses%TYPE       -- 拡売
+     ,margin_reduction          xxcok_sales_deduction.margin_reduction%TYPE               -- 問屋マージン減額
+     ,paid_flag                 VARCHAR2(1)                                               -- 支払済フラグ
+-- 2022/05/20 Ver1.1 ADD End
   );
 --
   -- ワークテーブル型定義
@@ -767,6 +788,12 @@ AS
     cv_tax_code                   CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10646';  -- 税コード
     cv_deduction_tax_amount       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10647';  -- 控除税額
     cv_cust_chain_corp            CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10648';  -- 顧客、チェーン店、企業いずれか
+-- 2022/05/20 Ver1.1 ADD Start
+    cv_compensation               CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10836';  -- 補填
+    cv_margin                     CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10837';  -- 問屋マージン
+    cv_sales_promotion_expenses   CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10838';  -- 拡売
+    cv_margin_reduction           CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10839';  -- 問屋マージン減額
+-- 2022/05/20 Ver1.1 ADD End
 --
     -- *** ローカル変数 ***
     lv_token_name              VARCHAR(1000);
@@ -1015,7 +1042,10 @@ AS
     IF g_if_data_tab(cn_deduction_unit_price) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
       IF MOD(g_if_data_tab(cn_deduction_unit_price),1) >0 THEN
-        IF ((LENGTH(g_if_data_tab(cn_deduction_unit_price)) - INSTR(g_if_data_tab(cn_deduction_unit_price),cv_period)) >= 2) THEN
+-- 2022/05/20 Ver1.1 MOD Start
+        IF ((LENGTH(g_if_data_tab(cn_deduction_unit_price)) - INSTR(g_if_data_tab(cn_deduction_unit_price),cv_period)) > 2) THEN
+--        IF ((LENGTH(g_if_data_tab(cn_deduction_unit_price)) - INSTR(g_if_data_tab(cn_deduction_unit_price),cv_period)) >= 2) THEN
+-- 2022/05/20 Ver1.1 MOD End
             lv_retcode    := cv_status_warn;
             lv_token_name := cv_deduction_unit_price;
             lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1041,7 +1071,10 @@ AS
     IF g_if_data_tab(cn_deduction_quantity) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
       IF MOD(g_if_data_tab(cn_deduction_quantity),1) >0 THEN
-        IF ((LENGTH(g_if_data_tab(cn_deduction_quantity)) - INSTR(g_if_data_tab(cn_deduction_quantity),cv_period)) >= 2) THEN
+-- 2022/05/20 Ver1.1 MOD Start
+        IF ((LENGTH(g_if_data_tab(cn_deduction_quantity)) - INSTR(g_if_data_tab(cn_deduction_quantity),cv_period)) > 2) THEN
+--        IF ((LENGTH(g_if_data_tab(cn_deduction_quantity)) - INSTR(g_if_data_tab(cn_deduction_quantity),cv_period)) >= 2) THEN
+-- 2022/05/20 Ver1.1 MOD End
             lv_retcode    := cv_status_warn;
             lv_token_name := cv_deduction_quantity;
             lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1084,6 +1117,96 @@ AS
 --
     END IF;
 --
+-- 2022/05/20 Ver1.1 ADD Start
+    -- 補填が入力されている場合の書式チェック
+    IF g_if_data_tab(cn_compensation) IS NOT NULL THEN
+      -- 小数2桁以上の場合エラー
+      IF MOD(g_if_data_tab(cn_compensation),1) >0 THEN
+        IF ((LENGTH(g_if_data_tab(cn_compensation)) - INSTR(g_if_data_tab(cn_compensation),cv_period)) > 2) THEN
+          lv_retcode    := cv_status_warn;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_cok
+                       , iv_name         => cv_msg_cok_10620
+                       , iv_token_name1  => cv_line_no_tok
+                       , iv_token_value1 => in_file_if_loop_cnt
+                       , iv_token_name2  => cv_col_name_tok
+                       , iv_token_value2 => cv_compensation
+                       );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+        END IF;
+      END IF;
+    END IF;
+--
+    -- 問屋マージンが入力されている場合の書式チェック
+    IF g_if_data_tab(cn_margin) IS NOT NULL THEN
+      -- 小数2桁以上の場合エラー
+      IF MOD(g_if_data_tab(cn_margin),1) >0 THEN
+        IF ((LENGTH(g_if_data_tab(cn_margin)) - INSTR(g_if_data_tab(cn_margin),cv_period)) > 2) THEN
+          lv_retcode    := cv_status_warn;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_cok
+                       , iv_name         => cv_msg_cok_10620
+                       , iv_token_name1  => cv_line_no_tok
+                       , iv_token_value1 => in_file_if_loop_cnt
+                       , iv_token_name2  => cv_col_name_tok
+                       , iv_token_value2 => cv_margin
+                       );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+        END IF;
+      END IF;
+    END IF;
+--
+    -- 拡売が入力されている場合の書式チェック
+    IF g_if_data_tab(cn_sales_promotion_expenses) IS NOT NULL THEN
+      -- 小数2桁以上の場合エラー
+      IF MOD(g_if_data_tab(cn_sales_promotion_expenses),1) >0 THEN
+        IF ((LENGTH(g_if_data_tab(cn_sales_promotion_expenses)) - INSTR(g_if_data_tab(cn_sales_promotion_expenses),cv_period)) > 2) THEN
+          lv_retcode    := cv_status_warn;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_cok
+                       , iv_name         => cv_msg_cok_10620
+                       , iv_token_name1  => cv_line_no_tok
+                       , iv_token_value1 => in_file_if_loop_cnt
+                       , iv_token_name2  => cv_col_name_tok
+                       , iv_token_value2 => cv_sales_promotion_expenses
+                       );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+        END IF;
+      END IF;
+    END IF;
+--
+    -- 問屋マージン減額が入力されている場合の書式チェック
+    IF g_if_data_tab(cn_margin_reduction) IS NOT NULL THEN
+      -- 小数2桁以上の場合エラー
+      IF MOD(g_if_data_tab(cn_margin_reduction),1) >0 THEN
+        IF ((LENGTH(g_if_data_tab(cn_margin_reduction)) - INSTR(g_if_data_tab(cn_margin_reduction),cv_period)) > 2) THEN
+          lv_retcode    := cv_status_warn;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_cok
+                       , iv_name         => cv_msg_cok_10620
+                       , iv_token_name1  => cv_line_no_tok
+                       , iv_token_value1 => in_file_if_loop_cnt
+                       , iv_token_name2  => cv_col_name_tok
+                       , iv_token_value2 => cv_margin_reduction
+                       );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+        END IF;
+      END IF;
+    END IF;
+--
+-- 2022/05/20 Ver1.1 ADD End
     -- 控除税額整数チェック
     IF (INSTR(g_if_data_tab(cn_deduction_tax_amount),cv_period) > 0) THEN
       lv_retcode    := cv_status_warn;
@@ -1461,10 +1584,21 @@ AS
     gt_sales_deduction_work_tbl(ln_loop_cnt).deduction_unit_price    := g_if_data_tab(9);   -- 控除単価
     gt_sales_deduction_work_tbl(ln_loop_cnt).deduction_quantity      := g_if_data_tab(10);  -- 控除数量
     gt_sales_deduction_work_tbl(ln_loop_cnt).deduction_amount        := g_if_data_tab(11);  -- 控除額
-    gt_sales_deduction_work_tbl(ln_loop_cnt).tax_code                := g_if_data_tab(12);  -- 税コード
-    gt_sales_deduction_work_tbl(ln_loop_cnt).deduction_tax_amount    := g_if_data_tab(13);  -- 控除税額
-    gt_sales_deduction_work_tbl(ln_loop_cnt).remarks                 := g_if_data_tab(14);  -- 備考
-    gt_sales_deduction_work_tbl(ln_loop_cnt).application_no          := g_if_data_tab(15);  -- 申請書No.
+-- 2022/05/20 Ver1.1 MOD Start
+    gt_sales_deduction_work_tbl(ln_loop_cnt).compensation             := g_if_data_tab(cn_compensation);              -- 補填
+    gt_sales_deduction_work_tbl(ln_loop_cnt).margin                   := g_if_data_tab(cn_margin);                    -- 問屋マージン
+    gt_sales_deduction_work_tbl(ln_loop_cnt).sales_promotion_expenses := g_if_data_tab(cn_sales_promotion_expenses);  -- 拡売
+    gt_sales_deduction_work_tbl(ln_loop_cnt).margin_reduction         := g_if_data_tab(cn_margin_reduction);          -- 問屋マージン減額
+    gt_sales_deduction_work_tbl(ln_loop_cnt).tax_code                 := g_if_data_tab(cn_tax_code);                  -- 税コード
+    gt_sales_deduction_work_tbl(ln_loop_cnt).deduction_tax_amount     := g_if_data_tab(cn_deduction_tax_amount);      -- 控除税額
+    gt_sales_deduction_work_tbl(ln_loop_cnt).remarks                  := g_if_data_tab(cn_remarks);                   -- 備考
+    gt_sales_deduction_work_tbl(ln_loop_cnt).application_no           := g_if_data_tab(cn_application_no);            -- 申請書No.
+    gt_sales_deduction_work_tbl(ln_loop_cnt).paid_flag                := g_if_data_tab(cn_paid_flag);                 -- 支払済フラグ
+--    gt_sales_deduction_work_tbl(ln_loop_cnt).tax_code                := g_if_data_tab(12);  -- 税コード
+--    gt_sales_deduction_work_tbl(ln_loop_cnt).deduction_tax_amount    := g_if_data_tab(13);  -- 控除税額
+--    gt_sales_deduction_work_tbl(ln_loop_cnt).remarks                 := g_if_data_tab(14);  -- 備考
+--    gt_sales_deduction_work_tbl(ln_loop_cnt).application_no          := g_if_data_tab(15);  -- 申請書No.
+-- 2022/05/20 Ver1.1 MOD End
     gt_sales_deduction_work_tbl(ln_loop_cnt).tax_rate                := gv_tax_rate;        -- 税率
 --
   -- 成功件数カウント
@@ -1600,6 +1734,12 @@ AS
           ,deduction_unit_price                                       -- 控除単価
           ,deduction_quantity                                         -- 控除数量
           ,deduction_amount                                           -- 控除額
+-- 2022/05/20 Ver1.1 ADD Start
+          ,compensation                                               -- 補填
+          ,margin                                                     -- 問屋マージン
+          ,sales_promotion_expenses                                   -- 拡売
+          ,margin_reduction                                           -- 問屋マージン減額
+-- 2022/05/20 Ver1.1 ADD End
           ,tax_code                                                   -- 税コード
           ,tax_rate                                                   -- 税率
           ,recon_tax_code                                             -- 消込時税コード
@@ -1656,6 +1796,12 @@ AS
           ,gt_sales_deduction_work_tbl(i).deduction_unit_price        -- 控除単価
           ,gt_sales_deduction_work_tbl(i).deduction_quantity          -- 控除数量
           ,gt_sales_deduction_work_tbl(i).deduction_amount            -- 控除額
+-- 2022/05/20 Ver1.1 ADD Start
+          ,gt_sales_deduction_work_tbl(i).compensation                -- 補填
+          ,gt_sales_deduction_work_tbl(i).margin                      -- 問屋マージン
+          ,gt_sales_deduction_work_tbl(i).sales_promotion_expenses    -- 拡売
+          ,gt_sales_deduction_work_tbl(i).margin_reduction            -- 問屋マージン減額
+-- 2022/05/20 Ver1.1 ADD End
           ,gt_sales_deduction_work_tbl(i).tax_code                    -- 税コード
           ,gt_sales_deduction_work_tbl(i).tax_rate                    -- 税率
           ,NULL                                                       -- 消込時税コード
@@ -1672,8 +1818,14 @@ AS
           ,NULL                                                       -- 取消GL記帳日
           ,NULL                                                       -- 取消実施ユーザ
           ,cv_const_n                                                 -- 消込時計上拠点
-          ,NULL                                                       -- 支払伝票番号
-          ,NULL                                                       -- 繰越時支払伝票番号
+-- 2022/05/20 Ver1.1 MOD Start
+          ,DECODE(gt_sales_deduction_work_tbl(i).paid_flag, 'Y', '-', NULL)
+                                                                      -- 支払伝票番号
+--          ,NULL                                                       -- 支払伝票番号
+          ,DECODE(gt_sales_deduction_work_tbl(i).paid_flag, 'Y', '-', NULL)
+                                                                      -- 繰越時支払伝票番号
+--          ,NULL                                                       -- 繰越時支払伝票番号
+-- 2022/05/20 Ver1.1 MOD End
           ,NULL                                                       -- 速報確定フラグ
           ,NULL                                                       -- GL連携ID
           ,NULL                                                       -- 取消GL連携ID
