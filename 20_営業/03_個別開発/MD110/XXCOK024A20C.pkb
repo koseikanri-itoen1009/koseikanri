@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A20C(body)
  * Description      : 控除データアップロード
  * MD.050           : 控除データアップロード MD050_COK_024_A20
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/04/27    1.0   Y.Nakajima       新規作成
  *  2022/05/20    1.1   SCSK Y.Koh       E_本稼動_18280対応
+ *  2022/05/25    1.2   SCSK Y.Koh       E_本稼動_18280対応(不具合対応)
  *
  *****************************************************************************************/
 --
@@ -1041,7 +1042,10 @@ AS
     -- 控除単価が入力されている場合書式チェック
     IF g_if_data_tab(cn_deduction_unit_price) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
-      IF MOD(g_if_data_tab(cn_deduction_unit_price),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD Start
+      IF MOD(g_if_data_tab(cn_deduction_unit_price),1) != 0 THEN
+--      IF MOD(g_if_data_tab(cn_deduction_unit_price),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD End
 -- 2022/05/20 Ver1.1 MOD Start
         IF ((LENGTH(g_if_data_tab(cn_deduction_unit_price)) - INSTR(g_if_data_tab(cn_deduction_unit_price),cv_period)) > 2) THEN
 --        IF ((LENGTH(g_if_data_tab(cn_deduction_unit_price)) - INSTR(g_if_data_tab(cn_deduction_unit_price),cv_period)) >= 2) THEN
@@ -1070,7 +1074,10 @@ AS
     -- 控除数量が入力されている場合書式チェック
     IF g_if_data_tab(cn_deduction_quantity) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
-      IF MOD(g_if_data_tab(cn_deduction_quantity),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD Start
+      IF MOD(g_if_data_tab(cn_deduction_quantity),1) != 0 THEN
+--      IF MOD(g_if_data_tab(cn_deduction_quantity),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD End
 -- 2022/05/20 Ver1.1 MOD Start
         IF ((LENGTH(g_if_data_tab(cn_deduction_quantity)) - INSTR(g_if_data_tab(cn_deduction_quantity),cv_period)) > 2) THEN
 --        IF ((LENGTH(g_if_data_tab(cn_deduction_quantity)) - INSTR(g_if_data_tab(cn_deduction_quantity),cv_period)) >= 2) THEN
@@ -1121,7 +1128,10 @@ AS
     -- 補填が入力されている場合の書式チェック
     IF g_if_data_tab(cn_compensation) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
-      IF MOD(g_if_data_tab(cn_compensation),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD Start
+      IF MOD(g_if_data_tab(cn_compensation),1) != 0 THEN
+--      IF MOD(g_if_data_tab(cn_compensation),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD End
         IF ((LENGTH(g_if_data_tab(cn_compensation)) - INSTR(g_if_data_tab(cn_compensation),cv_period)) > 2) THEN
           lv_retcode    := cv_status_warn;
           lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1143,7 +1153,10 @@ AS
     -- 問屋マージンが入力されている場合の書式チェック
     IF g_if_data_tab(cn_margin) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
-      IF MOD(g_if_data_tab(cn_margin),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD Start
+      IF MOD(g_if_data_tab(cn_margin),1) != 0 THEN
+--      IF MOD(g_if_data_tab(cn_margin),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD End
         IF ((LENGTH(g_if_data_tab(cn_margin)) - INSTR(g_if_data_tab(cn_margin),cv_period)) > 2) THEN
           lv_retcode    := cv_status_warn;
           lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1165,7 +1178,10 @@ AS
     -- 拡売が入力されている場合の書式チェック
     IF g_if_data_tab(cn_sales_promotion_expenses) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
-      IF MOD(g_if_data_tab(cn_sales_promotion_expenses),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD Start
+      IF MOD(g_if_data_tab(cn_sales_promotion_expenses),1) != 0 THEN
+--      IF MOD(g_if_data_tab(cn_sales_promotion_expenses),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD End
         IF ((LENGTH(g_if_data_tab(cn_sales_promotion_expenses)) - INSTR(g_if_data_tab(cn_sales_promotion_expenses),cv_period)) > 2) THEN
           lv_retcode    := cv_status_warn;
           lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1187,7 +1203,10 @@ AS
     -- 問屋マージン減額が入力されている場合の書式チェック
     IF g_if_data_tab(cn_margin_reduction) IS NOT NULL THEN
       -- 小数2桁以上の場合エラー
-      IF MOD(g_if_data_tab(cn_margin_reduction),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD Start
+      IF MOD(g_if_data_tab(cn_margin_reduction),1) != 0 THEN
+--      IF MOD(g_if_data_tab(cn_margin_reduction),1) >0 THEN
+-- 2022/05/25 Ver1.2 MOD End
         IF ((LENGTH(g_if_data_tab(cn_margin_reduction)) - INSTR(g_if_data_tab(cn_margin_reduction),cv_period)) > 2) THEN
           lv_retcode    := cv_status_warn;
           lv_errmsg := xxccp_common_pkg.get_msg(
