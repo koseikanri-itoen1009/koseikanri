@@ -15,6 +15,9 @@ CREATE TABLE xxcsm.xxcsm_item_plan_loc_bdgt (
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
+-- E_本稼働_17947 Add Start
+    ,variable_consideration_kbn_a   NUMBER(15)
+-- E_本稼働_17947 Add End
   ,CONSTRAINT xxcsm_item_plan_loc_bdgt_pk PRIMARY KEY (item_plan_loc_bdgt_id)
   USING INDEX TABLESPACE xxidx2)
  PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
@@ -53,3 +56,7 @@ COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.program_id                     
 /
 COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.program_update_date                   IS 'プログラム更新日'
 /
+-- E_本稼働_17947 Add Start
+COMMENT ON COLUMN xxcsm.xxcsm_item_plan_loc_bdgt.variable_consideration_kbn_a          IS '変動対価額A'
+/
+-- E_本稼働_17947 Add End
