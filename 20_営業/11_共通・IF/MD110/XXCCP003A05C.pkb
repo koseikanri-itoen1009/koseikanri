@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP003A05C(body)
  * Description      : 不正控除支払検知
  * MD.070           : 不正控除支払検知(MD070_IPO_CCP_003_A05)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/03/15    1.0   K.Yoshikawa     [E_本稼動_18075]新規作成
+ *  2022/06/08    1.1   K.Yoshikawa     [E_本稼動_18306]
  *
  *****************************************************************************************/
 --
@@ -306,6 +307,9 @@ AS
            h.target_data_type      target_data_type       , --条件_対象データ種類 
            h.target_date_end       target_date_end        , --条件_対象期間TO     
            h.invoice_number        invoice_number         , --条件_受領請求書番号 
+--2022/06/08 1.1 add start
+           l.deduction_chain_code  deduction_chain_code   ,
+--2022/06/08 1.1 add end
            l.deduction_amt         deduction_amt          ,
            l.deduction_tax         deduction_tax          ,
            l.payment_amt           payment_amt            ,
@@ -344,6 +348,9 @@ AS
            h.target_data_type     ,
            h.target_date_end      ,
            h.invoice_number       ,
+--2022/06/08 1.1 add start
+           l.deduction_chain_code ,
+--2022/06/08 1.1 add end
            l.deduction_amt        ,
            l.deduction_tax        ,
            l.payment_amt          ,
@@ -378,6 +385,9 @@ AS
            h.target_data_type      target_data_type       , --条件_対象データ種類 
            h.target_date_end       target_date_end        , --条件_対象期間TO     
            h.invoice_number        invoice_number         , --条件_受領請求書番号 
+--2022/06/08 1.1 add start
+           l.deduction_chain_code  deduction_chain_code   ,
+--2022/06/08 1.1 add end
            l.deduction_amt         deduction_amt ,
            l.deduction_tax         deduction_tax ,
            l.payment_amt           payment_amt   ,
@@ -416,6 +426,9 @@ AS
            h.target_data_type     ,
            h.target_date_end      ,
            h.invoice_number       ,
+--2022/06/08 1.1 add start
+           l.deduction_chain_code ,
+--2022/06/08 1.1 add end
            l.deduction_amt        ,
            l.deduction_tax        ,
            l.payment_amt          ,
@@ -427,6 +440,113 @@ AS
     -- メインカーソルレコード型
     main_rec6  main_cur6%ROWTYPE;
 --
+--2022/06/08 1.1 add start
+    -- ● 販売控除情報と控除No別、商品別の金額不一致検知
+    CURSOR main_cur7
+    IS
+       SELECT
+         h.creation_date                                                                                                        creation_date           ,--作成日
+         h.deduction_recon_head_id                                                                                              deduction_recon_head_id ,--控除消込ヘッダーID
+         h.recon_slip_num                                                                                                       recon_slip_num          ,--支払伝票番号
+         h.applicant                                                                                                            applicant               ,--申請者
+         (SELECT nvl(description,h.applicant) FROM fnd_user fu WHERE fu.user_name = h.applicant)                                applicant_name          ,--申請者
+         h.approver                                                                                                             approver                ,--承認者
+         (SELECT nvl(description,h.approver) FROM fnd_user fu WHERE fu.user_name = h.approver)                                  approver_name           ,--承認者
+         h.recon_due_date                                                                                                       recon_due_date          ,--支払予定日
+         h.recon_base_code                                                                                                      recon_base_code         ,--支払請求拠点
+         h.payee_code                                                                                                           payee_code              ,--支払先コード
+         h.recon_status                                                                                                         recon_status_code       ,--消込ステータスコード
+         decode(h.recon_status,'EG','入力中','SG','送信中','SD','送信済','AD','承認済','CD','取消済','DD','削除済')             recon_status            ,--消込ステータス
+         h.corp_code                                                                                                            corp_code               ,--企業コード
+         h.deduction_chain_code                                                                                                 deduction_chain_code    ,--控除用チェーンコード
+         h.cust_code                                                                                                            cust_code               ,--顧客コード
+         h.condition_no                                                                                                         condition_no            ,--控除番号
+         h.target_date_end                                                                                                      target_date_end         ,--対象期間TO
+         DECODE(h.interface_div,'AP','控除支払','問屋支払')                                                                     interface_div           ,--連携先
+         (SELECT SUM(deduction_amt) from xxcok.xxcok_deduction_num_recon n where n.recon_slip_num = h.recon_slip_num)           n_deduction_amt         ,--控除No別_控除額
+         (SELECT SUM(deduction_amt) from xxcok.xxcok_deduction_item_recon i where i.recon_slip_num = h.recon_slip_num)          i_deduction_amt         ,--品目別_控除額
+         (SELECT SUM(deduction_amount) FROM xxcok.xxcok_sales_deduction s WHERE s.recon_slip_num = h.recon_slip_num AND s.status = 'N' AND s.source_category NOT IN ('D','O') AND s.created_by <> -1) 
+                                                                                                                                s_deduction_amount      ,--控除データ_控除額
+         (SELECT NVL(SUM(deduction_amount),0) FROM xxcok.xxcok_sales_deduction s WHERE s.recon_slip_num = h.recon_slip_num AND S.STATUS = 'N' AND s.source_category NOT IN ('D','O') AND s.created_by <> -1)  -
+          (SELECT NVL(SUM(deduction_amt),0) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num) - 
+          (SELECT NVL(SUM(deduction_amt),0) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num)  deduction_amt_diff      ,--控除額異常値
+         (SELECT SUM(deduction_tax) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)           n_deduction_tax         ,--控除NO別_税額
+         (SELECT SUM(deduction_tax) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num)          i_deduction_tax         ,--品目別_税額
+         (SELECT SUM(deduction_tax_amount) FROM xxcok.xxcok_sales_deduction s WHERE s.recon_slip_num = h.recon_slip_num AND s.status = 'N' AND s.source_category NOT IN ('D','O') AND s.created_by <> -1) 
+                                                                                                                                s_deduction_tax_amount  ,--控除データ_税額
+         (SELECT NVL(SUM(deduction_tax_amount),0) FROM xxcok.xxcok_sales_deduction s WHERE s.recon_slip_num = h.recon_slip_num AND s.status = 'N' AND s.source_category NOT IN ('D','O') AND s.created_by <> -1)  -
+          (SELECT NVL(SUM(deduction_tax),0) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num) - 
+          (SELECT NVL(SUM(deduction_tax),0) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num)  deduction_tax_diff       --税額異常値
+       FROM  xxcok.xxcok_deduction_recon_head h
+       WHERE h.recon_status  IN ('AD','EG','SD','SG')  
+       AND (  h.last_update_date >= ld_date 
+             OR
+             (SELECT MAX(n.last_update_date) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num) >= ld_date 
+             OR
+             (SELECT MAX(i.last_update_date) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num) >= ld_date 
+           )
+       AND (  (SELECT NVL(SUM(deduction_amount),0) FROM xxcok.xxcok_sales_deduction s WHERE s.recon_slip_num = h.recon_slip_num AND S.STATUS = 'N' AND s.source_category NOT IN ('D','O') AND s.created_by <> -1)  -
+              (SELECT NVL(SUM(deduction_amt),0) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num) - 
+              (SELECT NVL(SUM(deduction_amt),0) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num) 
+              <> 0
+            OR
+              (SELECT NVL(SUM(deduction_tax_amount),0) FROM xxcok.xxcok_sales_deduction s WHERE s.recon_slip_num = h.recon_slip_num AND s.status = 'N' AND s.source_category NOT IN ('D','O') AND s.created_by <> -1)  -
+              (SELECT NVL(SUM(deduction_tax),0) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num) - 
+              (SELECT NVL(SUM(deduction_tax),0) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num)
+              <> 0
+           );
+    -- メインカーソルレコード型
+    main_rec7  main_cur7%ROWTYPE;
+--
+    -- ● AP部門入力伝票ステータスが承認済で、控除消込ヘッダーのステータスが削除済み
+    CURSOR main_cur8
+    IS
+       SELECT  
+         h.creation_date                                                                                                creation_date           , --作成日
+         h.deduction_recon_head_id                                                                                      deduction_recon_head_id , --控除消込ヘッダーID
+         h.recon_slip_num                                                                                               recon_slip_num          , --支払伝票番号
+         h.applicant                                                                                                    applicant               , --申請者
+         (SELECT nvl(description,h.applicant) FROM fnd_user fu WHERE fu.user_name = h.applicant)                        applicant_name          , --申請者
+         h.approver                                                                                                     approver                , --承認者
+         (SELECT nvl(description,h.approver) FROM fnd_user fu WHERE fu.user_name = h.approver)                          approver_name           , --承認者
+         h.recon_due_date                                                                                               recon_due_date          , --支払予定日
+         h.recon_base_code                                                                                              recon_base_code         , --支払請求拠点
+         h.payee_code                                                                                                   payee_code              , --支払先コード
+         h.recon_status                                                                                                 recon_status_code       , --消込ステータスコード
+         decode(h.recon_status,'EG','入力中','SG','送信中','SD','送信済','AD','承認済','CD','取消済','DD','削除済')     recon_status            , --消込ステータス
+         h.corp_code                                                                                                    corp_code               , --企業コード
+         h.deduction_chain_code                                                                                         deduction_chain_code    , --控除用チェーンコード
+         h.cust_code                                                                                                    cust_code               , --顧客コード
+         h.condition_no                                                                                                 condition_no            , --控除番号
+         h.target_date_end                                                                                              target_date_end         , --対象期間TO
+         (SELECT SUM(deduction_amt)  FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)  deduction_amt           , --控除NO別_控除額(税抜)
+         (SELECT SUM(deduction_tax)  FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)  deduction_tax           , --控除NO別_控除額(消費税)
+         (SELECT SUM(payment_amt)    FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)  payment_amt             , --控除NO別_支払額(税抜)
+         (SELECT SUM(payment_tax)    FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)  payment_tax             , --控除NO別_支払額(消費税)
+         (SELECT SUM(difference_amt) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)  difference_amt          , --控除NO別_調整差額(税抜)
+         (SELECT SUM(difference_tax) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num)  difference_tax          , --控除NO別_調整差額(消費税)
+         s.creation_date                                                                                                creation_date_s         , --部門入力作成日
+         s.invoice_id                                                                                                   invoice_id              , --部門入力伝票ID
+         s.wf_status                                                                                                    wf_status               , --部門入力ステータス
+         s.invoice_num                                                                                                  invoice_num             , --部門入力伝票番号
+         s.requestor_person_name                                                                                        requestor_person_name   , --部門入力申請者名
+         s.approver_person_name                                                                                         approver_person_name      --部門入力承認者名
+       FROM    xxcok.xxcok_deduction_recon_head h,
+               xx03.xx03_payment_slips s
+       WHERE   s.slip_type = '30000'
+       AND     s.orig_invoice_num is null
+       AND     s.wf_status = '80'
+       AND     h.recon_slip_num = s.description
+       AND     h.recon_status not in ('AD','CD','SD')
+       AND    ( s.last_update_date >= ld_date 
+              OR
+                h.last_update_date >= ld_date 
+              )
+       ORDER BY DESCRIPTION;
+    -- メインカーソルレコード型
+    main_rec8  main_cur8%ROWTYPE;
+--
+--2022/06/08 1.1 add end
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -635,6 +755,9 @@ AS
                    '  条件_対象データ種類:'   || main_rec5.target_data_type                       || CHR(10) ||  -- 条件_対象データ種類
                    '  条件_対象期間TO:'       || main_rec5.target_date_end                        || CHR(10) ||  -- 条件_対象期間TO    
                    '  条件_受領請求書番号:'   || main_rec5.invoice_number                         || CHR(10) ||  -- 条件_受領請求書番号
+--2022/06/08 1.1 add start
+                   '  控除用チェーン:'        || main_rec5.deduction_chain_code                   || CHR(10) ||  -- 控除用チェーン     
+--2022/06/08 1.1 add end
                    '  控除額_本体額:'         || main_rec5.deduction_amt                          || CHR(10) ||  -- 控除額_本体額       
                    '  控除額_税額:'           || main_rec5.deduction_tax                          || CHR(10) ||  -- 控除額_税額         
                    '  支払額_本体額:'         || main_rec5.payment_amt                            || CHR(10) ||  -- 支払額_本体額       
@@ -672,6 +795,9 @@ AS
                    '  条件_対象データ種類:'   || main_rec6.target_data_type                       || CHR(10) ||  -- 条件_対象データ種類
                    '  条件_対象期間TO:'       || main_rec6.target_date_end                        || CHR(10) ||  -- 条件_対象期間TO    
                    '  条件_受領請求書番号:'   || main_rec6.invoice_number                         || CHR(10) ||  -- 条件_受領請求書番号
+--2022/06/08 1.1 add start
+                   '  控除用チェーン:'        || main_rec6.deduction_chain_code                   || CHR(10) ||  -- 控除用チェーン     
+--2022/06/08 1.1 add end
                    '  控除額_本体額:'         || main_rec6.deduction_amt                          || CHR(10) ||  -- 控除額_本体額        
                    '  控除額_税額:'           || main_rec6.deduction_tax                          || CHR(10) ||  -- 控除額_税額          
                    '  支払額_本体額:'         || main_rec6.payment_amt                            || CHR(10) ||  -- 支払額_本体額        
@@ -683,6 +809,83 @@ AS
       );
     END LOOP;
 --
+--2022/06/08 1.1 add start
+--
+    FOR main_rec7 IN main_cur7 LOOP
+      --件数セット
+      gn_error_cnt := gn_error_cnt + 1;
+      --
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => '販売控除情報の控除額が控除No別消込情報の控除額 + 商品別突合情報の控除額と一致しません。または販売控除情報の税額が控除No別消込情報の税額 + 商品別突合情報の税額と一致しません。'   || CHR(10) ||
+                   '  作成日:'                      || TO_CHAR(main_rec7.creation_date,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||  -- 作成日
+                   '  控除消込ヘッダーID:'          || main_rec7.deduction_recon_head_id                        || CHR(10) ||  -- 控除消込ヘッダーID
+                   '  支払伝票番号:'                || main_rec7.recon_slip_num                                 || CHR(10) ||  -- 支払伝票番号
+                   '  申請者:'                      || main_rec7.applicant                                      || CHR(10) ||  -- 申請者
+                   '  申請者名:'                    || main_rec7.applicant_name                                 || CHR(10) ||  -- 申請者名
+                   '  承認者:'                      || main_rec7.approver                                       || CHR(10) ||  -- 承認者
+                   '  承認者名:'                    || main_rec7.approver_name                                  || CHR(10) ||  -- 承認者名
+                   '  支払予定日:'                  || TO_CHAR(main_rec7.recon_due_date,'YYYY/MM/DD')           || CHR(10) ||  -- 支払予定日
+                   '  支払請求拠点:'                || main_rec7.recon_base_code                                || CHR(10) ||  -- 支払請求拠点
+                   '  支払先コード:'                || main_rec7.payee_code                                     || CHR(10) ||  -- 支払先コード
+                   '  消込ステータスコード:'        || main_rec7.recon_status_code                              || CHR(10) ||  -- 消込ステータスコード
+                   '  消込ステータス:'              || main_rec7.recon_status                                   || CHR(10) ||  -- 消込ステータス
+                   '  企業コード:'                  || main_rec7.corp_code                                      || CHR(10) ||  -- 企業コード
+                   '  控除用チェーンコード:'        || main_rec7.deduction_chain_code                           || CHR(10) ||  -- 控除用チェーンコード
+                   '  顧客コード:'                  || main_rec7.cust_code                                      || CHR(10) ||  -- 顧客コード
+                   '  控除番号:'                    || main_rec7.condition_no                                   || CHR(10) ||  -- 控除番号
+                   '  対象期間TO:'                  || TO_CHAR(main_rec7.target_date_end,'YYYY/MM/DD')          || CHR(10) ||  -- 対象期間TO
+                   '  連携先:'                      || main_rec7.interface_div                                  || CHR(10) ||  -- 連携先
+                   '  控除NO別_控除額(税抜):'       || main_rec7.n_deduction_amt                                || CHR(10) ||  -- 控除NO別_控除額(税抜)
+                   '  品目別_控除額(税抜):'         || main_rec7.i_deduction_amt                                || CHR(10) ||  -- 品目別_控除額(税抜)
+                   '  控除データ_控除額(税抜):'     || main_rec7.s_deduction_amount                             || CHR(10) ||  -- 控除データ_控除額(税抜)
+                   '  異常値(税抜):'                || main_rec7.deduction_amt_diff                             || CHR(10) ||  -- 異常値(税抜)
+                   '  控除NO別_控除額(消費税):'     || main_rec7.n_deduction_tax                                || CHR(10) ||  -- 控除NO別_控除額(消費税)
+                   '  品目別_控除額(消費税):'       || main_rec7.i_deduction_tax                                || CHR(10) ||  -- 品目別_控除額(消費税)
+                   '  控除データ_控除額(消費税):'   || main_rec7.s_deduction_tax_amount                         || CHR(10) ||  -- 控除データ_控除額(消費税)
+                   '  税額異常値(消費税):'          || main_rec7.deduction_tax_diff                             || CHR(10)     -- 税額異常値(消費税)
+      );
+    END LOOP;
+--
+    FOR main_rec8 IN main_cur8 LOOP
+      --件数セット
+      gn_error_cnt := gn_error_cnt + 1;
+      --
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => 'AP部門入力伝票のステータスが承認済で、控除消込ヘッダー情報のステータスが削除済みのデータを検知しました。'   || CHR(10) ||
+                   '  作成日:'                      || TO_CHAR(main_rec8.creation_date,'YYYY/MM/DD HH24:MI:SS')   || CHR(10) ||  -- 作成日
+                   '  控除消込ヘッダーID:'          || main_rec8.deduction_recon_head_id                          || CHR(10) ||  -- 控除消込ヘッダーID
+                   '  支払伝票番号:'                || main_rec8.recon_slip_num                                   || CHR(10) ||  -- 支払伝票番号
+                   '  申請者:'                      || main_rec8.applicant                                        || CHR(10) ||  -- 申請者
+                   '  申請者名:'                    || main_rec8.applicant_name                                   || CHR(10) ||  -- 申請者名
+                   '  承認者:'                      || main_rec8.approver                                         || CHR(10) ||  -- 承認者
+                   '  承認者名:'                    || main_rec8.approver_name                                    || CHR(10) ||  -- 承認者名
+                   '  支払予定日:'                  || TO_CHAR(main_rec8.recon_due_date,'YYYY/MM/DD')             || CHR(10) ||  -- 支払予定日
+                   '  支払請求拠点:'                || main_rec8.recon_base_code                                  || CHR(10) ||  -- 支払請求拠点
+                   '  支払先コード:'                || main_rec8.payee_code                                       || CHR(10) ||  -- 支払先コード
+                   '  消込ステータスコード:'        || main_rec8.recon_status_code                                || CHR(10) ||  -- 消込ステータスコード
+                   '  消込ステータス:'              || main_rec8.recon_status                                     || CHR(10) ||  -- 消込ステータス
+                   '  企業コード:'                  || main_rec8.corp_code                                        || CHR(10) ||  -- 企業コード
+                   '  控除用チェーンコード:'        || main_rec8.deduction_chain_code                             || CHR(10) ||  -- 控除用チェーンコード
+                   '  顧客コード:'                  || main_rec8.cust_code                                        || CHR(10) ||  -- 顧客コード
+                   '  控除番号:'                    || main_rec8.condition_no                                     || CHR(10) ||  -- 控除番号
+                   '  対象期間TO:'                  || TO_CHAR(main_rec8.target_date_end,'YYYY/MM/DD')            || CHR(10) ||  -- 対象期間TO
+                   '  控除NO別_控除額(税抜):'       || main_rec8.deduction_amt                                    || CHR(10) ||  -- 控除NO別_控除額(税抜)
+                   '  控除NO別_控除額(消費税):'     || main_rec8.deduction_tax                                    || CHR(10) ||  -- 控除NO別_控除額(消費税)
+                   '  控除NO別_支払額(税抜):'       || main_rec8.payment_amt                                      || CHR(10) ||  -- 控除NO別_支払額(税抜)
+                   '  控除NO別_支払額(消費税):'     || main_rec8.payment_tax                                      || CHR(10) ||  -- 控除NO別_支払額(消費税)
+                   '  控除NO別_調整差額(税抜):'     || main_rec8.difference_amt                                   || CHR(10) ||  -- 控除NO別_調整差額(税抜)
+                   '  控除NO別_調整差額(消費税):'   || main_rec8.difference_tax                                   || CHR(10) ||  -- 控除NO別_調整差額(消費税)
+                   '  部門入力作成日:'              || TO_CHAR(main_rec8.creation_date_s,'YYYY/MM/DD HH24:MI:SS') || CHR(10) ||  -- 部門入力作成日
+                   '  部門入力伝票ID:'              || main_rec8.invoice_id                                       || CHR(10) ||  -- 部門入力伝票ID
+                   '  部門入力ステータス:'          || main_rec8.wf_status                                        || CHR(10) ||  -- 部門入力ステータス
+                   '  部門入力伝票番号:'            || main_rec8.invoice_num                                      || CHR(10) ||  -- 部門入力伝票番号
+                   '  部門入力申請者名:'            || main_rec8.requestor_person_name                            || CHR(10) ||  -- 部門入力申請者名
+                   '  部門入力承認者名:'            || main_rec8.approver_person_name                             || CHR(10)     -- 部門入力承認者名
+      );
+    END LOOP;
+--2022/06/08 1.1 add end
     IF ( gn_error_cnt > 0 ) THEN
       ov_retcode := cv_status_error;
     END IF;
