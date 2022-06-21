@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A29C(body)
  * Description      : 問屋販売条件請求書Excelアップロード（収益認識）
  * MD.050           : 問屋販売条件請求書Excelアップロード（収益認識） MD050_COK_024_A29
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/11/09    1.0   A.Aoki           新規作成
  *  2021/04/09    1.1   SCSK Y.Koh       [E_本稼動_16026]
+ *  2022/06/15    1.2   SCSK M.Akachi    [E_本稼動_18341][E_本稼動_18342]
  *
  *****************************************************************************************/
 --
@@ -41,6 +42,9 @@ AS
   --アプリケーション短縮名
   cv_xxcok_appl_name         CONSTANT VARCHAR2(10) := 'XXCOK';
   cv_xxccp_appl_name         CONSTANT VARCHAR2(10) := 'XXCCP';
+-- 2022/06/15 Ver1.2 ADD Start
+  cv_xxcci_appl_name         CONSTANT VARCHAR2(5)  := 'XXCOI'; -- アドオン：在庫
+-- 2022/06/15 Ver1.2 ADD End
   --ステータス・コード
   cv_status_normal           CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_normal; --正常:0
   cv_status_warn             CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_warn;   --警告:1
@@ -92,6 +96,11 @@ AS
   cv_err_msg_10738           CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10738';   --控除用チェーンコードチェックエラー
   cv_err_msg_10746           CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10746';   --顧客コード相関チェックエラー
   cv_err_msg_10739           CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10739';   --必須チェックエラー（収益認識）
+-- 2022/06/15 Ver1.2 ADD Start
+  cv_err_msg_10843           CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10843';   --売上対象年月日付先日付チェックエラー
+  cv_err_msg_10794           CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10794';   --子品目エラー
+  cv_err_msg_00006           CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00006';  -- 在庫組織ID取得エラーメッセージ
+-- 2022/06/15 Ver1.2 ADD End
   cv_message_00016           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00016';   --入力パラメータ(ファイルID)
   cv_message_00017           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00017';   --入力パラメータ(フォーマットパターン)
   cv_message_00006           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00006';   --ファイル名メッセージ出力
@@ -134,6 +143,12 @@ AS
   cv_token_emp               CONSTANT VARCHAR2(10)  := 'EMP_CODE';        --トークン名(EMP_CODE)
   cv_token_count             CONSTANT VARCHAR2(5)   := 'COUNT';           --トークン名(COUNT)
   cv_token_supplier_code     CONSTANT VARCHAR2(30)  := 'SUPPLIER_CODE';   --トークン名(SUPPLIER_CODE)
+-- 2022/06/15 Ver1.2 ADD Start
+  cv_token_col_name          CONSTANT VARCHAR2(20) := 'COLUMN_NAME';      --トークン名(COLUMN_NAME)
+  cv_token_col_name_2        CONSTANT VARCHAR2(20) := 'COLUMN_NAME2';     --トークン名(COLUMN_NAME2)
+  cv_token_col_value         CONSTANT VARCHAR2(20) := 'COLUMN_VALUE';     --トークン名(COLUMN_VALUE)
+  cv_token_col_org           CONSTANT VARCHAR2(20) := 'ORG_CODE_TOK';     --トークン名(ORG_CODE)
+-- 2022/06/15 Ver1.2 ADD End
   -- 参照タイプ名
   cv_lookup_payment_date     CONSTANT VARCHAR2(30)  := 'XXCOK1_EXPECT_PAYMENT_DATE';  --問屋請求支払予定日
   cv_lookup_koza_type        CONSTANT VARCHAR2(30)  := 'XXCSO1_KOZA_TYPE';            --口座種別
@@ -170,6 +185,10 @@ AS
   ct_closing_status_o        CONSTANT gl_period_statuses.closing_status%TYPE         := 'O';     --O:オープン
   ct_adjust_flag_n           CONSTANT gl_period_statuses.adjustment_period_flag%TYPE := 'N';     --N:調整期間以外
   cv_expansion_sales_type_1  CONSTANT VARCHAR2(1)   := '1';    --拡売区分(拡売）
+-- 2022/06/15 Ver1.2 ADD Start
+  cv_msg_item_code           CONSTANT VARCHAR2(10) := '品目コード';
+  cv_msg_child_item_code     CONSTANT VARCHAR2(6)  := '子品目';
+-- 2022/06/15 Ver1.2 ADD End
   --数値
   cn_0                       CONSTANT NUMBER        := 0;      --数値:0
   cn_1                       CONSTANT NUMBER        := 1;      --数値:1
@@ -204,6 +223,9 @@ AS
   gt_aff8_preliminary2_dummy  gl_code_combinations.segment8%TYPE; -- 予備2ダミー値
   gt_perm_start_date          xxcok_tmp_wholesale_bill.expect_payment_date%TYPE;  -- AP未オープン期間許容範囲_開始日
   gt_perm_end_date            xxcok_tmp_wholesale_bill.expect_payment_date%TYPE;  -- AP未オープン期間許容範囲_終了日
+-- 2022/06/15 Ver1.2 ADD Start
+  gt_org_id             mtl_parameters.organization_id%TYPE; -- 在庫組織ID
+-- 2022/06/15 Ver1.2 ADD End
   -- =============================================================================
   -- グローバル例外
   -- =============================================================================
@@ -1570,7 +1592,61 @@ AS
                     );
       ov_retcode := cv_status_continue;
     END IF;
-    
+-- 2022/06/15 Ver1.2 ADD Start
+    -- =============================================================================
+    -- 18.売上対象年月日の先日付チェック
+    -- =============================================================================
+    IF ( TRUNC( gd_prdate  ) < TRUNC( ld_selling_date )) THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_err_msg_10843
+                  , iv_token_name1  => cv_token_row_num
+                  , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+    END IF;
+    -- =============================================================================
+    -- 19.品目コードの子品目チェック
+    -- =============================================================================
+    IF ( iv_item_code IS NOT NULL ) THEN
+        SELECT COUNT(1) AS  dummy
+        INTO   ln_count
+        FROM   mtl_system_items_b  msib
+             , ic_item_mst_b       iimb
+             , xxcmn_item_mst_b    ximb
+        WHERE  msib.segment1        = iimb.item_no
+        AND    iimb.item_id         = ximb.item_id
+        AND    msib.segment1        = iv_item_code
+        AND    msib.organization_id = gt_org_id
+        AND    gd_prdate BETWEEN NVL(ximb.start_date_active, gd_prdate)
+          AND    NVL(ximb.end_date_active, gd_prdate)
+        AND    ximb.item_id         != ximb.parent_item_id
+        ;
+        IF ( ln_count > cn_0 ) THEN
+            lv_msg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_name
+                      , iv_name         => cv_err_msg_10794
+                      , iv_token_name1  => cv_token_col_name
+                      , iv_token_value1 => cv_msg_child_item_code
+                      , iv_token_name2  => cv_token_col_name_2
+                      , iv_token_value2 => cv_msg_item_code
+                      , iv_token_name3  => cv_token_col_value
+                      , iv_token_value3 => iv_item_code
+                      );
+            lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT    --出力区分
+                    , iv_message  => lv_msg             --メッセージ
+                    , in_new_line => 0                  --改行
+                    );
+            ov_retcode := cv_status_continue;
+        END IF;
+    END IF;
+-- 2022/06/15 Ver1.2 ADD End
     -- =============================================================================
     -- 問屋請求書テーブルデータチェック(A-5)
     -- 問屋請求書ヘッダーテーブル、問屋請求書明細テーブルの既存データチェックを行う
@@ -2342,6 +2418,24 @@ AS
     IF ( gt_perm_start_date IS NULL ) OR ( gt_perm_end_date IS NULL ) THEN
       RAISE get_period_expt;
     END IF;
+-- 2022/06/15 Ver1.2 ADD Start
+    --==============================================================
+    --共通関数より在庫組織ID取得
+    --==============================================================
+    gt_org_id := xxcoi_common_pkg.get_organization_id(
+                   iv_organization_code => gv_organization_code
+                 );
+    IF ( gt_org_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcci_appl_name
+                     , iv_name         => cv_err_msg_00006
+                     , iv_token_name1  => cv_token_col_org
+                     , iv_token_value1 => gv_organization_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2022/06/15 Ver1.2 ADD End
   EXCEPTION
     -- *** プロファイル取得エラー ***
     WHEN get_profile_expt THEN
@@ -2387,6 +2481,13 @@ AS
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
       ov_retcode := cv_status_error;
+  -- 2022/06/15 Ver1.2 ADD Start
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+  -- 2022/06/15 Ver1.2 ADD End
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
