@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2022/03/09    1.8   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応(メッセージ変更)
  *                                       E_本稼動_17939【収益認識】定額協賛金(既存メッセージ不具合修正)
  *  2022/05/02    1.9   SCSK Y.Koh       E_本稼動_18148  定額協賛金の控除マスタアップロード
+ *  2022/06/16    1.10  SCSK Y.Koh       E_本稼動_18343 定額協賛金（額固定）の控除マスタアップロードで、計上顧客チェック
  *
  *****************************************************************************************/
 --
@@ -329,6 +330,11 @@ AS
 -- 2022/03/09 Ver1.8 ADD Start
   cv_msg_cok_10835                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10835';  -- マスタ未登録エラー
 -- 2022/03/09 Ver1.8 ADD End
+-- 2022/06/16 Ver1.10 ADD Start
+  cv_msg_cok_10840                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10840';  -- 計上顧客エラーメッセージ(顧客指定)
+  cv_msg_cok_10841                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10841';  -- 計上顧客エラーメッセージ(控除用チェーン指定)
+  cv_msg_cok_10842                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10842';  -- 計上顧客エラーメッセージ(企業指定)
+-- 2022/06/16 Ver1.10 ADD End
 --
   cv_tkn_coi_10634                  CONSTANT VARCHAR2(20) := 'APP-XXCOI1-10634';  -- ファイルアップロードIF
   cv_prf_org_err_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
@@ -1950,6 +1956,10 @@ AS
 -- Ver1.5 Add Start
     lv_data_type_meaning      VARCHAR2(100);  -- データ種類_内容
 -- Ver1.5 Add End
+-- 2022/06/16 Ver1.10 ADD Start
+    lt_corp_code              xxcok_condition_header.corp_code%TYPE;            -- 企業コード
+    lt_deduction_chain_code   xxcok_condition_header.deduction_chain_code%TYPE; -- 控除用チェーンコード
+-- 2022/06/16 Ver1.10 ADD End
     -- *** ローカル・カーソル ***
 --
 -- Ver1.5 Add Start
@@ -4474,6 +4484,57 @@ AS
 -- 2021/04/06 Ver1.1 MOD End
                 AND    base_hzca.status              = cv_cust_accounts_status
                 ;
+-- 2022/06/16 Ver1.10 ADD Start
+--
+                SELECT
+                    flv.attribute1        attribute1        ,
+                    xca.intro_chain_code2 intro_chain_code2
+                INTO
+                    lt_corp_code            ,
+                    lt_deduction_chain_code
+                FROM
+                    fnd_lookup_values   flv ,
+                    xxcmm_cust_accounts xca
+                WHERE
+                    xca.customer_code   =   g_cond_tmp_chk_rec.accounting_customer_code
+                AND flv.lookup_type(+)  =   cv_type_chain_code
+                AND flv.lookup_code(+)  =   xca.intro_chain_code2
+                AND flv.language(+)     =   ct_language
+                AND flv.enabled_flag(+) =   cv_const_y
+                AND gd_process_date     >=  NVL(flv.start_date_active(+), gd_process_date)
+                AND gd_process_date     <=  NVL(flv.end_date_active(+), gd_process_date)  ;
+--
+                IF  g_cond_tmp_chk_rec.accounting_customer_code !=  g_cond_tmp_chk_rec.customer_code  THEN
+                  -- 93.計上顧客が指定した顧客と一致しない場合エラー
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cok
+                              , iv_name         => cv_msg_cok_10840
+                              );
+                  ln_cnt  :=  ln_cnt + 1;
+                  g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+                ELSIF   g_cond_tmp_chk_rec.deduction_chain_code IS  NOT NULL                                  AND
+                      ( lt_deduction_chain_code                 !=  g_cond_tmp_chk_rec.deduction_chain_code OR
+                        lt_deduction_chain_code                 IS  NULL                                    ) THEN
+                  -- 94.計上顧客が指定した控除用チェーンの配下でない場合エラー
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cok
+                              , iv_name         => cv_msg_cok_10841
+                              );
+                  ln_cnt  :=  ln_cnt + 1;
+                  g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+                ELSIF   g_cond_tmp_chk_rec.corp_code  IS  NOT NULL                        AND
+                      ( lt_corp_code                  !=  g_cond_tmp_chk_rec.corp_code  OR
+                        lt_corp_code                  IS  NULL                          ) THEN
+                  -- 95.計上顧客が指定した企業の配下でない場合エラー
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cok
+                              , iv_name         => cv_msg_cok_10842
+                              );
+                  ln_cnt  :=  ln_cnt + 1;
+                  g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+                END IF;
+--
+-- 2022/06/16 Ver1.10 ADD End
               EXCEPTION
                 WHEN NO_DATA_FOUND THEN
                   lv_errmsg := xxccp_common_pkg.get_msg(
