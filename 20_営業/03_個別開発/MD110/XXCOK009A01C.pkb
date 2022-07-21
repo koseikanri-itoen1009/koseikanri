@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                                           対象アプリケーションを「AR」から「GL」変更
  * 2013/12/30     1.9   SCSK S.NIKI      [障害E_本稼動_02011]入金時値引の勘定科目変更
  * 2019/07/03     2.0   SCSK N.Miyamoto  [E_本稼動_15472]軽減税率対応
+ * 2022/06/24     2.1   SCSK M.Akachi    [E_本稼動_18381]実績振替の売上値引の勘定科目変更
  *
  *****************************************************************************************/
   --===============================
@@ -96,6 +97,11 @@ AS
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
   cv_lookup_type_02           CONSTANT VARCHAR2(50)  := 'XXCMM1_PAYMENT_DISCOUNTS_CODE';    -- 入金値引
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
+-- Ver.2.1 Add Start
+  cv_lookup_type_03           CONSTANT VARCHAR2(50)  := 'XXCOS1_DISCOUNT_ITEM_CODE'    ;    -- 値引品目
+  cv_aff3_prod_discount       CONSTANT VARCHAR2(100) := 'XXCOK1_AFF3_PROD_DISCOUNT';        -- 製品売上値引高
+  cv_d1                       CONSTANT VARCHAR2(2)   := 'D1';                               -- 値引品目区分
+-- Ver.2.1 Add End
   --メッセージ
   cv_lock_err_msg             CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10049';                 -- ロックエラーメッセージ
   cv_concurrent_msg           CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90008';                 -- パラメータなしメッセージ
@@ -140,6 +146,9 @@ AS
   cv_discounts_item_flag_off  CONSTANT VARCHAR2(1)  := '0';                                 -- 入金値引フラグ0(通常品目)
   cv_discounts_item_flag_on   CONSTANT VARCHAR2(1)  := '1';                                 -- 入金値引フラグ1(入金値引)
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+-- Ver.2.1 Add Start
+  cv_prod_discounts_item_flag_on   CONSTANT VARCHAR2(1)  := '2';                            -- 売上値引フラグ2(売上値引)
+-- Ver.2.1 Add End
   --トークン
   cv_profile_token            CONSTANT VARCHAR2(15) := 'PROFILE';                           -- トークン名
   cv_sales_token              CONSTANT VARCHAR2(15) := 'SALES_DATE';                        -- トークン名
@@ -197,6 +206,13 @@ AS
   gn_debit_amt                NUMBER         DEFAULT NULL;   -- 借方金額
   gn_credit_amt               NUMBER         DEFAULT NULL;   -- 貸方金額
   gd_operation_date           DATE           DEFAULT NULL;   -- 業務処理日付
+-- Ver.2.1 Add Start
+  gv_aff3_prod_discount       VARCHAR2(100)  DEFAULT NULL;   -- 入金値引高
+  gt_selling_date             xxcok_selling_trns_info.selling_date%TYPE DEFAULT NULL;          -- 売上計上日チェック用
+  gt_cust_code                xxcok_selling_trns_info.selling_from_cust_code%TYPE DEFAULT NULL; -- 売上振替元顧客コードチェック用
+  gt_base_code                xxcok_selling_trns_info.base_code%TYPE DEFAULT NULL;              -- 売上振替先拠点コードチェック用
+  gt_deliv_base_code          xxcok_selling_trns_info.delivery_base_code%TYPE DEFAULT NULL;     -- 売上振替元拠点コードチェック用
+-- Ver.2.1 Add End
   -- ===============================
   -- グローバルカーソル
   -- ===============================
@@ -256,26 +272,36 @@ AS
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
            , CASE
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+-- Ver.2.1 Mod Start
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
 --               WHEN xsti.item_code <> gv_payment_discounts_code THEN
-               WHEN NOT EXISTS (SELECT  1
-                                FROM    fnd_lookup_values_vl
-                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
-                                  AND   meaning           = xsti.item_code
-                                  AND   enabled_flag      = cv_enable
-                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
-                                                              AND NVL( end_date_active  , gd_operation_date )
-                               ) THEN
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
-                cv_discounts_item_flag_off  --通常品目
-               ELSE
-                cv_discounts_item_flag_on   --入金値引
+--                WHEN NOT EXISTS (SELECT  1
+--                                 FROM    fnd_lookup_values_vl
+--                                 WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+--                                   AND   meaning           = xsti.item_code
+--                                   AND   enabled_flag      = cv_enable
+--                                   AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+--                                                               AND NVL( end_date_active  , gd_operation_date )
+--                                ) THEN
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
+--                 cv_discounts_item_flag_off  --通常品目
+--                ELSE
+--                 cv_discounts_item_flag_on   --入金値引
+             WHEN v1.meaning IS NOT NULL THEN cv_discounts_item_flag_on            --入金値引 
+             WHEN v2.lookup_code IS NOT NULL THEN cv_prod_discounts_item_flag_on   --売上値引 
+             ELSE cv_discounts_item_flag_off                                       --通常品目
+-- Ver.2.1 Mod End
              END                        AS discount_flag
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
            , xsti.tax_code                                               -- 消費税コード
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
+-- Ver.2.1 Add Start
+            ,fnd_lookup_values_vl            v1                          -- 参照表（入金値引）
+            ,fnd_lookup_values_vl            v2                          -- 参照表（値引品目）
+-- Ver.2.1 Add End
+    
     WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
     AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
     AND      xsti.report_decision_flag    =  cv_report_decision_flag     -- 速報確定フラグ1(確定)
@@ -286,6 +312,19 @@ AS
                                              )
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
     AND      xsti.gl_interface_flag       =  cv_unsettled_interface_flag -- 仕訳作成フラグ0(仕訳作成未済)
+-- Ver.2.1 Add Start
+    AND      xsti.item_code = v1.meaning(+)
+    AND      v1.lookup_type(+) = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+    AND      v1.enabled_flag(+)    = cv_enable
+    AND      trunc(gd_operation_date) BETWEEN NVL( v1.start_date_active, trunc(gd_operation_date) )
+    AND      NVL( v1.end_date_active  , trunc(gd_operation_date) )
+    AND      xsti.item_code = v2.lookup_code(+)
+    AND      v2.lookup_type(+) = cv_lookup_type_03 --XXCOS1_DISCOUNT_ITEM_CODE
+    AND      v2.attribute1(+)  = cv_d1
+    AND      v2.enabled_flag(+)    = cv_enable
+    AND      trunc(gd_operation_date) BETWEEN NVL( v2.start_date_active, trunc(gd_operation_date) )
+    AND      NVL( v2.end_date_active  , trunc(gd_operation_date) )
+-- Ver.2.1 Add End
     GROUP BY xsti.selling_date
            , xsti.selling_from_cust_code
            , xsti.base_code
@@ -295,21 +334,26 @@ AS
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
            , CASE
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
---               WHEN xsti.item_code <> gv_payment_discounts_code THEN
-               WHEN NOT EXISTS (SELECT  1
-                                FROM    fnd_lookup_values_vl
-                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
-                                  AND   meaning           = xsti.item_code
-                                  AND   enabled_flag      = cv_enable
-                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
-                                                              AND NVL( end_date_active  , gd_operation_date )
-                               ) THEN
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
-                cv_discounts_item_flag_off  --通常品目
-               ELSE
-                cv_discounts_item_flag_on   --入金値引
-             END
+-- Ver.2.1 Mod Start
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+----               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+--               WHEN NOT EXISTS (SELECT  1
+--                                FROM    fnd_lookup_values_vl
+--                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+--                                  AND   meaning           = xsti.item_code
+--                                  AND   enabled_flag      = cv_enable
+--                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+--                                                              AND NVL( end_date_active  , gd_operation_date )
+--                               ) THEN
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
+--                cv_discounts_item_flag_off  --通常品目
+--               ELSE
+--                cv_discounts_item_flag_on   --入金値引
+             WHEN v1.meaning IS NOT NULL THEN cv_discounts_item_flag_on            --入金値引 
+             WHEN v2.lookup_code IS NOT NULL THEN cv_prod_discounts_item_flag_on   --売上値引 
+             ELSE cv_discounts_item_flag_off   
+-- Ver.2.1 Mod End
+             END             
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
     ORDER BY xsti.selling_date
            , xsti.selling_from_cust_code
@@ -322,21 +366,26 @@ AS
            , xsti.tax_code                  -- 消費税コード
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
            , CASE
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
---               WHEN xsti.item_code <> gv_payment_discounts_code THEN
-               WHEN NOT EXISTS (SELECT  1
-                                FROM    fnd_lookup_values_vl
-                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
-                                  AND   meaning           = xsti.item_code
-                                  AND   enabled_flag      = cv_enable
-                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
-                                                              AND NVL( end_date_active  , gd_operation_date )
-                               ) THEN
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
-                cv_discounts_item_flag_off  --通常品目
-               ELSE
-                cv_discounts_item_flag_on   --入金値引
-             END
+-- Ver.2.1 Mod Start
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+----               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+--               WHEN NOT EXISTS (SELECT  1
+--                                FROM    fnd_lookup_values_vl
+--                               WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+--                                  AND   meaning           = xsti.item_code
+--                                  AND   enabled_flag      = cv_enable
+--                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+--                                                              AND NVL( end_date_active  , gd_operation_date )
+--                               ) THEN
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
+--                cv_discounts_item_flag_off  --通常品目
+--               ELSE
+--                cv_discounts_item_flag_on   --入金値引
+             WHEN v1.meaning IS NOT NULL THEN cv_discounts_item_flag_on            --入金値引 
+             WHEN v2.lookup_code IS NOT NULL THEN cv_prod_discounts_item_flag_on   --売上値引 
+             ELSE cv_discounts_item_flag_off                                       --通常品目
+-- Ver.2.1 Mod End
+           END
            ;
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
 --
@@ -711,20 +760,43 @@ AS
       AND    xsti.selling_from_cust_code = i_get_rec.selling_from_cust_code -- 売上振替元顧客コード
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
       AND    CASE
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
---               WHEN xsti.item_code <> gv_payment_discounts_code THEN
-               WHEN NOT EXISTS (SELECT  1
-                                FROM    fnd_lookup_values_vl
-                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
-                                  AND   meaning           = xsti.item_code
-                                  AND   enabled_flag      = cv_enable
-                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
-                                                              AND NVL( end_date_active  , gd_operation_date )
-                               ) THEN
--- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
-                cv_discounts_item_flag_off  --通常品目
+-- Ver.2.1 Mod Start
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+----               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+--               WHEN NOT EXISTS (SELECT  1
+--                                FROM    fnd_lookup_values_vl
+--                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+--                                  AND   meaning           = xsti.item_code
+--                                  AND   enabled_flag      = cv_enable
+--                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+--                                                              AND NVL( end_date_active  , gd_operation_date )
+--                               ) THEN
+---- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
+--                cv_discounts_item_flag_off  --通常品目
+--               ELSE
+--                cv_discounts_item_flag_on   --入金値引
+               WHEN EXISTS (SELECT  1
+                            FROM    fnd_lookup_values_vl
+                            WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+                              AND   meaning           = xsti.item_code
+                              AND   enabled_flag      = cv_enable
+                              AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+                                                          AND NVL( end_date_active  , gd_operation_date )
+               ) THEN
+                 cv_discounts_item_flag_on    --入金値引
+               WHEN EXISTS (SELECT  1
+                            FROM    fnd_lookup_values_vl
+                            WHERE   lookup_type       = cv_lookup_type_03 --XXCOS1_DISCOUNT_ITEM_CODE
+                              AND   xsti.item_code = lookup_code
+                              AND   attribute1  = cv_d1
+                              AND   enabled_flag    = cv_enable
+                              AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+                                                          AND NVL( end_date_active  , gd_operation_date )
+               ) THEN
+                 cv_prod_discounts_item_flag_on    --売上値引
                ELSE
-                cv_discounts_item_flag_on   --入金値引
+                 cv_discounts_item_flag_off        --通常品目
+-- Ver.2.1 Mod End
              END                       = i_get_rec.discount_flag
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
@@ -1044,6 +1116,10 @@ AS
     IF ( i_get_rec.discount_flag = cv_discounts_item_flag_off ) THEN
       --通常品目
       lv_acct_prod  := gv_acct_prod_sale;        --製品売上高
+-- Ver.2.1 Add Start
+    ELSIF ( i_get_rec.discount_flag = cv_prod_discounts_item_flag_on ) THEN
+      lv_acct_prod  := gv_aff3_prod_discount;    --売上値引高
+-- Ver.2.1 Add End
     ELSE
       --入金値引
       lv_acct_prod  := gv_acct_payment_discount; --入金値引高
@@ -1365,10 +1441,29 @@ AS
 --
   BEGIN
     ov_retcode := cv_status_normal;
--- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
-      --通常品目の場合
-    IF ( i_get_rec.discount_flag = cv_discounts_item_flag_off ) THEN
--- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+-- Ver.2.1 Mod Start
+-- 伝票番号を集計単位(売上計上日、売上振替元顧客、売上振替先拠点、売上振替元拠点)毎に採番する
+---- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+--      --通常品目の場合
+--    IF ( i_get_rec.discount_flag = cv_discounts_item_flag_off ) THEN
+---- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+    IF ( i_get_rec.xsti_selling_date != gt_selling_date 
+         OR i_get_rec.selling_from_cust_code != gt_cust_code 
+         OR i_get_rec.base_code != gt_base_code
+         OR i_get_rec.delivery_base_code != gt_deliv_base_code 
+         OR (gt_selling_date IS NULL 
+             AND gt_cust_code IS NULL 
+             AND gt_base_code IS NULL 
+             AND gt_deliv_base_code IS NULL)
+       ) THEN
+-- Ver.2.1 Mod End
+-- Ver.2.1 Add Start
+      --売上計上日、売上振替元顧客、売上振替先拠点、売上振替元拠点をグローバル変数に保持
+      gt_selling_date    := i_get_rec.xsti_selling_date;
+      gt_cust_code       := i_get_rec.selling_from_cust_code;
+      gt_base_code       := i_get_rec.base_code;
+      gt_deliv_base_code := i_get_rec.delivery_base_code;
+-- Ver.2.1 Add End
       --==================================================================
       --登録付加情報取得
       --==================================================================
@@ -1550,6 +1645,15 @@ AS
              AND
              NOT( g_get_journal_rec.selling_amt     = 0 )
            )
+-- Ver.2.1 Add Start
+           OR
+           (
+             -- 売上値引
+             ( g_get_journal_rec.discount_flag = cv_prod_discounts_item_flag_on )
+             AND
+             NOT( g_get_journal_rec.selling_amt     = 0 )
+           )
+-- Ver.2.1 Add End
            THEN
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
@@ -1894,6 +1998,10 @@ AS
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
     gv_acct_payment_discount    := FND_PROFILE.VALUE( cv_acct_payment_discount    ); -- 勘定科目_入金時値引高
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+-- Ver.2.1 Add Start
+    gv_aff3_prod_discount       := FND_PROFILE.VALUE( cv_aff3_prod_discount       ); -- 勘定科目_製品売上値引高
+-- Ver.2.1 Add End
+
 --
     IF( gn_set_of_bks_id IS NULL ) THEN
       lv_token_value := TO_CHAR( cv_set_of_bks_id );
@@ -1969,6 +2077,12 @@ AS
       lv_token_value := cv_acct_payment_discount;
       RAISE profile_expt;
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+-- Ver.2.1 Add Start
+    -- 勘定科目_製品売上値引高
+    ELSIF( gv_aff3_prod_discount IS NULL ) THEN
+      lv_token_value := cv_aff3_prod_discount;
+      RAISE profile_expt;
+-- Ver.2.1 Add End
     END IF;
     --==============================================================
     --バッチ名を取得
