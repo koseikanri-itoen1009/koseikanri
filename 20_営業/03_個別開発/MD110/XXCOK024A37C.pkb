@@ -34,7 +34,7 @@ AS
  *  2021/04/23    1.1   K.Yoshikawa      main新規作成
  *  2021/06/30    1.2   T.Nishikawa      [E_本稼動_17306] 入金値引訂正変動対価区分対応
  *  2021/08/04    1.3   T.Nishikawa      [E_本稼動_17409] GL記帳日追加対応
- *  2022/04/19    1.4   SCSK Y.Koh        E_本稼動_18172  控除支払伝票取消時の差額
+ *  2022/07/21    1.4   K.Yoshikawa      [E_本稼動_N1424] IaaSリフト障害No.21
  *
  *****************************************************************************************/
 --
@@ -175,9 +175,7 @@ AS
   gn_target_header_id_ed_3       NUMBER;                                        -- 販売控除ID (至)控除赤（速報戻し）
 -- 2021/08/04 Ver1.3 Add Start
   gd_max_gl_date                 DATE;                                          -- 設定済最大GL記帳日
--- 2022/04/19 Ver1.4 DEL Start
---  gd_gl_date                     DATE;                                          -- 直近のオープンしている会計期間の終了日
--- 2022/04/19 Ver1.4 DEL End
+  gd_gl_date                     DATE;                                          -- 直近のオープンしている会計期間の終了日
 -- 2021/08/04 Ver1.3 Add End
 --
   /**********************************************************************************
@@ -424,17 +422,15 @@ AS
     FROM    xxcok_sales_deduction xsd
     WHERE   xsd.gl_date  IS NOT NULL;
 --
--- 2022/04/19 Ver1.4 DEL Start
---    --直近のオープンしている会計期間の終了日取得
---    lv_step := 'A-1.8';
---    SELECT MIN(gps.end_date)  min_end_date
---    INTO   gd_gl_date
---    FROM   gl_period_statuses  gps
---    WHERE  gps.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
---    AND    gps.application_id         = 101
---    AND    gps.adjustment_period_flag = 'N'
---    AND    gps.closing_status         = 'O';
--- 2022/04/19 Ver1.4 DEL End
+    --直近のオープンしている会計期間の終了日取得
+    lv_step := 'A-1.8';
+    SELECT MIN(gps.end_date)  min_end_date
+    INTO   gd_gl_date
+    FROM   gl_period_statuses  gps
+    WHERE  gps.set_of_books_id        = FND_PROFILE.VALUE('GL_SET_OF_BKS_ID')
+    AND    gps.application_id         = 101
+    AND    gps.adjustment_period_flag = 'N'
+    AND    gps.closing_status         = 'O';
 --
 -- 2021/08/04 Ver1.3 Add End
 --
@@ -1118,10 +1114,12 @@ AS
     lv_step := 'A-2';
 --
     OPEN  csv_deduction_cur;
-    FETCH csv_deduction_cur BULK COLLECT INTO lt_csv_deduction_tab;
-    CLOSE csv_deduction_cur;
+-- 2022/07/21 DEL Start
+--    FETCH csv_deduction_cur BULK COLLECT INTO lt_csv_deduction_tab;
+--    CLOSE csv_deduction_cur;
     -- 処理件数カウント
-    gn_target_cnt := lt_csv_deduction_tab.COUNT;
+--    gn_target_cnt := lt_csv_deduction_tab.COUNT;
+-- 2022/07/21 DEL End
 --
     -----------------------------------------------
     -- A-3.販売区分、納品形態区分、変動対価区分の取得
@@ -1140,6 +1138,12 @@ AS
           RAISE file_open_expt;
       END;
 --
+-- 2022/07/21 ADD Start
+    LOOP
+    FETCH csv_deduction_cur BULK COLLECT INTO lt_csv_deduction_tab LIMIT 500000;
+    -- 処理件数カウント
+    gn_target_cnt := gn_target_cnt + lt_csv_deduction_tab.COUNT;
+-- 2022/07/21 ADD End
       <<out_csv_loop>>
       FOR i IN 1..lt_csv_deduction_tab.COUNT LOOP
 --
@@ -1227,18 +1231,7 @@ AS
               ld_gl_date := null;
           END;
         ELSIF (lt_csv_deduction_tab( i ).status = cv_status_cancel ) THEN
--- 2022/04/19 Ver1.4 MOD Start
-          BEGIN
-            SELECT DECODE(xdrh.interface_div,'AP',xdrh.cancel_gl_date,'WP',xdrh.gl_date)
-            INTO   ld_gl_date
-            FROM   xxcok_deduction_recon_head  xdrh
-            WHERE  xdrh.recon_slip_num   = lt_csv_deduction_tab( i ).recon_slip_num;
-          EXCEPTION
-            WHEN  NO_DATA_FOUND THEN
-              ld_gl_date := null;
-          END;
---          ld_gl_date := gd_gl_date;
--- 2022/04/19 Ver1.4 MOD End
+          ld_gl_date := gd_gl_date;
         END IF;
       ELSIF (lt_csv_deduction_tab( i ).source_category = cv_source_category_o ) THEN
         ld_gl_date := null;
@@ -1516,6 +1509,12 @@ AS
         gn_normal_cnt := gn_normal_cnt + 1;
         --
       END LOOP out_csv_loop;
+-- 2022/07/21 ADD Start
+     lt_csv_deduction_tab.DELETE;
+    EXIT WHEN csv_deduction_cur%notfound;
+    END LOOP;
+    CLOSE csv_deduction_cur;
+-- 2022/07/21 ADD End
 --
       -- ============================================================
       -- 販売控除管理情報更新の呼び出し
