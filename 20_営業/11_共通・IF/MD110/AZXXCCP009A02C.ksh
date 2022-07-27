@@ -3,85 +3,92 @@
 ## Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved. ##
 ##                                                                              ##
 ## Program Name     : AZXXCCP009A02C                                            ##
-## Description      : ‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µXVˆ—                            ##
-## MD.050           : ‘ÎŒüƒVƒXƒeƒ€ƒWƒ‡ƒuó‹µXVˆ— <MD050_CCP_009_A02>        ##
-## Version          : 1.5                                                       ##
+## Description      : å¯¾å‘ã‚·ã‚¹ãƒ†ãƒ ã‚¸ãƒ§ãƒ–çŠ¶æ³æ›´æ–°å‡¦ç†                            ##
+## MD.050           : å¯¾å‘ã‚·ã‚¹ãƒ†ãƒ ã‚¸ãƒ§ãƒ–çŠ¶æ³æ›´æ–°å‡¦ç† <MD050_CCP_009_A02>        ##
+## Version          : 3.0                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
 ##  No.     Description                                                         ##
 ## -------- ----------------------------------------------------------          ##
-## $1       ˆ—‡•t—v‹ID                                                      ##
-## $2       XVƒXƒe[ƒ^ƒX                                                      ##
+## $1       å‡¦ç†é †ä»˜è¦æ±‚ID                                                      ##
+## $2       æ›´æ–°ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹                                                      ##
 ##                                                                              ##
 ## Change Record                                                                ##
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  Date          Ver.  Editor           Description                            ##
 ## ------------- ----- ---------------- ----------------------------------------##
-##  2009/01/05    1.0   Koji.Oomata      V‹Kì¬                               ##
-##  2009/03/04    1.1   Koji.Oomata      [áŠQCOS_138]                          ##
-##                                         APPSORA.env“Çˆ—’Ç‰Á              ##
-##                                         CONCSUB—v‹‘Ò‚¿ŠÔ•ÏX              ##
-##                                           (ƒfƒtƒHƒ‹ƒg60•b¨15•b)             ##
-##                                         ƒƒOo—Í•û–@•ÏX                     ##
-##                                         “ü—Íƒpƒ‰ƒ[ƒ^•K{ƒ`ƒFƒbƒN’Ç‰Á       ##
-##                                         ƒtƒ@ƒCƒ‹–¼•ÏX (AXXXCCP009A02C.sh    ##
-##                                                         ¨AZXXCCP009A02C.ksh)##
-##                                         •ÏX—š—ğ‚ÌƒtƒH[ƒ}ƒbƒg•ÏX           ##
-##  2009/04/01    1.2   Masayuki.Sano    ‰æ–Ê‹N“®ƒWƒ‡ƒuƒlƒbƒg‚Ì‘½d§Œä‘Î‰     ##
-##                                         ŠO•”ƒVƒFƒ‹–¼•ÏX‘Î‰                 ##
-##  2009/06/17    1.3   Shigeto.Niki     [PT’P‘Ì«”\ƒtƒB[ƒhƒoƒbƒN]             ##
-##                                         CONCSUB—v‹‘Ò‚¿ŠÔ•ÏX              ##
-##                                           (ƒfƒtƒHƒ‹ƒg15•b¨1•b)              ##
-##  2009/11/23    1.4   Shigeto.Niki     ƒƒOo—ÍæC³                         ##
-##  2014/08/05    1.5   Shota.Takahashi  ƒŠƒvƒŒ[ƒX_00004‘Î‰                   ##
+##  2009/01/05    1.0   Koji.Oomata      æ–°è¦ä½œæˆ                               ##
+##  2009/03/04    1.1   Koji.Oomata      [éšœå®³COS_138]                          ##
+##                                         APPSORA.envèª­è¾¼å‡¦ç†è¿½åŠ               ##
+##                                         CONCSUBè¦æ±‚å¾…ã¡æ™‚é–“å¤‰æ›´              ##
+##                                           (ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ60ç§’â†’15ç§’)             ##
+##                                         ãƒ­ã‚°å‡ºåŠ›æ–¹æ³•å¤‰æ›´                     ##
+##                                         å…¥åŠ›ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿å¿…é ˆãƒã‚§ãƒƒã‚¯è¿½åŠ        ##
+##                                         ãƒ•ã‚¡ã‚¤ãƒ«åå¤‰æ›´ (AXXXCCP009A02C.sh    ##
+##                                                         â†’AZXXCCP009A02C.ksh)##
+##                                         å¤‰æ›´å±¥æ­´ã®ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆå¤‰æ›´           ##
+##  2009/04/01    1.2   Masayuki.Sano    ç”»é¢èµ·å‹•ã‚¸ãƒ§ãƒ–ãƒãƒƒãƒˆã®å¤šé‡åˆ¶å¾¡å¯¾å¿œ     ##
+##                                         å¤–éƒ¨ã‚·ã‚§ãƒ«åå¤‰æ›´å¯¾å¿œ                 ##
+##  2009/06/17    1.3   Shigeto.Niki     [PTå˜ä½“æ€§èƒ½ãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯]             ##
+##                                         CONCSUBè¦æ±‚å¾…ã¡æ™‚é–“å¤‰æ›´              ##
+##                                           (ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ15ç§’â†’1ç§’)              ##
+##  2009/11/23    1.4   Shigeto.Niki     ãƒ­ã‚°å‡ºåŠ›å…ˆä¿®æ­£                         ##
+##  2014/08/05    1.5   Shota.Takahashi  ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004å¯¾å¿œ                   ##
+##  2022/06/08    3.0   Shun.Takenami    E_æœ¬ç¨¼åƒ_17774 IaaSåŒ–å¯¾å¿œ              ##
 ##################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
-L_resp_appl="XXCCP"                  #EÓFƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-L_resp_name="JP1SALES"               #EÓ–¼
-L_user_name="JP1SALES"               #ƒ†[ƒU–¼
-L_conc_appl="XXCCP"                  #ƒRƒ“ƒJƒŒƒ“ƒgFƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-L_conc_name="XXCCP009A02C"           #ƒRƒ“ƒJƒŒƒ“ƒgFƒvƒƒOƒ‰ƒ€’Zk–¼
+L_resp_appl="XXCCP"                  #è·è²¬ï¼šã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³çŸ­ç¸®å
+L_resp_name="JP1SALES"               #è·è²¬å
+L_user_name="JP1SALES"               #ãƒ¦ãƒ¼ã‚¶å
+L_conc_appl="XXCCP"                  #ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆï¼šã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³çŸ­ç¸®å
+L_conc_name="XXCCP009A02C"           #ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆï¼šãƒ—ãƒ­ã‚°ãƒ©ãƒ çŸ­ç¸®å
 # 2009/03/04 Ver.1.1 Koji.Oomata add START
 
 # 2014/08/05 Ver.1.5 Shota.Takahashi add START
-L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ƒVƒFƒ‹‚ÌŠi”[ƒfƒBƒŒƒNƒgƒŠ
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ã‚·ã‚§ãƒ«ã®æ ¼ç´ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 # 2014/08/05 Ver.1.5 Shota.Takahashi add END
 
 # 2009/11/23 Ver.1.4 Shigeto.Niki mod START
 #L_logpath="/var/tmp/jp1/log"
 # 2014/08/05 Ver.1.5 Shota.Takahashi mod START
 #L_logpath="/var/log/jp1/PEBSITO"
-L_logpath="/var/log/jp1/${L_envname}"                             #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX
+# 2022/06/08 Ver.3.0 Shun.Takenami mod START
+#L_logpath="/var/log/jp1/${L_envname}"                             #ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
+L_logpath="/var/EBS/jp1/${L_envname}/log"                         #ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
+# 2022/06/08 Ver.3.0 Shun.Takenami mod END
 # 2014/08/05 Ver.1.5 Shota.Takahashi mod END
 # 2009/11/23 Ver.1.4 Shigeto.Niki mod END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
-L_cmddir=`/bin/dirname ${L_cmd}`
+# 2022/06/08 Ver.3.0 Shun.Takenami mod START
+#L_cmddir=`/bin/dirname ${L_cmd}`
+L_cmddir=`/usr/bin/dirname ${L_cmd}`
+# 2022/06/08 Ver.3.0 Shun.Takenami mod END
 L_hostname=`/bin/hostname`
 L_execdate=`/bin/date "+%Y%m%d%H%M%S"`
 
-#ƒƒOƒtƒ@ƒCƒ‹ (¨³íI—¹‚Ìê‡ íœ)
-# ƒtƒ@ƒCƒ‹–¼: AZXXCCP009A02C_(ƒzƒXƒg–¼)_(ˆ—‡•t—v‹ID)_yyyymmddhh24miss_(ƒvƒƒZƒXID).log
+#ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ« (â†’æ­£å¸¸çµ‚äº†ã®å ´åˆ å‰Šé™¤)
+# ãƒ•ã‚¡ã‚¤ãƒ«å: AZXXCCP009A02C_(ãƒ›ã‚¹ãƒˆå)_(å‡¦ç†é †ä»˜è¦æ±‚ID)_yyyymmddhh24miss_(ãƒ—ãƒ­ã‚»ã‚¹ID).log
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${1}_${L_execdate}_$$.log"
 
-#ŠO•”ƒVƒFƒ‹
+#å¤–éƒ¨ã‚·ã‚§ãƒ«
 # 2009/03/04 Ver.1.2 Masayuki.Sano add START
 #L_envfile=${L_cmddir}/AZBZZAPPS.env
 L_envfile=${L_cmddir}/AZZZAPPS.env
 # 2009/03/04 Ver.1.2 Masayuki.Sano add END
-#I—¹ƒXƒe[ƒ^ƒX
+#çµ‚äº†ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
 C_ret_code_err=8
 C_ret_code_normal=0
 
 ################################################################################
-##                                 ŠÖ”’è‹`                                   ##
+##                                 é–¢æ•°å®šç¾©                                   ##
 ################################################################################
-### ƒƒOíœˆ— ###
+### ãƒ­ã‚°å‰Šé™¤å‡¦ç† ###
 log_delete()
 {
   if [ -f ${L_logfile} ]
@@ -90,7 +97,7 @@ log_delete()
   fi
 }
 
-### ƒƒOo—Íˆ— ###
+### ãƒ­ã‚°å‡ºåŠ›å‡¦ç† ###
 output_log()
 {
   echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
@@ -99,7 +106,7 @@ output_log()
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
-#“ü—Íƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN
+#å…¥åŠ›ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒã‚§ãƒƒã‚¯
 if [ -z "${1}" ]
 then
   output_log "Parameter Error  parameter1:${1} / parameter2:${2}"
@@ -111,7 +118,7 @@ then
   exit ${C_ret_code_err}
 fi
 
-#ŠO•”ƒVƒFƒ‹‚Ì“Ç‚İ
+#å¤–éƒ¨ã‚·ã‚§ãƒ«ã®èª­è¾¼ã¿
 output_log "Reading Shell Env File START"
 
 if [ -r ${L_envfile} ]
@@ -125,7 +132,7 @@ fi
 
 output_log "Reading Shell Env File END"
 
-#ENVƒtƒ@ƒCƒ‹‚Ì“Ç‚İ
+#ENVãƒ•ã‚¡ã‚¤ãƒ«ã®èª­è¾¼ã¿
 output_log "Reading APPS Env File START"
 
 if [ -r ${L_appsora} ]
@@ -141,10 +148,10 @@ output_log "Reading APPS Env File END"
 
 # 2009/03/04 Ver.1.1 Koji.Oomata add END
 
-L_pk_request_id_val=$1               #ˆ—‡•t—v‹ID
-L_status_code=$2                     #XVƒXƒe[ƒ^ƒX
+L_pk_request_id_val=$1               #å‡¦ç†é †ä»˜è¦æ±‚ID
+L_status_code=$2                     #æ›´æ–°ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
 
-#concsubƒpƒ‰ƒ[ƒ^•ÒW
+#concsubãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ç·¨é›†
 L_conc_args="APPS/APPS"
 L_conc_args="${L_conc_args} \"${L_resp_appl}\""
 L_conc_args="${L_conc_args} \"${L_resp_name}\""
@@ -164,10 +171,10 @@ L_conc_args="${L_conc_args} \"${L_conc_name}\""
 NLS_LANG=Japanese_Japan.JA16SJIS
 export NLS_LANG
 
-#‹N“®‘ÎÛƒRƒ“ƒJƒŒƒ“ƒg‚ÌƒpƒŒƒ[ƒ^•ÒW
+#èµ·å‹•å¯¾è±¡ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆã®ãƒ‘ãƒ¬ãƒ¡ãƒ¼ã‚¿ç·¨é›†
 L_param_args="\"${L_pk_request_id_val}\" \"${L_status_code}\""
 
-#ƒRƒ“ƒJƒŒƒ“ƒg‹N“®
+#ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆèµ·å‹•
 # 2009/03/04 Ver.1.1 Koji.Oomata mod START
 #${FND_TOP}/bin/CONCSUB ${L_conc_args} ${L_param_args}
 output_log "Execute CONCSUB START"
