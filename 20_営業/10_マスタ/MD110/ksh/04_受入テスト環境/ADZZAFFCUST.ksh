@@ -3,44 +3,48 @@
 ## Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved. ##
 ##                                                                              ##
 ## Program Name     : ADZZAFFCUST                                               ##
-## Description      : AFFŒÚ‹qƒ}ƒXƒ^XV(FND_LOAD)                               ##
-## MD.070           : MD050_IPO_CMM_003_A38_AFFŒÚ‹qƒ}ƒXƒ^XViFND_LOADj       ##
-## Version          : 1.3                                                       ##
+## Description      : AFFé¡§å®¢ãƒã‚¹ã‚¿æ›´æ–°(FND_LOAD)                               ##
+## MD.070           : MD050_IPO_CMM_003_A38_AFFé¡§å®¢ãƒã‚¹ã‚¿æ›´æ–°ï¼ˆFND_LOADï¼‰       ##
+## Version          : 3.0                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
 ##  No.     Description                                                         ##
 ## -------- ----------------------------------------------------------          ##
-##  $0       ENVƒtƒ@ƒCƒ‹“Ç‚İ‚İ                                                ##
-##  $1       ˆø”ƒ`ƒFƒbƒN(A-1)                                                  ##
-##  $2       ƒtƒ@ƒCƒ‹‘¶İƒ`ƒFƒbƒN(A-2)                                          ##
-##  $3       FNDLOAD‹N“®ˆ—(A-3)                                               ##
+##  $0       ENVãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿                                                ##
+##  $1       å¼•æ•°ãƒã‚§ãƒƒã‚¯(A-1)                                                  ##
+##  $2       ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ãƒã‚§ãƒƒã‚¯(A-2)                                          ##
+##  $3       FNDLOADèµ·å‹•å‡¦ç†(A-3)                                               ##
 ##                                                                              ##
 ## Change Record                                                                ##
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  Date          Ver.  Editor           Description                            ##
 ## ------------- ----- ---------------- ----------------------------------------##
-##  2009/02/16    1.0   Takuya.Kaihara   V‹Kì¬                               ##
-##  2009/06/04    1.1   Yutaka.Kuboshima áŠQT1_1052‚Ì‘Î‰                      ##
-##  2009/07/09    1.2   Yutaka.Kuboshima “‡ƒeƒXƒgáŠQ0000230‚Ì‘Î‰            ##
-##  2010/01/14    1.3   Shigeto.Niki     áŠQFE_–{‰Ò“®_00868‚Ì‘Î‰             ##
+##  2009/02/16    1.0   Takuya.Kaihara   æ–°è¦ä½œæˆ                               ##
+##  2009/06/04    1.1   Yutaka.Kuboshima éšœå®³T1_1052ã®å¯¾å¿œ                      ##
+##  2009/07/09    1.2   Yutaka.Kuboshima çµ±åˆãƒ†ã‚¹ãƒˆéšœå®³0000230ã®å¯¾å¿œ            ##
+##  2010/01/14    1.3   Shigeto.Niki     éšœå®³ï¼šE_æœ¬ç¨¼å‹•_00868ã®å¯¾å¿œ             ##
+##  2021/12/22    3.0   Shun.Takenami    E_æœ¬ç¨¼å‹•_17774ã®å¯¾å¿œ(ç’°å¢ƒä¾å­˜å€¤ã®ä¿®æ­£) ##
 ##                                                                              ##
 ##################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
-C_appl_name="XXCMM"                    #ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-C_program_id="ADZZAFFCUST"             #ƒvƒƒOƒ‰ƒ€ID
-C_return_norm=0                        #³íI—¹
-C_return_error=7                       #ˆÙíI—¹
+C_appl_name="XXCMM"                    #ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³çŸ­ç¸®å
+C_program_id="ADZZAFFCUST"             #ãƒ—ãƒ­ã‚°ãƒ©ãƒ ID
+C_return_norm=0                        #æ­£å¸¸çµ‚äº†
+C_return_error=7                       #ç•°å¸¸çµ‚äº†
 
 ##2009/06/04 Ver1.1 add start by Yutaka.Kuboshima
 L_cmd=${0}
-L_cmddir=`/bin/dirname ${L_cmd}`
+##2021/12/22 Ver3.0 mod start by Shun.Takenami
+#L_cmddir=`/bin/dirname ${L_cmd}`
+L_cmddir=`/usr/bin/dirname ${L_cmd}`
+##2021/12/22 Ver3.0 mod end by Shun.Takenami
 
-#ŠO•”ƒVƒFƒ‹
+#å¤–éƒ¨ã‚·ã‚§ãƒ«
 L_envfile=${L_cmddir}/ADZZAPPS.env
 ##2009/06/04 Ver1.1 add end by Yutaka.Kuboshima
 
@@ -49,7 +53,7 @@ L_envfile=${L_cmddir}/ADZZAPPS.env
 ################################################################################
 
 ##2009/06/04 Ver1.1 add start by Yutaka.Kuboshima
-#0-1.ŠO•”ƒVƒFƒ‹‚Ì“Ç‚İ
+#0-1.å¤–éƒ¨ã‚·ã‚§ãƒ«ã®èª­è¾¼ã¿
 if [ -r ${L_envfile} ]
 then
   . ${L_envfile}
@@ -57,7 +61,7 @@ else
   exit ${C_return_error}
 fi
 
-#0-2.ENVƒtƒ@ƒCƒ‹‚Ì“Ç‚İ
+#0-2.ENVãƒ•ã‚¡ã‚¤ãƒ«ã®èª­è¾¼ã¿
 if [ -r ${L_appsora} ]
 then
   . ${L_appsora}
@@ -67,7 +71,7 @@ fi
 
 ##2009/06/04 Ver1.1 add end by Yutaka.Kuboshima
 
-#1.ˆø”ƒ`ƒFƒbƒN
+#1.å¼•æ•°ãƒã‚§ãƒƒã‚¯
 ##2009/07/09 Ver1.2 delete start by Yutaka.Kuboshima
 #if [ ${#} -ne 4 ]
 #then
@@ -75,27 +79,27 @@ fi
 #fi
 ##2009/07/09 Ver1.2 delete end by Yutaka.Kuboshima
 
-#2-1.ƒtƒ@ƒCƒ‹‘¶İƒ`ƒFƒbƒN(\¬ƒtƒ@ƒCƒ‹)
+#2-1.ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ãƒã‚§ãƒƒã‚¯(æ§‹æˆãƒ•ã‚¡ã‚¤ãƒ«)
 ##2009/07/09 Ver1.2 modify start by Yutaka.Kuboshima
 #L_compos_file_path="${2}/${1}"
 L_compos_file_path="${L_load_file_path}/${L_load_file_name}"
 ##2009/07/09 Ver1.2 modify end by Yutaka.Kuboshima
 
 ##2010/01/14 Ver1.3 add start by Shigeto.Niki
-#ƒƒOo—ÍƒfƒBƒŒƒNƒgƒŠ‚Ì•ÏX
+#ãƒ­ã‚°å‡ºåŠ›ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã®å¤‰æ›´
 cd "${L_log_file_path}"
 ##2010/01/14 Ver1.3 add end by Shigeto.Niki
 
 if [ -f "${L_compos_file_path}" ]
 then
-  #2-2.ƒtƒ@ƒCƒ‹‘¶İƒ`ƒFƒbƒN(LDTƒtƒ@ƒCƒ‹
+  #2-2.ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ãƒã‚§ãƒƒã‚¯(LDTãƒ•ã‚¡ã‚¤ãƒ«
 ##2009/07/09 Ver1.2 modify start by Yutaka.Kuboshima
 #  L_check_file_path="${4}/${3}"
   L_check_file_path="${L_ldt_file_path}/${L_ldt_file_name}"
 ##2009/07/09 Ver1.2 modify end by Yutaka.Kuboshima
   if [ -f "${L_check_file_path}" ]
   then
-    #3.AFFŒÚ‹qƒ}ƒXƒ^XV
+    #3.AFFé¡§å®¢ãƒã‚¹ã‚¿æ›´æ–°
     FNDLOAD apps/apps 0 Y UPLOAD ${L_compos_file_path} ${L_check_file_path} VALUE_SET
     if [ ${?} != 0 ]
     then
