@@ -3,69 +3,76 @@
 ## Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved. ##
 ##                                                                              ##
 ## Program Name     : ALZZMVREFRESH                                             ##
-## Description      : ƒ}ƒeƒŠƒAƒ‰ƒCƒYƒhƒrƒ…[ƒŠƒtƒŒƒbƒVƒ…‹@”\                    ##
-## MD.070           : MD070_IPO_COP_ƒVƒFƒ‹                                      ##
-## Version          : 1.2                                                       ##
+## Description      : ãƒãƒ†ãƒªã‚¢ãƒ©ã‚¤ã‚ºãƒ‰ãƒ“ãƒ¥ãƒ¼ãƒªãƒ•ãƒ¬ãƒƒã‚·ãƒ¥æ©Ÿèƒ½                    ##
+## MD.070           : MD070_IPO_COP_ã‚·ã‚§ãƒ«                                      ##
+## Version          : 3.0                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
 ##  No.     Description                                                         ##
 ## -------- ----------------------------------------------------------          ##
-##  $1      ƒ}ƒeƒŠƒAƒ‰ƒCƒYƒhƒrƒ…[–¼                                            ##
+##  $1      ãƒãƒ†ãƒªã‚¢ãƒ©ã‚¤ã‚ºãƒ‰ãƒ“ãƒ¥ãƒ¼å                                            ##
 ##                                                                              ##
 ## Change Record                                                                ##
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  Date          Ver.  Editor           Description                            ##
 ## ------------- ----- ---------------- ----------------------------------------##
-##  2009/12/02    1.0   SCS.Kikuchi      V‹Kì¬                               ##
-##  2009/12/14    1.1   SCS.Kikuchi      áŠQE_T4_00474‘Î‰                     ##
-##  2014/08/05    1.2   SCSK.Takahashi   ƒŠƒvƒŒ[ƒX_00004‘Î‰                   ##
+##  2009/12/02    1.0   SCS.Kikuchi      æ–°è¦ä½œæˆ                               ##
+##  2009/12/14    1.1   SCS.Kikuchi      éšœå®³E_T4_00474å¯¾å¿œ                     ##
+##  2014/08/05    1.2   SCSK.Takahashi   ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004å¯¾å¿œ                   ##
+##  2021/12/21    3.0   SCSK.Takenami    E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ(ç’°å¢ƒä¾å­˜å€¤ã®ä¿®æ­£)   ##
 ##                                                                              ##
 ##################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
-# ŠÂ‹«ˆË‘¶’l
-# 20140805_Ver1.2_ƒŠƒvƒŒ[ƒX_00004_SCSK.Takahashi_ADD_START
-L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ƒVƒFƒ‹‚ÌŠi”[ƒfƒBƒŒƒNƒgƒŠ
-# 20140805_Ver1.2_ƒŠƒvƒŒ[ƒX_00004_SCSK.Takahashi_ADD_END
+# ç’°å¢ƒä¾å­˜å€¤
+# 20140805_Ver1.2_ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004_SCSK.Takahashi_ADD_START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ã‚·ã‚§ãƒ«ã®æ ¼ç´ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
+# 20140805_Ver1.2_ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004_SCSK.Takahashi_ADD_END
 
-# 20140805_Ver1.2_ƒŠƒvƒŒ[ƒX_00004_SCSK.Takahashi_MOD_START
-#L_logpath="/var/log/jp1/T4"                     #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX
-L_logpath="/var/log/jp1/${L_envname}"           #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX
-# 20140805_Ver1.2_ƒŠƒvƒŒ[ƒX_00004_SCSK.Takahashi_MOD_END
+# 20140805_Ver1.2_ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004_SCSK.Takahashi_MOD_START
+#L_logpath="/var/log/jp1/T4"                     #ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
+# 20211221 Ver3.0_E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ_SCSK.Takenami_MOD_START
+#L_logpath="/var/log/jp1/${L_envname}"           #ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
+L_logpath="/var/EBS/jp1/${L_envname}/log"       #ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
+# 20211221 Ver3.0_E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ_SCSK.Takenami_MOD_END
+# 20140805_Ver1.2_ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004_SCSK.Takahashi_MOD_END
 
-C_return_norm=0                                 #³íI—¹
-C_return_error=8                                #ˆÙíI—¹
-C_oracle_user="apps"                            #Oracleƒ†[ƒU
-C_oracle_path="apps"                            #OracleƒpƒX
+C_return_norm=0                                 #æ­£å¸¸çµ‚äº†
+C_return_error=8                                #ç•°å¸¸çµ‚äº†
+C_oracle_user="apps"                            #Oracleãƒ¦ãƒ¼ã‚¶
+C_oracle_path="apps"                            #Oracleãƒ‘ã‚¹
 
-# ƒvƒƒOƒ‰ƒ€î•ñ
+# ãƒ—ãƒ­ã‚°ãƒ©ãƒ æƒ…å ±
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
-L_cmddir=`/bin/dirname ${L_cmd}`
+# 20211221 Ver3.0_E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ_SCSK.Takenami_MOD_START
+#L_cmddir=`/bin/dirname ${L_cmd}`
+L_cmddir=`/usr/bin/dirname ${L_cmd}`
+# 20211221 Ver3.0_E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ_SCSK.Takenami_MOD_END
 L_hostname=`/bin/hostname`
 
-# “ú
-C_date=$(/bin/date "+%Y%m%d%H%M%S") #ˆ—“ú
-L_execdate=`/bin/date "+%Y%m%d"`    #ˆ—“ú
+# æ—¥æ™‚
+C_date=$(/bin/date "+%Y%m%d%H%M%S") #å‡¦ç†æ—¥æ™‚
+L_execdate=`/bin/date "+%Y%m%d"`    #å‡¦ç†æ—¥
 
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
 
 # 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_START
-L_envfile=${L_cmddir}/ALZZAPPS.env  #AL‹¤’ÊŠÂ‹«İ’èƒtƒ@ƒCƒ‹
+L_envfile=${L_cmddir}/ALZZAPPS.env  #ALå…±é€šç’°å¢ƒè¨­å®šãƒ•ã‚¡ã‚¤ãƒ«
 # 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_END
 
 #===============================================================================
-# Description : ƒƒOo—Íˆ—
+# Description : ãƒ­ã‚°å‡ºåŠ›å‡¦ç†
 #
 # Parameter List
 # -------- ----------------------------------------------------------
 #  No.     Description
 # -------- ----------------------------------------------------------
-#  $1       ƒƒOƒtƒ@ƒCƒ‹‚Öo—Í‚·‚é“à—e
+#  $1       ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã¸å‡ºåŠ›ã™ã‚‹å†…å®¹
 #===============================================================================
 output_log()
 {
@@ -77,7 +84,7 @@ output_log()
 output_log "Materialized View Refresh Start"
 
 # 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_START
-# AL‹¤’ÊENVƒtƒ@ƒCƒ‹“Ç‚İ‚İ
+# ALå…±é€šENVãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿
 if [ -r ${L_envfile} ]
 then
   . ${L_envfile}
@@ -88,7 +95,7 @@ else
   exit ${C_return_error}
 fi
 
-# ‘S‘Ì‹¤’ÊENVƒtƒ@ƒCƒ‹“Ç‚İ‚İ
+# å…¨ä½“å…±é€šENVãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿
 if [ -r ${L_appsora} ]
 then
   . ${L_appsora}
@@ -100,16 +107,16 @@ else
 fi
 # 20091214_Ver1.1_E_T4_00474_SCS.Kikuchi_ADD_END
 
-#ˆø”ƒ`ƒFƒbƒN
+#å¼•æ•°ãƒã‚§ãƒƒã‚¯
 if [ ${#} -ne 1 ]
 then
   output_log "Parameter Error"
   RET_CODE=${C_return_error}
 else
-  #ƒ}ƒeƒŠƒAƒ‰ƒCƒYƒhƒrƒ…[–¼ƒZƒbƒg
-  L_materialized_view_name="${1}"    #ƒ`ƒFƒbƒN‘ÎÛ‚Ìƒtƒ@ƒCƒ‹ƒpƒX
+  #ãƒãƒ†ãƒªã‚¢ãƒ©ã‚¤ã‚ºãƒ‰ãƒ“ãƒ¥ãƒ¼åã‚»ãƒƒãƒˆ
+  L_materialized_view_name="${1}"    #ãƒã‚§ãƒƒã‚¯å¯¾è±¡ã®ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
   
-  #ƒŠƒtƒŒƒbƒVƒ…SQLÀs
+  #ãƒªãƒ•ãƒ¬ãƒƒã‚·ãƒ¥SQLå®Ÿè¡Œ
   sqlplus -s ${C_oracle_user}/${C_oracle_path} <<SQLEND >> ${L_logfile}
 SET SERVEROUTPUT ON
 SET FEEDBACK OFF
@@ -127,7 +134,7 @@ END;
 EXIT :refresh_retcode;
 SQLEND
 
-  #SQL–ß‚è’lƒZƒbƒg
+  #SQLæˆ»ã‚Šå€¤ã‚»ãƒƒãƒˆ
   RET_CODE=`echo $?`
 fi
 
@@ -138,6 +145,6 @@ else
   output_log "Materialized View Refresh Error End"
 fi
 
-#I—¹ˆ—
+#çµ‚äº†å‡¦ç†
 exit ${RET_CODE}
 
