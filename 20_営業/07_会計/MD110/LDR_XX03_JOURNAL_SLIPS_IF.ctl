@@ -1,24 +1,24 @@
 --********************************************************************
--- ����t�@�C��  : LDR_XX034DL002C.ctl
--- �@�\�T�v      : ������́iGL�j�f�[�^���[�h
--- MD.050        : ������̓o�b�`����(GL)     OCSJ/BFAFIN/MD050/F602
--- MD.070        : ������́iGL�j�f�[�^���[�h OCSJ/BFAFIN/MD070/F602/02
--- �o�[�W����    : 11.5.10.2.6
--- �쐬��        : OCSJ BFA-Fin
--- �쐬��        : 2004-11-12
--- �ύX��        : SCSK�n�
--- �ŏI�ύX��    : 2016-11-11
--- �ύX����      :
---     2004-11-12 �V�K�쐬
---     2005-03-03 LOAD���ł�PROFILE�擾��SHELL�ŏ�������Ή�
---     2005-12-02 INTEGER�^��INTEGER EXTERNAL�^�ɕύX
---     2006-09-05 REQUEST_ID��SHELL�̕����ϊ��ŏ������AORG_ID,SET_OF_BKS_ID��
---                �㑱�̃v���O������UPDATE�ŏ�������Ή��ɕύX
---     2016-11-01 ��Q�Ή�E_�{�ғ�_13901
+-- 制御ファイル  : LDR_XX034DL002C.ctl
+-- 機能概要      : 部門入力（GL）データロード
+-- MD.050        : 部門入力バッチ処理(GL)     OCSJ/BFAFIN/MD050/F602
+-- MD.070        : 部門入力（GL）データロード OCSJ/BFAFIN/MD070/F602/02
+-- バージョン    : 11.5.10.2.6
+-- 作成者        : OCSJ BFA-Fin
+-- 作成日        : 2004-11-12
+-- 変更者        : SCSK渡邊
+-- 最終変更日    : 2016-11-11
+-- 変更履歴      :
+--     2004-11-12 新規作成
+--     2005-03-03 LOAD内でのPROFILE取得→SHELLで処理する対応
+--     2005-12-02 INTEGER型をINTEGER EXTERNAL型に変更
+--     2006-09-05 REQUEST_IDをSHELLの文字変換で処理し、ORG_ID,SET_OF_BKS_IDを
+--                後続のプログラムでUPDATEで処理する対応に変更
+--     2016-11-01 障害対応E_本稼動_13901
 --
 -- Copyright (c) 2005 Oracle Corporation Japan All Rights Reserved
--- ���v���O�����g�p�ɍۂ��Ĉ�؂̕ۏ؂͍s��Ȃ�
--- �����ɂ�鎖�O���F�̂Ȃ���O�҂ւ̊J���s��
+-- 当プログラム使用に際して一切の保証は行わない
+-- 文書による事前承認のない第三者への開示不可
 --********************************************************************
 OPTIONS (SKIP=1, DIRECT=FALSE, ERRORS=99999)
 LOAD DATA

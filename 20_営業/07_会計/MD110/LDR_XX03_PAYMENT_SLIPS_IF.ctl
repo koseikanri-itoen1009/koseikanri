@@ -1,21 +1,21 @@
 --********************************************************************
--- ����t�@�C��  : LDR_XX034DL001C.ctl
--- �@�\�T�v      : ������́iAP�j�f�[�^���[�h
--- �o�[�W����    : 11.5.10.1.8
--- �쐬��        : OCSJ BFA-Fin
--- �쐬��        : 2004-04-26
--- �ύX��        : ��l�G�P
--- �ŏI�ύX��    : 2021-12-17
--- �ύX����      :
---     2004-04-19 �V�K�쐬
---     2004-05-21 EXCHANGE_RATE ��EXCHANGE_RATE_TYPE_NAME�̍��ڏ��C��
---     2005-12-02 INTEGER�^��INTEGER EXTERNAL�^�ɕύX
---     2016-11-10 [E_�{�ғ�_13901]�Ή� �g�c���ٔԍ��ǉ�
---     2021-12-17 [E_�{�ғ�_17678]�Ή� �d�q����ۑ��@�����Ή�
+-- 制御ファイル  : LDR_XX034DL001C.ctl
+-- 機能概要      : 部門入力（AP）データロード
+-- バージョン    : 11.5.10.1.8
+-- 作成者        : OCSJ BFA-Fin
+-- 作成日        : 2004-04-26
+-- 変更者        : 崎浜秀輝
+-- 最終変更日    : 2021-12-17
+-- 変更履歴      :
+--     2004-04-19 新規作成
+--     2004-05-21 EXCHANGE_RATE とEXCHANGE_RATE_TYPE_NAMEの項目順修正
+--     2005-12-02 INTEGER型をINTEGER EXTERNAL型に変更
+--     2016-11-10 [E_本稼動_13901]対応 稟議決裁番号追加
+--     2021-12-17 [E_本稼働_17678]対応 電子帳簿保存法改正対応
 --
 -- Copyright (c) 2002 Oracle Corporation Japan All Rights Reserved
--- ���v���O�����g�p�ɍۂ��Ĉ�؂̕ۏ؂͍s��Ȃ�
--- �����ɂ�鎖�O���F�̂Ȃ���O�҂ւ̊J���s��
+-- 当プログラム使用に際して一切の保証は行わない
+-- 文書による事前承認のない第三者への開示不可
 --********************************************************************
 OPTIONS (SKIP=1, DIRECT=FALSE, ERRORS=99999)
 LOAD DATA
@@ -64,7 +64,7 @@ FIELDS TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' TRAILING NULLCOLS
   TERMS_NAME                CHAR          TERMINATED BY ",",
   TERMS_DATE                DATE          "yyyy/mm/dd" TERMINATED BY ",",
   INVOICE_CURRENCY_CODE     CHAR          TERMINATED BY ",",
--- Ver.1.1 Modify Start ���ڏ��C��
+-- Ver.1.1 Modify Start 項目順修正
   EXCHANGE_RATE_TYPE_NAME   CHAR          TERMINATED BY ",",
   EXCHANGE_RATE             CHAR          TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' "TO_NUMBER(:EXCHANGE_RATE, '999,999,999,999,999.000')",
 --  EXCHANGE_RATE_TYPE_NAME   CHAR          TERMINATED BY ",",
