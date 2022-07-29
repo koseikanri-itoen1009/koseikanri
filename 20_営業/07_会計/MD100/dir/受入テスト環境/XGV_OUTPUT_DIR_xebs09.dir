@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XGV_OUTPUT_DIR
+  AS '/xebst2/xebs09/xebs09comn/admin/out/xebs09_xebscon21';
