@@ -1,32 +1,34 @@
 #!/bin/ksh
 ################################################################################
 ##                                                                            ##
-##    [ŠT—v]                                                                  ##
-##        HULFT‹N“®—pƒXƒNƒŠƒvƒg(ƒoƒbƒNƒAƒbƒvƒVƒFƒ‹‹N“®:•i–Úƒ}ƒXƒ^)            ##
+##    [æ¦‚è¦]                                                                  ##
+##        HULFTèµ·å‹•ç”¨ã‚¹ã‚¯ãƒªãƒ—ãƒˆ(ãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—ã‚·ã‚§ãƒ«èµ·å‹•:å“ç›®ãƒã‚¹ã‚¿)            ##
 ##                                                                            ##
-##    [ì¬^XV—š—ğ]                                                        ##
-##        ì¬Ò  F  Oracle    —é–Ø —Y‘å    2008/07/16 1.0.1                 ##
-##        XV—š—ğF  Oracle    —é–Ø —Y‘å    2008/07/16 1.0.1                 ##
-##                        ‰”Å                                                ##
-##                    SCSK      ûü‹´ º‘¾    2014/08/05 1.0.2                 ##
-##                        ƒŠƒvƒŒ[ƒX_00004‘Î‰                                ##
+##    [ä½œæˆï¼æ›´æ–°å±¥æ­´]                                                        ##
+##        ä½œæˆè€…  ï¼š  Oracle    éˆ´æœ¨ é›„å¤§    2008/07/16 1.0.1                 ##
+##        æ›´æ–°å±¥æ­´ï¼š  Oracle    éˆ´æœ¨ é›„å¤§    2008/07/16 1.0.1                 ##
+##                        åˆç‰ˆ                                                ##
+##                    SCSK      é«™æ©‹ æ˜­å¤ª    2014/08/05 1.0.2                 ##
+##                        ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004å¯¾å¿œ                                ##
+##                    SCSK      ç«¹æµª éš¼      2021/12/21 3.0.0                 ##
+##                        E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ(ç’°å¢ƒä¾å­˜å€¤ã®ä¿®æ­£)                ##
 ##                                                                            ##
-##    [–ß‚è’l]                                                                ##
-##        0     ³í                                                          ##
-##        8     ˆÙí                                                          ##
+##    [æˆ»ã‚Šå€¤]                                                                ##
+##        0     æ­£å¸¸                                                          ##
+##        8     ç•°å¸¸                                                          ##
 ##                                                                            ##
-##    [ƒpƒ‰ƒ[ƒ^]                                                            ##
-##        ‚È‚µ                                                                ##
+##    [ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿]                                                            ##
+##        ãªã—                                                                ##
 ##                                                                            ##
-##     Copyright  Š”®‰ïĞˆÉ“¡‰€ U5000ƒvƒƒWƒFƒNƒg 2007-2009                  ##
+##     Copyright  æ ªå¼ä¼šç¤¾ä¼Šè—¤åœ’ U5000ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆ 2007-2009                  ##
 ################################################################################
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
-## •Ï”’è‹`
+## å¤‰æ•°å®šç¾©
 #2014/08/05 ADD Ver.1.0.2 by Shota Takahashi START
-L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`       #ƒVƒFƒ‹‚ÌŠi”[ƒfƒBƒŒƒNƒgƒŠ
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`       #ã‚·ã‚§ãƒ«ã®æ ¼ç´ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 #2014/08/05 ADD Ver.1.0.2 by Shota Takahashi END
 
 #2014/08/05 MOD Ver.1.0.2 by Shota Takahashi START
@@ -38,15 +40,22 @@ L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`       #ƒVƒFƒ‹‚ÌŠi”
 L_shellpath="/uspg/jp1/dx/shl/${L_envname}"
 L_logpath="/var/EBS/jp1/${L_envname}/log"
 L_shellname="/uspg/jp1/zb/shl/${L_envname}/ZBZZIFFILE_BACKUP.ksh"
-L_bkfilename="/var/T4/hulft/outbound/TDXFAT_DST/TDXFAT_DST.csv"
-L_bkfirname="/var/T4/ebsif/outbound/TDXFAT_DST/backup"
+#2021/12/21 MOD Ver.3.0.0 by Shun Takenami START
+#L_bkfilename="/var/T4/hulft/outbound/TDXFAT_DST/TDXFAT_DST.csv"
+#L_bkfirname="/var/T4/ebsif/outbound/TDXFAT_DST/backup"
+L_bkfilename="/var/T4/hulft/outbound/TDXFAM_HINMOKU/TDXFAM_HINMOKU.csv"
+L_bkfirname="/var/T4/ebsif/outbound/TDXFAM_HINMOKU/backup"
+#2021/12/21 MOD Ver.3.0.0 by Shun Takenami END
 #2014/08/05 MOD Ver.1.0.2 by Shota Takahashi END
 
 L_execcmd="${L_shellname} ${L_bkfilename} ${L_bkfirname} 10"
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
-L_cmddir=`/bin/dirname ${L_cmd}`
+#2021/12/21 MOD Ver.3.0.0 by Shun Takenami START
+#L_cmddir=`/bin/dirname ${L_cmd}`
+L_cmddir=`/usr/bin/dirname ${L_cmd}`
+#2021/12/21 MOD Ver.3.0.0 by Shun Takenami END
 L_hostname=`/bin/hostname`
 L_execdate=`/bin/date "+%Y%m%d"`
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
@@ -55,16 +64,16 @@ L_exit_norm=0
 L_exit_eror=8
 
 ################################################################################
-##                                 ŠÖ”’è‹`                                   ##
+##                                 é–¢æ•°å®šç¾©                                   ##
 ################################################################################
 
-### ƒƒOo—Íˆ— ###
+### ãƒ­ã‚°å‡ºåŠ›å‡¦ç† ###
 output_log()
 {
   echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
 }
 
-### I—¹ˆ— ###
+### çµ‚äº†å‡¦ç† ###
 shell_end()
 {
   L_retcode=${1:-0}
