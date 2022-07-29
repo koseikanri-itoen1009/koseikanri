@@ -8,6 +8,7 @@ REM  Date          Ver.  Editor           Description
 REM ------------- ----- ---------------- -------------------------------------------------
 REM  2013/03/07    1.00  SCSK 小山伸男    新規作成
 REM  2019/08/01    1.01  SCSK 小山伸男    出力先フォルダ｢業務管理部｣を｢事務センター｣へ変更
+REM  2021/12/14    3.00  SCSK 竹浪  隼    [E_本稼動_17774対応] 環境変数(DB SID)の変更
 REM -----------------------------------------------------------------------------
 
 REM オラクルインストールディレクトリを環境変数へ設定します。
@@ -20,7 +21,7 @@ REM スキーマPASSを環境変数へ設定します。
 set CONNECT_PASSWORD=itoen
 
 REM PROACTIVE DB SIDを環境変数へ設定します。
-set NET_SERVICE=AEBSITO
+set NET_SERVICE=BEBSITO
 
 REM ネットワークドライブ割当
 set LOG_DRIVE=\\itoenfile\8770\夜間バッチ管理
