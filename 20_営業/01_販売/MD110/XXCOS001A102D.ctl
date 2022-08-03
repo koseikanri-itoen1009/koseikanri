@@ -2,9 +2,9 @@
 -- Copyright(c)SCSK Corporation, 2017. All rights reserved.
 -- 
 -- Control file  : XXCOS001A102D.ctl
--- Description   : HHTŽó’–¾×ƒ[ƒNƒe[ƒuƒ‹Žæži–¾×j
--- MD.050        : MD050_COS_001_A10_HHTŽó’ƒf[ƒ^Žæž SQL*Loaderˆ—
--- MD.070        : ‚È‚µ
+-- Description   : HHTå—æ³¨æ˜Žç´°ãƒ¯ãƒ¼ã‚¯ãƒ†ãƒ¼ãƒ–ãƒ«å–è¾¼ï¼ˆæ˜Žç´°ï¼‰
+-- MD.050        : MD050_COS_001_A10_HHTå—æ³¨ãƒ‡ãƒ¼ã‚¿å–è¾¼ SQL*Loaderå‡¦ç†
+-- MD.070        : ãªã—
 -- Version       : 1.0
 --
 -- Target Table  : XXCOS_HHT_ORDER_LINES_WORK
@@ -13,7 +13,7 @@
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
---  2017/07/25    1.0     SCSK K.Kiriu      E_–{‰Ò“®_14486iV‹Kì¬j
+--  2017/07/25    1.0     SCSK K.Kiriu      E_æœ¬ç¨¼å‹•_14486ï¼ˆæ–°è¦ä½œæˆï¼‰
 --
 -- ************************************************************************************************
 LOAD DATA
@@ -23,22 +23,22 @@ INTO TABLE XXCOS_HHT_ORDER_LINES_WORK
 FIELDS TERMINATED BY "," OPTIONALLY ENCLOSED BY '"'
 TRAILING NULLCOLS
   (
-    ORDER_NO_HHT                 INTEGER EXTERNAL,                  -- Žó’No.(HHT)
-    LINE_NO_HHT                  INTEGER EXTERNAL,                  -- sNo.(HHT)
-    ITEM_CODE_SELF               CHAR,                              -- •i–¼ƒR[ƒh(Ž©ŽÐ)
-    CASE_NUMBER                  INTEGER EXTERNAL,                  -- ƒP[ƒX”
-    QUANTITY                     INTEGER EXTERNAL,                  -- ”—Ê
-    SALE_CLASS                   CHAR,                              -- ”„ã‹æ•ª
-    WHOLESALE_UNIT_PLICE         INTEGER EXTERNAL,                  -- ‰µ’P‰¿
-    SELLING_PRICE                INTEGER EXTERNAL,                  -- ”„’P‰¿
-    RECEIVED_DATE                DATE(19) "YYYY/MM/DD HH24:MI:SS",  -- ŽóM“úŽž
-    CREATED_BY                   CONSTANT "-1",                     -- ì¬ŽÒ
-    CREATION_DATE                SYSDATE,                           -- ì¬“ú
-    LAST_UPDATED_BY              CONSTANT "-1",                     -- ÅIXVŽÒ
-    LAST_UPDATE_DATE             SYSDATE,                           -- ÅIXV“ú
-    LAST_UPDATE_LOGIN            CONSTANT "-1",                     -- ÅIXVƒƒOƒCƒ“
-    REQUEST_ID                   CONSTANT "-1",                     -- —v‹ID
-    PROGRAM_APPLICATION_ID       CONSTANT "-1",                     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-    PROGRAM_ID                   CONSTANT "-1",                     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
-    PROGRAM_UPDATE_DATE          SYSDATE                            -- ƒvƒƒOƒ‰ƒ€XV“ú
+    ORDER_NO_HHT                 INTEGER EXTERNAL,                  -- å—æ³¨No.(HHT)
+    LINE_NO_HHT                  INTEGER EXTERNAL,                  -- è¡ŒNo.(HHT)
+    ITEM_CODE_SELF               CHAR,                              -- å“åã‚³ãƒ¼ãƒ‰(è‡ªç¤¾)
+    CASE_NUMBER                  INTEGER EXTERNAL,                  -- ã‚±ãƒ¼ã‚¹æ•°
+    QUANTITY                     INTEGER EXTERNAL,                  -- æ•°é‡
+    SALE_CLASS                   CHAR,                              -- å£²ä¸ŠåŒºåˆ†
+    WHOLESALE_UNIT_PLICE         INTEGER EXTERNAL,                  -- å¸å˜ä¾¡
+    SELLING_PRICE                INTEGER EXTERNAL,                  -- å£²å˜ä¾¡
+    RECEIVED_DATE                DATE(19) "YYYY/MM/DD HH24:MI:SS",  -- å—ä¿¡æ—¥æ™‚
+    CREATED_BY                   CONSTANT "-1",                     -- ä½œæˆè€…
+    CREATION_DATE                SYSDATE,                           -- ä½œæˆæ—¥
+    LAST_UPDATED_BY              CONSTANT "-1",                     -- æœ€çµ‚æ›´æ–°è€…
+    LAST_UPDATE_DATE             SYSDATE,                           -- æœ€çµ‚æ›´æ–°æ—¥
+    LAST_UPDATE_LOGIN            CONSTANT "-1",                     -- æœ€çµ‚æ›´æ–°ãƒ­ã‚°ã‚¤ãƒ³
+    REQUEST_ID                   CONSTANT "-1",                     -- è¦æ±‚ID
+    PROGRAM_APPLICATION_ID       CONSTANT "-1",                     -- ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ»ãƒ—ãƒ­ã‚°ãƒ©ãƒ ãƒ»ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ID
+    PROGRAM_ID                   CONSTANT "-1",                     -- ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ»ãƒ—ãƒ­ã‚°ãƒ©ãƒ ID
+    PROGRAM_UPDATE_DATE          SYSDATE                            -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ æ›´æ–°æ—¥
   )
