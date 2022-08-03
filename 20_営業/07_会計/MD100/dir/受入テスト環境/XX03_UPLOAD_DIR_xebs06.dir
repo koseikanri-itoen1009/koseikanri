@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XX03_UPLOAD_DIR
+  AS '/ebslog/xebs06/xx03/upload/';
