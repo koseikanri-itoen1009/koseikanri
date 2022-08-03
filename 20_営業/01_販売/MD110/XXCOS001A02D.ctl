@@ -2,9 +2,9 @@
 -- Copyright(c)Oracle Corporation Japan, 2006-2008. All rights reserved.
 -- 
 -- Control file  : XXCOS001A02D.ctl
--- Description   : HHT“ü‹àƒf[ƒ^Žæž SQL*Loaderˆ—
+-- Description   : HHTå…¥é‡‘ãƒ‡ãƒ¼ã‚¿å–è¾¼ SQL*Loaderå‡¦ç†
 -- MD.050        : 
--- MD.070        : ‚È‚µ
+-- MD.070        : ãªã—
 -- Version       : 1.0
 --
 -- Target Table  : XXCOS_PAYMENT_WORK
@@ -13,7 +13,7 @@
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
---  2008/10/29    1.0     ‹{‰z ãÄ•½        V‹Kì¬
+--  2008/10/29    1.0     å®®è¶Š ç¿”å¹³        æ–°è¦ä½œæˆ
 --
 -- ************************************************************************************************
 LOAD DATA
@@ -23,20 +23,20 @@ INTO TABLE XXCOS_PAYMENT_WORK
 FIELDS TERMINATED BY "," OPTIONALLY ENCLOSED BY '"'
 TRAILING NULLCOLS
   (
-    LINE_ID                 SEQUENCE(MAX),                   -- –¾×ID
-    BASE_CODE               CHAR,                            -- ‹’“_ƒR[ƒh
-    CUSTOMER_NUMBER         CHAR,                            -- ŒÚ‹qƒR[ƒh
-    HHT_INVOICE_NO          CHAR,                            -- “`•[No
-    PAYMENT_AMOUNT          INTEGER EXTERNAL,                -- “ü‹àŠz
-    PAYMENT_DATE            DATE(8) "yyyymmdd",              -- “ü‹à“ú
-    PAYMENT_CLASS           CHAR,                            -- “ü‹à‹æ•ª
-    CREATED_BY              CONSTANT "-1",                   -- ì¬ŽÒ
-    CREATION_DATE           SYSDATE,                         -- ì¬“ú
-    LAST_UPDATED_BY         CONSTANT "-1",                   -- ÅIXVŽÒ
-    LAST_UPDATE_DATE        SYSDATE,                         -- ÅIXV“ú
-    LAST_UPDATE_LOGIN       CONSTANT "-1",                   -- ÅIXVƒƒOƒCƒ“
-    REQUEST_ID              CONSTANT "-1",                   -- —v‹ID
-    PROGRAM_APPLICATION_ID  CONSTANT "-1",                   -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-    PROGRAM_ID              CONSTANT "-1",                   -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
-    PROGRAM_UPDATE_DATE     SYSDATE                          -- ƒvƒƒOƒ‰ƒ€XV“ú
+    LINE_ID                 SEQUENCE(MAX),                   -- æ˜Žç´°ID
+    BASE_CODE               CHAR,                            -- æ‹ ç‚¹ã‚³ãƒ¼ãƒ‰
+    CUSTOMER_NUMBER         CHAR,                            -- é¡§å®¢ã‚³ãƒ¼ãƒ‰
+    HHT_INVOICE_NO          CHAR,                            -- ä¼ç¥¨No
+    PAYMENT_AMOUNT          INTEGER EXTERNAL,                -- å…¥é‡‘é¡
+    PAYMENT_DATE            DATE(8) "yyyymmdd",              -- å…¥é‡‘æ—¥
+    PAYMENT_CLASS           CHAR,                            -- å…¥é‡‘åŒºåˆ†
+    CREATED_BY              CONSTANT "-1",                   -- ä½œæˆè€…
+    CREATION_DATE           SYSDATE,                         -- ä½œæˆæ—¥
+    LAST_UPDATED_BY         CONSTANT "-1",                   -- æœ€çµ‚æ›´æ–°è€…
+    LAST_UPDATE_DATE        SYSDATE,                         -- æœ€çµ‚æ›´æ–°æ—¥
+    LAST_UPDATE_LOGIN       CONSTANT "-1",                   -- æœ€çµ‚æ›´æ–°ãƒ­ã‚°ã‚¤ãƒ³
+    REQUEST_ID              CONSTANT "-1",                   -- è¦æ±‚ID
+    PROGRAM_APPLICATION_ID  CONSTANT "-1",                   -- ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ»ãƒ—ãƒ­ã‚°ãƒ©ãƒ ãƒ»ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ID
+    PROGRAM_ID              CONSTANT "-1",                   -- ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ»ãƒ—ãƒ­ã‚°ãƒ©ãƒ ID
+    PROGRAM_UPDATE_DATE     SYSDATE                          -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ æ›´æ–°æ—¥
   )
