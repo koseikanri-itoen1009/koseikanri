@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XX03_OUTFILE_DIR
+  AS '/xebst/xebs06/xebs06comn/admin/out/xebs06_xebscon21';
