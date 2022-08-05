@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP003A05C(body)
  * Description      : •s³TœŽx•¥ŒŸ’m
  * MD.070           : •s³TœŽx•¥ŒŸ’m(MD070_IPO_CCP_003_A05)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/03/15    1.0   K.Yoshikawa     [E_–{‰Ò“®_18075]V‹Kì¬
  *  2022/06/08    1.1   K.Yoshikawa     [E_–{‰Ò“®_18306]
+ *  2022/08/02    1.2   SCSK Y.Koh      [E_–{‰Ò“®_18517]
  *
  *****************************************************************************************/
 --
@@ -547,6 +548,76 @@ AS
     main_rec8  main_cur8%ROWTYPE;
 --
 --2022/06/08 1.1 add end
+-- 2022/08/02 Ver1.2 ADD Start
+    -- œ ·Šzƒf[ƒ^‚à‚µ‚­‚ÍŒJ‰zƒf[ƒ^‚ª•¡”‰ñì¬‚³‚ê‚Ä‚¢‚éŽx•¥“`•[
+    CURSOR main_cur9
+    IS
+      SELECT
+        ilv.recon_base_code   recon_base_code , -- Žx•¥¿‹‹’“_
+        ilv.recon_slip_num    recon_slip_num  , -- Žx•¥“`•[”Ô†
+        ilv.application_date  application_date, -- \¿“ú
+        ilv.approval_date     approval_date   , -- ³”F“ú
+        ilv.recon_due_date    recon_due_date  , -- Žx•¥—\’è“ú
+        ilv.payee_code        payee_code      , -- Žx•¥æƒR[ƒh
+        ilv.invoice_number    invoice_number  , -- –â‰®¿‹‘”Ô†
+        ilv.applicant         applicant       , -- \¿ŽÒ
+        ilv.approver          approver          -- ³”FŽÒ
+      FROM
+      (
+        SELECT
+          xdrh.recon_base_code  recon_base_code , -- Žx•¥¿‹‹’“_
+          xdrh.recon_slip_num   recon_slip_num  , -- Žx•¥“`•[”Ô†
+          xdrh.application_date application_date, -- \¿“ú
+          xdrh.approval_date    approval_date   , -- ³”F“ú
+          xdrh.recon_due_date   recon_due_date  , -- Žx•¥—\’è“ú
+          xdrh.payee_code       payee_code      , -- Žx•¥æƒR[ƒh
+          xdrh.invoice_number   invoice_number  , -- –â‰®¿‹‘”Ô†
+          xdrh.applicant        applicant       , -- \¿ŽÒ
+          xdrh.approver         approver          -- ³”FŽÒ
+        FROM
+          xxcok.xxcok_sales_deduction       xsd ,
+          xxcok.xxcok_deduction_recon_head  xdrh
+        WHERE
+          xdrh.recon_status   =   'AD'                and
+          xdrh.approval_date  >=  ld_date             and
+          xsd.recon_slip_num  =   xdrh.recon_slip_num and
+          xsd.status          =   'N'                 and
+          xsd.source_category in  ('D','O')
+        GROUP BY
+          xdrh.recon_base_code    , -- Žx•¥¿‹‹’“_
+          xdrh.recon_slip_num     , -- Žx•¥“`•[”Ô†
+          xdrh.application_date   , -- \¿“ú
+          xdrh.approval_date      , -- ³”F“ú
+          xdrh.recon_due_date     , -- Žx•¥—\’è“ú
+          xdrh.payee_code         , -- Žx•¥æƒR[ƒh
+          xdrh.invoice_number     , -- –â‰®¿‹‘”Ô†
+          xdrh.applicant          , -- \¿ŽÒ
+          xdrh.approver           , -- ³”FŽÒ
+          xsd.condition_no        , -- Tœ”Ô†
+          xsd.tax_code            , -- ÅƒR[ƒh
+          xsd.customer_code_to    , -- U‘ÖæŒÚ‹qƒR[ƒh
+          xsd.deduction_chain_code, -- Tœ—pƒ`ƒF[ƒ“ƒR[ƒh
+          xsd.corp_code           , -- Šé‹ÆƒR[ƒh
+          xsd.item_code             -- •i–ÚƒR[ƒh
+        HAVING count(*) > 1
+      ) ilv
+      GROUP BY
+        ilv.recon_base_code , -- Žx•¥¿‹‹’“_
+        ilv.recon_slip_num  , -- Žx•¥“`•[”Ô†
+        ilv.application_date, -- \¿“ú
+        ilv.approval_date   , -- ³”F“ú
+        ilv.recon_due_date  , -- Žx•¥—\’è“ú
+        ilv.payee_code      , -- Žx•¥æƒR[ƒh
+        ilv.invoice_number  , -- –â‰®¿‹‘”Ô†
+        ilv.applicant       , -- \¿ŽÒ
+        ilv.approver          -- ³”FŽÒ
+      ORDER BY
+        ilv.recon_base_code , -- Žx•¥¿‹‹’“_
+        ilv.recon_slip_num  ; -- Žx•¥“`•[”Ô†
+    -- ƒƒCƒ“ƒJ[ƒ\ƒ‹ƒŒƒR[ƒhŒ^
+    main_rec9  main_cur9%ROWTYPE;
+--
+-- 2022/08/02 Ver1.2 ADD End
   BEGIN
 --
 --##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
@@ -886,6 +957,28 @@ AS
       );
     END LOOP;
 --2022/06/08 1.1 add end
+-- 2022/08/02 Ver1.2 ADD Start
+--
+    FOR main_rec9 IN main_cur9 LOOP
+      --Œ”ƒZƒbƒg
+      gn_error_cnt := gn_error_cnt + 1;
+      --
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => '·Šzƒf[ƒ^‚à‚µ‚­‚ÍŒJ‰zƒf[ƒ^‚ª•¡”‰ñì¬‚³‚ê‚Ä‚¢‚éŽx•¥“`•[‚ðŒŸ’m‚µ‚Ü‚µ‚½B'   || CHR(10) ||
+                   '  Žx•¥¿‹‹’“_:'                || main_rec9.recon_base_code                        || CHR(10) ||  -- Žx•¥¿‹‹’“_
+                   '  Žx•¥“`•[”Ô†:'                || main_rec9.recon_slip_num                         || CHR(10) ||  -- Žx•¥“`•[”Ô†
+                   '  \¿“ú:'                      || TO_CHAR(main_rec9.application_date,'YYYY/MM/DD') || CHR(10) ||  -- \¿“ú
+                   '  ³”F“ú:'                      || TO_CHAR(main_rec9.approval_date   ,'YYYY/MM/DD') || CHR(10) ||  -- ³”F“ú
+                   '  Žx•¥—\’è“ú:'                  || TO_CHAR(main_rec9.recon_due_date  ,'YYYY/MM/DD') || CHR(10) ||  -- Žx•¥—\’è“ú
+                   '  Žx•¥æƒR[ƒh:'                || main_rec9.payee_code                             || CHR(10) ||  -- Žx•¥æƒR[ƒh
+                   '  –â‰®¿‹‘”Ô†:'              || main_rec9.invoice_number                         || CHR(10) ||  -- –â‰®¿‹‘”Ô†
+                   '  \¿ŽÒ:'                      || main_rec9.applicant                              || CHR(10) ||  -- \¿ŽÒ
+                   '  ³”FŽÒ:'                      || main_rec9.approver                               || CHR(10)     -- ³”FŽÒ
+      );
+    END LOOP;
+--
+-- 2022/08/02 Ver1.2 ADD End
     IF ( gn_error_cnt > 0 ) THEN
       ov_retcode := cv_status_error;
     END IF;
