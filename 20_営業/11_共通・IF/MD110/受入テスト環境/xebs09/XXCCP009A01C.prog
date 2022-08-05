@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 3.0                                                       ##
+## Version          : 3.1                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -102,6 +102,8 @@
 ##                                       EDI/帳票のjpqjobsubコマンドパス修正。  ##
 ##  2022/01/20    3.0   Shun.Takenami    [E_本稼動_17774]                       ##
 ##                                       CONCSUBの呼び出しをSUBMIT_REQUESTへ変更##
+##  2022/08/05    3.1   Nobuo.Koyama     [E_本稼動_18570]                       ##
+##                                       バックアップ前に「ls」追加             ##
 ##                                                                              ##
 ##################################################################################
 
@@ -1931,6 +1933,11 @@ do
 # 2009/08/27 Ver1.8 Masayuki.Sano mod Start
 #  mv ${L_cm_file_dir} ${L_new_file_dir}
 #  L_return=${?}
+# 2022/08/05 Ver3.1 Nobuo.Koyama Add Start
+#  echo "${L_cm_file_dir}" >>`echo ${C_ofil}` 
+#  echo "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`
+  ls -l "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`     #lsコマンド結果出力
+# 2022/08/05 Ver3.1 Nobuo.Koyama Add End
   cp ${L_cm_file_dir} ${L_new_file_dir}
   L_return=${?}
 # 2009/08/27 Ver1.8 Masayuki.Sano mod End
