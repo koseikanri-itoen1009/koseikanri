@@ -2,8 +2,8 @@
 -- Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
 --
 -- Control File  : XXCOI003A121D.ctl
--- Description   : HHT“üoŒÉƒf[ƒ^’ŠoiSQLLoaderj
--- MD.050        : HHT“üoŒÉƒf[ƒ^’Šo MD050_COI_003_A12
+-- Description   : HHTå…¥å‡ºåº«ãƒ‡ãƒ¼ã‚¿æŠ½å‡ºï¼ˆSQLLoaderï¼‰
+-- MD.050        : HHTå…¥å‡ºåº«ãƒ‡ãƒ¼ã‚¿æŠ½å‡º MD050_COI_003_A12
 -- Version       : 1.1
 --
 -- Target Table  : XXCOI_HHT_INV_IF
@@ -12,8 +12,8 @@
 -- ------------- ----- ---------------- -------------------------------------------------
 --  Date          Ver.  Editor           Description
 -- ------------- ----- ---------------- -------------------------------------------------
---  2008/11/20    1.0   SCS H.Nakajima   V‹Kì¬
---  2009/02/16    1.1   SCS K.Nakamura   [áŠQCOI_004] “ú•t‚ÌŒ^•s”õ‘Î‰
+--  2008/11/20    1.0   SCS H.Nakajima   æ–°è¦ä½œæˆ
+--  2009/02/16    1.1   SCS K.Nakamura   [éšœå®³COI_004] æ—¥ä»˜ã®å‹ä¸å‚™å¯¾å¿œ
 --****************************************************************************************
 LOAD DATA
 INFILE *
