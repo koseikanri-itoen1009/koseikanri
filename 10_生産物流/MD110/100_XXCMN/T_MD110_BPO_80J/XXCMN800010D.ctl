@@ -2,9 +2,9 @@
 -- Copyright(c)Oracle Corporation Japan, 2006-2008. All rights reserved.
 --
 -- Control File  : XXCMN800010D.ctl
--- Description   : ãíì_ÉCÉìÉ^ÉtÉFÅ[ÉXSQLLoader
--- MD.050        : É}ÉXÉ^ÉCÉìÉ^ÉtÉFÅ[ÉX         T_MD050_BPO_800
--- MD.070        : ãíì_ÉCÉìÉ^ÉtÉFÅ[ÉXSQLLoader  T_MD070_BPO_80J
+-- Description   : Êã†ÁÇπ„Ç§„É≥„Çø„Éï„Çß„Éº„ÇπSQLLoader
+-- MD.050        : „Éû„Çπ„Çø„Ç§„É≥„Çø„Éï„Çß„Éº„Çπ         T_MD050_BPO_800
+-- MD.070        : Êã†ÁÇπ„Ç§„É≥„Çø„Éï„Çß„Éº„ÇπSQLLoader  T_MD070_BPO_80J
 -- Version       : 1.1
 --
 -- Target Table  : XXCMN_PARTY_IF
@@ -13,8 +13,8 @@
 -- ------------- ----- ---------------- -------------------------------------------------
 --  Date          Ver.  Editor           Description
 -- ------------- ----- ---------------- -------------------------------------------------
---  2008/03/31    1.0   ORACLE à…ìåà§î¸  èââÒçÏê¨
---  2008/06/19    1.1   ORACLE ã|èÍìNém  VARCHARçÄñ⁄Ç…RTRIMä÷êîÇïtâ¡
+--  2008/03/31    1.0   ORACLE ‰ºäÊù±ÊÑõÁæé  ÂàùÂõû‰ΩúÊàê
+--  2008/06/19    1.1   ORACLE ÂºìÂ†¥Âì≤Â£´  VARCHARÈ†ÖÁõÆ„Å´RTRIMÈñ¢Êï∞„Çí‰ªòÂä†
 -- **************************************************************************************
 LOAD DATA
 INFILE *
@@ -25,22 +25,22 @@ TRAILING NULLCOLS
 (
 SEQ_NUMBER,
 PROC_CODE,
-BASE_CODE                    CHAR "RTRIM(:BASE_CODE, ' Å@')",
-PARTY_NAME                   CHAR "RTRIM(:PARTY_NAME, ' Å@')",
-PARTY_SHORT_NAME             CHAR "RTRIM(:PARTY_SHORT_NAME, ' Å@')",
-PARTY_NAME_ALT               CHAR "RTRIM(:PARTY_NAME_ALT, ' Å@')",
-ADDRESS                      CHAR "RTRIM(:ADDRESS, ' Å@')",
-ZIP                          CHAR "RTRIM(:ZIP, ' Å@')",
-PHONE                        CHAR "RTRIM(:PHONE, ' Å@')",
-FAX                          CHAR "RTRIM(:FAX, ' Å@')",
-OLD_DIVISION_CODE            CHAR "RTRIM(:OLD_DIVISION_CODE, ' Å@')",
-NEW_DIVISION_CODE            CHAR "RTRIM(:NEW_DIVISION_CODE, ' Å@')",
+BASE_CODE                    CHAR "RTRIM(:BASE_CODE, ' „ÄÄ')",
+PARTY_NAME                   CHAR "RTRIM(:PARTY_NAME, ' „ÄÄ')",
+PARTY_SHORT_NAME             CHAR "RTRIM(:PARTY_SHORT_NAME, ' „ÄÄ')",
+PARTY_NAME_ALT               CHAR "RTRIM(:PARTY_NAME_ALT, ' „ÄÄ')",
+ADDRESS                      CHAR "RTRIM(:ADDRESS, ' „ÄÄ')",
+ZIP                          CHAR "RTRIM(:ZIP, ' „ÄÄ')",
+PHONE                        CHAR "RTRIM(:PHONE, ' „ÄÄ')",
+FAX                          CHAR "RTRIM(:FAX, ' „ÄÄ')",
+OLD_DIVISION_CODE            CHAR "RTRIM(:OLD_DIVISION_CODE, ' „ÄÄ')",
+NEW_DIVISION_CODE            CHAR "RTRIM(:NEW_DIVISION_CODE, ' „ÄÄ')",
 DIVISION_START_DATE          DATE(8) "YYYYMMDD",
-LOCATION_REL_CODE            CHAR "RTRIM(:LOCATION_REL_CODE, ' Å@')",
-SHIP_MNG_CODE                CHAR "RTRIM(:SHIP_MNG_CODE, ' Å@')",
-DISTRICT_CODE                CHAR "RTRIM(:DISTRICT_CODE, ' Å@')",
-WAREHOUSE_CODE               CHAR "RTRIM(:WAREHOUSE_CODE, ' Å@')",
-TERMINAL_CODE                CHAR "RTRIM(:TERMINAL_CODE, ' Å@')",
-ZIP2                         CHAR "RTRIM(:ZIP2, ' Å@')",
-SPARE                        CHAR "RTRIM(:SPARE, ' Å@')"
+LOCATION_REL_CODE            CHAR "RTRIM(:LOCATION_REL_CODE, ' „ÄÄ')",
+SHIP_MNG_CODE                CHAR "RTRIM(:SHIP_MNG_CODE, ' „ÄÄ')",
+DISTRICT_CODE                CHAR "RTRIM(:DISTRICT_CODE, ' „ÄÄ')",
+WAREHOUSE_CODE               CHAR "RTRIM(:WAREHOUSE_CODE, ' „ÄÄ')",
+TERMINAL_CODE                CHAR "RTRIM(:TERMINAL_CODE, ' „ÄÄ')",
+ZIP2                         CHAR "RTRIM(:ZIP2, ' „ÄÄ')",
+SPARE                        CHAR "RTRIM(:SPARE, ' „ÄÄ')"
 )
