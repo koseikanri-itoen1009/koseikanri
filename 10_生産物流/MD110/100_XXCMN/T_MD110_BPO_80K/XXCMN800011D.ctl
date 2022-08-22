@@ -2,9 +2,9 @@
 -- Copyright(c)Oracle Corporation Japan, 2006-2008. All rights reserved.
 --
 -- Control File  : XXCMN800011D.ctl
--- Description   : îzëóêÊÉCÉìÉ^ÉtÉFÅ[ÉXSQLLoader
--- MD.050        : É}ÉXÉ^ÉCÉìÉ^ÉtÉFÅ[ÉX           T_MD050_BPO_800
--- MD.070        : îzëóêÊÉCÉìÉ^ÉtÉFÅ[ÉXSQLLoader  T_MD070_BPO_80K
+-- Description   : ÈÖçÈÄÅÂÖà„Ç§„É≥„Çø„Éï„Çß„Éº„ÇπSQLLoader
+-- MD.050        : „Éû„Çπ„Çø„Ç§„É≥„Çø„Éï„Çß„Éº„Çπ           T_MD050_BPO_800
+-- MD.070        : ÈÖçÈÄÅÂÖà„Ç§„É≥„Çø„Éï„Çß„Éº„ÇπSQLLoader  T_MD070_BPO_80K
 -- Version       : 1.1
 --
 -- Target Table  : XXCMN_SITE_IF
@@ -13,8 +13,8 @@
 -- ------------- ----- ---------------- -------------------------------------------------
 --  Date          Ver.  Editor           Description
 -- ------------- ----- ---------------- -------------------------------------------------
---  2008/03/31    1.0   ORACLE à…ìåà§î¸  èââÒçÏê¨
---  2008/06/19    1.1   ORACLE ã|èÍìNém  VARCHARçÄñ⁄Ç…RTRIMä÷êîÇïtâ¡
+--  2008/03/31    1.0   ORACLE ‰ºäÊù±ÊÑõÁæé  ÂàùÂõû‰ΩúÊàê
+--  2008/06/19    1.1   ORACLE ÂºìÂ†¥Âì≤Â£´  VARCHARÈ†ÖÁõÆ„Å´RTRIMÈñ¢Êï∞„Çí‰ªòÂä†
 -- **************************************************************************************
 LOAD DATA
 INFILE *
@@ -25,24 +25,24 @@ TRAILING NULLCOLS
 (
 SEQ_NUMBER,
 PROC_CODE,
-SHIP_TO_CODE          CHAR "RTRIM(:SHIP_TO_CODE, ' Å@')",
-BASE_CODE             CHAR "RTRIM(:BASE_CODE, ' Å@')",
-PARTY_SITE_NAME1      CHAR "RTRIM(:PARTY_SITE_NAME1, ' Å@')",
-PARTY_SITE_NAME2      CHAR "RTRIM(:PARTY_SITE_NAME2, ' Å@')",
-PARTY_SITE_ADDR1      CHAR "RTRIM(:PARTY_SITE_ADDR1, ' Å@')",
-PARTY_SITE_ADDR2      CHAR "RTRIM(:PARTY_SITE_ADDR2, ' Å@')",
-PHONE                 CHAR "RTRIM(:PHONE, ' Å@')",
-FAX                   CHAR "RTRIM(:FAX, ' Å@')",
-ZIP                   CHAR "RTRIM(:ZIP, ' Å@')",
-PARTY_NUM             CHAR "RTRIM(:PARTY_NUM, ' Å@')",
-ZIP2                  CHAR "RTRIM(:ZIP2, ' Å@')",
-CUSTOMER_NAME1        CHAR "RTRIM(:CUSTOMER_NAME1, ' Å@')",
-CUSTOMER_NAME2        CHAR "RTRIM(:CUSTOMER_NAME2, ' Å@')",
-SALE_BASE_CODE        CHAR "RTRIM(:SALE_BASE_CODE, ' Å@')",
-RES_SALE_BASE_CODE    CHAR "RTRIM(:RES_SALE_BASE_CODE, ' Å@')",
-CHAIN_STORE           CHAR "RTRIM(:CHAIN_STORE, ' Å@')",
-CHAIN_STORE_NAME      CHAR "RTRIM(:CHAIN_STORE_NAME, ' Å@')",
-CAL_CUST_APP_FLG      CHAR "RTRIM(:CAL_CUST_APP_FLG, ' Å@')",
-DIRECT_SHIP_CODE      CHAR "RTRIM(:DIRECT_SHIP_CODE, ' Å@')",
-SHIFT_JUDG_FLG        CHAR "RTRIM(:SHIFT_JUDG_FLG, ' Å@')"
+SHIP_TO_CODE          CHAR "RTRIM(:SHIP_TO_CODE, ' „ÄÄ')",
+BASE_CODE             CHAR "RTRIM(:BASE_CODE, ' „ÄÄ')",
+PARTY_SITE_NAME1      CHAR "RTRIM(:PARTY_SITE_NAME1, ' „ÄÄ')",
+PARTY_SITE_NAME2      CHAR "RTRIM(:PARTY_SITE_NAME2, ' „ÄÄ')",
+PARTY_SITE_ADDR1      CHAR "RTRIM(:PARTY_SITE_ADDR1, ' „ÄÄ')",
+PARTY_SITE_ADDR2      CHAR "RTRIM(:PARTY_SITE_ADDR2, ' „ÄÄ')",
+PHONE                 CHAR "RTRIM(:PHONE, ' „ÄÄ')",
+FAX                   CHAR "RTRIM(:FAX, ' „ÄÄ')",
+ZIP                   CHAR "RTRIM(:ZIP, ' „ÄÄ')",
+PARTY_NUM             CHAR "RTRIM(:PARTY_NUM, ' „ÄÄ')",
+ZIP2                  CHAR "RTRIM(:ZIP2, ' „ÄÄ')",
+CUSTOMER_NAME1        CHAR "RTRIM(:CUSTOMER_NAME1, ' „ÄÄ')",
+CUSTOMER_NAME2        CHAR "RTRIM(:CUSTOMER_NAME2, ' „ÄÄ')",
+SALE_BASE_CODE        CHAR "RTRIM(:SALE_BASE_CODE, ' „ÄÄ')",
+RES_SALE_BASE_CODE    CHAR "RTRIM(:RES_SALE_BASE_CODE, ' „ÄÄ')",
+CHAIN_STORE           CHAR "RTRIM(:CHAIN_STORE, ' „ÄÄ')",
+CHAIN_STORE_NAME      CHAR "RTRIM(:CHAIN_STORE_NAME, ' „ÄÄ')",
+CAL_CUST_APP_FLG      CHAR "RTRIM(:CAL_CUST_APP_FLG, ' „ÄÄ')",
+DIRECT_SHIP_CODE      CHAR "RTRIM(:DIRECT_SHIP_CODE, ' „ÄÄ')",
+SHIFT_JUDG_FLG        CHAR "RTRIM(:SHIFT_JUDG_FLG, ' „ÄÄ')"
 )
