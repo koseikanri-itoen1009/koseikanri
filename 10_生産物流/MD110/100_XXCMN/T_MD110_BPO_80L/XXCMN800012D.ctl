@@ -2,9 +2,9 @@
 -- Copyright(c)Oracle Corporation Japan, 2006-2008. All rights reserved.
 --
 -- Control File  : XXCMN800012D.ctl
--- Description   : ïiñºÉCÉìÉ^ÉtÉFÅ[ÉXSQLLoader
--- MD.050        : É}ÉXÉ^ÉCÉìÉ^ÉtÉFÅ[ÉX         T_MD050_BPO_800
--- MD.070        : ïiñºÉCÉìÉ^ÉtÉFÅ[ÉXSQLLoader  T_MD070_BPO_80L
+-- Description   : ÂìÅÂêç„Ç§„É≥„Çø„Éï„Çß„Éº„ÇπSQLLoader
+-- MD.050        : „Éû„Çπ„Çø„Ç§„É≥„Çø„Éï„Çß„Éº„Çπ         T_MD050_BPO_800
+-- MD.070        : ÂìÅÂêç„Ç§„É≥„Çø„Éï„Çß„Éº„ÇπSQLLoader  T_MD070_BPO_80L
 -- Version       : 1.1
 --
 -- Target Table  : XXCMN_ITEM_IF
@@ -13,9 +13,9 @@
 -- ------------- ----- ---------------- -------------------------------------------------
 --  Date          Ver.  Editor           Description
 -- ------------- ----- ---------------- -------------------------------------------------
---  2008/03/31    1.0   ORACLE à…ìåà§î¸  èââÒçÏê¨
---  2008/06/19    1.1   ORACLE ã|èÍìNém  VARCHARçÄñ⁄Ç…RTRIMä÷êîÇïtâ¡
---  2008/11/13    1.2   ORACLE à…ì°      çÄñ⁄í«â¡ëŒâûI_S_538
+--  2008/03/31    1.0   ORACLE ‰ºäÊù±ÊÑõÁæé  ÂàùÂõû‰ΩúÊàê
+--  2008/06/19    1.1   ORACLE ÂºìÂ†¥Âì≤Â£´  VARCHARÈ†ÖÁõÆ„Å´RTRIMÈñ¢Êï∞„Çí‰ªòÂä†
+--  2008/11/13    1.2   ORACLE ‰ºäËó§      È†ÖÁõÆËøΩÂä†ÂØæÂøúI_S_538
 -- **************************************************************************************
 LOAD DATA
 INFILE *
@@ -26,57 +26,57 @@ TRAILING NULLCOLS
 (
 SEQ_NUMBER,
 PROC_CODE,
-ITEM_CODE                  CHAR "RTRIM(:ITEM_CODE, ' Å@')",
-ITEM_NAME                  CHAR "RTRIM(:ITEM_NAME, ' Å@')",
-ITEM_SHORT_NAME            CHAR "RTRIM(:ITEM_SHORT_NAME, ' Å@')",
-ITEM_NAME_ALT              CHAR "RTRIM(:ITEM_NAME_ALT, ' Å@')",
-OLD_CROWD_CODE             CHAR "RTRIM(:OLD_CROWD_CODE, ' Å@')",
-NEW_CROWD_CODE             CHAR "RTRIM(:NEW_CROWD_CODE, ' Å@')",
+ITEM_CODE                  CHAR "RTRIM(:ITEM_CODE, ' „ÄÄ')",
+ITEM_NAME                  CHAR "RTRIM(:ITEM_NAME, ' „ÄÄ')",
+ITEM_SHORT_NAME            CHAR "RTRIM(:ITEM_SHORT_NAME, ' „ÄÄ')",
+ITEM_NAME_ALT              CHAR "RTRIM(:ITEM_NAME_ALT, ' „ÄÄ')",
+OLD_CROWD_CODE             CHAR "RTRIM(:OLD_CROWD_CODE, ' „ÄÄ')",
+NEW_CROWD_CODE             CHAR "RTRIM(:NEW_CROWD_CODE, ' „ÄÄ')",
 CROWD_START_DATE           DATE(8)"YYYYMMDD",
-POLICY_GROUP_CODE          CHAR "RTRIM(:POLICY_GROUP_CODE, ' Å@')",
-MARKE_CROWD_CODE           CHAR "RTRIM(:MARKE_CROWD_CODE, ' Å@')",
-OLD_PRICE                  CHAR "RTRIM(:OLD_PRICE, ' Å@')",
-NEW_PRICE                  CHAR "RTRIM(:NEW_PRICE, ' Å@')",
+POLICY_GROUP_CODE          CHAR "RTRIM(:POLICY_GROUP_CODE, ' „ÄÄ')",
+MARKE_CROWD_CODE           CHAR "RTRIM(:MARKE_CROWD_CODE, ' „ÄÄ')",
+OLD_PRICE                  CHAR "RTRIM(:OLD_PRICE, ' „ÄÄ')",
+NEW_PRICE                  CHAR "RTRIM(:NEW_PRICE, ' „ÄÄ')",
 PRICE_START_DATE           DATE(8)"YYYYMMDD",
-OLD_STANDARD_COST          CHAR "RTRIM(:OLD_STANDARD_COST, ' Å@')",
-NEW_STANDARD_COST          CHAR "RTRIM(:NEW_STANDARD_COST, ' Å@')",
+OLD_STANDARD_COST          CHAR "RTRIM(:OLD_STANDARD_COST, ' „ÄÄ')",
+NEW_STANDARD_COST          CHAR "RTRIM(:NEW_STANDARD_COST, ' „ÄÄ')",
 STANDARD_START_DATE        DATE(8)"YYYYMMDD",
-OLD_BUSINESS_COST          CHAR "RTRIM(:OLD_BUSINESS_COST, ' Å@')",
-NEW_BUSINESS_COST          CHAR "RTRIM(:NEW_BUSINESS_COST, ' Å@')",
+OLD_BUSINESS_COST          CHAR "RTRIM(:OLD_BUSINESS_COST, ' „ÄÄ')",
+NEW_BUSINESS_COST          CHAR "RTRIM(:NEW_BUSINESS_COST, ' „ÄÄ')",
 BUSINESS_START_DATE        DATE(8)"YYYYMMDD",
-OLD_TAX                    CHAR "RTRIM(:OLD_TAX, ' Å@')",
-NEW_TAX                    CHAR "RTRIM(:NEW_TAX, ' Å@')",
+OLD_TAX                    CHAR "RTRIM(:OLD_TAX, ' „ÄÄ')",
+NEW_TAX                    CHAR "RTRIM(:NEW_TAX, ' „ÄÄ')",
 TAX_START_DATE             DATE(8)"YYYYMMDD",
-RATE_CODE                  CHAR "RTRIM(:RATE_CODE, ' Å@')",
-CASE_NUM                   CHAR "RTRIM(:CASE_NUM, ' Å@')",
-PRODUCT_DIV_CODE           CHAR "RTRIM(:PRODUCT_DIV_CODE, ' Å@')",
-NET                        CHAR "RTRIM(:NET, ' Å@')",
-WEIGHT_VOLUME              CHAR "RTRIM(:WEIGHT_VOLUME, ' Å@')",
-ARTI_DIV_CODE              CHAR "RTRIM(:ARTI_DIV_CODE, ' Å@')",
-DIV_TEA_CODE               CHAR "RTRIM(:DIV_TEA_CODE, ' Å@')",
-PARENT_ITEM_CODE           CHAR "RTRIM(:PARENT_ITEM_CODE, ' Å@')",
-SALE_OBJ_CODE              CHAR "RTRIM(:SALE_OBJ_CODE, ' Å@')",
-JAN_CODE                   CHAR "RTRIM(:JAN_CODE, ' Å@')",
+RATE_CODE                  CHAR "RTRIM(:RATE_CODE, ' „ÄÄ')",
+CASE_NUM                   CHAR "RTRIM(:CASE_NUM, ' „ÄÄ')",
+PRODUCT_DIV_CODE           CHAR "RTRIM(:PRODUCT_DIV_CODE, ' „ÄÄ')",
+NET                        CHAR "RTRIM(:NET, ' „ÄÄ')",
+WEIGHT_VOLUME              CHAR "RTRIM(:WEIGHT_VOLUME, ' „ÄÄ')",
+ARTI_DIV_CODE              CHAR "RTRIM(:ARTI_DIV_CODE, ' „ÄÄ')",
+DIV_TEA_CODE               CHAR "RTRIM(:DIV_TEA_CODE, ' „ÄÄ')",
+PARENT_ITEM_CODE           CHAR "RTRIM(:PARENT_ITEM_CODE, ' „ÄÄ')",
+SALE_OBJ_CODE              CHAR "RTRIM(:SALE_OBJ_CODE, ' „ÄÄ')",
+JAN_CODE                   CHAR "RTRIM(:JAN_CODE, ' „ÄÄ')",
 SALE_START_DATE            DATE(8)"YYYYMMDD",
-ABOLITION_CODE             CHAR "RTRIM(:ABOLITION_CODE, ' Å@')",
+ABOLITION_CODE             CHAR "RTRIM(:ABOLITION_CODE, ' „ÄÄ')",
 ABOLITION_DATE             DATE(8)"YYYYMMDD",
-RAW_MATE_CONSUMPTION       CHAR "RTRIM(:RAW_MATE_CONSUMPTION, ' Å@')",
-RAW_MATERIAL_COST          CHAR "RTRIM(:RAW_MATERIAL_COST, ' Å@')",
-AGEIN_COST                 CHAR "RTRIM(:AGEIN_COST, ' Å@')",
-MATERIAL_COST              CHAR "RTRIM(:MATERIAL_COST, ' Å@')",
-PACK_COST                  CHAR "RTRIM(:PACK_COST, ' Å@')",
-OUT_ORDER_COST             CHAR "RTRIM(:OUT_ORDER_COST, ' Å@')",
-SAFEKEEP_COST              CHAR "RTRIM(:SAFEKEEP_COST, ' Å@')",
-OTHER_EXPENSE_COST         CHAR "RTRIM(:OTHER_EXPENSE_COST, ' Å@')",
-SPARE1                     CHAR "RTRIM(:SPARE1, ' Å@')",
-SPARE2                     CHAR "RTRIM(:SPARE2, ' Å@')",
-SPARE3                     CHAR "RTRIM(:SPARE3, ' Å@')",
+RAW_MATE_CONSUMPTION       CHAR "RTRIM(:RAW_MATE_CONSUMPTION, ' „ÄÄ')",
+RAW_MATERIAL_COST          CHAR "RTRIM(:RAW_MATERIAL_COST, ' „ÄÄ')",
+AGEIN_COST                 CHAR "RTRIM(:AGEIN_COST, ' „ÄÄ')",
+MATERIAL_COST              CHAR "RTRIM(:MATERIAL_COST, ' „ÄÄ')",
+PACK_COST                  CHAR "RTRIM(:PACK_COST, ' „ÄÄ')",
+OUT_ORDER_COST             CHAR "RTRIM(:OUT_ORDER_COST, ' „ÄÄ')",
+SAFEKEEP_COST              CHAR "RTRIM(:SAFEKEEP_COST, ' „ÄÄ')",
+OTHER_EXPENSE_COST         CHAR "RTRIM(:OTHER_EXPENSE_COST, ' „ÄÄ')",
+SPARE1                     CHAR "RTRIM(:SPARE1, ' „ÄÄ')",
+SPARE2                     CHAR "RTRIM(:SPARE2, ' „ÄÄ')",
+SPARE3                     CHAR "RTRIM(:SPARE3, ' „ÄÄ')",
 HAISU,
 DANSU,
 BUNRUI,
 NAIYOU,
 NAIYOU_TANI,
 UTIIRI,
-YOKI_GUN_CODE              CHAR "RTRIM(:YOKI_GUN_CODE, ' Å@')",
-SPARE                      CHAR "RTRIM(:SPARE, ' Å@')"
+YOKI_GUN_CODE              CHAR "RTRIM(:YOKI_GUN_CODE, ' „ÄÄ')",
+SPARE                      CHAR "RTRIM(:SPARE, ' „ÄÄ')"
 )
