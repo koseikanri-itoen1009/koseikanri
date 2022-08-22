@@ -2,9 +2,9 @@
 -- Copyright(c)Oracle Corporation Japan, 2006-2008. All rights reserved.
 --
 -- Control File  : XXCMN800013D.ctl
--- Description   : ŽÐˆõƒCƒ“ƒ^ƒtƒF[ƒXSQLLoader
--- MD.050        : ƒ}ƒXƒ^ƒCƒ“ƒ^ƒtƒF[ƒX         T_MD050_BPO_800
--- MD.070        : ŽÐˆõƒCƒ“ƒ^ƒtƒF[ƒXSQLLoader  T_MD070_BPO_80M
+-- Description   : ç¤¾å“¡ã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹SQLLoader
+-- MD.050        : ãƒžã‚¹ã‚¿ã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹         T_MD050_BPO_800
+-- MD.070        : ç¤¾å“¡ã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹SQLLoader  T_MD070_BPO_80M
 -- Version       : 1.1
 --
 -- Target Table  : XXCMN_EMP_IF
@@ -13,8 +13,8 @@
 -- ------------- ----- ---------------- -------------------------------------------------
 --  Date          Ver.  Editor           Description
 -- ------------- ----- ---------------- -------------------------------------------------
---  2008/03/31    1.0   ORACLE ˆÉ“Œˆ¤”ü  ‰‰ñì¬
---  2008/06/19    1.1   ORACLE ‹|ê“NŽm  VARCHAR€–Ú‚ÉRTRIMŠÖ”‚ð•t‰Á
+--  2008/03/31    1.0   ORACLE ä¼Šæ±æ„›ç¾Ž  åˆå›žä½œæˆ
+--  2008/06/19    1.1   ORACLE å¼“å ´å“²å£«  VARCHARé …ç›®ã«RTRIMé–¢æ•°ã‚’ä»˜åŠ 
 -- **************************************************************************************
 LOAD DATA
 INFILE *
@@ -25,11 +25,11 @@ TRAILING NULLCOLS
 (
 SEQ_NUM,
 PROC_CODE,
-EMPLOYEE_NUM        CHAR "RTRIM(:EMPLOYEE_NUM, ' @')",
-BASE_CODE           CHAR "RTRIM(:BASE_CODE, ' @')",
-USER_NAME           CHAR "RTRIM(:USER_NAME, ' @')",
-USER_NAME_ALT       CHAR "RTRIM(:USER_NAME_ALT, ' @')",
-POSITION_ID         CHAR "RTRIM(:POSITION_ID, ' @')",
-QUALIFICATION_ID    CHAR "RTRIM(:QUALIFICATION_ID, ' @')",
-SPARE               CHAR "RTRIM(:SPARE, ' @')"
+EMPLOYEE_NUM        CHAR "RTRIM(:EMPLOYEE_NUM, ' ã€€')",
+BASE_CODE           CHAR "RTRIM(:BASE_CODE, ' ã€€')",
+USER_NAME           CHAR "RTRIM(:USER_NAME, ' ã€€')",
+USER_NAME_ALT       CHAR "RTRIM(:USER_NAME_ALT, ' ã€€')",
+POSITION_ID         CHAR "RTRIM(:POSITION_ID, ' ã€€')",
+QUALIFICATION_ID    CHAR "RTRIM(:QUALIFICATION_ID, ' ã€€')",
+SPARE               CHAR "RTRIM(:SPARE, ' ã€€')"
 )
