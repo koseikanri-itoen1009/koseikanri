@@ -2,9 +2,9 @@
 -- Copyright(c)SCSK Corporation, 2017. All rights reserved.
 -- 
 -- Control file  : XXCSO006A04D.ctl
--- Description   : eSM-EBSƒCƒ“ƒ^ƒtƒF[ƒXFiINj–K–âŽÀÑƒf[ƒ^iSQL-LOADER-–K–âŽÀÑî•ñj
--- MD.050        : MD050_CSO_006_A03_eSM-EBSƒCƒ“ƒ^ƒtƒF[ƒXFiINj–K–âŽÀÑƒf[ƒ^
--- MD.070        : ‚È‚µ
+-- Description   : eSM-EBSã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹ï¼šï¼ˆINï¼‰è¨ªå•å®Ÿç¸¾ãƒ‡ãƒ¼ã‚¿ï¼ˆSQL-LOADER-è¨ªå•å®Ÿç¸¾æƒ…å ±ï¼‰
+-- MD.050        : MD050_CSO_006_A03_eSM-EBSã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹ï¼šï¼ˆINï¼‰è¨ªå•å®Ÿç¸¾ãƒ‡ãƒ¼ã‚¿
+-- MD.070        : ãªã—
 -- Version       : 1.0
 --
 -- Target Table  : XXCSO_IN_VISIT_DATA
@@ -13,7 +13,7 @@
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
---  2017/03/15    1.0     K.Kiriu          V‹Kì¬
+--  2017/03/15    1.0     K.Kiriu          æ–°è¦ä½œæˆ
 --
 -- ************************************************************************************************
 --
@@ -25,63 +25,63 @@ APPEND
 INTO TABLE XXCSO_IN_VISIT_DATA
 FIELDS TERMINATED BY "," TRAILING NULLCOLS
   (
-    BASE_NAME                CHAR(360) OPTIONALLY ENCLOSED BY '"',                            -- •”–¼
-    EMPLOYEE_NUMBER          CHAR OPTIONALLY ENCLOSED BY '"',                                 -- ŽÐˆõƒR[ƒh
-    ACCOUNT_NUMBER           CHAR OPTIONALLY ENCLOSED BY '"',                                 -- ŒÚ‹qƒR[ƒh
-    BUSINESS_TYPE            CHAR(100) OPTIONALLY ENCLOSED BY '"',                            -- ‹Æ–±ƒ^ƒCƒv
-    VISIT_DATE               DATE "YYYY/MM/DD" OPTIONALLY ENCLOSED BY '"',                    -- –K–â“ú
-    VISIT_TIME               CHAR OPTIONALLY ENCLOSED BY '"',                                 -- –K–âŠJŽnŽž
-    VISIT_TIME_END           CHAR OPTIONALLY ENCLOSED BY '"',                                 -- –K–âI—¹Žž
-    DETAIL                   CHAR(4000) OPTIONALLY ENCLOSED BY '"',                           -- Ú×“à—e
-    ACTIVITY_CONTENT1        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P
-    ACTIVITY_CONTENT2        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚Q
-    ACTIVITY_CONTENT3        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚R
-    ACTIVITY_CONTENT4        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚S
-    ACTIVITY_CONTENT5        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚T
-    ACTIVITY_CONTENT6        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚U
-    ACTIVITY_CONTENT7        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚V
-    ACTIVITY_CONTENT8        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚W
-    ACTIVITY_CONTENT9        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚X
-    ACTIVITY_CONTENT10       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚O
-    ACTIVITY_CONTENT11       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚P
-    ACTIVITY_CONTENT12       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚Q
-    ACTIVITY_CONTENT13       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚R
-    ACTIVITY_CONTENT14       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚S
-    ACTIVITY_CONTENT15       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚T
-    ACTIVITY_CONTENT16       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚U
-    ACTIVITY_CONTENT17       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚V
-    ACTIVITY_CONTENT18       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚W
-    ACTIVITY_CONTENT19       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚P‚X
-    ACTIVITY_CONTENT20       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- Šˆ“®“à—e‚Q‚O
-    ACTIVITY_TIME1           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P(•ªj
-    ACTIVITY_TIME2           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Qi•ªj
-    ACTIVITY_TIME3           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Ri•ªj
-    ACTIVITY_TIME4           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Si•ªj
-    ACTIVITY_TIME5           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Ti•ªj
-    ACTIVITY_TIME6           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Ui•ªj
-    ACTIVITY_TIME7           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Vi•ªj
-    ACTIVITY_TIME8           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Wi•ªj
-    ACTIVITY_TIME9           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Xi•ªj
-    ACTIVITY_TIME10          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Oi•ªj
-    ACTIVITY_TIME11          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Pi•ªj
-    ACTIVITY_TIME12          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Qi•ªj
-    ACTIVITY_TIME13          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Ri•ªj
-    ACTIVITY_TIME14          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Si•ªj
-    ACTIVITY_TIME15          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Ti•ªj
-    ACTIVITY_TIME16          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Ui•ªj
-    ACTIVITY_TIME17          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Vi•ªj
-    ACTIVITY_TIME18          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Wi•ªj
-    ACTIVITY_TIME19          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚P‚Xi•ªj
-    ACTIVITY_TIME20          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- Šˆ“®ŽžŠÔ‚Q‚Oi•ªj
-    ESM_INPUT_DATE           DATE "YYYY/MM/DD HH24:MI" OPTIONALLY ENCLOSED BY '"',            -- eSM“ü—Í“úŽž
-    SEQ_NO                   "XXCSO_IN_VISIT_DATA_S01.NEXTVAL",                               -- ƒV[ƒPƒ“ƒX”Ô†
-    CREATED_BY               "FND_GLOBAL.USER_ID",                                            -- *** ì¬ŽÒ
-    CREATION_DATE            SYSDATE,                                                         -- *** ì¬“ú
-    LAST_UPDATED_BY          "FND_GLOBAL.USER_ID",                                            -- *** ÅIXVŽÒ
-    LAST_UPDATE_DATE         SYSDATE,                                                         -- *** ÅIXV“ú
-    LAST_UPDATE_LOGIN        "FND_GLOBAL.LOGIN_ID",                                           -- *** ÅIXVƒƒOƒCƒ“
-    REQUEST_ID               "FND_GLOBAL.CONC_REQUEST_ID",                                    -- *** —v‹ID
-    PROGRAM_APPLICATION_ID   "FND_GLOBAL.PROG_APPL_ID",                                       -- *** ºÝ¶ÚÝÄ¥ÌßÛ¸Þ×Ñ¥±ÌßØ¹°¼®ÝID
-    PROGRAM_ID               "FND_GLOBAL.CONC_PROGRAM_ID",                                    -- *** ºÝ¶ÚÝÄ¥ÌßÛ¸Þ×ÑID
-    PROGRAM_UPDATE_DATE      SYSDATE                                                          -- *** ÌßÛ¸Þ×ÑXV“ú
+    BASE_NAME                CHAR(360) OPTIONALLY ENCLOSED BY '"',                            -- éƒ¨ç½²å
+    EMPLOYEE_NUMBER          CHAR OPTIONALLY ENCLOSED BY '"',                                 -- ç¤¾å“¡ã‚³ãƒ¼ãƒ‰
+    ACCOUNT_NUMBER           CHAR OPTIONALLY ENCLOSED BY '"',                                 -- é¡§å®¢ã‚³ãƒ¼ãƒ‰
+    BUSINESS_TYPE            CHAR(100) OPTIONALLY ENCLOSED BY '"',                            -- æ¥­å‹™ã‚¿ã‚¤ãƒ—
+    VISIT_DATE               DATE "YYYY/MM/DD" OPTIONALLY ENCLOSED BY '"',                    -- è¨ªå•æ—¥
+    VISIT_TIME               CHAR OPTIONALLY ENCLOSED BY '"',                                 -- è¨ªå•é–‹å§‹æ™‚åˆ»
+    VISIT_TIME_END           CHAR OPTIONALLY ENCLOSED BY '"',                                 -- è¨ªå•çµ‚äº†æ™‚åˆ»
+    DETAIL                   CHAR(4000) OPTIONALLY ENCLOSED BY '"',                           -- è©³ç´°å†…å®¹
+    ACTIVITY_CONTENT1        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘
+    ACTIVITY_CONTENT2        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼’
+    ACTIVITY_CONTENT3        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼“
+    ACTIVITY_CONTENT4        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼”
+    ACTIVITY_CONTENT5        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼•
+    ACTIVITY_CONTENT6        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼–
+    ACTIVITY_CONTENT7        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼—
+    ACTIVITY_CONTENT8        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼˜
+    ACTIVITY_CONTENT9        CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼™
+    ACTIVITY_CONTENT10       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼
+    ACTIVITY_CONTENT11       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼‘
+    ACTIVITY_CONTENT12       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼’
+    ACTIVITY_CONTENT13       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼“
+    ACTIVITY_CONTENT14       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼”
+    ACTIVITY_CONTENT15       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼•
+    ACTIVITY_CONTENT16       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼–
+    ACTIVITY_CONTENT17       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼—
+    ACTIVITY_CONTENT18       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼˜
+    ACTIVITY_CONTENT19       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼‘ï¼™
+    ACTIVITY_CONTENT20       CHAR OPTIONALLY ENCLOSED BY '"',                                 -- æ´»å‹•å†…å®¹ï¼’ï¼
+    ACTIVITY_TIME1           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘(åˆ†ï¼‰
+    ACTIVITY_TIME2           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼’ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME3           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼“ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME4           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼”ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME5           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼•ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME6           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼–ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME7           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼—ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME8           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼˜ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME9           INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼™ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME10          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME11          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼‘ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME12          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼’ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME13          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼“ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME14          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼”ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME15          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼•ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME16          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼–ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME17          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼—ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME18          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼˜ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME19          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼‘ï¼™ï¼ˆåˆ†ï¼‰
+    ACTIVITY_TIME20          INTEGER EXTERNAL OPTIONALLY ENCLOSED BY '"',                     -- æ´»å‹•æ™‚é–“ï¼’ï¼ï¼ˆåˆ†ï¼‰
+    ESM_INPUT_DATE           DATE "YYYY/MM/DD HH24:MI" OPTIONALLY ENCLOSED BY '"',            -- eSMå…¥åŠ›æ—¥æ™‚
+    SEQ_NO                   "XXCSO_IN_VISIT_DATA_S01.NEXTVAL",                               -- ã‚·ãƒ¼ã‚±ãƒ³ã‚¹ç•ªå·
+    CREATED_BY               "FND_GLOBAL.USER_ID",                                            -- *** ä½œæˆè€…
+    CREATION_DATE            SYSDATE,                                                         -- *** ä½œæˆæ—¥
+    LAST_UPDATED_BY          "FND_GLOBAL.USER_ID",                                            -- *** æœ€çµ‚æ›´æ–°è€…
+    LAST_UPDATE_DATE         SYSDATE,                                                         -- *** æœ€çµ‚æ›´æ–°æ—¥
+    LAST_UPDATE_LOGIN        "FND_GLOBAL.LOGIN_ID",                                           -- *** æœ€çµ‚æ›´æ–°ãƒ­ã‚°ã‚¤ãƒ³
+    REQUEST_ID               "FND_GLOBAL.CONC_REQUEST_ID",                                    -- *** è¦æ±‚ID
+    PROGRAM_APPLICATION_ID   "FND_GLOBAL.PROG_APPL_ID",                                       -- *** ï½ºï¾ï½¶ï¾šï¾ï¾„ï½¥ï¾Œï¾Ÿï¾›ï½¸ï¾žï¾—ï¾‘ï½¥ï½±ï¾Œï¾Ÿï¾˜ï½¹ï½°ï½¼ï½®ï¾ID
+    PROGRAM_ID               "FND_GLOBAL.CONC_PROGRAM_ID",                                    -- *** ï½ºï¾ï½¶ï¾šï¾ï¾„ï½¥ï¾Œï¾Ÿï¾›ï½¸ï¾žï¾—ï¾‘ID
+    PROGRAM_UPDATE_DATE      SYSDATE                                                          -- *** ï¾Œï¾Ÿï¾›ï½¸ï¾žï¾—ï¾‘æ›´æ–°æ—¥
   )
