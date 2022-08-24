@@ -2,10 +2,10 @@
 -- Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
 -- 
 -- Control file  : XXCSO015A01D.ctl
--- Description   : Ž©”Ì‹@-EBSƒCƒ“ƒ^ƒtƒF[ƒXF(IN)ì‹Æƒf[ƒ^ SQL*Loaderˆ—
--- BR.050        : T_BR050_CCO_200_Ž©”Ì_ì‹Æƒf[ƒ^
--- MD.050        : MD050_CSO_015_A01_Ž©”Ì‹@-EBSƒCƒ“ƒ^ƒtƒF[ƒXFiINjì‹Æƒf[ƒ^
--- MD.070        : ‚È‚µ
+-- Description   : è‡ªè²©æ©Ÿ-EBSã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹ï¼š(IN)ä½œæ¥­ãƒ‡ãƒ¼ã‚¿ SQL*Loaderå‡¦ç†
+-- BR.050        : T_BR050_CCO_200_è‡ªè²©_ä½œæ¥­ãƒ‡ãƒ¼ã‚¿
+-- MD.050        : MD050_CSO_015_A01_è‡ªè²©æ©Ÿ-EBSã‚¤ãƒ³ã‚¿ãƒ•ã‚§ãƒ¼ã‚¹ï¼šï¼ˆINï¼‰ä½œæ¥­ãƒ‡ãƒ¼ã‚¿
+-- MD.070        : ãªã—
 -- Version       : 1.4
 --
 -- Target Table  : XXCSO_IN_WORK_DATA
@@ -14,12 +14,12 @@
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
---  2008/11/28    1.0     kyo              V‹Kì¬
---  2009/01/27    1.1     kyo              ‹xŽ~ˆ—Ïƒtƒ‰ƒO€–Ú’Ç‰Á
---  2009/03/10    1.1     abe              ƒV[ƒPƒ“ƒX”Ô†‚Ì’Ç‰Á
---  2009/05/29    1.2     K.Satomura       ƒVƒXƒeƒ€ƒeƒXƒgáŠQ‘Î‰ž(T1_1017,T1_1107)
---  2009/06/04    1.3     K.Satomura       ƒVƒXƒeƒ€ƒeƒXƒgáŠQ‘Î‰ž(T1_1107ÄC³)
---  2009/12/08    1.4     K.Hosoi          E_–{‰Ò“®_00219‘Î‰ž
+--  2008/11/28    1.0     kyo              æ–°è¦ä½œæˆ
+--  2009/01/27    1.1     kyo              ä¼‘æ­¢å‡¦ç†æ¸ˆãƒ•ãƒ©ã‚°é …ç›®è¿½åŠ 
+--  2009/03/10    1.1     abe              ã‚·ãƒ¼ã‚±ãƒ³ã‚¹ç•ªå·ã®è¿½åŠ 
+--  2009/05/29    1.2     K.Satomura       ã‚·ã‚¹ãƒ†ãƒ ãƒ†ã‚¹ãƒˆéšœå®³å¯¾å¿œ(T1_1017,T1_1107)
+--  2009/06/04    1.3     K.Satomura       ã‚·ã‚¹ãƒ†ãƒ ãƒ†ã‚¹ãƒˆéšœå®³å¯¾å¿œ(T1_1107å†ä¿®æ­£)
+--  2009/12/08    1.4     K.Hosoi          E_æœ¬ç¨¼å‹•_00219å¯¾å¿œ
 -- ************************************************************************************************
 --
 OPTIONS (SKIP=0, DIRECT=FALSE, ERRORS=99999)
@@ -30,81 +30,81 @@ INTO TABLE XXCSO_IN_WORK_DATA
 APPEND
 FIELDS TERMINATED BY "," TRAILING NULLCOLS
   (
-    SEQ_NO                         SEQUENCE( MAX ),                         -- ƒV[ƒPƒ“ƒX”Ô†
-    SLIP_NO                        INTEGER EXTERNAL,                        -- “`•[No.
-    SLIP_BRANCH_NO                 INTEGER EXTERNAL,                        -- “`•[Ž}”Ô
-    LINE_NUMBER                    INTEGER EXTERNAL,                        -- s”Ô†
-    JOB_KBN                        INTEGER EXTERNAL,                        -- ì‹Æ‹æ•ª
+    SEQ_NO                         SEQUENCE( MAX ),                         -- ã‚·ãƒ¼ã‚±ãƒ³ã‚¹ç•ªå·
+    SLIP_NO                        INTEGER EXTERNAL,                        -- ä¼ç¥¨No.
+    SLIP_BRANCH_NO                 INTEGER EXTERNAL,                        -- ä¼ç¥¨æžç•ª
+    LINE_NUMBER                    INTEGER EXTERNAL,                        -- è¡Œç•ªå·
+    JOB_KBN                        INTEGER EXTERNAL,                        -- ä½œæ¥­åŒºåˆ†
     INSTALL_CODE1                  CHAR OPTIONALLY ENCLOSED BY '"' "DECODE(:INSTALL_CODE1, NULL, NULL, 
-      SUBSTR(:INSTALL_CODE1, 1, 3) || '-' || SUBSTR(:INSTALL_CODE1, 4))",    -- •¨ŒƒR[ƒh‚PiÝ’u—pj
+      SUBSTR(:INSTALL_CODE1, 1, 3) || '-' || SUBSTR(:INSTALL_CODE1, 4))",    -- ç‰©ä»¶ã‚³ãƒ¼ãƒ‰ï¼‘ï¼ˆè¨­ç½®ç”¨ï¼‰
     INSTALL_CODE2                  CHAR OPTIONALLY ENCLOSED BY '"' "DECODE(:INSTALL_CODE2, NULL, NULL, 
-      SUBSTR(:INSTALL_CODE2, 1, 3) || '-' || SUBSTR(:INSTALL_CODE2, 4))",    -- •¨ŒƒR[ƒh‚Qiˆø—g—pj
-    WORK_HOPE_DATE                 INTEGER EXTERNAL,                        -- ì‹ÆŠó–]“ú/ˆøŽæŠó–]“ú
-    WORK_HOPE_TIME_KBN             INTEGER EXTERNAL,                        -- ì‹ÆŠó–]ŽžŠÔ‹æ•ª
-    WORK_HOPE_TIME                 CHAR OPTIONALLY ENCLOSED BY '"',         -- ì‹ÆŠó–]ŽžŠÔ
-    CURRENT_INSTALL_NAME           CHAR OPTIONALLY ENCLOSED BY '"',         -- Œ»Ý’uæ–¼
-    NEW_INSTALL_NAME               CHAR OPTIONALLY ENCLOSED BY '"',         -- VÝ’uæ–¼
-    WITHDRAWAL_PROCESS_KBN         INTEGER EXTERNAL,                        -- ˆø—g‹@ˆ—‹æ•ª
-    ACTUAL_WORK_DATE               INTEGER EXTERNAL,                        -- ŽÀì‹Æ“ú
-    ACTUAL_WORK_TIME1              CHAR OPTIONALLY ENCLOSED BY '"',         -- ŽÀì‹ÆŽžŠÔ‚P
-    ACTUAL_WORK_TIME2              CHAR OPTIONALLY ENCLOSED BY '"',         -- ŽÀì‹ÆŽžŠÔ‚Q
-    COMPLETION_KBN                 INTEGER EXTERNAL,                        -- Š®—¹‹æ•ª
-    DELETE_FLAG                    INTEGER EXTERNAL,                        -- íœƒtƒ‰ƒO
-    COMPLETION_PLAN_DATE           INTEGER EXTERNAL,                        -- Š®—¹—\’è“ú/C—Š®—¹—\’è“ú
-    COMPLETION_DATE                INTEGER EXTERNAL,                        -- Š®—¹“ú/C—Š®—¹“ú
-    DISPOSAL_APPROVAL_DATE         INTEGER EXTERNAL,                        -- ”pŠüŒˆÙ“ú
-    WITHDRAWAL_DATE                INTEGER EXTERNAL,                        -- ŽÀˆøŽæ“ú/ˆøŽæ“ú
-    DELIVERY_DATE                  INTEGER EXTERNAL,                        -- Œð•t“ú
-    LAST_DISPOSAL_END_DATE         INTEGER EXTERNAL,                        -- ÅIˆ•ªI—¹”NŒŽ“ú
-    FWD_ROOT_COMPANY_CODE          CHAR OPTIONALLY ENCLOSED BY '"',         -- i“]‘—Œ³j‰ïŽÐƒR[ƒh
-    FWD_ROOT_LOCATION_CODE         CHAR OPTIONALLY ENCLOSED BY '"',         -- i“]‘—Œ³jŽ–‹ÆŠƒR[ƒh
-    FWD_DISTINATION_COMPANY_CODE   CHAR OPTIONALLY ENCLOSED BY '"',         -- i“]‘—æj‰ïŽÐƒR[ƒh
-    FWD_DISTINATION_LOCATION_CODE  CHAR OPTIONALLY ENCLOSED BY '"',         -- i“]‘—æjŽ–‹ÆŠƒR[ƒh
-    CREATION_EMPLOYEE_NUMBER       CHAR OPTIONALLY ENCLOSED BY '"',         -- ì¬’S“–ŽÒƒR[ƒh
-    CREATION_SECTION_NAME          CHAR OPTIONALLY ENCLOSED BY '"',         -- ì¬•”ƒR[ƒh
-    CREATION_PROGRAM_ID            CHAR OPTIONALLY ENCLOSED BY '"',         -- ì¬ƒvƒƒOƒ‰ƒ€‚h‚c
-    UPDATE_EMPLOYEE_NUMBER         CHAR OPTIONALLY ENCLOSED BY '"',         -- XV’S“–ŽÒƒR[ƒh
-    UPDATE_SECTION_NAME            CHAR OPTIONALLY ENCLOSED BY '"',         -- XV•”ƒR[ƒh
-    UPDATE_PROGRAM_ID              CHAR OPTIONALLY ENCLOSED BY '"',         -- XVƒvƒƒOƒ‰ƒ€‚h‚c
-    CREATION_DATE_TIME             DATE "yyyymmddhh24miss",                 -- ì¬“úŽžŽž•ª•b
-    UPDATE_DATE_TIME               DATE "yyyymmddhh24miss",                 -- XV“úŽžŽž•ª•b
-    PO_NUMBER                      INTEGER EXTERNAL,                        -- ”­’”Ô†
-    PO_LINE_NUMBER                 INTEGER EXTERNAL,                        -- ”­’–¾×”Ô†
-    PO_DISTRIBUTION_NUMBER         INTEGER EXTERNAL,                        -- ”­’”À‘—”Ô†
-    PO_REQ_NUMBER                  INTEGER EXTERNAL,                        -- ”­’ˆË—Š”Ô†
-    LINE_NUM                       INTEGER EXTERNAL,                        -- ”­’ˆË—Š–¾×”Ô†
-    ACCOUNT_NUMBER1                CHAR OPTIONALLY ENCLOSED BY '"',         -- ŒÚ‹qƒR[ƒh‚PiVÝ’uæj
-    ACCOUNT_NUMBER2                CHAR OPTIONALLY ENCLOSED BY '"',         -- ŒÚ‹qƒR[ƒh‚QiŒ»Ý’uæj
-    SAFE_SETTING_STANDARD          CHAR OPTIONALLY ENCLOSED BY '"',         -- ˆÀ‘SÝ’uŠî€
-    INSTALL1_PROCESSED_FLAG        CONSTANT 'N',                            -- •¨Œ‚Pˆ—Ïƒtƒ‰ƒO
-    INSTALL2_PROCESSED_FLAG        CONSTANT 'N',                            -- •¨Œ‚Qˆ—Ïƒtƒ‰ƒO
-    SUSPEND_PROCESSED_FLAG         CONSTANT '0',                            -- ‹xŽ~ˆ—Ïƒtƒ‰ƒO
-    -- 2009.06.04 K.Satomura T1_1107ÄC³‘Î‰ž START
-    -- 2009.05.29 K.Satomura T1_1017,T1_1107‘Î‰ž START
-    --INSTALL1_PROCESSED_DATE        DATE "yyyymmddhh24miss",                 -- •¨Œ‚Pˆ—Ï“ú
-    --INSTALL2_PROCESSED_DATE        DATE "yyyymmddhh24miss",                 -- •¨Œ‚Qˆ—Ï“ú
-    --VDMS_INTERFACE_FLAG            CHAR OPTIONALLY ENCLOSED BY '"',         -- Ž©”Ì‹@S˜AŒgƒtƒ‰ƒO
-    --VDMS_INTERFACE_DATE            DATE "yyyymmddhh24miss",                 -- Ž©”Ì‹@S˜AŒg“ú
-    --PROCESS_NO_TARGET_FLAG         CHAR OPTIONALLY ENCLOSED BY '"',         -- ì‹ÆˆË—Šˆ—‘ÎÛŠOƒtƒ‰ƒO
-    -- 2009.05.29 K.Satomura T1_1017,T1_1107‘Î‰ž END
-    INSTALL1_PROCESSED_DATE        CONSTANT "",                           -- •¨Œ‚Pˆ—Ï“ú
-    INSTALL2_PROCESSED_DATE        CONSTANT "",                           -- •¨Œ‚Qˆ—Ï“ú
-    VDMS_INTERFACE_FLAG            CONSTANT 'N',                          -- Ž©”Ì‹@S˜AŒgƒtƒ‰ƒO
-    VDMS_INTERFACE_DATE            CONSTANT "",                           -- Ž©”Ì‹@S˜AŒg“ú
-    INSTALL1_PROCESS_NO_TARGET_FLG CONSTANT 'N',                          -- •¨Œ‚Pì‹ÆˆË—Šˆ—‘ÎÛŠOƒtƒ‰ƒO
-    INSTALL2_PROCESS_NO_TARGET_FLG CONSTANT 'N',                          -- •¨Œ‚Qì‹ÆˆË—Šˆ—‘ÎÛŠOƒtƒ‰ƒO
-    -- 2009.06.04 K.Satomura T1_1107ÄC³‘Î‰ž END
-    CREATED_BY                     "FND_GLOBAL.USER_ID",                    -- ì¬ŽÒ
-    CREATION_DATE                  SYSDATE,                                 -- ì¬“ú
-    LAST_UPDATED_BY                "FND_GLOBAL.USER_ID",                    -- ÅIXVŽÒ
-    LAST_UPDATE_DATE               SYSDATE,                                 -- ÅIXV“ú
-    LAST_UPDATE_LOGIN              "FND_GLOBAL.LOGIN_ID",                   -- ÅIXVƒƒOƒCƒ“
-    REQUEST_ID                     "FND_GLOBAL.CONC_REQUEST_ID",            -- —v‹ID
-    PROGRAM_APPLICATION_ID         "FND_GLOBAL.PROG_APPL_ID",     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
-    PROGRAM_ID                     "FND_GLOBAL.CONC_PROGRAM_ID",            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
-    PROGRAM_UPDATE_DATE            SYSDATE,                                 -- ƒvƒƒOƒ‰ƒ€XV“ú
-    -- 2009.12.08 K.Hosoi E_–{‰Ò“®_00219‘Î‰ž START
-    INFOS_INTERFACE_FLAG           CONSTANT 'N',                            -- î•ñŒn˜AŒgÏƒtƒ‰ƒO
-    INFOS_INTERFACE_DATE           CONSTANT ""                              -- î•ñŒn˜AŒg“ú
-    -- 2009.12.08 K.Hosoi E_–{‰Ò“®_00219‘Î‰ž END
+      SUBSTR(:INSTALL_CODE2, 1, 3) || '-' || SUBSTR(:INSTALL_CODE2, 4))",    -- ç‰©ä»¶ã‚³ãƒ¼ãƒ‰ï¼’ï¼ˆå¼•æšç”¨ï¼‰
+    WORK_HOPE_DATE                 INTEGER EXTERNAL,                        -- ä½œæ¥­å¸Œæœ›æ—¥/å¼•å–å¸Œæœ›æ—¥
+    WORK_HOPE_TIME_KBN             INTEGER EXTERNAL,                        -- ä½œæ¥­å¸Œæœ›æ™‚é–“åŒºåˆ†
+    WORK_HOPE_TIME                 CHAR OPTIONALLY ENCLOSED BY '"',         -- ä½œæ¥­å¸Œæœ›æ™‚é–“
+    CURRENT_INSTALL_NAME           CHAR OPTIONALLY ENCLOSED BY '"',         -- ç¾è¨­ç½®å…ˆå
+    NEW_INSTALL_NAME               CHAR OPTIONALLY ENCLOSED BY '"',         -- æ–°è¨­ç½®å…ˆå
+    WITHDRAWAL_PROCESS_KBN         INTEGER EXTERNAL,                        -- å¼•æšæ©Ÿå‡¦ç†åŒºåˆ†
+    ACTUAL_WORK_DATE               INTEGER EXTERNAL,                        -- å®Ÿä½œæ¥­æ—¥
+    ACTUAL_WORK_TIME1              CHAR OPTIONALLY ENCLOSED BY '"',         -- å®Ÿä½œæ¥­æ™‚é–“ï¼‘
+    ACTUAL_WORK_TIME2              CHAR OPTIONALLY ENCLOSED BY '"',         -- å®Ÿä½œæ¥­æ™‚é–“ï¼’
+    COMPLETION_KBN                 INTEGER EXTERNAL,                        -- å®Œäº†åŒºåˆ†
+    DELETE_FLAG                    INTEGER EXTERNAL,                        -- å‰Šé™¤ãƒ•ãƒ©ã‚°
+    COMPLETION_PLAN_DATE           INTEGER EXTERNAL,                        -- å®Œäº†äºˆå®šæ—¥/ä¿®ç†å®Œäº†äºˆå®šæ—¥
+    COMPLETION_DATE                INTEGER EXTERNAL,                        -- å®Œäº†æ—¥/ä¿®ç†å®Œäº†æ—¥
+    DISPOSAL_APPROVAL_DATE         INTEGER EXTERNAL,                        -- å»ƒæ£„æ±ºè£æ—¥
+    WITHDRAWAL_DATE                INTEGER EXTERNAL,                        -- å®Ÿå¼•å–æ—¥/å¼•å–æ—¥
+    DELIVERY_DATE                  INTEGER EXTERNAL,                        -- äº¤ä»˜æ—¥
+    LAST_DISPOSAL_END_DATE         INTEGER EXTERNAL,                        -- æœ€çµ‚å‡¦åˆ†çµ‚äº†å¹´æœˆæ—¥
+    FWD_ROOT_COMPANY_CODE          CHAR OPTIONALLY ENCLOSED BY '"',         -- ï¼ˆè»¢é€å…ƒï¼‰ä¼šç¤¾ã‚³ãƒ¼ãƒ‰
+    FWD_ROOT_LOCATION_CODE         CHAR OPTIONALLY ENCLOSED BY '"',         -- ï¼ˆè»¢é€å…ƒï¼‰äº‹æ¥­æ‰€ã‚³ãƒ¼ãƒ‰
+    FWD_DISTINATION_COMPANY_CODE   CHAR OPTIONALLY ENCLOSED BY '"',         -- ï¼ˆè»¢é€å…ˆï¼‰ä¼šç¤¾ã‚³ãƒ¼ãƒ‰
+    FWD_DISTINATION_LOCATION_CODE  CHAR OPTIONALLY ENCLOSED BY '"',         -- ï¼ˆè»¢é€å…ˆï¼‰äº‹æ¥­æ‰€ã‚³ãƒ¼ãƒ‰
+    CREATION_EMPLOYEE_NUMBER       CHAR OPTIONALLY ENCLOSED BY '"',         -- ä½œæˆæ‹…å½“è€…ã‚³ãƒ¼ãƒ‰
+    CREATION_SECTION_NAME          CHAR OPTIONALLY ENCLOSED BY '"',         -- ä½œæˆéƒ¨ç½²ã‚³ãƒ¼ãƒ‰
+    CREATION_PROGRAM_ID            CHAR OPTIONALLY ENCLOSED BY '"',         -- ä½œæˆãƒ—ãƒ­ã‚°ãƒ©ãƒ ï¼©ï¼¤
+    UPDATE_EMPLOYEE_NUMBER         CHAR OPTIONALLY ENCLOSED BY '"',         -- æ›´æ–°æ‹…å½“è€…ã‚³ãƒ¼ãƒ‰
+    UPDATE_SECTION_NAME            CHAR OPTIONALLY ENCLOSED BY '"',         -- æ›´æ–°éƒ¨ç½²ã‚³ãƒ¼ãƒ‰
+    UPDATE_PROGRAM_ID              CHAR OPTIONALLY ENCLOSED BY '"',         -- æ›´æ–°ãƒ—ãƒ­ã‚°ãƒ©ãƒ ï¼©ï¼¤
+    CREATION_DATE_TIME             DATE "yyyymmddhh24miss",                 -- ä½œæˆæ—¥æ™‚æ™‚åˆ†ç§’
+    UPDATE_DATE_TIME               DATE "yyyymmddhh24miss",                 -- æ›´æ–°æ—¥æ™‚æ™‚åˆ†ç§’
+    PO_NUMBER                      INTEGER EXTERNAL,                        -- ç™ºæ³¨ç•ªå·
+    PO_LINE_NUMBER                 INTEGER EXTERNAL,                        -- ç™ºæ³¨æ˜Žç´°ç•ªå·
+    PO_DISTRIBUTION_NUMBER         INTEGER EXTERNAL,                        -- ç™ºæ³¨æ¬é€ç•ªå·
+    PO_REQ_NUMBER                  INTEGER EXTERNAL,                        -- ç™ºæ³¨ä¾é ¼ç•ªå·
+    LINE_NUM                       INTEGER EXTERNAL,                        -- ç™ºæ³¨ä¾é ¼æ˜Žç´°ç•ªå·
+    ACCOUNT_NUMBER1                CHAR OPTIONALLY ENCLOSED BY '"',         -- é¡§å®¢ã‚³ãƒ¼ãƒ‰ï¼‘ï¼ˆæ–°è¨­ç½®å…ˆï¼‰
+    ACCOUNT_NUMBER2                CHAR OPTIONALLY ENCLOSED BY '"',         -- é¡§å®¢ã‚³ãƒ¼ãƒ‰ï¼’ï¼ˆç¾è¨­ç½®å…ˆï¼‰
+    SAFE_SETTING_STANDARD          CHAR OPTIONALLY ENCLOSED BY '"',         -- å®‰å…¨è¨­ç½®åŸºæº–
+    INSTALL1_PROCESSED_FLAG        CONSTANT 'N',                            -- ç‰©ä»¶ï¼‘å‡¦ç†æ¸ˆãƒ•ãƒ©ã‚°
+    INSTALL2_PROCESSED_FLAG        CONSTANT 'N',                            -- ç‰©ä»¶ï¼’å‡¦ç†æ¸ˆãƒ•ãƒ©ã‚°
+    SUSPEND_PROCESSED_FLAG         CONSTANT '0',                            -- ä¼‘æ­¢å‡¦ç†æ¸ˆãƒ•ãƒ©ã‚°
+    -- 2009.06.04 K.Satomura T1_1107å†ä¿®æ­£å¯¾å¿œ START
+    -- 2009.05.29 K.Satomura T1_1017,T1_1107å¯¾å¿œ START
+    --INSTALL1_PROCESSED_DATE        DATE "yyyymmddhh24miss",                 -- ç‰©ä»¶ï¼‘å‡¦ç†æ¸ˆæ—¥
+    --INSTALL2_PROCESSED_DATE        DATE "yyyymmddhh24miss",                 -- ç‰©ä»¶ï¼’å‡¦ç†æ¸ˆæ—¥
+    --VDMS_INTERFACE_FLAG            CHAR OPTIONALLY ENCLOSED BY '"',         -- è‡ªè²©æ©ŸSé€£æºãƒ•ãƒ©ã‚°
+    --VDMS_INTERFACE_DATE            DATE "yyyymmddhh24miss",                 -- è‡ªè²©æ©ŸSé€£æºæ—¥
+    --PROCESS_NO_TARGET_FLAG         CHAR OPTIONALLY ENCLOSED BY '"',         -- ä½œæ¥­ä¾é ¼å‡¦ç†å¯¾è±¡å¤–ãƒ•ãƒ©ã‚°
+    -- 2009.05.29 K.Satomura T1_1017,T1_1107å¯¾å¿œ END
+    INSTALL1_PROCESSED_DATE        CONSTANT "",                           -- ç‰©ä»¶ï¼‘å‡¦ç†æ¸ˆæ—¥
+    INSTALL2_PROCESSED_DATE        CONSTANT "",                           -- ç‰©ä»¶ï¼’å‡¦ç†æ¸ˆæ—¥
+    VDMS_INTERFACE_FLAG            CONSTANT 'N',                          -- è‡ªè²©æ©ŸSé€£æºãƒ•ãƒ©ã‚°
+    VDMS_INTERFACE_DATE            CONSTANT "",                           -- è‡ªè²©æ©ŸSé€£æºæ—¥
+    INSTALL1_PROCESS_NO_TARGET_FLG CONSTANT 'N',                          -- ç‰©ä»¶ï¼‘ä½œæ¥­ä¾é ¼å‡¦ç†å¯¾è±¡å¤–ãƒ•ãƒ©ã‚°
+    INSTALL2_PROCESS_NO_TARGET_FLG CONSTANT 'N',                          -- ç‰©ä»¶ï¼’ä½œæ¥­ä¾é ¼å‡¦ç†å¯¾è±¡å¤–ãƒ•ãƒ©ã‚°
+    -- 2009.06.04 K.Satomura T1_1107å†ä¿®æ­£å¯¾å¿œ END
+    CREATED_BY                     "FND_GLOBAL.USER_ID",                    -- ä½œæˆè€…
+    CREATION_DATE                  SYSDATE,                                 -- ä½œæˆæ—¥
+    LAST_UPDATED_BY                "FND_GLOBAL.USER_ID",                    -- æœ€çµ‚æ›´æ–°è€…
+    LAST_UPDATE_DATE               SYSDATE,                                 -- æœ€çµ‚æ›´æ–°æ—¥
+    LAST_UPDATE_LOGIN              "FND_GLOBAL.LOGIN_ID",                   -- æœ€çµ‚æ›´æ–°ãƒ­ã‚°ã‚¤ãƒ³
+    REQUEST_ID                     "FND_GLOBAL.CONC_REQUEST_ID",            -- è¦æ±‚ID
+    PROGRAM_APPLICATION_ID         "FND_GLOBAL.PROG_APPL_ID",     -- ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ»ãƒ—ãƒ­ã‚°ãƒ©ãƒ ãƒ»ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ID
+    PROGRAM_ID                     "FND_GLOBAL.CONC_PROGRAM_ID",            -- ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ»ãƒ—ãƒ­ã‚°ãƒ©ãƒ ID
+    PROGRAM_UPDATE_DATE            SYSDATE,                                 -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ æ›´æ–°æ—¥
+    -- 2009.12.08 K.Hosoi E_æœ¬ç¨¼å‹•_00219å¯¾å¿œ START
+    INFOS_INTERFACE_FLAG           CONSTANT 'N',                            -- æƒ…å ±ç³»é€£æºæ¸ˆãƒ•ãƒ©ã‚°
+    INFOS_INTERFACE_DATE           CONSTANT ""                              -- æƒ…å ±ç³»é€£æºæ—¥
+    -- 2009.12.08 K.Hosoi E_æœ¬ç¨¼å‹•_00219å¯¾å¿œ END
   )
