@@ -2,9 +2,9 @@
 -- Copyright(c)Sumisho Corporation Japan, 2006-2008. All rights reserved.
 -- 
 -- Control file  : XXCSO014A05D.ctl
--- Description   : �c�ƃV�X�e���\�z�v���W�F�N�g�A�h�I���FHHT-EBS�C���^�[�t�F�[�X�F(IN)�m�[�g 
--- MD.050        : MD050_CSO_014_A05_HHT-EBS�C���^�[�t�F�[�X�F(IN�j�m�[�g_Draft2.0C.doc
--- MD.070        : �Ȃ�
+-- Description   : 営業システム構築プロジェクトアドオン：HHT-EBSインターフェース：(IN)ノート 
+-- MD.050        : MD050_CSO_014_A05_HHT-EBSインターフェース：(IN）ノート_Draft2.0C.doc
+-- MD.070        : なし
 -- Version       : 1.0
 --
 -- Target Table  : XXCSO_IN_NOTES
@@ -13,8 +13,8 @@
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
---  2008/12/3     1.0     Seirin.Kin         �V�K�쐬
---  2009/03/16    1.1     Kunihiko.Boku      �m�[�g�̃t�B���h���w��
+--  2008/12/3     1.0     Seirin.Kin         新規作成
+--  2009/03/16    1.1     Kunihiko.Boku      ノートのフィルド長指定
 --
 -- ************************************************************************************************
 
@@ -26,19 +26,19 @@ APPEND
 INTO TABLE XXCSO_IN_NOTES
 FIELDS TERMINATED BY "," TRAILING NULLCOLS
   (  
-    ACCOUNT_NUMBER          CHAR OPTIONALLY ENCLOSED BY '"' ,              -- �ڋq�R�[�h
-    NOTES                   CHAR(2000) OPTIONALLY ENCLOSED BY '"' ,        -- �m�[�g
-    EMPLOYEE_NUMBER         CHAR OPTIONALLY ENCLOSED BY '"' ,              -- �c�ƈ��R�[�h
-    INPUT_DATE              DATE "yyyymmdd",                               -- ���͓��t
-    INPUT_TIME              CHAR OPTIONALLY ENCLOSED BY '"' ,              -- ���͎���
-    NO_SEQ                  "XXCSO_IN_NOTES_S01.NEXTVAL",                   -- �V�[�P���X�ԍ�
-    CREATED_BY              "FND_GLOBAL.USER_ID",                          -- *** �쐬��
-    CREATION_DATE           SYSDATE,                                       -- *** �쐬��
-    LAST_UPDATED_BY         "FND_GLOBAL.USER_ID",                          -- *** �ŏI�X�V��
-    LAST_UPDATE_DATE        SYSDATE,                                       -- *** �ŏI�X�V��
-    LAST_UPDATE_LOGIN       "FND_GLOBAL.LOGIN_ID",                         -- *** �ŏI�X�V���O�C��
-    REQUEST_ID              "FND_GLOBAL.CONC_REQUEST_ID",                  -- *** �v��ID
-    PROGRAM_APPLICATION_ID  "FND_GLOBAL.CONC_PROGRAM_ID",                  -- *** �ݶ��ĥ��۸��ѥ���ع����ID
-    PROGRAM_ID              "FND_GLOBAL.CONC_PROGRAM_ID",                  -- *** �ݶ��ĥ��۸���ID
-    PROGRAM_UPDATE_DATE     SYSDATE                                        -- *** ��۸��эX�V��
+    ACCOUNT_NUMBER          CHAR OPTIONALLY ENCLOSED BY '"' ,              -- 顧客コード
+    NOTES                   CHAR(2000) OPTIONALLY ENCLOSED BY '"' ,        -- ノート
+    EMPLOYEE_NUMBER         CHAR OPTIONALLY ENCLOSED BY '"' ,              -- 営業員コード
+    INPUT_DATE              DATE "yyyymmdd",                               -- 入力日付
+    INPUT_TIME              CHAR OPTIONALLY ENCLOSED BY '"' ,              -- 入力時刻
+    NO_SEQ                  "XXCSO_IN_NOTES_S01.NEXTVAL",                   -- シーケンス番号
+    CREATED_BY              "FND_GLOBAL.USER_ID",                          -- *** 作成者
+    CREATION_DATE           SYSDATE,                                       -- *** 作成日
+    LAST_UPDATED_BY         "FND_GLOBAL.USER_ID",                          -- *** 最終更新者
+    LAST_UPDATE_DATE        SYSDATE,                                       -- *** 最終更新日
+    LAST_UPDATE_LOGIN       "FND_GLOBAL.LOGIN_ID",                         -- *** 最終更新ログイン
+    REQUEST_ID              "FND_GLOBAL.CONC_REQUEST_ID",                  -- *** 要求ID
+    PROGRAM_APPLICATION_ID  "FND_GLOBAL.CONC_PROGRAM_ID",                  -- *** ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+    PROGRAM_ID              "FND_GLOBAL.CONC_PROGRAM_ID",                  -- *** ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+    PROGRAM_UPDATE_DATE     SYSDATE                                        -- *** ﾌﾟﾛｸﾞﾗﾑ更新日
   )
