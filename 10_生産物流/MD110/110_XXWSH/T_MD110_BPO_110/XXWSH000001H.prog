@@ -1,22 +1,22 @@
 #! /usr/bin/ksh
 
 #######################################################################
-#yŠT—vzƒŠƒ‚[ƒgƒCƒ“ƒXƒ^ƒ“ƒX‚Å“®ì‚·‚éŽw’è‚ÌƒZƒbƒVƒ‡ƒ“‚ðSql*Plus‚ÅØ’f
+#ã€æ¦‚è¦ã€‘ãƒªãƒ¢ãƒ¼ãƒˆã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã§å‹•ä½œã™ã‚‹æŒ‡å®šã®ã‚»ãƒƒã‚·ãƒ§ãƒ³ã‚’Sql*Plusã§åˆ‡æ–­
 #
-#yŽÀsƒpƒ‰ƒƒ^z1.inst_id:gv$session,gv$lock‚Å“Á’è‚Å‚«‚½ƒZƒbƒVƒ‡ƒ“‚ª
-#@@@@@@@@@@@@@‘¶Ý‚·‚éƒCƒ“ƒXƒ^ƒ“ƒX
-#@@@@@@@@2.sid@@F“¯AƒZƒbƒVƒ‡ƒ“ID
-#@@@@@@@@3.serial#F“¯AƒVƒŠƒAƒ‹
+#ã€å®Ÿè¡Œãƒ‘ãƒ©ãƒ¡ã‚¿ã€‘1.inst_id:gv$session,gv$lockã§ç‰¹å®šã§ããŸã‚»ãƒƒã‚·ãƒ§ãƒ³ãŒ
+#ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€å­˜åœ¨ã™ã‚‹ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
+#ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€2.sidã€€ã€€ï¼šåŒã€ã‚»ãƒƒã‚·ãƒ§ãƒ³ID
+#ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€3.serial#ï¼šåŒã€ã‚·ãƒªã‚¢ãƒ«
 #
-#y‹N“®ðŒz‚PD–{ƒXƒNƒŠƒvƒg‚ðŒÄ‚Ño‚·ƒRƒ“ƒJƒŒƒ“ƒgˆ—‚Ågv$sessionC
-#@@@@@@@@gv$lock‚©‚çAØ’f‘ÎÛ‚Ì inst_idCsidCserial#‚ª“Á’è
-#@@@@@@@@o—ˆ‚Ä‚¢‚éó‘Ô‚ÅAƒpƒ‰ƒƒ^Žw’è‚³‚êAŽÀs‚³‚ê‚é‚±‚Æ
+#ã€èµ·å‹•æ¡ä»¶ã€‘ï¼‘ï¼Žæœ¬ã‚¹ã‚¯ãƒªãƒ—ãƒˆã‚’å‘¼ã³å‡ºã™ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆå‡¦ç†ã§gv$sessionï¼Œ
+#ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€gv$lockã‹ã‚‰ã€åˆ‡æ–­å¯¾è±¡ã® inst_idï¼Œsidï¼Œserial#ãŒç‰¹å®š
+#ã€€ã€€ã€€ã€€ã€€ã€€ã€€ã€€å‡ºæ¥ã¦ã„ã‚‹çŠ¶æ…‹ã§ã€ãƒ‘ãƒ©ãƒ¡ã‚¿æŒ‡å®šã•ã‚Œã€å®Ÿè¡Œã•ã‚Œã‚‹ã“ã¨
 #
-#yI—¹ðŒz‚PDSQL*PLUS‚ª³íI—¹‚µ‚½‚çA³íI—¹iexit 0j
-#@@@@@@‚QDSQL*PLUS‚ªˆÙíI—¹‚µ‚½‚çAˆÙíI—¹iexit 4j
-#@@@@@@‚RDinst_id‚ª•s’è‚Ìê‡AˆÙíI—¹iexit 4j
+#ã€çµ‚äº†æ¡ä»¶ã€‘ï¼‘ï¼ŽSQL*PLUSãŒæ­£å¸¸çµ‚äº†ã—ãŸã‚‰ã€æ­£å¸¸çµ‚äº†ï¼ˆexit 0ï¼‰
+#ã€€ã€€ã€€ã€€ã€€ã€€ï¼’ï¼ŽSQL*PLUSãŒç•°å¸¸çµ‚äº†ã—ãŸã‚‰ã€ç•°å¸¸çµ‚äº†ï¼ˆexit 4ï¼‰
+#ã€€ã€€ã€€ã€€ã€€ã€€ï¼“ï¼Žinst_idãŒä¸å®šã®å ´åˆã€ç•°å¸¸çµ‚äº†ï¼ˆexit 4ï¼‰
 #
-#y“Á‹LzEBSƒRƒ“ƒJƒŒƒ“ƒgShell‚Æ‚µ‚ÄŽÀs‚·‚éê‡‚É‚ÍAKrown#10317ŽQÆ
+#ã€ç‰¹è¨˜ã€‘EBSã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆShellã¨ã—ã¦å®Ÿè¡Œã™ã‚‹å ´åˆã«ã¯ã€Krown#10317å‚ç…§
 #
 #######################################################################
 
@@ -46,19 +46,27 @@ case $Parameter1 in
 1)
 # 2014/08/13 MOD START
 #  INST=PEBSITO1;
-  INST=AEBSITO1;
+# 2021/12/20 MOD START
+#  INST=AEBSITO1;
+  export EXINST=BEBS01
+# 2021/12/20 MOD END
 # 2014/08/13 MOD END
   ;;
 2)
 # 2014/08/13 MOD START
 #  INST=PEBSITO2;
-  INST=AEBSITO2;
+# 2021/12/20 MOD START
+#  INST=AEBSITO2;
+  export EXINST=BEBS02
+# 2021/12/20 MOD END
 # 2014/08/13 MOD END
   ;;
 3)
 # 2014/08/13 MOD START
 #  INST=PEBSITO3;
-  INST=AEBSITO3;
+# 2021/12/20 DEL START
+#  INST=AEBSITO3;
+# 2021/12/20 DEL END
 # 2014/08/13 MOD END
   ;;
 *)
@@ -76,8 +84,10 @@ set feedback off
 set echo off
 set pages 0
 --
-
-CONNECT apps/apps@$INST
+--2021/12/20 MOD START
+--CONNECT apps/apps@$INST
+CONNECT apps/apps@$EXINST
+--2021/12/20 MOD END
 
 alter system kill session '$SID,$SERIAL';
 
@@ -91,8 +101,8 @@ EOF
 # 3. Exit status check
 ##########################################################
 
-# ƒGƒ‰[‚ÍŽæ“¾‚µ‚È‚¢
-# Ø’f‚µ‚æ‚¤‚Æ‚µ‚ÄAŠù‚ÉƒZƒbƒVƒ‡ƒ“‚ª‚È‚¢ê‡‚ª‘¶Ý‚·‚éˆ×
+# ã‚¨ãƒ©ãƒ¼ã¯å–å¾—ã—ãªã„
+# åˆ‡æ–­ã—ã‚ˆã†ã¨ã—ã¦ã€æ—¢ã«ã‚»ãƒƒã‚·ãƒ§ãƒ³ãŒãªã„å ´åˆãŒå­˜åœ¨ã™ã‚‹ç‚º
 #Exit fatal
 #if [ $? -ne 0 ]
 #then
