@@ -1,57 +1,62 @@
 #!/bin/ksh
 ################################################################################
 ##                                                                            ##
-##    [ŠT—v]                                                                  ##
-##        EBSƒRƒ“ƒJƒŒƒ“ƒg—p”Ä—pƒXƒNƒŠƒvƒg                                     ##
+##    [æ¦‚è¦]                                                                  ##
+##        EBSã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆç”¨æ±ç”¨ã‚¹ã‚¯ãƒªãƒ—ãƒˆ                                     ##
 ##                                                                            ##
-##    [ì¬^XV—š—ğ]                                                        ##
-##        ì¬Ò  F  Oracle    —é–Ø —Y‘å    2008/04/01 1.0.1                 ##
-##        XV—š—ğF  Oracle    —é–Ø —Y‘å    2008/04/01 1.0.1                 ##
-##                        ‰”Å                                                ##
-##                    SCSŠÛ‰º 2009/04/02 —v‹IDæ“¾ˆÊ’u•ÏX                   ##
-##                    SCS²–ì 2009/04/28 STŠÂ‹«—p‚Ìƒpƒ‰ƒ[ƒ^‚Ö•ÏX           ##
-##                    SCSm–Ø 2009/06/17 CONCSUB—v‹‘Ò‚¿ŠÔ•ÏX(60•b¨1•b)   ##
-##                    SCS²–ì 2009/08/19 ˆêƒtƒ@ƒCƒ‹–¼•ÏX                   ##
-##                    SCSK      ûü‹´ º‘¾    2014/08/05 1.0.5                 ##
-##                        ƒŠƒvƒŒ[ƒX_00004‘Î‰                                ##
+##    [ä½œæˆï¼æ›´æ–°å±¥æ­´]                                                        ##
+##        ä½œæˆè€…  ï¼š  Oracle    éˆ´æœ¨ é›„å¤§    2008/04/01 1.0.1                 ##
+##        æ›´æ–°å±¥æ­´ï¼š  Oracle    éˆ´æœ¨ é›„å¤§    2008/04/01 1.0.1                 ##
+##                        åˆç‰ˆ                                                ##
+##                    SCSä¸¸ä¸‹ 2009/04/02 è¦æ±‚IDå–å¾—ä½ç½®å¤‰æ›´                   ##
+##                    SCSä½é‡ 2009/04/28 STç’°å¢ƒç”¨ã®ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã¸å¤‰æ›´           ##
+##                    SCSä»æœ¨ 2009/06/17 CONCSUBè¦æ±‚å¾…ã¡æ™‚é–“å¤‰æ›´(60ç§’â†’1ç§’)   ##
+##                    SCSä½é‡ 2009/08/19 ä¸€æ™‚ãƒ•ã‚¡ã‚¤ãƒ«åå¤‰æ›´                   ##
+##                    SCSK      é«™æ©‹ æ˜­å¤ª    2014/08/05 1.0.5                 ##
+##                        ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00004å¯¾å¿œ                                ##
+##                    SCSK      ç«¹æµª éš¼      2021/12/20 3.0.0                 ##
+##                        E_æœ¬ç¨¼å‹•_17774å¯¾å¿œ(ç’°å¢ƒä¾å­˜å€¤ã®ä¿®æ­£)                ##
 ##                                                                            ##
-##    [–ß‚è’l]                                                                ##
-##        0     ³í                                                          ##
-##        4     Œx                                                          ##
-##        8     ˆÙí                                                          ##
+##    [æˆ»ã‚Šå€¤]                                                                ##
+##        0     æ­£å¸¸                                                          ##
+##        4     è­¦å‘Š                                                          ##
+##        8     ç•°å¸¸                                                          ##
 ##                                                                            ##
-##    [ƒpƒ‰ƒ[ƒ^]                                                            ##
-##        EÓƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼                                          ##
-##        EÓ–¼                                                              ##
-##        APPSƒ†[ƒU–¼                                                        ##
-##        ƒRƒ“ƒJƒŒƒ“ƒgƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼                                  ##
-##        ƒRƒ“ƒJƒŒƒ“ƒgƒvƒƒOƒ‰ƒ€–¼                                            ##
-##        ƒRƒ“ƒJƒŒƒ“ƒgƒpƒ‰ƒ[ƒ^                                              ##
+##    [ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿]                                                            ##
+##        è·è²¬ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³çŸ­ç¸®å                                          ##
+##        è·è²¬å                                                              ##
+##        APPSãƒ¦ãƒ¼ã‚¶å                                                        ##
+##        ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³çŸ­ç¸®å                                  ##
+##        ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ—ãƒ­ã‚°ãƒ©ãƒ å                                            ##
+##        ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿                                              ##
 ##                                                                            ##
-##     Copyright  Š”®‰ïĞˆÉ“¡‰€ U5000ƒvƒƒWƒFƒNƒg 2007-2009                  ##
+##     Copyright  æ ªå¼ä¼šç¤¾ä¼Šè—¤åœ’ U5000ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆ 2007-2009                  ##
 ################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
-## •Ï”’è‹`
+## å¤‰æ•°å®šç¾©
 #2014/08/05 ADD Ver.1.0.5 by Shota Takahashi START
-L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ƒVƒFƒ‹‚ÌŠi”[ƒfƒBƒŒƒNƒgƒŠ
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ã‚·ã‚§ãƒ«ã®æ ¼ç´ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 #2014/08/05 ADD Ver.1.0.5 by Shota Takahashi END
 
 #L_shellpath="/uspg/jp1/zb/shl/PEBSITO"                             #2009/08/19 DEL
 
 #2014/08/05 MOD Ver.1.0.5 by Shota Takahashi START
-#L_logpath="/var/EBS/jp1/PEBSITO/log"  #ƒƒOƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
-#L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"   #ˆêƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l] #2009/08/19 Add
+#L_logpath="/var/EBS/jp1/PEBSITO/log"  #ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹[ç’°å¢ƒä¾å­˜å€¤]
+#L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"   #ä¸€æ™‚ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹[ç’°å¢ƒä¾å­˜å€¤] #2009/08/19 Add
 L_logpath="/var/EBS/jp1/${L_envname}/log"
-L_tmppath="/ebs/${L_envname}/${L_envname}comn/temp"  #ˆêƒtƒ@ƒCƒ‹ƒpƒX[ŠÂ‹«ˆË‘¶’l]
+L_tmppath="/ebs/${L_envname}/${L_envname}comn/temp"  #ä¸€æ™‚ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹[ç’°å¢ƒä¾å­˜å€¤]
 #2014/08/05 MOD Ver.1.0.5 by Shota Takahashi END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
-L_cmddir=`/bin/dirname ${L_cmd}`
+#2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+#L_cmddir=`/bin/dirname ${L_cmd}`
+L_cmddir=`/usr/bin/dirname ${L_cmd}`
+#2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
 L_hostname=`/bin/hostname`
 L_execdate=`/bin/date "+%Y%m%d"`
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
@@ -71,16 +76,16 @@ L_err_out=${L_tmppath}/${L_tmpbase}.errout.tmp
 #2009/08/19 Ver1.4 Mod End
 
 ################################################################################
-##                                 ŠÖ”’è‹`                                   ##
+##                                 é–¢æ•°å®šç¾©                                   ##
 ################################################################################
 
-### ƒƒOo—Íˆ— ###
+### ãƒ­ã‚°å‡ºåŠ›å‡¦ç† ###
 output_log()
 {
   echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
 }
 
-### I—¹ˆ— ###
+### çµ‚äº†å‡¦ç† ###
 shell_end()
 {
   if [ -f ${L_std_out} ]
@@ -138,7 +143,10 @@ L_paracount=${#}
 if [ ${#} -lt 5 ]
 then
   output_log "Parameter Error"
-  /usr/bin/cat <<-EOF 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+  #/usr/bin/cat <<-EOF 1>&2
+  /bin/cat <<-EOF 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
   ${L_cmdname}
   Responsibility_Application_Short_Name
   Responsibility_Name
@@ -204,11 +212,17 @@ L_return_code=${?}
 if [ ${L_return_code} -ne 0 ]
 then
   output_log "Executing CONCSUB was Failed"
-  /usr/bin/cat <<-EOF 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+  #/usr/bin/cat <<-EOF 1>&2
+  /bin/cat <<-EOF 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
   ${L_cmdname} SYSTEM ERROR. CONCSUB ABORT.
   Return Code: ${L_return_code}
 EOF
-  /usr/bin/cat ${L_std_out} ${L_err_out} 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+  #/usr/bin/cat ${L_std_out} ${L_err_out} 1>&2
+  /bin/cat ${L_std_out} ${L_err_out} 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
   shell_end ${L_exit_eror}
 fi
 
