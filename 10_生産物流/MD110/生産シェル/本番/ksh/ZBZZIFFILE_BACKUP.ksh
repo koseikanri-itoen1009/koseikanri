@@ -1,36 +1,38 @@
 #!/bin/ksh
 ################################################################################
 ##                                                                            ##
-##    [äTóv]                                                                  ##
-##        ÉtÉ@ÉCÉãÉoÉbÉNÉAÉbÉvópÉXÉNÉäÉvÉg                                    ##
+##    [Ê¶ÇË¶Å]                                                                  ##
+##        „Éï„Ç°„Ç§„É´„Éê„ÉÉ„ÇØ„Ç¢„ÉÉ„ÉóÁî®„Çπ„ÇØ„É™„Éó„Éà                                    ##
 ##                                                                            ##
-##    [çÏê¨Å^çXêVóöó]                                                        ##
-##        çÏê¨é“  ÅF  Oracle    óÈñÿ óYëÂ    2008/04/01 1.0.1                 ##
-##        çXêVóöóÅF  Oracle    óÈñÿ óYëÂ    2008/04/01 1.0.1                 ##
-##                    Oracle    óÈñÿ óYëÂ    2008/06/24 1.0.2                 ##
-##                        èâî≈                                                ##
-##                    SCSK      ˚¸ã¥ è∫ëæ    2014/08/05 1.0.3                 ##
-##                        ÉäÉvÉåÅ[ÉX_00004ëŒâû                                ##
+##    [‰ΩúÊàêÔºèÊõ¥Êñ∞Â±•Ê≠¥]                                                        ##
+##        ‰ΩúÊàêËÄÖ  Ôºö  Oracle    Èà¥Êú® ÈõÑÂ§ß    2008/04/01 1.0.1                 ##
+##        Êõ¥Êñ∞Â±•Ê≠¥Ôºö  Oracle    Èà¥Êú® ÈõÑÂ§ß    2008/04/01 1.0.1                 ##
+##                    Oracle    Èà¥Êú® ÈõÑÂ§ß    2008/06/24 1.0.2                 ##
+##                        ÂàùÁâà                                                ##
+##                    SCSK      È´ôÊ©ã Êò≠Â§™    2014/08/05 1.0.3                 ##
+##                        „É™„Éó„É¨„Éº„Çπ_00004ÂØæÂøú                                ##
+##                    SCSK      Á´πÊµ™ Èöº      2021/12/20 3.0.0                 ##
+##                        E_Êú¨Á®ºÂãï_17774ÂØæÂøú (Áí∞Â¢É‰æùÂ≠òÂÄ§„ÅÆ‰øÆÊ≠£)               ##
 ##                                                                            ##
-##    [ñﬂÇËíl]                                                                ##
-##        0     ê≥èÌ                                                          ##
-##        8     àŸèÌ                                                          ##
+##    [Êàª„ÇäÂÄ§]                                                                ##
+##        0     Ê≠£Â∏∏                                                          ##
+##        8     Áï∞Â∏∏                                                          ##
 ##                                                                            ##
-##    [ÉpÉâÉÅÅ[É^]                                                            ##
-##        ÉoÉbÉNÉAÉbÉvÉtÉ@ÉCÉãñº                                              ##
-##        ÉoÉbÉNÉAÉbÉvêÊÉfÉBÉåÉNÉgÉäñº                                        ##
-##        ÉoÉbÉNÉAÉbÉvê¢ë„êî                                                  ##
-##        ÉGÉìÉhÉtÉ@ÉCÉãñº                                                    ##
+##    [„Éë„É©„É°„Éº„Çø]                                                            ##
+##        „Éê„ÉÉ„ÇØ„Ç¢„ÉÉ„Éó„Éï„Ç°„Ç§„É´Âêç                                              ##
+##        „Éê„ÉÉ„ÇØ„Ç¢„ÉÉ„ÉóÂÖà„Éá„Ç£„É¨„ÇØ„Éà„É™Âêç                                        ##
+##        „Éê„ÉÉ„ÇØ„Ç¢„ÉÉ„Éó‰∏ñ‰ª£Êï∞                                                  ##
+##        „Ç®„É≥„Éâ„Éï„Ç°„Ç§„É´Âêç                                                    ##
 ##                                                                            ##
-##     Copyright  äîéÆâÔé–à…ì°âÄ U5000ÉvÉçÉWÉFÉNÉg 2007-2009                  ##
+##     Copyright  Ê†™Âºè‰ºöÁ§æ‰ºäËó§Âúí U5000„Éó„É≠„Ç∏„Çß„ÇØ„Éà 2007-2009                  ##
 ################################################################################
 ################################################################################
-##                                 ïœêîíËã`                                   ##
+##                                 Â§âÊï∞ÂÆöÁæ©                                   ##
 ################################################################################
 
-## ïœêîíËã`
+## Â§âÊï∞ÂÆöÁæ©
 #2014/08/05 ADD Ver.1.0.3 by Shota Takahashi START
-L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #ÉVÉFÉãÇÃäiî[ÉfÉBÉåÉNÉgÉä
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #„Ç∑„Çß„É´„ÅÆÊ†ºÁ¥ç„Éá„Ç£„É¨„ÇØ„Éà„É™
 #2014/08/05 ADD Ver.1.0.3 by Shota Takahashi END
 
 #2014/08/05 MOD Ver.1.0.3 by Shota Takahashi START
@@ -42,7 +44,10 @@ L_logpath="/var/EBS/jp1/${L_envname}/log"
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
-L_cmddir=`/bin/dirname ${L_cmd}`
+#2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+#L_cmddir=`/bin/dirname ${L_cmd}`
+L_cmddir=`/usr/bin/dirname ${L_cmd}`
+#2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
 L_hostname=`/bin/hostname`
 L_execdate=`/bin/date "+%Y%m%d"`
 L_logfile="${L_logpath}/"`/bin/basename ${L_cmdname} .ksh`"_${L_hostname}_${L_execdate}.log"
@@ -51,16 +56,16 @@ L_exit_norm=0
 L_exit_eror=8
 
 ################################################################################
-##                                 ä÷êîíËã`                                   ##
+##                                 Èñ¢Êï∞ÂÆöÁæ©                                   ##
 ################################################################################
 
-### ÉçÉOèoóÕèàóù ###
+### „É≠„Ç∞Âá∫ÂäõÂá¶ÁêÜ ###
 output_log()
 {
   echo `date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_logfile}
 }
 
-### èIóπèàóù ###
+### ÁµÇ‰∫ÜÂá¶ÁêÜ ###
 shell_end()
 {
   L_retcode=${1:-0}
@@ -82,7 +87,10 @@ L_paracount=${#}
 if [ ${#} -lt 3 ]
 then
   output_log "Parameter Error"
-  /usr/bin/cat <<-EOF 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+  #/usr/bin/cat <<-EOF 1>&2
+  /bin/cat <<-EOF 1>&2
+  #2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
   ${L_cmdname}
   MoveFileName
   MoveToFileDirectory
@@ -140,7 +148,10 @@ L_count=0
 
 #2008/06/24 y.suzuki Changed
 #for L_dirlist in `ls -rl ./backup/ | awk '$9 !~ /aaa/ && $1 ~ /-/ {print $9}'`
-for L_dirlist in `ls -rl ${L_directory_name}/ | awk '$9 !~ /aaa/ && $1 ~ /-/ {print $9}'`
+#2021/12/20 MOD Ver.3.0.0 by Shun Takenami START
+#for L_dirlist in `ls -rl ${L_directory_name}/ | awk '$9 !~ /aaa/ && $1 ~ /-/ {print $9}'`
+for L_dirlist in `ls -rl --time-style=long-iso ${L_directory_name}/ | awk '$8 !~ /aaa/ && $1 ~ /-/ {print $8}'`
+#2021/12/20 MOD Ver.3.0.0 by Shun Takenami END
 do
   L_count=`expr $L_count + 1`
   if [ ${L_count} -ge ${L_backup_count} ]
