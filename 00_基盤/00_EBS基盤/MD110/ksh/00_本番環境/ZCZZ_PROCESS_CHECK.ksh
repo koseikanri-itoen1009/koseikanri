@@ -1,165 +1,232 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [ŠT—v]                                                                   ##
-##          ƒT[ƒrƒX‹N“®E’â~Šm”F                                            ##
+##   [ãƒ•ã‚¡ã‚¤ãƒ«å]                                                             ##
+##      ZCZZ_PROCESS_CHECK.ksh                                                ##
 ##                                                                            ##
-##   [ì¬/XV—š—ğ]                                                          ##
-##        ì¬Ò  F   Oracle –xˆä           2008/05/14 1.0.1                 ##
-##        XV—š—ğF   Oracle –xˆä           2008/05/14 1.0.1                 ##
-##                       ‰”Å                                                 ##
-##                     SCSK ûü‹´             2014/07/31 2.0.0                 ##
-##                       HWƒŠƒvƒŒ[ƒX‘Î‰(ƒŠƒvƒŒ[ƒX_00007)                   ##
-##                         ECopyright‚Ìíœ                                  ##
-##                         ETNSƒŠƒXƒi[‚Ì‹N“®Šm”F‘ÎÛƒvƒƒZƒX‚ğ•ÏX          ##
-##                     SCSK œAç             2018/01/12 2.0.1                 ##
-##                       E_–{‰Ò“®_14800‘Î‰                                   ##
-##                         EFormsƒT[ƒo‹N“®Šm”F’Ç‰Á                          ##
+##   [æ¦‚è¦]                                                                   ##
+##          ã‚µãƒ¼ãƒ“ã‚¹èµ·å‹•ãƒ»åœæ­¢ç¢ºèª                                            ##
 ##                                                                            ##
-##   [–ß‚è’l]                                                                 ##
-##      ‚È‚µ                                                                  ##
+##   [ä½œæˆ/æ›´æ–°å±¥æ­´]                                                          ##
+##        ä½œæˆè€…  ï¼š   Oracle å €äº•           2008/05/14 1.0.1                 ##
+##        æ›´æ–°å±¥æ­´ï¼š   Oracle å €äº•           2008/05/14 1.0.1                 ##
+##                       åˆç‰ˆ                                                 ##
+##                     SCSK é«™æ©‹             2014/07/31 2.0.0                 ##
+##                       HWãƒªãƒ—ãƒ¬ãƒ¼ã‚¹å¯¾å¿œ(ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00007)                   ##
+##                         ãƒ»Copyrightã®å‰Šé™¤                                  ##
+##                         ãƒ»TNSãƒªã‚¹ãƒŠãƒ¼ã®èµ·å‹•ç¢ºèªå¯¾è±¡ãƒ—ãƒ­ã‚»ã‚¹ã‚’å¤‰æ›´          ##
+##                     SCSK å»£å®ˆ             2018/01/12 2.0.1                 ##
+##                       E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ                                   ##
+##                         ãƒ»Formsã‚µãƒ¼ãƒèµ·å‹•ç¢ºèªè¿½åŠ                           ##
+##                     SCSK å±±ç”°             2021/12/22 3.0.0                 ##
+##                       E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ                                   ##
+##                         ãƒ»åŸºå¹¹ã‚·ã‚¹ãƒ†ãƒ ãƒªãƒ•ãƒˆå¯¾å¿œ                           ##
+##                         ãƒ»ãƒ›ã‚¹ãƒˆåå–å¾—å¼•æ•°è¿½åŠ                              ##
+##                         ãƒ»ã‚³ãƒãƒ³ãƒ‰ã®ãƒ‘ã‚¹å¤‰æ›´                               ##
+##                         ãƒ»ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆã‚µãƒ¼ãƒãƒ¼æ–°è¨­ã«ä¼´ã†ãƒã‚§ãƒƒã‚¯å†…å®¹ã®å¤‰æ›´ ##
 ##                                                                            ##
-##   [ƒpƒ‰ƒ[ƒ^]                                                             ##
-##      ‚È‚µ                                                                  ##
+##   [æˆ»ã‚Šå€¤]                                                                 ##
+##      ãªã—                                                                  ##
 ##                                                                            ##
-##   [g—p•û–@]                                                               ##
-##      /uspg/jp1/zc/shl/<ŠÂ‹«ˆË‘¶’l>/ZCZZ_PROCESS_CHECK.ksh                  ##
+##   [ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿]                                                             ##
+##      ãªã—                                                                  ##
+##                                                                            ##
+##   [ä½¿ç”¨æ–¹æ³•]                                                               ##
+##      /uspg/jp1/zc/shl/<ç’°å¢ƒä¾å­˜å€¤>/ZCZZ_PROCESS_CHECK.ksh                  ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
 
-## •Ï”’è‹`
-L_hosutomei=`/bin/hostname`        ##ÀsƒzƒXƒg–¼
-L_uzamei=`/bin/whoami`             ##Àsƒ†[ƒU–¼
-L_web_f=""                         ##WebƒT[ƒoŠm”F—pƒtƒ‰ƒO
-L_apps_f=""                        ##APƒT[ƒoŠm”F—pƒtƒ‰ƒO
-L_tns_f=""                         ##TNSƒŠƒXƒi[Šm”F—pƒtƒ‰ƒO
-L_db_f=""                          ##DBƒT[ƒoŠm”F—pƒtƒ‰ƒO
-## 2018/01/12 Add Start ¦E_–{‰Ò“®_14800‘Î‰
-L_forms_f=""                       ##FormsƒT[ƒoŠm”F—pƒtƒ‰ƒO
-## 2018/01/12 Add End ¦E_–{‰Ò“®_14800‘Î‰
+## å¤‰æ•°å®šç¾©
+##2021/12/22 S.Yamada Mod Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+#L_hosutomei=`/bin/hostname`       ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+#L_uzamei=`/bin/whoami`            ##å®Ÿè¡Œãƒ¦ãƒ¼ã‚¶å
+L_hosutomei=`/bin/hostname -s`     ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+L_uzamei=`/usr/bin/whoami`         ##å®Ÿè¡Œãƒ¦ãƒ¼ã‚¶å
+##2021/12/22 S.Yamada Mod End    â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+
+L_web_f=""                         ##Webã‚µãƒ¼ãƒç¢ºèªç”¨ãƒ•ãƒ©ã‚°
+L_apps_f=""                        ##APã‚µãƒ¼ãƒç¢ºèªç”¨ãƒ•ãƒ©ã‚°
+L_tns_f=""                         ##TNSãƒªã‚¹ãƒŠãƒ¼ç¢ºèªç”¨ãƒ•ãƒ©ã‚°
+L_db_f=""                          ##DBã‚µãƒ¼ãƒç¢ºèªç”¨ãƒ•ãƒ©ã‚°
+## 2018/01/12 Add Start â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
+L_forms_f=""                       ##Formsã‚µãƒ¼ãƒç¢ºèªç”¨ãƒ•ãƒ©ã‚°
+## 2018/01/12 Add End   â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
 
 
 ################################################################################
-##                                 ŠÖ”’è‹`                                   ##
+##                                 é–¢æ•°å®šç¾©                                   ##
 ################################################################################
 
 
-## ‚`‚oƒT[ƒoŠm”F
+## ï¼¡ï¼°ã‚µãƒ¼ãƒç¢ºèª
 L_ap_kakunin()
 {
-   # WebƒT[ƒo‹N“®Šm”F
-   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep iAS | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   # Webã‚µãƒ¼ãƒèµ·å‹•ç¢ºèª
+##2021/12/22 S.Yamada Mod Start     â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
+#   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep iAS | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   L_purosesu=`/bin/ps -ef | grep ${L_uzamei} | /bin/grep iAS | /bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/12/22 S.Yamada Mod End        â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
    if [ "${L_purosesu}" -eq 0 ]
    then
-      L_web_f=0            # WebƒT[ƒo’â~Ï‚İ
+      L_web_f=0            # Webã‚µãƒ¼ãƒåœæ­¢æ¸ˆã¿
    else
       L_web_f=1
    fi
-   
-   # APPSƒŠƒXƒi[‹N“®Šm”F
-   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep APPS | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+
+   # APPSãƒªã‚¹ãƒŠãƒ¼èµ·å‹•ç¢ºèª
+##2021/12/22 S.Yamada Mod Start     â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
+#   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep APPS | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   L_purosesu=`/bin/ps -ef | grep ${L_uzamei} | /bin/grep APPS | /bin/grep inherit | /bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/12/22 S.Yamada Mod End       â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
    if [ "${L_purosesu}" -eq 0 ]
    then
-      L_apps_f=0           # APPSƒŠƒXƒi[’â~Ï‚İ
+      L_apps_f=0           # APPSãƒªã‚¹ãƒŠãƒ¼åœæ­¢æ¸ˆã¿
    else
       L_apps_f=1
    fi
 
-## 2018/01/12 Add Start ¦E_–{‰Ò“®_14800‘Î‰
-   # FormsƒT[ƒo‹N“®Šm”F
-   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep f60srvm | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+## 2018/01/12 Add Start â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
+   # Formsã‚µãƒ¼ãƒèµ·å‹•ç¢ºèª
+##2021/12/22 S.Yamada Mod Start
+#   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep f60srvm | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   L_purosesu=`/bin/ps -ef | grep ${L_uzamei} | /bin/grep f60srvm | /bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/12/22 S.Yamada Mod End
    if [ "${L_purosesu}" -eq 0 ]
    then
-      L_forms_f=0            # FormsƒT[ƒo’â~Ï‚İ
+      L_forms_f=0            # Formsã‚µãƒ¼ãƒåœæ­¢æ¸ˆã¿
    else
       L_forms_f=1
    fi
-## 2018/01/12 Add End ¦E_–{‰Ò“®_14800‘Î‰
+## 2018/01/12 Add End â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
 
-   # ”»’è
-## 2018/01/12 Mod Start ¦E_–{‰Ò“®_14800‘Î‰
+   # åˆ¤å®š
+## 2018/01/12 Mod Start â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
 #   if [ "${L_web_f}" -eq 0 -a "${L_apps_f}" -eq 0 ]
    if [ "${L_web_f}" -eq 0 -a "${L_apps_f}" -eq 0 -a "${L_forms_f}" -eq 0 ]
-## 2018/01/12 Mod End ¦E_–{‰Ò“®_14800‘Î‰
+## 2018/01/12 Mod End â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
    then
-      echo "${L_hosutomei}ƒT[ƒo‚ÌEBSƒvƒƒZƒX‚Í’â~‚µ‚Ä‚¢‚Ü‚·"
-## 2018/01/12 Mod Start ¦E_–{‰Ò“®_14800‘Î‰
+      echo "${L_hosutomei}ã‚µãƒ¼ãƒã®EBSãƒ—ãƒ­ã‚»ã‚¹ã¯åœæ­¢ã—ã¦ã„ã¾ã™"
+## 2018/01/12 Mod Start â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
 #   elif [ "${L_web_f}" -eq 1 -a "${L_apps_f}" -eq 1 ]
    elif [ "${L_web_f}" -eq 1 -a "${L_apps_f}" -eq 1 -a "${L_forms_f}" -eq 1 ]
-## 2018/01/12 Mod End ¦E_–{‰Ò“®_14800‘Î‰
+## 2018/01/12 Mod End â€»E_æœ¬ç¨¼å‹•_14800å¯¾å¿œ
    then
-      echo "${L_hosutomei}ƒT[ƒo‚ÌEBSƒvƒƒZƒX‚Í‹N“®‚µ‚Ä‚¢‚Ü‚·"
+      echo "${L_hosutomei}ã‚µãƒ¼ãƒã®EBSãƒ—ãƒ­ã‚»ã‚¹ã¯èµ·å‹•ã—ã¦ã„ã¾ã™"
    else
-      echo "EBSƒvƒƒZƒX‹N“®ˆÙí"
+      echo "EBSãƒ—ãƒ­ã‚»ã‚¹èµ·å‹•ç•°å¸¸"
    fi
 }
 
-## ‚c‚aƒT[ƒoŠm”F
-L_db_kakunin()
+##2021/12/22 S.Yamada Add Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+## ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆã‚µãƒ¼ãƒç¢ºèª
+L_conc_kakunin()
 {
-   # APPSƒŠƒXƒi[‹N“®Šm”F
-   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep APPS | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   # APPSãƒªã‚¹ãƒŠãƒ¼ç¨¼åƒç¢ºèª
+   L_purosesu=`ps -ef | grep ${L_uzamei} | grep APPS | grep inherit | grep -v "grep" | wc -l`
+
    if [ "${L_purosesu}" -eq 0 ]
    then
-      L_apps_f=0      # APPSƒŠƒXƒi[’â~Ï‚İ
+      L_apps_f=0      # APPSãƒªã‚¹ãƒŠãƒ¼åœæ­¢æ¸ˆã¿
    else
-      L_apps_f=1
+      L_apps_f=1      # APPSãƒªã‚¹ãƒŠãƒ¼èµ·å‹•æ¸ˆã¿
    fi
 
-   # TNSƒŠƒXƒi[‹N“®Šm”F
+   # ãƒ—ãƒ­ã‚»ã‚¹ç¨¼åƒåˆ¤å®š
+   if [ "${L_apps_f}" -eq 0 ]
+   then
+      echo "${L_hosutomei}ã‚µãƒ¼ãƒã®EBSãƒ—ãƒ­ã‚»ã‚¹ã¯åœæ­¢ã—ã¦ã„ã¾ã™"
+   elif [ "${L_apps_f}" -eq 1 ]
+   then
+      echo "${L_hosutomei}ã‚µãƒ¼ãƒã®EBSãƒ—ãƒ­ã‚»ã‚¹ã¯èµ·å‹•ã—ã¦ã„ã¾ã™"
+   else
+      echo "EBSãƒ—ãƒ­ã‚»ã‚¹èµ·å‹•ç•°å¸¸"
+   fi
+}
+##2021/12/22 S.Yamada Add End  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+
+## ï¼¤ï¼¢ã‚µãƒ¼ãƒç¢ºèª
+L_db_kakunin()
+{
+##2021/12/22 S.Yamada Del Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+##   # APPSãƒªã‚¹ãƒŠãƒ¼èµ·å‹•ç¢ºèª
+##   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep APPS | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+##   if [ "${L_purosesu}" -eq 0 ]
+##   then
+##      L_apps_f=0      # APPSãƒªã‚¹ãƒŠãƒ¼åœæ­¢æ¸ˆã¿
+##   else
+##      L_apps_f=1
+##   fi
+##2021/12/22 S.Yamada Del End    â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+
+   # TNSãƒªã‚¹ãƒŠãƒ¼èµ·å‹•ç¢ºèª
 ##2014/07/31 S.Takahashi Mod Start
 #   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep "10.2.0" | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
-   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep "11.2.0" | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/12/22 S.Yamada Mod Start    â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+#   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep "11.2.0" | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   L_purosesu=`/bin/ps -ef | grep ${L_uzamei} | /bin/grep "11.2.0" | /bin/grep inherit | /bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/12/22 S.Yamada Mod End      â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
 ##2014/07/31 S.Takahashi Mod End
    if [ "${L_purosesu}" -eq 0 ]
    then
-      L_tns_f=0       # TNSƒŠƒXƒi[’â~Ï‚İ
+      L_tns_f=0       # TNSãƒªã‚¹ãƒŠãƒ¼åœæ­¢æ¸ˆã¿
    else
       L_tns_f=1
    fi
 
-   # ƒf[ƒ^ƒx[ƒX‹N“®Šm”F
-   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep ora_pmon | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   # ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹èµ·å‹•ç¢ºèª
+##2021/12/22 S.Yamada Mod Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+#   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep ora_pmon | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   L_purosesu=`/bin/ps -ef | grep ${L_uzamei} | /bin/grep ora_pmon | /bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/12/22 S.Yamada Mod End    â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
    if [ "${L_purosesu}" -eq 0 ]
    then
-      L_db_f=0        # ƒf[ƒ^ƒx[ƒX’â~Ï‚İ
+      L_db_f=0        # ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹åœæ­¢æ¸ˆã¿
    else
       L_db_f=1
    fi
 
-   # ”»’è
-   if [ "${L_apps_f}" -eq 0 -a "${L_tns_f}" -eq 0 -a "${L_db_f}" -eq 0 ]
+   # åˆ¤å®š
+##2021/12/22 S.Yamada Mod Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+##   if [ "${L_apps_f}" -eq 0 -a "${L_tns_f}" -eq 0 -a "${L_db_f}" -eq 0 ]
+   if [ "${L_tns_f}" -eq 0 -a "${L_db_f}" -eq 0 ]
+##2021/12/22 S.Yamada End Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
    then
-      echo "${L_hosutomei}ƒT[ƒo‚ÌEBSƒvƒƒZƒX‚Í’â~‚µ‚Ä‚¢‚Ü‚·"
-   elif [ "${L_apps_f}" -eq 1 -a "${L_tns_f}" -eq 1 -a "${L_db_f}" -eq 1 ]
+      echo "${L_hosutomei}ã‚µãƒ¼ãƒã®EBSãƒ—ãƒ­ã‚»ã‚¹ã¯åœæ­¢ã—ã¦ã„ã¾ã™"
+##2021/12/22 S.Yamada Mod Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+##   elif [ "${L_apps_f}" -eq 1 -a "${L_tns_f}" -eq 1 -a "${L_db_f}" -eq 1 ]
+   elif [ "${L_tns_f}" -eq 1 -a "${L_db_f}" -eq 1 ]
+##2021/12/22 S.Yamada End Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
    then
-      echo "${L_hosutomei}ƒT[ƒo‚ÌEBSƒvƒƒZƒX‚Í‹N“®‚µ‚Ä‚¢‚Ü‚·"
+      echo "${L_hosutomei}ã‚µãƒ¼ãƒã®EBSãƒ—ãƒ­ã‚»ã‚¹ã¯èµ·å‹•ã—ã¦ã„ã¾ã™"
    else
-      echo "EBSƒvƒƒZƒX‹N“®ˆÙí"
+      echo "EBSãƒ—ãƒ­ã‚»ã‚¹èµ·å‹•ç•°å¸¸"
    fi
 }
 
-
 ################################################################################
-##                                 ƒƒCƒ“                                     ##
+##                                 ãƒ¡ã‚¤ãƒ³                                     ##
 ################################################################################
 
-L_ap_db_hantei=`echo ${L_hosutomei} | /usr/bin/cut -c 5-6`
-
+##2021/12/22 S.Yamada Mod Start   â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+#L_ap_db_hantei=`echo ${L_hosutomei} | /usr/bin/cut -c 5-6`
+L_ap_db_hantei=`echo ${L_hosutomei} | /bin/cut -c 5-6`
+##2021/12/22 S.Yamada Mod End     â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
 
 case ${L_ap_db_hantei} in
    "ap")   L_ap_kakunin
            ;;
    "db")   L_db_kakunin
            ;;
-   *)      echo "”»’è‚É¸”s‚µ‚Ü‚µ‚½"
+##2021/12/22 S.Yamada Add Start  â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+   "co")   L_conc_kakunin
+           ;;
+##2021/12/22 S.Yamada Add End    â€»E_æœ¬ç¨¼å‹•_17512å¯¾å¿œ
+   *)      echo "åˆ¤å®šã«å¤±æ•—ã—ã¾ã—ãŸ"
            ;;
 esac
-
-
