@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 3.1                                                       ##
+## Version          : 3.2                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -104,6 +104,8 @@
 ##                                       CONCSUBの呼び出しをSUBMIT_REQUESTへ変更##
 ##  2022/08/05    3.1   Nobuo.Koyama     [E_本稼動_18570]                       ##
 ##                                       バックアップ前に「ls」追加             ##
+##  2022/09/01    3.2   Nobuo.Koyama     [E_本稼動_18570]                       ##
+##                                       リトライ対応                           ##
 ##                                                                              ##
 ##################################################################################
 
@@ -1753,7 +1755,11 @@ EOF
 
 #SQL結果読み込み処理
 . $C_std_out
-
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
+  echo "concurrent req_id: ${L_reqid}" >>`echo ${C_ofil}`
+  echo "concurrent phase : ${L_phase_code}" >>`echo ${C_ofil}`
+  echo "concurrent status: ${L_status_code}" >>`echo ${C_ofil}`
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add End
 case ${L_status_code} in
 C)
   #正常
@@ -1933,11 +1939,28 @@ do
 # 2009/08/27 Ver1.8 Masayuki.Sano mod Start
 #  mv ${L_cm_file_dir} ${L_new_file_dir}
 #  L_return=${?}
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
+#  sleep 30   #debug用
+i=0
+while [ $i -ne 5 ]
+do
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add End
 # 2022/08/05 Ver3.1 Nobuo.Koyama Add Start
 #  echo "${L_cm_file_dir}" >>`echo ${C_ofil}` 
 #  echo "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`
   ls -l "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`     #lsコマンド結果出力
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
+  if [ -f "${L_cm_file_dir}" ]
+  then
+    break
+  fi
+  i=`expr 1 + $i`
+  sleep 60
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add End
 # 2022/08/05 Ver3.1 Nobuo.Koyama Add End
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
+done
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add End
   cp ${L_cm_file_dir} ${L_new_file_dir}
   L_return=${?}
 # 2009/08/27 Ver1.8 Masayuki.Sano mod End
@@ -2176,6 +2199,9 @@ EOF
 ##  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
 #  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files (x86)\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
 ## 2014/11/06 Ver.1.13 Koji.Oomata mod END
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
+  echo "jpqjobsub Start" >>`echo ${C_ofil}`
+# 2022/09/01 Ver3.2 Nobuo.Koyama Add End
   if [ "${8}" = 'EDI' ]
   then
     /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files (x86)\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
