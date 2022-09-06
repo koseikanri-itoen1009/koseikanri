@@ -7,7 +7,7 @@ AS
  * Description      : 控除額の支払画面の申請ボタン押下時に、
  *                  : 作成された控除消込情報をAP部門入力へ連携します
  * MD.050           : AP部門入力連携 MD050_COK_024_A24
- * Version          : 1.00
+ * Version          : 1.1
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2020/05/07    1.0   M.Sato           新規作成
+ *  2022/08/24    1.1   SCSK Y.Koh       E_本稼動_18528 証憑台紙に控除マスタ内容の出力
  *
  *****************************************************************************************/
 --
@@ -699,7 +700,10 @@ AS
              ,cv_dedu_pay                                   AS summary_code      -- 摘要コード
              ,xdnr.payment_amt                              AS body_amount       -- 本体金額
              ,0                                             AS tax_amount        -- 消費税額
-             ,xdnr.condition_no || cv_msg_part || flv.meaning || cv_msg_part || xdnr.remarks
+-- 2022/08/24 Ver1.1 MOD Start
+             ,SUBSTRB(xdnr.condition_no || cv_msg_part || flv.meaning || cv_msg_part || xch.content || cv_msg_part || xdnr.remarks, 1, 240)
+--             ,xdnr.condition_no || cv_msg_part || flv.meaning || cv_msg_part || xdnr.remarks
+-- 2022/08/24 Ver1.1 MOD End
                                                             AS summary           -- 摘要
              ,gv_other_tax                                  AS tax_class_code    -- 税区分コード
              ,gv_dept_fin                                   AS dept              -- 部門
@@ -707,6 +711,9 @@ AS
              ,flv.attribute7                                AS sub_account       -- 補助科目
       FROM    xxcok_deduction_num_recon     xdnr                                 -- 控除No別消込情報
              ,fnd_lookup_values             flv                                  -- データ種類
+-- 2022/08/24 Ver1.1 ADD Start
+             ,xxcok_condition_header        xch
+-- 2022/08/24 Ver1.1 ADD End
       WHERE   xdnr.recon_slip_num           = g_recon_head_tbl(1).recon_slip_num
       AND     xdnr.target_flag              = cv_y_flag
       AND     xdnr.payment_amt             != 0
@@ -714,6 +721,9 @@ AS
       AND     flv.lookup_code               = xdnr.data_type
       AND     flv.language                  = cv_lang
       AND     flv.enabled_flag              = cv_y_flag
+-- 2022/08/24 Ver1.1 ADD Start
+      AND     xch.condition_no(+)           = xdnr.condition_no
+-- 2022/08/24 Ver1.1 ADD End
       -- 控除支払_税
       UNION ALL
       SELECT '2' || xdnr.payment_tax_code                   AS sort_key          -- ソートキー
