@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.22
+* バージョン : 1.23
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -29,6 +29,7 @@
 * 2020-11-05 1.20 SCSK佐々木大和[E_本稼動_15904]追加対応第3弾 定価換算率計算式修正
 * 2020-11-17 1.21 SCSK佐々木大和[E_本稼動_15904]追加対応第3弾 定価換算率計算式修正 対応不要のため削除
 * 2022-04-21 1.22 SCSK二村悠香  [E_本稼動_18060]自販機顧客別利益管理
+* 2022-08-03 1.23 SCSK赤地学    [E_本稼動_18060]確認ボタン不具合対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -931,6 +932,39 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_CONFIRM);
 
     validateAll(true);
+
+// Ver.1.23 Add Start    
+    chkPayStartDate();
+    
+    Date installPayStartDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getInstallPayStartYear(),
+                headerRow.getInstallPayStartMonth());
+              
+    Date installPayEndDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getInstallPayEndYear(),
+                headerRow.getInstallPayEndMonth());
+              
+    Date adAssetsPayStartDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getAdAssetsPayStartYear(),
+                headerRow.getAdAssetsPayStartMonth());
+              
+    Date adAssetsPayEndDate 
+      = XxcsoSpDecisionValidateUtils.makeDate(
+                headerRow.getAdAssetsPayEndYear(),
+                headerRow.getAdAssetsPayEndMonth());
+
+    // 支払期間開始日（設置協賛金）
+    headerRow.setInstallPayStartDate(installPayStartDate);
+    // 支払期間終了日（設置協賛金）
+    headerRow.setInstallPayEndDate(installPayEndDate);
+    // 支払期間開始日（行政財産使用料）
+    headerRow.setAdAssetsPayStartDate(adAssetsPayStartDate);
+    // 支払期間終了日（行政財産使用料）
+    headerRow.setAdAssetsPayEndDate(adAssetsPayEndDate);
+// Ver.1.23 Add End
 
     commit();
 
