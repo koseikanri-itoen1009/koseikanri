@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2020/12/14    1.20  Y.Sasaki         E_本稼動_16642対応
  *  2021/03/02    1.21  K.Kanada         E_本稼動_16642対応(T4不具合対応)
  *  2022/04/06    1.22  H.Futamura       E_本稼動_18060対応
+ *  2022/07/27    1.23  M.Akachi         E_本稼動_18060対応（実績の月別按分）
 *****************************************************************************************/
 --
   -- ===============================
@@ -2746,6 +2747,9 @@ AS
     cv_prg_name                   CONSTANT VARCHAR2(100)   := 'chk_pay_start_date';
     cv_target                     CONSTANT VARCHAR2(1)     := '0';
     cv_plan                       CONSTANT VARCHAR2(1)     := '1';
+-- Ver.1.23 Add Start
+    cv_actual                     CONSTANT VARCHAR2(1)     := '2';
+-- Ver.1.23 Add End
     cv_yes                        CONSTANT VARCHAR2(1)     := '1';
     cv_install                    CONSTANT VARCHAR2(1)     := '1';
     cv_ad_assets                  CONSTANT VARCHAR2(1)     := '2';
@@ -2771,6 +2775,9 @@ AS
     lt_ad_contract_number         xxcso_contract_managements.contract_number%TYPE;
     lt_ad_sp_decision_number      xxcso_sp_decision_headers.sp_decision_number%TYPE;
     ld_process_date               DATE;
+-- Ver.1.23 Add Start
+    ln_actual_cnt                 NUMBER;                                             -- 実績件数カウント用
+-- Ver.1.23 Add End
 --
   BEGIN
 --
@@ -2788,6 +2795,9 @@ AS
     lt_ins_sp_decision_number   := NULL;
     lt_ad_contract_number       := NULL;
     lt_ad_sp_decision_number    := NULL;
+-- Ver.1.23 Add Start
+    ln_actual_cnt               := 0;
+-- Ver.1.23 Add End
 --
     -- 業務日付を当月の1日に設定
     ld_process_date   := TO_DATE(TO_CHAR(cd_process_date,'YYYYMM'),'YYYYMM');
@@ -2836,8 +2846,34 @@ AS
           lt_max_ins_pay_start_date       := NULL;
       END;
 --
-      IF ( lt_max_ins_pay_start_date IS NOT NULL AND lt_max_ins_pay_start_date <> lt_install_pay_start_date ) THEN
-        IF ( lt_max_ins_pay_start_date <> ld_process_date ) THEN
+-- Ver.1.23 Add Start
+      -- 自販機顧客支払管理情報に実績データが存在するかチェック
+      IF ( lt_max_ins_pay_start_date IS NOT NULL ) THEN
+        BEGIN
+          SELECT COUNT(1) AS cnt
+          INTO  ln_actual_cnt
+          FROM  xxcso_cust_pay_mng     xcpm
+          WHERE xcpm.account_number    = iv_account_number  -- 顧客コード
+            AND xcpm.plan_actual_kbn   = cv_actual          -- 予実区分（2：実績）
+            AND xcpm.send_flag         = cv_target          -- 送信フラグ（0：送信対象）
+            AND xcpm.data_kbn          = cv_install         -- データ区分
+            AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+              BETWEEN lt_install_pay_start_date AND lt_install_pay_end_date
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_actual_cnt              := 0;
+        END;
+      END IF;
+-- Ver.1.23 Add End
+--
+-- Ver.1.23 Mod Start
+--    IF ( lt_max_ins_pay_start_date IS NOT NULL AND lt_max_ins_pay_start_date <> lt_install_pay_start_date ) THEN
+      IF ( lt_max_ins_pay_start_date IS NOT NULL AND ln_actual_cnt > 0 AND lt_max_ins_pay_start_date <> lt_install_pay_start_date ) THEN
+-- Ver.1.23 Mod End
+-- Ver.1.23 Del Start     
+--        IF ( lt_max_ins_pay_start_date <> ld_process_date ) THEN
+-- Ver.1.23 Del End
           BEGIN
 --
             SELECT MAX(xcpm.contract_number)  AS contract_number
@@ -2869,7 +2905,9 @@ AS
             WHEN OTHERS THEN
               xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
           END;
-        END IF;
+-- Ver.1.23 Del Start
+--        END IF;
+-- Ver.1.23 Del End
       END IF;
     END IF;
     -- 行政財産使用料の場合
@@ -2891,8 +2929,33 @@ AS
           lt_max_ad_pay_start_date       := NULL;
       END;
 --
-      IF ( lt_max_ad_pay_start_date IS NOT NULL AND lt_max_ad_pay_start_date <> lt_ad_assets_pay_start_date ) THEN
-        IF ( lt_max_ad_pay_start_date <> ld_process_date ) THEN
+-- Ver.1.23 Add Start
+      -- 自販機顧客支払管理情報に実績データが存在するかチェック
+      IF ( lt_max_ad_pay_start_date IS NOT NULL ) THEN
+        BEGIN
+          SELECT COUNT(1) AS cnt
+          INTO  ln_actual_cnt
+          FROM  xxcso_cust_pay_mng     xcpm
+          WHERE xcpm.account_number    = iv_account_number  -- 顧客コード
+            AND xcpm.plan_actual_kbn   = cv_actual          -- 予実区分（2：実績）
+            AND xcpm.send_flag         = cv_target          -- 送信フラグ（0：送信対象）
+            AND xcpm.data_kbn          = cv_ad_assets       -- データ区分
+            AND TO_DATE(xcpm.payment_date, 'YYYYMM') 
+              BETWEEN lt_install_pay_start_date AND lt_install_pay_end_date
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_actual_cnt              := 0;
+        END;
+      END IF;
+-- Ver.1.23 Add End
+-- Ver.1.23 Mod Start
+--    IF ( lt_max_ad_pay_start_date IS NOT NULL AND lt_max_ad_pay_start_date <> lt_ad_assets_pay_start_date ) THEN
+      IF ( lt_max_ad_pay_start_date IS NOT NULL AND ln_actual_cnt > 0 AND lt_max_ad_pay_start_date <> lt_ad_assets_pay_start_date ) THEN
+-- Ver.1.23 Mod End
+-- Ver.1.23 Del Start
+--        IF ( lt_max_ad_pay_start_date <> ld_process_date ) THEN
+-- Ver.1.23 Del End
           BEGIN
 --
             SELECT MAX(xcpm.contract_number)  AS contract_number
@@ -2924,7 +2987,9 @@ AS
             WHEN OTHERS THEN
               xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
           END;
-        END IF;
+-- Ver.1.23 Del Start
+--        END IF;
+-- Ver.1.23 Del End
       END IF;
     END IF;
 --
@@ -2958,6 +3023,9 @@ AS
     cv_prg_name                   CONSTANT VARCHAR2(100)   := 'chk_pay_item';
     cv_target                     CONSTANT VARCHAR2(1)     := '0';
     cv_plan                       CONSTANT VARCHAR2(1)     := '1';
+-- Ver.1.23 Add Start
+    cv_actual                     CONSTANT VARCHAR2(1)     := '2';
+-- Ver.1.23 Add End
     cv_install                    CONSTANT VARCHAR2(1)     := '1';
     cv_ad_assets                  CONSTANT VARCHAR2(1)     := '2';
     cv_ZZZ                        CONSTANT VARCHAR2(3)     := 'ZZZ';
@@ -2998,6 +3066,9 @@ AS
     lt_prf_elec_fee_item_code        xxcso_qt_ap_tax_rate_v.item_code%TYPE;                -- 変動電気代品目コード
     ln_tax_rate                      xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;              -- 税率
     ln_amt_without_tax               xxcso_cust_pay_mng.total_amt%TYPE;                    -- 税抜き金額
+-- Ver.1.23 Add Start
+    ln_actual_cnt                    NUMBER;                                               -- 実績件数カウント用
+-- Ver.1.23 Add End
 --
   BEGIN
 --
@@ -3028,6 +3099,9 @@ AS
     lt_tax_type                   := NULL;
     ln_tax_rate                   := 0;
     ln_amt_without_tax            := 0;
+-- Ver.1.23 Add Start
+    ln_actual_cnt                 := 0;
+-- Ver.1.23 Add End
 --
     BEGIN
       SELECT xsdh.install_supp_type         AS install_supp_type
@@ -3100,7 +3174,28 @@ AS
           lt_total_amt                 := NULL;
       END;
 --
+-- Ver.1.23 Add Start
+      -- 自販機顧客支払管理情報に実績データが存在するかチェック
       IF ( lt_ins_contract_number IS NOT NULL ) THEN
+        BEGIN
+          SELECT COUNT(1) AS cnt
+          INTO ln_actual_cnt
+          FROM xxcso_cust_pay_mng      xcpm
+          WHERE xcpm.contract_number   = lt_ins_contract_number  -- 契約書番号
+            AND xcpm.plan_actual_kbn   = cv_actual               -- 予実区分（2：実績）
+            AND xcpm.send_flag         = cv_target               -- 送信フラグ（0：送信対象）
+            AND xcpm.data_kbn          = cv_install              -- データ区分
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_actual_cnt              := 0;
+        END;
+      END IF;
+-- Ver.1.23 Add End
+-- Ver.1.23 Mod Start
+--      IF ( lt_ins_contract_number IS NOT NULL ) THEN
+      IF ( lt_ins_contract_number IS NOT NULL AND ln_actual_cnt > 0 ) THEN
+-- Ver.1.23 Mod End
         BEGIN
           -- 設置協賛金の場合
           SELECT xsdh.sp_decision_number
@@ -3192,40 +3287,63 @@ AS
           lt_ad_contract_number       := NULL;
       END;
 --
-      BEGIN
-        SELECT xsdh.sp_decision_number
-              ,xsdh.ad_assets_pay_start_date  AS ad_assets_pay_start_date
-              ,xsdh.ad_assets_pay_end_date    AS ad_assets_pay_end_date
-              ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
-              ,xsdh.ad_assets_amt             AS ad_assets_amt
-        INTO   lt_ad_sp_decision_number_pre
-              ,lt_ad_pay_start_date_pre
-              ,lt_ad_pay_end_date_pre
-              ,lt_ad_payment_type_pre
-              ,lt_ad_amt_pre
-        FROM  xxcso_sp_decision_headers  xsdh
-             ,xxcso_contract_managements xcm
-        WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
-          AND xcm.contract_number        = lt_ad_contract_number
-          AND xcm.install_account_number = iv_account_number;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lt_ad_sp_decision_number_pre := NULL;
-          lt_ad_pay_start_date_pre     := NULL;
-          lt_ad_pay_end_date_pre       := NULL;
-          lt_ad_payment_type_pre       := NULL;
-          lt_ad_amt_pre                := NULL;
-      END;
---
-      IF ( iv_sp_decision_number <> lt_ad_sp_decision_number_pre ) THEN
-        IF (( lt_ad_assets_payment_type <> NVL(lt_ad_payment_type_pre,cv_ZZZ) ) OR
-            ( lt_ad_assets_amt <> NVL(lt_ad_amt_pre,cv_99999999) ) OR
-            ( lt_ad_assets_pay_end_date <> NVL(lt_ad_pay_end_date_pre,cv_yyyymmdd) )) THEN
-          ov_ad_contract_number    := lt_ad_contract_number;
-          ov_ad_sp_decision_number := lt_ad_sp_decision_number_pre;
-          ov_retcode := xxcso_common_pkg.gv_status_error;
-        END IF;
+-- Ver.1.23 Add Start
+      -- 自販機顧客支払管理情報に実績データが存在するかチェック
+      IF ( lt_ad_contract_number IS NOT NULL ) THEN
+        BEGIN
+          SELECT COUNT(1) AS cnt
+          INTO ln_actual_cnt
+          FROM xxcso_cust_pay_mng      xcpm
+          WHERE xcpm.contract_number   = lt_ins_contract_number  -- 契約書番号
+            AND xcpm.plan_actual_kbn   = cv_actual               -- 予実区分（2：実績）
+            AND xcpm.send_flag         = cv_target               -- 送信フラグ（0：送信対象）
+            AND xcpm.data_kbn          = cv_ad_assets            -- データ区分
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_actual_cnt              := 0;
+        END;
       END IF;
+--
+      IF ( lt_ad_contract_number IS NOT NULL AND ln_actual_cnt > 0 ) THEN
+-- Ver.1.23 Add End
+        BEGIN
+          SELECT xsdh.sp_decision_number
+                ,xsdh.ad_assets_pay_start_date  AS ad_assets_pay_start_date
+                ,xsdh.ad_assets_pay_end_date    AS ad_assets_pay_end_date
+                ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
+                ,xsdh.ad_assets_amt             AS ad_assets_amt
+          INTO   lt_ad_sp_decision_number_pre
+                ,lt_ad_pay_start_date_pre
+                ,lt_ad_pay_end_date_pre
+                ,lt_ad_payment_type_pre
+                ,lt_ad_amt_pre
+          FROM  xxcso_sp_decision_headers  xsdh
+               ,xxcso_contract_managements xcm
+          WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
+            AND xcm.contract_number        = lt_ad_contract_number
+            AND xcm.install_account_number = iv_account_number;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lt_ad_sp_decision_number_pre := NULL;
+            lt_ad_pay_start_date_pre     := NULL;
+            lt_ad_pay_end_date_pre       := NULL;
+            lt_ad_payment_type_pre       := NULL;
+            lt_ad_amt_pre                := NULL;
+        END;
+--
+        IF ( iv_sp_decision_number <> lt_ad_sp_decision_number_pre ) THEN
+          IF (( lt_ad_assets_payment_type <> NVL(lt_ad_payment_type_pre,cv_ZZZ) ) OR
+              ( lt_ad_assets_amt <> NVL(lt_ad_amt_pre,cv_99999999) ) OR
+              ( lt_ad_assets_pay_end_date <> NVL(lt_ad_pay_end_date_pre,cv_yyyymmdd) )) THEN
+            ov_ad_contract_number    := lt_ad_contract_number;
+            ov_ad_sp_decision_number := lt_ad_sp_decision_number_pre;
+            ov_retcode := xxcso_common_pkg.gv_status_error;
+          END IF;
+        END IF;
+-- Ver.1.23 Add Start
+      END IF;
+-- Ver.1.23 Add End
     END IF;
 --
   EXCEPTION
