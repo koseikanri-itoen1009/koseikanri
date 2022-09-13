@@ -27,7 +27,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/05/15    1.0   M.Sato           新規作成
  *  2021/09/27    1.1   K.Yoshikawa      E_本稼動_17557
- *  2022/04/19    1.2   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
+ *  2022/09/06    1.2   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
  *
  *****************************************************************************************/
 --
@@ -161,9 +161,9 @@ AS
   -- 初期取得
   gd_last_process_date          DATE;                                                 -- 前回処理日時
   gd_this_process_date          DATE;                                                 -- 今回処理日時
--- 2022/04/19 Ver1.2 ADD Start
+-- 2022/09/06 Ver1.2 ADD Start
   gd_cancel_gl_date             DATE;                                                 -- 取消GL記帳日
--- 2022/04/19 Ver1.2 ADD End
+-- 2022/09/06 Ver1.2 ADD End
   -- 対象件数
   gn_reject_target_cnt          NUMBER;                                               -- 対象件数(却下)
   gn_approval_target_cnt        NUMBER;                                               -- 対象件数(承認)
@@ -243,12 +243,12 @@ AS
     -- 2.今回の処理日時を取得
     -- ============================================================
     gd_this_process_date  := SYSDATE;           -- 今回処理日時
--- 2022/04/19 Ver1.2 ADD Start
+-- 2022/09/06 Ver1.2 ADD Start
     -- ============================================================
     -- 3.AP部門入力カレンダーのOPEN月取得
     -- ============================================================
     SELECT
-        MIN(gps.end_date)
+        MIN(gps.end_date) cancel_gl_date
     INTO
         gd_cancel_gl_date
     FROM
@@ -261,7 +261,7 @@ AS
     and gps.end_date                >=  TO_DATE('2010/01/01','YYYY/MM/DD')
     and gps.adjustment_period_flag  =   'N'
     and NVL(gps.attribute1,'O')     =   'O';
--- 2022/04/19 Ver1.2 ADD End
+-- 2022/09/06 Ver1.2 ADD End
 --
   EXCEPTION
 --
@@ -788,10 +788,10 @@ AS
       SET     xdrh.recon_status            = cv_recon_status_cancel         -- 消込スタータス
              ,xdrh.cancellation_date       = TRUNC( g_cancel_slip_tbl(ln_get_cnt).approval_date )
                                                                             -- 取消日
--- 2022/04/19 Ver1.2 ADD Start
+-- 2022/09/06 Ver1.2 ADD Start
              ,xdrh.cancel_gl_date          = DECODE(xdrh.gl_if_flag, 'N', xdrh.gl_date, gd_cancel_gl_date)
                                                                             -- 取消GL記帳日
--- 2022/04/19 Ver1.2 ADD End
+-- 2022/09/06 Ver1.2 ADD End
              ,xdrh.last_updated_by         = cn_last_updated_by             -- 最終更新者
              ,xdrh.last_update_date        = cd_last_update_date            -- 最終更新日
              ,xdrh.last_update_login       = cn_last_update_login           -- 最終更新ログイン
