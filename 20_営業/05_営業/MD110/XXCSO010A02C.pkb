@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -95,6 +95,7 @@ AS
  *  2020-12-14    1.26  R.Oikawa         E_本稼動_16642対応
  *  2022-03-28    1.27  R.Oikawa         E_本稼動_18060対応
  *  2022-05-19    1.28  R.Oikawa         E_本稼動_18060本番障害対応
+ *  2022-08-18    1.29  M.Akachi         E_本稼動_18060（実績の月別按分）対応
  *
  *****************************************************************************************/
   --
@@ -4757,6 +4758,9 @@ AS
     ln_cnt                 NUMBER;         -- 件数
     lv_insert_flag         VARCHAR2(1);    -- 新規作成フラグ
     lv_update_flag         VARCHAR2(1);    -- 更新フラグ
+-- Ver 1.29 Add Start
+    lv_actual_no_copy_flag VARCHAR2(1);    -- 実績コピーフラグ
+-- Ver 1.29 Add End
     ln_tax_rate            xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;  -- 税率
     ln_amt_without_tax     xxcso_cust_pay_mng.total_amt%TYPE;        -- 税抜き金額
     lv_account_number      xxcso_cust_pay_mng.account_number%TYPE;   -- 顧客コード
@@ -4781,6 +4785,9 @@ AS
     ln_tax_rate         := 0;
     lv_insert_flag      := cv_flag_off;
     lv_update_flag      := cv_flag_off;
+-- Ver 1.29 Add Start
+    lv_actual_no_copy_flag := cv_flag_off;
+-- Ver 1.29 Add End
     lv_account_number   := NULL;
     ld_pay_start_date   := NULL;
     ld_pay_end_date     := NULL;
@@ -4896,6 +4903,9 @@ AS
               -- ★自販機顧客支払管理情報テーブル登録処理
               lv_insert_flag := cv_flag_on;
               --
+-- Ver 1.29 Add Start
+              lv_actual_no_copy_flag := cv_flag_on;
+-- Ver 1.29 Add End
             -- 支払期間終了日または金額が変更されたパターン
             ELSIF ( lt_sp_decision_headers_rec.install_pay_start_date  =  ld_pay_start_date
               AND   ( lt_sp_decision_headers_rec.install_pay_end_date  <> ld_pay_end_date
@@ -4908,8 +4918,10 @@ AS
               --
             -- 支払期間開始日が変更されたパターン
             ELSIF ( lt_sp_decision_headers_rec.install_pay_start_date  <>  ld_pay_start_date ) THEN
-              -- 業務日付と支払期間開始日を比較し、同月の場合は変更可能
-              IF ( TO_CHAR( ld_pay_start_date, cv_date_format ) = TO_CHAR( cd_process_date, cv_date_format ) ) THEN
+-- Ver 1.29 Del Start
+--              -- 業務日付と支払期間開始日を比較し、同月の場合は変更可能
+--              IF ( TO_CHAR( ld_pay_start_date, cv_date_format ) = TO_CHAR( cd_process_date, cv_date_format ) ) THEN
+-- Ver 1.29 Del End
                 -- 実績が存在する場合はエラーを出力
                 IF ( ln_actual_total_amt IS NULL ) THEN
                   -- ★自販機顧客支払管理情報テーブル登録処理
@@ -4934,22 +4946,24 @@ AS
                   RAISE global_api_expt;
                   --
                 END IF;
-              ELSE
-                -- 更新不可エラーを出力
-                lv_errbuf := xxccp_common_pkg.get_msg(
-                                iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
-                               ,iv_name         => cv_tkn_number_21                            -- メッセージコード
-                               ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
-                               ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
-                               ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
-                               ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
-                               ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
-                               ,iv_token_value3 => lv_contract_number                          -- トークン値3
-                             );
-                --
-                RAISE global_api_expt;
-                --
-              END IF;
+-- Ver 1.29 Del Start
+--              ELSE
+--                -- 更新不可エラーを出力
+--                lv_errbuf := xxccp_common_pkg.get_msg(
+--                                iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+--                               ,iv_name         => cv_tkn_number_21                            -- メッセージコード
+--                               ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
+--                               ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
+--                               ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
+--                               ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
+--                               ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
+--                               ,iv_token_value3 => lv_contract_number                          -- トークン値3
+--                             );
+--                --
+--                RAISE global_api_expt;
+--                --
+--              END IF;
+-- Ver 1.29 Del End
               --
             END IF;
             --
@@ -5013,7 +5027,10 @@ AS
           END IF;
           --
           -- 実績が存在する場合、コピー処理を行う
-          IF ( ln_actual_total_amt IS NOT NULL ) THEN
+-- Ver 1.29 Mod Start
+--         IF ( ln_actual_total_amt IS NOT NULL ) THEN
+          IF ( ln_actual_total_amt IS NOT NULL AND lv_actual_no_copy_flag <> cv_flag_on ) THEN
+-- Ver 1.29 Mod End
             -- ===================================
             -- A-15.自販機顧客支払管理情報作成処理
             -- ===================================
@@ -5050,6 +5067,9 @@ AS
         ln_cnt              := 0;
         lv_insert_flag      := cv_flag_off;
         lv_update_flag      := cv_flag_off;
+-- Ver 1.29 Add Start
+        lv_actual_no_copy_flag := cv_flag_off;
+-- Ver 1.29 Add End
         lv_account_number   := NULL;
         ld_pay_start_date   := NULL;
         ld_pay_end_date     := NULL;
@@ -5127,6 +5147,9 @@ AS
               -- ★自販機顧客支払管理情報テーブル登録処理
               lv_insert_flag := cv_flag_on;
               --
+-- Ver 1.29 Add Start
+              lv_actual_no_copy_flag := cv_flag_on;
+-- Ver 1.29 Add End
             -- 支払期間終了日または金額が変更されたパターン
             ELSIF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date  =  ld_pay_start_date
               AND   ( lt_sp_decision_headers_rec.ad_assets_pay_end_date  <> ld_pay_end_date
@@ -5139,8 +5162,10 @@ AS
               --
             -- 支払期間開始日が変更されたパターン
             ELSIF ( lt_sp_decision_headers_rec.ad_assets_pay_start_date  <>  ld_pay_start_date ) THEN
-              -- 業務日付と支払期間開始日を比較し、同月の場合は変更可能
-              IF ( TO_CHAR( ld_pay_start_date, cv_date_format ) = TO_CHAR( cd_process_date, cv_date_format ) ) THEN
+-- Ver 1.29 Del Start
+--              -- 業務日付と支払期間開始日を比較し、同月の場合は変更可能
+--              IF ( TO_CHAR( ld_pay_start_date, cv_date_format ) = TO_CHAR( cd_process_date, cv_date_format ) ) THEN
+-- Ver 1.29 Del End
                 -- 実績が存在する場合はエラーを出力
                 IF ( ln_actual_total_amt IS NULL ) THEN
                   -- ★自販機顧客支払管理情報テーブル登録処理
@@ -5165,22 +5190,24 @@ AS
                   RAISE global_api_expt;
                   --
                 END IF;
-              ELSE
-                -- 更新不可エラーを出力
-                lv_errbuf := xxccp_common_pkg.get_msg(
-                                iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
-                               ,iv_name         => cv_tkn_number_21                            -- メッセージコード
-                               ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
-                               ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
-                               ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
-                               ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
-                               ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
-                               ,iv_token_value3 => lv_contract_number                          -- トークン値3
-                             );
-                --
-                RAISE global_api_expt;
-                --
-              END IF;
+-- Ver 1.29 Del Start
+--              ELSE
+--                -- 更新不可エラーを出力
+--                lv_errbuf := xxccp_common_pkg.get_msg(
+--                                iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+--                               ,iv_name         => cv_tkn_number_21                            -- メッセージコード
+--                               ,iv_token_name1  => cv_tkn_item                                 -- トークンコード1
+--                               ,iv_token_value1 => cv_tkn_value_start_date                     -- トークン値1
+--                               ,iv_token_name2  => cv_tkn_contract_number                      -- トークンコード2
+--                               ,iv_token_value2 => lt_sp_decision_headers_rec.contract_number  -- トークン値2
+--                               ,iv_token_name3  => cv_tkn_contract_number2                     -- トークンコード3
+--                               ,iv_token_value3 => lv_contract_number                          -- トークン値3
+--                             );
+--                --
+--                RAISE global_api_expt;
+--                --
+--              END IF;
+-- Ver 1.29 Del End
               --
             END IF;
             --
@@ -5244,7 +5271,10 @@ AS
           END IF;
           --
           -- 実績が存在する場合、コピー処理を行う
-          IF ( ln_actual_total_amt IS NOT NULL ) THEN
+-- Ver 1.29 Mod Start
+--          IF ( ln_actual_total_amt IS NOT NULL ) THEN
+          IF ( ln_actual_total_amt IS NOT NULL AND lv_actual_no_copy_flag <> cv_flag_on ) THEN
+-- Ver 1.29 Mod End
             -- ===================================
             -- A-15.自販機顧客支払管理情報作成処理
             -- ===================================
