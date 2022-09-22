@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2021/05/21    1.23  二村 悠香        障害E_本稼動_16026対応 収益認識 控除用チェーンコード対応
  *  2021/07/21    1.24  二村 悠香        障害E_本稼動_16026再対応 収益認識 控除用チェーンコード対応
  *  2021/10/14    1.25  冨江 広大        障害E_本稼動_17545対応 収益認識 顧客マスタの控除用チェーン変更チェック対応
+ *  2022/08/24    1.26  赤地 学          障害E_本稼動_18569対応 事務センター所属チェック（価格表指定）
  *
  *****************************************************************************************/
 --
@@ -75,6 +76,9 @@ AS
 --
   gv_xxcmm_msg_kbn          CONSTANT VARCHAR2(5)  := 'XXCMM'; --メッセージ区分
   gv_xxccp_msg_kbn          CONSTANT VARCHAR2(5)  := 'XXCCP'; --メッセージ区分
+-- Ver1.26 add start
+  gv_xxcok_msg_kbn          CONSTANT VARCHAR2(5)  := 'XXCOK'; --メッセージ区分
+-- Ver1.26 add end
 --
   cv_msg_part               CONSTANT VARCHAR2(3)  := ' : ';
   cv_msg_cont               CONSTANT VARCHAR2(3)  := '.';
@@ -99,6 +103,10 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gv_org_id        NUMBER(15)  :=  fnd_global.org_id; --org_id
+-- Ver1.26 add start
+  gn_user_id        NUMBER          DEFAULT NULL;     --ユーザーID
+  gv_user_base_code VARCHAR2(150)   DEFAULT NULL;     --所属拠点コード
+-- Ver1.26 add end
 --
 --##########################  固定共通例外宣言部 START  ###########################
 --
@@ -225,6 +233,12 @@ AS
 -- Ver1.25 add start
   cv_dedu_chain_err_msg       CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10503';                --控除消込ヘッダー情報の消込ステータスチェックエラー
 -- Ver1.25 add end
+-- Ver1.26 add start
+  cv_msg_user_id_err          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10594';                -- ユーザーID取得エラーメッセージ
+  cv_msg_user_base_code_err   CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00012';                -- 所属拠点コード取得エラーメッセージ
+  cv_msg_base_business_err    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10505';                -- 事務センター所属チェックエラーメッセージ
+  cv_base_code_business       CONSTANT VARCHAR2(25)  := 'XXCMM_BASE_CODE_BUSINESS';        -- 参照タイプ・拠点コード（事務センター）
+-- Ver1.26 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -415,6 +429,9 @@ AS
   cv_token_interval           CONSTANT VARCHAR2(30)  := 'INTERVAL';                        --日付間隔
   cv_token_conc_day1          CONSTANT VARCHAR2(30)  := 'CONC_DAY1';                       --消化計算締め日の項目名1
   cv_token_conc_day2          CONSTANT VARCHAR2(30)  := 'CONC_DAY2';                       --消化計算締め日の項目名2
+-- Ver1.26 add start
+  cv_token_user_id            CONSTANT  VARCHAR2(30) := 'USER_ID';                         -- ユーザーID
+-- Ver1.26 add end
   --項目名
   cv_address_lines_phonetic   CONSTANT VARCHAR2(10)  := '電話番号';                        --電話番号
   cv_address4                 CONSTANT VARCHAR2(10)  := 'FAX';                             --FAX
@@ -809,6 +826,9 @@ AS
 --Ver1.25 add start
     lv_recon_slip_num           VARCHAR2(2000)  := NULL;                        --控除消込ヘッダー情報の消込ステータスチェック用支払伝票番号変数
 --Ver1.25 add end
+-- Ver1.26 add start
+    ln_base_code_business_cnt   NUMBER          := 0;                           --所属拠点（事務センター）のカウント
+-- Ver1.26 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -6754,6 +6774,41 @@ AS
                                                                 ,18);
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
+-- Ver1.26 add start
+        -- 事務センター所属チェック
+        -- ※事務センター以外の拠点に所属するユーザが、価格表を指定してアップロードした場合エラー
+        IF ( lv_price_list IS NOT NULL ) THEN
+--
+          --========================================
+          -- 所属拠点確認処理
+          --========================================
+          -- ユーザーの所属拠点が事務センターか確認します。
+          BEGIN
+            SELECT  COUNT(1)            AS base_code_business_cnt
+            INTO    ln_base_code_business_cnt
+            FROM    fnd_lookup_values flv
+            WHERE   flv.lookup_type      = cv_base_code_business
+            AND     flv.lookup_code      = gv_user_base_code
+            AND     flv.enabled_flag     = cv_yes
+            AND     flv.language         = cv_language_ja
+            AND     gd_process_date BETWEEN flv.start_date_active 
+                                     AND NVL(flv.end_date_active,gd_process_date)
+            ;
+          END;
+--
+          -- 事務センター所属チェックの判別
+          IF (ln_base_code_business_cnt = 0) THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode      := cv_status_error;
+            -- エラーメッセージ作成
+            gv_out_msg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,cv_msg_base_business_err);
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+          END IF;
+        END IF;
+-- Ver1.26 add end
         --価格表型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_price_list    --価格表
                                             ,lv_price_list    --価格表
@@ -12271,6 +12326,39 @@ AS
       gv_resp_flag := cv_no;
     END IF;
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- Ver1.26 add start
+--
+   --========================================
+   -- ユーザーID取得処理
+   --========================================
+   gn_user_id := fnd_global.user_id;
+   IF ( gn_user_id IS NULL ) THEN
+     lv_errmsg               :=  xxccp_common_pkg.get_msg(
+       iv_application        =>  gv_xxcok_msg_kbn,
+       iv_name               =>  cv_msg_user_id_err
+     );
+     lv_errbuf := lv_errmsg;
+     RAISE global_api_expt;
+   END IF;
+--
+   --========================================
+   -- 所属拠点コード取得処理
+   --========================================
+   gv_user_base_code := xxcok_common_pkg.get_base_code_f(
+     id_proc_date            =>  gd_process_date,
+     in_user_id              =>  gn_user_id
+     );
+   IF ( gv_user_base_code IS NULL ) THEN
+     lv_errmsg               :=  xxccp_common_pkg.get_msg(
+       iv_application        =>  gv_xxcok_msg_kbn,
+       iv_name               =>  cv_msg_user_base_code_err,
+       iv_token_name1        =>  cv_token_user_id,
+       iv_token_value1       =>  gn_user_id
+     );
+     lv_errbuf := lv_errmsg;
+     RAISE global_api_expt;
+   END IF;
+-- Ver1.26 add end
     --
     -- ===============================
     -- ファイルアップロードI/Fテーブル取得処理(A-1)・顧客一括更新用ワークテーブル登録処理(A-2)
@@ -12345,6 +12433,13 @@ AS
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
+-- Ver1.26 add start
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+-- Ver1.26 add end
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
