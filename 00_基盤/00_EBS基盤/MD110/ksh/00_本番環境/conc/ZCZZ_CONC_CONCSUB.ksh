@@ -28,6 +28,12 @@
 ##                         ・サーバー変更に伴うシェル名変更                   ##
 ##                             ZCZZ_DB_CONCSUB.ksh                            ##
 ##                             -> ZCZZ_CONC_CONCSUB.ksh                       ##
+##                     SCSK 山田             2022/09/16 3.1.0                 ##
+##                       E_本稼動_18628対応                                   ##
+##                         ・保持時間、対象日計算の計算式が、LINUXで解釈でき  ##
+##                           る計算式ではなかったため修正                     ##
+##                         ・3.0.0で変更となったシェル名を使用方法に反映      ##
+##                         ・計算結果を英語で表示するためLANG=Cを追加         ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -39,7 +45,7 @@
 ##      $3～     コンカレントパラメータ                                       ##
 ##                                                                            ##
 ##   [使用方法]                                                               ##
-##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_DB_CONCSUB.ksh                     ##
+##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_CONC_CONCSUB.ksh                   ##
 ##                                                                            ##
 ################################################################################
 
@@ -184,8 +190,12 @@ else
          then
             L_tmp=${i#hiduke}                                                 #hiduke文字列削除
             L_hojikikan=${L_tmp%+*}                                           #日付書式文字列削除
-            L_jikan=`expr ${L_hojikikan} \* 30 \* 24 - 9`                     #保持時間計算
-            L_hiduke=`env TZ=JST+${L_jikan} date ${L_tmp#${L_hojikikan}}`     #対象日計算
+##2022/09/16 S.Yamada Mod Start    ※E_本稼動_18628対応
+##            L_jikan=`expr ${L_hojikikan} \* 30 \* 24 - 9`                     #保持時間計算
+##            L_hiduke=`env TZ=JST+${L_jikan} date ${L_tmp#${L_hojikikan}}`     #対象日計算
+            L_jikan=`expr ${L_hojikikan} \* 30 \* 24`                                      #保持時間計算
+            L_hiduke=`LANG=C date ${L_tmp#${L_hojikikan}} --date "${L_jikan} hours ago"`   #対象日計算
+##2022/09/16 S.Yamada Mod End      ※E_本稼動_18628対応
             L_rogushuturyoku "入力パラメータ${L_cnt}：${L_hiduke}"
             L_hikisu="${L_hikisu} ${L_hiduke}"
          else
