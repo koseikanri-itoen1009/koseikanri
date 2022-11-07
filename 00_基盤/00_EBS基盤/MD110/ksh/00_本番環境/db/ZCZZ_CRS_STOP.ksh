@@ -1,76 +1,79 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [�T�v]                                                                   ##
-##          DB�I�����C���ECRS�T�[�r�X��~����                                 ##
+##   [概要]                                                                   ##
+##          DBオンライン・CRSサービス停止処理                                 ##
 ##                                                                            ##
-##   [�쐬/�X�V����]                                                          ##
-##        �쐬��  �F   Oracle �x��           2008/05/22 1.0.1                 ##
-##        �X�V�����F   Oracle ����           2008/10/02 1.1.0                 ##
-##                     SCS    ��c           2008/11/28 1.2.0                 ##
-##                       1.2��                                                ##
-##                     SCSK ����             2014/07/31 2.0.0                 ##
-##                       HW���v���[�X�Ή�(���v���[�X_00007)                   ##
-##                         �ECopyright�̍폜                                  ##
-##                         �E���ˑ��l�̕ϐ���                               ##
-##                         �ECRS�̒�~�m�F���̔�����@��ύX                  ##
-##                         �E�V�F�����ύX                                     ##
-##                         �ECRS��~�R�}���h�̕ύX                            ##
-##                         �ECRS���\�[�X��~�R�}���h�̕ύX                    ##
-##                         �E�J�n���b�Z�[�WID�ύX                             ##
+##   [作成/更新履歴]                                                          ##
+##        作成者  ：   Oracle 堀井           2008/05/22 1.0.1                 ##
+##        更新履歴：   Oracle 中村           2008/10/02 1.1.0                 ##
+##                     SCS    川田           2008/11/28 1.2.0                 ##
+##                       1.2版                                                ##
+##                     SCSK 髙橋             2014/07/31 2.0.0                 ##
+##                       HWリプレース対応(リプレース_00007)                   ##
+##                         ・Copyrightの削除                                  ##
+##                         ・環境依存値の変数化                               ##
+##                         ・CRSの停止確認時の判定方法を変更                  ##
+##                         ・シェル名変更                                     ##
+##                         ・CRS停止コマンドの変更                            ##
+##                         ・CRSリソース停止コマンドの変更                    ##
+##                         ・開始メッセージID変更                             ##
 ##                                                                            ##
-##   [�߂�l]                                                                 ##
-##      0 : ����                                                              ##
-##      8 : �ُ�                                                              ##
+##   [戻り値]                                                                 ##
+##      0 : 正常                                                              ##
+##      8 : 異常                                                              ##
 ##                                                                            ##
-##   [�p�����[�^]                                                             ##
-##      �Ȃ�                                                                  ##
+##   [パラメータ]                                                             ##
+##      なし                                                                  ##
 ##                                                                            ##
-##   [�g�p���@]                                                               ##
-##      /uspg/jp1/zc/shl/<���ˑ��l>/ZCZZ_CRS_STOP.ksh                       ##
+##   [使用方法]                                                               ##
+##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_CRS_STOP.ksh                       ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 �ϐ���`                                   ##
+##                                 変数定義                                   ##
 ################################################################################
 
 ##2014/07/31 S.Takahashi Add Start
-## ���ˑ��l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##�ŉ��w�̃J�����g�f�B���N�g����
+## 環境依存値
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##最下層のカレントディレクトリ名
 ##2014/07/31 S.Takahashi Add End
 
-## �f�B���N�g����`
+## ディレクトリ定義
 ##2014/07/31 S.Takahashi Mod Start
-#  L_rogupasu="/var/EBS/jp1/PEBSITO/log"      ##���O�t�@�C���i�[�f�B���N�g��
-  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##���O�t�@�C���i�[�f�B���N�g��
+#  L_rogupasu="/var/EBS/jp1/PEBSITO/log"      ##ログファイル格納ディレクトリ
+  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ログファイル格納ディレクトリ
 ##2014/07/31 S.Takahashi Mod End
 
-## �ϐ���`
-  L_hizuke=`/bin/date "+%y%m%d"`     ##�V�F�����s���t
-  L_sherumei=`/bin/basename $0`      ##���s�V�F����
-  L_hosutomei=`/bin/hostname`        ##���s�z�X�g��
-  L_enbufairumei="ZCZZCOMN.env"      ##��Ջ��ʊ��ϐ��t�@�C����
-## 2008/11/28 CRS�ϐ���`�ǉ� ��c
-  L_crsfairumei="ZCZZCRS.env"        ##CRS���ݒ�t�@�C����
-## 2008/11/28 �ǉ�END
-  L_ijou=8                           ##�V�F���ُ�I�����̃��^�[���R�[�h
+## 変数定義
+  L_hizuke=`/bin/date "+%y%m%d"`     ##シェル実行日付
+  L_sherumei=`/bin/basename $0`      ##実行シェル名
+##2021/09/30 Hitachi,Ltd Mod Start
+#  L_hosutomei=`/bin/hostname`        ##実行ホスト名
+  L_hosutomei=`/bin/hostname -s`     ##実行ホスト名
+##2021/09/30 Hitachi,Ltd Mod End
+  L_enbufairumei="ZCZZCOMN.env"      ##基盤共通環境変数ファイル名
+## 2008/11/28 CRS変数定義追加 川田
+  L_crsfairumei="ZCZZCRS.env"        ##CRS環境設定ファイル名
+## 2008/11/28 追加END
+  L_ijou=8                           ##シェル異常終了時のリターンコード
 
-## �t�@�C����`
-  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##���O�t�@�C��(�t���p�X)
-  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##��Ջ��ʊ��ϐ��t�@�C��(�t���p�X)
-## 2008/11/28 CRS�t�@�C����`�ǉ� ��c
-  L_crsfairu=`/usr/bin/dirname $0`"/${L_crsfairumei}"                                               ##CRS���ݒ�t�@�C��(�t���p�X)
-## 2008/11/28 �ǉ�END
+## ファイル定義
+  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ログファイル(フルパス)
+  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##基盤共通環境変数ファイル(フルパス)
+## 2008/11/28 CRSファイル定義追加 川田
+  L_crsfairu=`/usr/bin/dirname $0`"/${L_crsfairumei}"                                               ##CRS環境設定ファイル(フルパス)
+## 2008/11/28 追加END
 
 
 ################################################################################
-##                                 �֐���`                                   ##
+##                                 関数定義                                   ##
 ################################################################################
 
 
-### ���O�o�͏��� ###
+### ログ出力処理 ###
 
   L_rogushuturyoku()
   {
@@ -78,104 +81,107 @@
   }
 
 
-### �I������ ###
+### 終了処理 ###
 
   L_shuryo()
   {
     if [ -f ${TE_ZCZZHYOUJUNSHUTURYOKU} ]
       then
-        L_rogushuturyoku "�W���o�͈ꎞ�t�@�C���폜���s"
+        L_rogushuturyoku "標準出力一時ファイル削除実行"
         rm ${TE_ZCZZHYOUJUNSHUTURYOKU}
     fi
 
     if [ -f ${TE_ZCZZHYOUJUNERA} ]
       then
-        L_rogushuturyoku "�W���G���[�ꎞ�t�@�C���폜���s"
+        L_rogushuturyoku "標準エラー一時ファイル削除実行"
         rm ${TE_ZCZZHYOUJUNERA}
     fi
 
     L_modorichi=${1:-0}
-    L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��  END_CD="${L_modorichi}
+    L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了  END_CD="${L_modorichi}
     
-    ### �p�[�~�b�V�����ύX ###
+    ### パーミッション変更 ###
     chmod 666 ${L_rogumei}
     
     exit ${L_modorichi}
   }
 
-### trap ���� ###
+### trap 処理 ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
-##                                 ���C��                                     ##
+##                                 メイン                                     ##
 ################################################################################
 
-### �����J�n�o�� ###
+### 処理開始出力 ###
 
   touch ${L_rogumei}
 ##2014/07/31 S.Takahashi Mod Start
-#  L_rogushuturyoku "ZCZZ00002:${L_sherumei} �J�n"
-  L_rogushuturyoku "ZCZZ00001:${L_sherumei} �J�n"
+#  L_rogushuturyoku "ZCZZ00002:${L_sherumei} 開始"
+  L_rogushuturyoku "ZCZZ00001:${L_sherumei} 開始"
 ##2014/07/31 S.Takahashi Mod End
 
-### ���ݒ���ϐ��t�@�C���ǂݍ��� ###
+### 環境設定環境変数ファイル読み込み ###
 
-## ��Ջ��ʃt�@�C���ǂݍ���
-  L_rogushuturyoku "��Ջ��ʊ��ϐ��t�@�C����ǂݍ��݂܂��B"
+## 基盤共通ファイル読み込み
+  L_rogushuturyoku "基盤共通環境変数ファイルを読み込みます。"
 
   if [ -r "${L_enbufairu}" ]
     then
       . ${L_enbufairu}
-      L_rogushuturyoku "��Ջ��ʊ��ϐ��t�@�C����ǂݍ��݂܂����B"
+      L_rogushuturyoku "基盤共通環境変数ファイルを読み込みました。"
   else
-      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` �����݂��Ȃ��A�܂��͌�����܂���B   HOST=${L_hosutomei}"
-      echo "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` �����݂��Ȃ��A�܂��͌�����܂���B   HOST=${L_hosutomei}" 1>&2
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` が存在しない、または見つかりません。   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` が存在しない、または見つかりません。   HOST=${L_hosutomei}" 1>&2
       L_shuryo ${L_ijou}
   fi
 
-## 2008/11/28 �ǉ� ��c
-## CRS���ݒ�t�@�C���ǂݍ���
-  L_rogushuturyoku "CRS���ݒ�t�@�C����ǂݍ��݂܂��B"
+## 2008/11/28 追加 川田
+## CRS環境設定ファイル読み込み
+  L_rogushuturyoku "CRS環境設定ファイルを読み込みます。"
 
   if [ -r "${L_crsfairu}" ]
     then
       . ${L_crsfairu}
-      L_rogushuturyoku "CRS���ݒ�t�@�C����ǂݍ��݂܂����B"
+      L_rogushuturyoku "CRS環境設定ファイルを読み込みました。"
   else
-      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_crsfairu}` �����݂��Ȃ��A�܂��͌�����܂���B   HOST=${L_hosutomei}"
-      echo "ZCZZ00003:[Error] `/bin/basename ${L_crsfairu}` �����݂��Ȃ��A�܂��͌�����܂���B   HOST=${L_hosutomei}" 1>&2
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_crsfairu}` が存在しない、または見つかりません。   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_crsfairu}` が存在しない、または見つかりません。   HOST=${L_hosutomei}" 1>&2
       L_shuryo ${L_ijou}
   fi
-## 2008/11/28 �ǉ�END
+## 2008/11/28 追加END
 
 
-## �R�}���h�ݒ�
+## コマンド設定
 ##2014/07/31 S.Takahashi Mod Start
-#  L_crsteisi="/ebsloc/PEBSITO/PEBSITOcrs/10.2.0/bin/crsctl stop crs"   ##CRS��~�R�}���h
-  L_crsteisi="crsctl stop crs"   ##CRS��~�R�}���h
+#  L_crsteisi="/ebsloc/PEBSITO/PEBSITOcrs/10.2.0/bin/crsctl stop crs"   ##CRS停止コマンド
+  L_crsteisi="crsctl stop crs"   ##CRS停止コマンド
 ##2014/07/31 S.Takahashi Mod End
 
-## 2008/11/28 CRS���\�[�X��~�R�}���h�ǉ� ��c
+## 2008/11/28 CRSリソース停止コマンド追加 川田
 ##2014/07/31 S.Takahashi Mod Start
 #  L_crsappsteisi="/ebsloc/PEBSITO/PEBSITOcrs/10.2.0/bin/srvctl stop nodeapps -n ${L_hosutomei}"
   L_crsappsteisi="srvctl stop nodeapps -n ${L_hosutomei}"
 ##2014/07/31 S.Takahashi Mod End
-## 2008/11/28 �ǉ�END
+## 2008/11/28 追加END
 
 
-### CRS��~ ###
+### CRS停止 ###
 
-  L_rogushuturyoku "CRS���~���܂��B"
+  L_rogushuturyoku "CRSを停止します。"
 
-## 2008/11/28 CRS���\�[�X��~�R�}���h�ǉ� ��c
+## 2008/11/28 CRSリソース停止コマンド追加 川田
   ${L_crsappsteisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
-## 2008/11/28 �ǉ�END
+## 2008/11/28 追加END
 
   ${L_crsteisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
   L_dashutu=${?}
-  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+##2021/09/30 Hitachi,Ltd Mod Start
+  #/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+  /bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+##2021/09/30 Hitachi,Ltd Mod End
 
-## �߂�l����Acrsctl�̓���𔻒�
+## 戻り値から、crsctlの動作を判定
   if [ ${L_dashutu} -eq 0 ]
     then
       L_rogushuturyoku "${TE_ZCZZ01400}"
@@ -186,10 +192,10 @@ trap 'L_shuryo 8' 1 2 3 15
   fi
 
 
-### CRS��~�m�F ###
+### CRS停止確認 ###
 
-  L_rogushuturyoku "CRS��~�m�F"
-  L_rogushuturyoku "CRS�̒�~��҂��Ă��܂��B"
+  L_rogushuturyoku "CRS停止確認"
+  L_rogushuturyoku "CRSの停止を待っています。"
   
   let cnt=1
   while [ "$cnt" -le "${TE_ZCZZ_WAITCNT}" ]
@@ -197,9 +203,15 @@ trap 'L_shuryo 8' 1 2 3 15
      sleep ${TE_ZCZZCRSTAIKI}
 ##2014/07/31 S.Takahashi Mod Start     
 #     /usr/bin/ps -ef | /usr/bin/egrep "ocssd.bin |evmd.bin |evmlogger.bin |oclsomon.bin |crsd.bin |ons -d |crs/10.2.0/jdk/jre/bin/java" |/usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
-     /usr/bin/ps -ef | /usr/bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon' | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+##2021/09/30 Hitachi,Ltd Mod Start
+#     /usr/bin/ps -ef | /usr/bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon' | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+     /bin/ps -ef | /bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon' | /bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+##2021/09/30 Hitachi,Ltd Mod End
 ##2014/07/31 S.Takahashi Mod End
-     if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
+##2021/09/30 Hitachi,Ltd Mod Start
+#     if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
+     if [ `/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
+##2021/09/30 Hitachi,Ltd Mod Start
        then
         if [ "$cnt" -eq "${TE_ZCZZ_WAITCNT}" ]
          then
@@ -215,8 +227,8 @@ trap 'L_shuryo 8' 1 2 3 15
      let cnt=cnt+1
   done
 
-  L_rogushuturyoku "CRS�̒�~���m�F���܂����B"
+  L_rogushuturyoku "CRSの停止を確認しました。"
 
-### �V�F���̏I�� ###
+### シェルの終了 ###
 
   L_shuryo ${TE_ZCZZSEIJOUSHURYO}
