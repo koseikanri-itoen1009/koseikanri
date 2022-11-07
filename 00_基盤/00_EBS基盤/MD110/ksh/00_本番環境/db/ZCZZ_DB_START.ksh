@@ -1,79 +1,82 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [äTóv]                                                                   ##
-##          DBÉIÉìÉâÉCÉìÅEÉTÅ[ÉrÉXãNìÆèàóù                                    ##
+##   [Ê¶ÇË¶Å]                                                                   ##
+##          DB„Ç™„É≥„É©„Ç§„É≥„Éª„Çµ„Éº„Éì„ÇπËµ∑ÂãïÂá¶ÁêÜ                                    ##
 ##                                                                            ##
-##   [çÏê¨/çXêVóöó]                                                          ##
-##        çÏê¨é“  ÅF   Oracle êôéR           2008/03/27 1.0.1                 ##
-##        çXêVóöóÅF   Oracle êôéR           2008/03/27 1.0.1                 ##
-##                       èâî≈                                                 ##
-##                     SCSK   åÀíJìc         2012/05/14 1.0.2                 ##
-##                       è·äQî‘çÜ#08434ëŒâû                                   ##
-##                       ÅEDBÉCÉìÉXÉ^ÉìÉXãNìÆå„Ç…NLS_LANGUAGEÉpÉâÉÅÅ[É^ÇÃ     ##
-##                         ê›íËÉçÉWÉbÉNÇí«â¡                                 ##
-##                     SCSK ˚¸ã¥             2014/07/31 2.0.0                 ##
-##                       HWÉäÉvÉåÅ[ÉXëŒâû(ÉäÉvÉåÅ[ÉX_00007)                   ##
-##                         ÅECopyrightÇÃçÌèú                                  ##
-##                         ÅEä¬ã´àÀë∂ílÇÃïœêîâª                               ##
-##                         ÅEDBí‚é~ÉRÉ}ÉìÉhÇÃïœçX                             ##
-##                         ÅETNSÉäÉXÉiÅ[ÉvÉçÉZÉXÇÃäƒéãëŒè€ÇÃïœçX              ##
-##                         ÅEAPPSÉäÉXÉiÅ[ÇÃãNìÆÅEämîFèàóùÇçÌèú               ##
-##                         ÅEèIóπèàóùÇÃÉçÉOèoóÕì‡óeÇèCê≥                     ##
-##                         ÅEÉVÉFÉãñºïœçX                                     ##
-##                     SCSK   úAéÁ           2017/12/06 2.0.1                 ##
-##                       E_ñ{â“ìÆ_14688ëŒâû                                   ##
-##                         ÅETNSÉGÉâÅ[ÉÅÉbÉZÅ[ÉWïœçX                          ##
+##   [‰ΩúÊàê/Êõ¥Êñ∞Â±•Ê≠¥]                                                          ##
+##        ‰ΩúÊàêËÄÖ  Ôºö   Oracle ÊùâÂ±±           2008/03/27 1.0.1                 ##
+##        Êõ¥Êñ∞Â±•Ê≠¥Ôºö   Oracle ÊùâÂ±±           2008/03/27 1.0.1                 ##
+##                       ÂàùÁâà                                                 ##
+##                     SCSK   Êà∏Ë∞∑Áî∞         2012/05/14 1.0.2                 ##
+##                       ÈöúÂÆ≥Áï™Âè∑#08434ÂØæÂøú                                   ##
+##                       „ÉªDB„Ç§„É≥„Çπ„Çø„É≥„ÇπËµ∑ÂãïÂæå„Å´NLS_LANGUAGE„Éë„É©„É°„Éº„Çø„ÅÆ     ##
+##                         Ë®≠ÂÆö„É≠„Ç∏„ÉÉ„ÇØ„ÇíËøΩÂä†                                 ##
+##                     SCSK È´ôÊ©ã             2014/07/31 2.0.0                 ##
+##                       HW„É™„Éó„É¨„Éº„ÇπÂØæÂøú(„É™„Éó„É¨„Éº„Çπ_00007)                   ##
+##                         „ÉªCopyright„ÅÆÂâäÈô§                                  ##
+##                         „ÉªÁí∞Â¢É‰æùÂ≠òÂÄ§„ÅÆÂ§âÊï∞Âåñ                               ##
+##                         „ÉªDBÂÅúÊ≠¢„Ç≥„Éû„É≥„Éâ„ÅÆÂ§âÊõ¥                             ##
+##                         „ÉªTNS„É™„Çπ„Éä„Éº„Éó„É≠„Çª„Çπ„ÅÆÁõ£Ë¶ñÂØæË±°„ÅÆÂ§âÊõ¥              ##
+##                         „ÉªAPPS„É™„Çπ„Éä„Éº„ÅÆËµ∑Âãï„ÉªÁ¢∫Ë™çÂá¶ÁêÜ„ÇíÂâäÈô§               ##
+##                         „ÉªÁµÇ‰∫ÜÂá¶ÁêÜ„ÅÆ„É≠„Ç∞Âá∫ÂäõÂÜÖÂÆπ„Çí‰øÆÊ≠£                     ##
+##                         „Éª„Ç∑„Çß„É´ÂêçÂ§âÊõ¥                                     ##
+##                     SCSK   Âª£ÂÆà           2017/12/06 2.0.1                 ##
+##                       E_Êú¨Á®ºÂãï_14688ÂØæÂøú                                   ##
+##                         „ÉªTNS„Ç®„É©„Éº„É°„ÉÉ„Çª„Éº„Ç∏Â§âÊõ¥                          ##
 ##                             TE_ZCZZ00603 -> TE_ZCZZ00605                   ##
 ##                                                                            ##
-##   [ñﬂÇËíl]                                                                 ##
-##      0 : ê≥èÌ                                                              ##
-##      8 : àŸèÌ                                                              ##
+##   [Êàª„ÇäÂÄ§]                                                                 ##
+##      0 : Ê≠£Â∏∏                                                              ##
+##      8 : Áï∞Â∏∏                                                              ##
 ##                                                                            ##
-##   [ÉpÉâÉÅÅ[É^]                                                             ##
-##      Ç»Çµ                                                                  ##
+##   [„Éë„É©„É°„Éº„Çø]                                                             ##
+##      „Å™„Åó                                                                  ##
 ##                                                                            ##
-##   [égópï˚ñ@]                                                               ##
-##      /uspg/jp1/zc/shl/<ä¬ã´àÀë∂íl>/ZCZZ_DB_START.ksh                       ##
+##   [‰ΩøÁî®ÊñπÊ≥ï]                                                               ##
+##      /uspg/jp1/zc/shl/<Áí∞Â¢É‰æùÂ≠òÂÄ§>/ZCZZ_DB_START.ksh                       ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 ïœêîíËã`                                   ##
+##                                 Â§âÊï∞ÂÆöÁæ©                                   ##
 ################################################################################
 
 ##2014/07/31 S.Takahashi Add Start
-## ä¬ã´àÀë∂íl
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##ç≈â∫ëwÇÃÉJÉåÉìÉgÉfÉBÉåÉNÉgÉäñº
+## Áí∞Â¢É‰æùÂ≠òÂÄ§
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##ÊúÄ‰∏ãÂ±§„ÅÆ„Ç´„É¨„É≥„Éà„Éá„Ç£„É¨„ÇØ„Éà„É™Âêç
 ##2014/07/31 S.Takahashi Add End
 
-## ÉfÉBÉåÉNÉgÉäíËã`
+## „Éá„Ç£„É¨„ÇØ„Éà„É™ÂÆöÁæ©
 ##2014/07/31 S.Takahashi Mod Start
-#  L_rogupasu="/var/EBS/jp1/PEBSITO/log"      ##ÉçÉOÉtÉ@ÉCÉãäiî[ÉfÉBÉåÉNÉgÉä
-  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ÉçÉOÉtÉ@ÉCÉãäiî[ÉfÉBÉåÉNÉgÉä
+#  L_rogupasu="/var/EBS/jp1/PEBSITO/log"      ##„É≠„Ç∞„Éï„Ç°„Ç§„É´Ê†ºÁ¥ç„Éá„Ç£„É¨„ÇØ„Éà„É™
+  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##„É≠„Ç∞„Éï„Ç°„Ç§„É´Ê†ºÁ¥ç„Éá„Ç£„É¨„ÇØ„Éà„É™
 ##2014/07/31 S.Takahashi Mod End
 
-## ïœêîíËã`
-  L_hizuke=`/bin/date "+%y%m%d"`     ##ÉVÉFÉãé¿çsì˙ït
-  L_sherumei=`/bin/basename $0`      ##é¿çsÉVÉFÉãñº
-  L_hosutomei=`/bin/hostname`        ##é¿çsÉzÉXÉgñº
-  L_enbufairumei="ZCZZCOMN.env"      ##äÓî’ã§í ä¬ã´ïœêîÉtÉ@ÉCÉãñº
-  L_dbfairumei="ZCZZDB.env"          ##DBä¬ã´ê›íËÉtÉ@ÉCÉãñº
-  L_ijou=8                           ##ÉVÉFÉãàŸèÌèIóπéûÇÃÉäÉ^Å[ÉìÉRÅ[Éh
+## Â§âÊï∞ÂÆöÁæ©
+  L_hizuke=`/bin/date "+%y%m%d"`     ##„Ç∑„Çß„É´ÂÆüË°åÊó•‰ªò
+  L_sherumei=`/bin/basename $0`      ##ÂÆüË°å„Ç∑„Çß„É´Âêç
+##2021/09/30 Hitachi,Ltd Mod Start
+#  L_hosutomei=`/bin/hostname`        ##ÂÆüË°å„Éõ„Çπ„ÉàÂêç
+  L_hosutomei=`/bin/hostname -s`     ##ÂÆüË°å„Éõ„Çπ„ÉàÂêç
+##2021/09/30 Hitachi,Ltd Mod End
+  L_enbufairumei="ZCZZCOMN.env"      ##Âü∫Áõ§ÂÖ±ÈÄöÁí∞Â¢ÉÂ§âÊï∞„Éï„Ç°„Ç§„É´Âêç
+  L_dbfairumei="ZCZZDB.env"          ##DBÁí∞Â¢ÉË®≠ÂÆö„Éï„Ç°„Ç§„É´Âêç
+  L_ijou=8                           ##„Ç∑„Çß„É´Áï∞Â∏∏ÁµÇ‰∫ÜÊôÇ„ÅÆ„É™„Çø„Éº„É≥„Ç≥„Éº„Éâ
 
-## ÉtÉ@ÉCÉãíËã`
-  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ÉçÉOÉtÉ@ÉCÉã(ÉtÉãÉpÉX)
-  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##äÓî’ã§í ä¬ã´ïœêîÉtÉ@ÉCÉã(ÉtÉãÉpÉX)
-  L_dbfairu=`/usr/bin/dirname $0`"/${L_dbfairumei}"                                                 ##DBä¬ã´ê›íËÉtÉ@ÉCÉã(ÉtÉãÉpÉX)
+## „Éï„Ç°„Ç§„É´ÂÆöÁæ©
+  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##„É≠„Ç∞„Éï„Ç°„Ç§„É´(„Éï„É´„Éë„Çπ)
+  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##Âü∫Áõ§ÂÖ±ÈÄöÁí∞Â¢ÉÂ§âÊï∞„Éï„Ç°„Ç§„É´(„Éï„É´„Éë„Çπ)
+  L_dbfairu=`/usr/bin/dirname $0`"/${L_dbfairumei}"                                                 ##DBÁí∞Â¢ÉË®≠ÂÆö„Éï„Ç°„Ç§„É´(„Éï„É´„Éë„Çπ)
 
 
 ################################################################################
-##                                 ä÷êîíËã`                                   ##
+##                                 Èñ¢Êï∞ÂÆöÁæ©                                   ##
 ################################################################################
 
 
-### ÉçÉOèoóÕèàóù ###
+### „É≠„Ç∞Âá∫ÂäõÂá¶ÁêÜ ###
 
   L_rogushuturyoku()
   {
@@ -81,93 +84,96 @@
   }
 
 
-### èIóπèàóù ###
+### ÁµÇ‰∫ÜÂá¶ÁêÜ ###
 
   L_shuryo()
   {
     if [ -f ${TE_ZCZZHYOUJUNSHUTURYOKU} ]
       then
-        L_rogushuturyoku "ïWèÄèoóÕàÍéûÉtÉ@ÉCÉãçÌèúé¿çs"
+        L_rogushuturyoku "Ê®ôÊ∫ñÂá∫Âäõ‰∏ÄÊôÇ„Éï„Ç°„Ç§„É´ÂâäÈô§ÂÆüË°å"
         rm ${TE_ZCZZHYOUJUNSHUTURYOKU}
     fi
 
     if [ -f ${TE_ZCZZHYOUJUNERA} ]
       then
-        L_rogushuturyoku "ïWèÄÉGÉâÅ[àÍéûÉtÉ@ÉCÉãçÌèúé¿çs"
+        L_rogushuturyoku "Ê®ôÊ∫ñ„Ç®„É©„Éº‰∏ÄÊôÇ„Éï„Ç°„Ç§„É´ÂâäÈô§ÂÆüË°å"
         rm ${TE_ZCZZHYOUJUNERA}
     fi
 
     L_modorichi=${1:-0}
-    L_rogushuturyoku "ZCZZ00002:${L_sherumei} èIóπ  END_CD="${L_modorichi}
+    L_rogushuturyoku "ZCZZ00002:${L_sherumei} ÁµÇ‰∫Ü  END_CD="${L_modorichi}
     exit ${L_modorichi}
   }
 
-### trap èàóù ###
+### trap Âá¶ÁêÜ ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
-##                                 ÉÅÉCÉì                                     ##
+##                                 „É°„Ç§„É≥                                     ##
 ################################################################################
 
 
 
-### èàóùäJénèoóÕ ###
+### Âá¶ÁêÜÈñãÂßãÂá∫Âäõ ###
 
   touch ${L_rogumei}
 ##2014/07/31 S.Takahashi Mod Start
-#  L_rogushuturyoku "ZCZZ00002:${L_sherumei} äJén"
-  L_rogushuturyoku "ZCZZ00001:${L_sherumei} äJén"
+#  L_rogushuturyoku "ZCZZ00002:${L_sherumei} ÈñãÂßã"
+  L_rogushuturyoku "ZCZZ00001:${L_sherumei} ÈñãÂßã"
 ##2014/07/31 S.Takahashi Mod End
 
-### ä¬ã´ê›íËä¬ã´ïœêîÉtÉ@ÉCÉãì«Ç›çûÇ› ###
+### Áí∞Â¢ÉË®≠ÂÆöÁí∞Â¢ÉÂ§âÊï∞„Éï„Ç°„Ç§„É´Ë™≠„ÅøËæº„Åø ###
 
-## äÓî’ã§í ÉtÉ@ÉCÉãì«Ç›çûÇ›
-  L_rogushuturyoku "äÓî’ã§í ä¬ã´ïœêîÉtÉ@ÉCÉãÇì«Ç›çûÇ›Ç‹Ç∑ÅB"
+## Âü∫Áõ§ÂÖ±ÈÄö„Éï„Ç°„Ç§„É´Ë™≠„ÅøËæº„Åø
+  L_rogushuturyoku "Âü∫Áõ§ÂÖ±ÈÄöÁí∞Â¢ÉÂ§âÊï∞„Éï„Ç°„Ç§„É´„ÇíË™≠„ÅøËæº„Åø„Åæ„Åô„ÄÇ"
 
   if [ -r "${L_enbufairu}" ]
     then
       . ${L_enbufairu}
-      L_rogushuturyoku "äÓî’ã§í ä¬ã´ïœêîÉtÉ@ÉCÉãÇì«Ç›çûÇ›Ç‹ÇµÇΩÅB"
+      L_rogushuturyoku "Âü∫Áõ§ÂÖ±ÈÄöÁí∞Â¢ÉÂ§âÊï∞„Éï„Ç°„Ç§„É´„ÇíË™≠„ÅøËæº„Åø„Åæ„Åó„Åü„ÄÇ"
   else
-      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` Ç™ë∂ç›ÇµÇ»Ç¢ÅAÇ‹ÇΩÇÕå©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB   HOST=${L_hosutomei}"
-      echo "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` Ç™ë∂ç›ÇµÇ»Ç¢ÅAÇ‹ÇΩÇÕå©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB   HOST=${L_hosutomei}" 1>&2
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` „ÅåÂ≠òÂú®„Åó„Å™„ÅÑ„ÄÅ„Åæ„Åü„ÅØË¶ã„Å§„Åã„Çä„Åæ„Åõ„Çì„ÄÇ   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` „ÅåÂ≠òÂú®„Åó„Å™„ÅÑ„ÄÅ„Åæ„Åü„ÅØË¶ã„Å§„Åã„Çä„Åæ„Åõ„Çì„ÄÇ   HOST=${L_hosutomei}" 1>&2
       L_shuryo ${L_ijou}
   fi
 
-## DBä¬ã´ê›íËÉtÉ@ÉCÉãì«Ç›çûÇ›
-  L_rogushuturyoku "DBä¬ã´ê›íËÉtÉ@ÉCÉãÇì«Ç›çûÇ›Ç‹Ç∑ÅB"
+## DBÁí∞Â¢ÉË®≠ÂÆö„Éï„Ç°„Ç§„É´Ë™≠„ÅøËæº„Åø
+  L_rogushuturyoku "DBÁí∞Â¢ÉË®≠ÂÆö„Éï„Ç°„Ç§„É´„ÇíË™≠„ÅøËæº„Åø„Åæ„Åô„ÄÇ"
 
   if [ -r "${L_dbfairu}" ]
     then
       . ${L_dbfairu}
-      L_rogushuturyoku "DBä¬ã´ê›íËÉtÉ@ÉCÉãÇì«Ç›çûÇ›Ç‹ÇµÇΩÅB"
+      L_rogushuturyoku "DBÁí∞Â¢ÉË®≠ÂÆö„Éï„Ç°„Ç§„É´„ÇíË™≠„ÅøËæº„Åø„Åæ„Åó„Åü„ÄÇ"
   else
-      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_dbfairu}` Ç™ë∂ç›ÇµÇ»Ç¢ÅAÇ‹ÇΩÇÕå©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB   HOST=${L_hosutomei}"
-      echo "ZCZZ00003:[Error] `/bin/basename ${L_dbfairu}` Ç™ë∂ç›ÇµÇ»Ç¢ÅAÇ‹ÇΩÇÕå©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB   HOST=${L_hosutomei}" 1>&2
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_dbfairu}` „ÅåÂ≠òÂú®„Åó„Å™„ÅÑ„ÄÅ„Åæ„Åü„ÅØË¶ã„Å§„Åã„Çä„Åæ„Åõ„Çì„ÄÇ   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_dbfairu}` „ÅåÂ≠òÂú®„Åó„Å™„ÅÑ„ÄÅ„Åæ„Åü„ÅØË¶ã„Å§„Åã„Çä„Åæ„Åõ„Çì„ÄÇ   HOST=${L_hosutomei}" 1>&2
       L_shuryo ${L_ijou}
   fi
 
-## ÉRÉ}ÉìÉhê›íË
+## „Ç≥„Éû„É≥„ÉâË®≠ÂÆö
 ##2014/07/31 S.Takahashi Del Start
-#  L_appskaisi="${TE_ZCZZAPKOMANDOPASU}/adalnctl.sh start"                            ##APPSÉäÉXÉiÅ[äJénÉRÉ}ÉìÉh
+#  L_appskaisi="${TE_ZCZZAPKOMANDOPASU}/adalnctl.sh start"                            ##APPS„É™„Çπ„Éä„ÉºÈñãÂßã„Ç≥„Éû„É≥„Éâ
 ##2014/07/31 S.Takahashi Del End
 
 ##2014/07/31 S.Takahashi Mod Start
-#  L_dbkaisi="${ORACLE_HOME}/bin/srvctl start instance -d PEBSITO -i ${ORACLE_SID}"   ##ÉfÅ[É^ÉxÅ[ÉXäJénÉRÉ}ÉìÉh
-  L_dbkaisi="${ORACLE_HOME}/bin/srvctl start instance -d ${DATABASE_NAME} -i ${ORACLE_SID}"   ##ÉfÅ[É^ÉxÅ[ÉXäJénÉRÉ}ÉìÉh
+#  L_dbkaisi="${ORACLE_HOME}/bin/srvctl start instance -d PEBSITO -i ${ORACLE_SID}"   ##„Éá„Éº„Çø„Éô„Éº„ÇπÈñãÂßã„Ç≥„Éû„É≥„Éâ
+  L_dbkaisi="${ORACLE_HOME}/bin/srvctl start instance -d ${DATABASE_NAME} -i ${ORACLE_SID}"   ##„Éá„Éº„Çø„Éô„Éº„ÇπÈñãÂßã„Ç≥„Éû„É≥„Éâ
 ##2014/07/31 S.Takahashi Mod End
-  L_risunakaisi="${ORACLE_HOME}/bin/srvctl start listener -n ${TE_ZCZZHOSUTOMEI} -l ${LISTENER_NAME}"    ##TNSÉäÉXÉiÅ[äJénÉRÉ}ÉìÉh
+  L_risunakaisi="${ORACLE_HOME}/bin/srvctl start listener -n ${TE_ZCZZHOSUTOMEI} -l ${LISTENER_NAME}"    ##TNS„É™„Çπ„Éä„ÉºÈñãÂßã„Ç≥„Éû„É≥„Éâ
 
 
-### TNSÉäÉXÉiÅ[ãNìÆ ###
+### TNS„É™„Çπ„Éä„ÉºËµ∑Âãï ###
 
-  L_rogushuturyoku "TNSÉäÉXÉiÅ[ÇãNìÆÇµÇ‹Ç∑ÅB"
+  L_rogushuturyoku "TNS„É™„Çπ„Éä„Éº„ÇíËµ∑Âãï„Åó„Åæ„Åô„ÄÇ"
 
   ${L_risunakaisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
   L_dashutu=${?}
-  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+##2021/09/30 Hitachi,Ltd Mod Start
+#  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+  /bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+##2021/09/30 Hitachi,Ltd Mod End
 
-## ñﬂÇËílÇ©ÇÁÅAsrvctlÇÃìÆçÏÇîªíË
+## Êàª„ÇäÂÄ§„Åã„Çâ„ÄÅsrvctl„ÅÆÂãï‰Ωú„ÇíÂà§ÂÆö
   if [ ${L_dashutu} -eq 0 ]
     then
       L_rogushuturyoku "${TE_ZCZZ00604}"
@@ -182,15 +188,18 @@ trap 'L_shuryo 8' 1 2 3 15
   fi
 
 
-### ÉfÅ[É^ÉxÅ[ÉXãNìÆ ###
+### „Éá„Éº„Çø„Éô„Éº„ÇπËµ∑Âãï ###
 
-  L_rogushuturyoku "ÉfÅ[É^ÉxÅ[ÉXÇãNìÆÇµÇ‹Ç∑ÅB"
+  L_rogushuturyoku "„Éá„Éº„Çø„Éô„Éº„Çπ„ÇíËµ∑Âãï„Åó„Åæ„Åô„ÄÇ"
 
   ${L_dbkaisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
   L_dashutu=${?}
-  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+##2021/09/30 Hitachi,Ltd Mod Start
+#  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+  /bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+##2021/09/30 Hitachi,Ltd Mod End
 
-## ñﬂÇËílÇ©ÇÁÅAsrvctlÇÃìÆçÏÇîªíË
+## Êàª„ÇäÂÄ§„Åã„Çâ„ÄÅsrvctl„ÅÆÂãï‰Ωú„ÇíÂà§ÂÆö
   if [ ${L_dashutu} -eq 0 ]
     then
       L_rogushuturyoku "${TE_ZCZZ00602}"
@@ -201,19 +210,25 @@ trap 'L_shuryo 8' 1 2 3 15
   fi
 
 
-### DBÉTÅ[ÉoãNìÆämîF ###
+### DB„Çµ„Éº„ÉêËµ∑ÂãïÁ¢∫Ë™ç ###
 
-  L_rogushuturyoku "DBÉTÅ[ÉoãNìÆämîF"
-  L_rogushuturyoku "DBëwÇÃãNìÆÇë“Ç¡ÇƒÇ¢Ç‹Ç∑ÅB"
+  L_rogushuturyoku "DB„Çµ„Éº„ÉêËµ∑ÂãïÁ¢∫Ë™ç"
+  L_rogushuturyoku "DBÂ±§„ÅÆËµ∑Âãï„ÇíÂæÖ„Å£„Å¶„ÅÑ„Åæ„Åô„ÄÇ"
   sleep ${TE_ZCZZTAIKI}
 
-## TNSÉäÉXÉiÅ[ãNìÆämîF
-  L_rogushuturyoku "TNSÉäÉXÉiÅ[ãNìÆämîF"
+## TNS„É™„Çπ„Éä„ÉºËµ∑ÂãïÁ¢∫Ë™ç
+  L_rogushuturyoku "TNS„É™„Çπ„Éä„ÉºËµ∑ÂãïÁ¢∫Ë™ç"
 ##2014/07/31 S.Takahashi Mod Start
 #  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep "10.2.0" | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
-  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep "11.2.0" | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+##2021/09/30 Hitachi,Ltd Mod Start
+#  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep "11.2.0" | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+  /bin/ps -ef | grep `/usr/bin/whoami` | /bin/grep "11.2.0" | /bin/grep inherit | /bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+##2021/09/30 Hitachi,Ltd Mod End
 ##2014/07/31 S.Takahashi Mod End
-  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+##2021/09/30 Hitachi,Ltd Mod Start
+#  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+  if [ `/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+##2021/09/30 Hitachi,Ltd Mod End
     then
 ##2017/12/06 S.Hiromori Message Change Start TE_ZCZZ00603 -> TE_ZCZZ00605
 #      L_rogushuturyoku "${TE_ZCZZ00603}"
@@ -224,23 +239,29 @@ trap 'L_shuryo 8' 1 2 3 15
       L_shuryo ${L_ijou}
   fi
 
-  L_rogushuturyoku "TNSÉäÉXÉiÅ[ÇÃãNìÆÇämîFÇµÇ‹ÇµÇΩÅB"
+  L_rogushuturyoku "TNS„É™„Çπ„Éä„Éº„ÅÆËµ∑Âãï„ÇíÁ¢∫Ë™ç„Åó„Åæ„Åó„Åü„ÄÇ"
 
-## ÉfÅ[É^ÉxÅ[ÉXãNìÆämîF
-  L_rogushuturyoku "ÉfÅ[É^ÉxÅ[ÉXãNìÆämîF"
-  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep ora_pmon | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
-  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+## „Éá„Éº„Çø„Éô„Éº„ÇπËµ∑ÂãïÁ¢∫Ë™ç
+  L_rogushuturyoku "„Éá„Éº„Çø„Éô„Éº„ÇπËµ∑ÂãïÁ¢∫Ë™ç"
+##2021/09/30 Hitachi,Ltd Mod Start
+#  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep ora_pmon | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+  /bin/ps -ef | grep `/usr/bin/whoami` | /bin/grep ora_pmon | /bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+##2021/09/30 Hitachi,Ltd Mod End
+##2021/09/30 Hitachi,Ltd Mod Start
+#  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+  if [ `/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+##2021/09/30 Hitachi,Ltd Mod End
     then
       L_rogushuturyoku "${TE_ZCZZ00603}"
       echo "${TE_ZCZZ00603}" 1>&2
       L_shuryo ${L_ijou}
   fi
 
-  L_rogushuturyoku "ÉfÅ[É^ÉxÅ[ÉXÇÃãNìÆÇämîFÇµÇ‹ÇµÇΩÅB"
+  L_rogushuturyoku "„Éá„Éº„Çø„Éô„Éº„Çπ„ÅÆËµ∑Âãï„ÇíÁ¢∫Ë™ç„Åó„Åæ„Åó„Åü„ÄÇ"
 
-## ì˙ïtèëéÆê›íË(è·äQî‘çÜ#08766ëŒâû)
+## Êó•‰ªòÊõ∏ÂºèË®≠ÂÆö(ÈöúÂÆ≥Áï™Âè∑#08766ÂØæÂøú)
 
-  L_rogushuturyoku "ì˙ïtèëéÆÅuNLS_LANGUAGEÅvÇê›íËÇµÇ‹Ç∑"
+  L_rogushuturyoku "Êó•‰ªòÊõ∏Âºè„ÄåNLS_LANGUAGE„Äç„ÇíË®≠ÂÆö„Åó„Åæ„Åô"
 
   . ${ORACLE_HOME}/${ORACLE_SID}_${TE_ZCZZHOSUTOMEI}.env
   L_rogushuturyoku "ORA_NLS10 : `echo $ORA_NLS10`"
@@ -255,28 +276,31 @@ EOF
 
   L_dashutu=${?}
 
-## ñﬂÇËílÇ©ÇÁÅASQLÇÃé¿çsåãâ ÇîªíË
+## Êàª„ÇäÂÄ§„Åã„Çâ„ÄÅSQL„ÅÆÂÆüË°åÁµêÊûú„ÇíÂà§ÂÆö
   if [ ${L_dashutu} -eq 0 ]
     then
       L_rogushuturyoku "${TE_ZCZZ01700}"
     else
       L_rogushuturyoku "${TE_ZCZZ01701}"
-      echo "${TE_ZCZZ00601}" 1>&2
+##2021/09/30 Hitachi,Ltd Mod Start
+#      echo "${TE_ZCZZ00601}" 1>&2
+      echo "${TE_ZCZZ01701}" 1>&2
+##2021/09/30 Hitachi,Ltd Mod End
       L_shuryo ${L_ijou}
     fi
 
-    L_rogushuturyoku "ì˙ïtèëéÆÅuNLS_LANGUAGEÅvÇÃê›íËÇ™äÆóπÇµÇ‹ÇµÇΩ"
+    L_rogushuturyoku "Êó•‰ªòÊõ∏Âºè„ÄåNLS_LANGUAGE„Äç„ÅÆË®≠ÂÆö„ÅåÂÆå‰∫Ü„Åó„Åæ„Åó„Åü"
 
 ##2014/07/31 S.Takahashi Del Start
-### APPSÉäÉXÉiÅ[ãNìÆ ###
+### APPS„É™„Çπ„Éä„ÉºËµ∑Âãï ###
 
-#  L_rogushuturyoku "APPSÉäÉXÉiÅ[ÇãNìÆÇµÇ‹Ç∑ÅB"
+#  L_rogushuturyoku "APPS„É™„Çπ„Éä„Éº„ÇíËµ∑Âãï„Åó„Åæ„Åô„ÄÇ"
 
 #  ${L_appskaisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
 #  L_dashutu=${?}
 #  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
 
-## ñﬂÇËílÇ©ÇÁÅAadalnctlÇÃìÆçÏÇîªíË
+## Êàª„ÇäÂÄ§„Åã„Çâ„ÄÅadalnctl„ÅÆÂãï‰Ωú„ÇíÂà§ÂÆö
 #  if [ ${L_dashutu} -eq 0 ]
 #    then
 #      L_rogushuturyoku "${TE_ZCZZ00600}"
@@ -287,14 +311,14 @@ EOF
 #  fi
 
 
-#### APëwãNìÆämîF ###
+#### APÂ±§Ëµ∑ÂãïÁ¢∫Ë™ç ###
 #
-#  L_rogushuturyoku "APëwãNìÆämîF"
-#  L_rogushuturyoku "APëwÇÃãNìÆÇë“Ç¡ÇƒÇ¢Ç‹Ç∑ÅB"
+#  L_rogushuturyoku "APÂ±§Ëµ∑ÂãïÁ¢∫Ë™ç"
+#  L_rogushuturyoku "APÂ±§„ÅÆËµ∑Âãï„ÇíÂæÖ„Å£„Å¶„ÅÑ„Åæ„Åô„ÄÇ"
 #  sleep ${TE_ZCZZTAIKI}
 
-## APPSÉäÉXÉiÅ[ãNìÆämîF
-#  L_rogushuturyoku "APPSÉäÉXÉiÅ[ãNìÆämîF"
+## APPS„É™„Çπ„Éä„ÉºËµ∑ÂãïÁ¢∫Ë™ç
+#  L_rogushuturyoku "APPS„É™„Çπ„Éä„ÉºËµ∑ÂãïÁ¢∫Ë™ç"
 #  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep APPS | /usr/bin/grep inherit | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
 #  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
 #    then
@@ -303,9 +327,9 @@ EOF
 #      L_shuryo ${L_ijou}
 #  fi
 
-#  L_rogushuturyoku "APPSÉäÉXÉiÅ[ÇÃãNìÆÇämîFÇµÇ‹ÇµÇΩÅB"
+#  L_rogushuturyoku "APPS„É™„Çπ„Éä„Éº„ÅÆËµ∑Âãï„ÇíÁ¢∫Ë™ç„Åó„Åæ„Åó„Åü„ÄÇ"
 ##2014/07/31 S.Takahashi Del End
 
-### ÉVÉFÉãÇÃèIóπ ###
+### „Ç∑„Çß„É´„ÅÆÁµÇ‰∫Ü ###
 
   L_shuryo ${TE_ZCZZSEIJOUSHURYO}
