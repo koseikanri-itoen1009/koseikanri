@@ -1,68 +1,75 @@
 #!/bin/ksh
 ################################################################################
 ##                                                                            ##
-##   [ЉT—v]                                                                   ##
-##      PGA‚ри‡’l€ИЏгЋg—p‚µ‚Д‚ў‚йѓZѓbѓVѓ‡ѓ“‚рkill‚·‚й(–{”Ф—p)                 ##
+##   [ж¦‚и¦Ѓ]                                                                   ##
+##      PGAг‚’й–ѕеЂ¤д»ҐдёЉдЅїз”ЁгЃ—гЃ¦гЃ„г‚‹г‚»гѓѓг‚·гѓ§гѓіг‚’killгЃ™г‚‹(жњ¬з•Єз”Ё)                 ##
 ##                                                                            ##
-##   [Ќмђ¬/ЌXђV—љ—р]                                                          ##
-##        Ќмђ¬ЋТ  ЃF   SCS ђм“c              2010/02/22 1.0.0                 ##
-##        ЌXђV—љ—рЃF   SCS ђм“c              2010/02/22 1.0.0                 ##
-##        ЌXђV—љ—рЃF   SCS –k‰Н              2010/03/23 1.0.1                 ##
-##                       и‡’l‚р2GB‚©‚з1GB‚Й•ПЌX                               ##
-##        ЌXђV—љ—рЃF   SCS ‹gЊі              2011/10/04 1.0.2                 ##
-##                       и‡’l‚Йђи—LЋћЉФ‚р’З‰Б                                 ##
-##                       ‘ОЏЫ‹@”\‚рЋQЏЖѓ^ѓCѓv’и‹`‚Й•ПЌX                       ##
-##        ЌXђV—љ—рЃF   SCSK –мЊы             2014/07/31 2.0.0                 ##
-##                       HWѓЉѓvѓЊЃ[ѓX‘О‰ћ(ѓЉѓvѓЊЃ[ѓX_00007)                   ##
-##                         ЃECopyright‚МЌнЏњ                                  ##
-##                         ЃEЉВ‹«€Л‘¶’l‚М•Пђ”‰»                               ##
-##                         ЃEp.pga_used_mem‚рp.pga_alloc_mem‚Й•ПЌX            ##
+##   [дЅњж€ђ/ж›ґж–°е±Ґж­ґ]                                                          ##
+##        дЅњж€ђиЂ…  пјљ   SCS е·ќз”°              2010/02/22 1.0.0                 ##
+##        ж›ґж–°е±Ґж­ґпјљ   SCS е·ќз”°              2010/02/22 1.0.0                 ##
+##        ж›ґж–°е±Ґж­ґпјљ   SCS еЊ—жІі              2010/03/23 1.0.1                 ##
+##                       й–ѕеЂ¤г‚’2GBгЃ‹г‚‰1GBгЃ«е¤‰ж›ґ                               ##
+##        ж›ґж–°е±Ґж­ґпјљ   SCS еђ‰е…ѓ              2011/10/04 1.0.2                 ##
+##                       й–ѕеЂ¤гЃ«еЌ жњ‰ж™‚й–“г‚’иїЅеЉ                                  ##
+##                       еЇѕи±Ўж©џиѓЅг‚’еЏ‚з…§г‚їг‚¤гѓ—е®љзѕ©гЃ«е¤‰ж›ґ                       ##
+##        ж›ґж–°е±Ґж­ґпјљ   SCSK й‡ЋеЏЈ             2014/07/31 2.0.0                 ##
+##                       HWгѓЄгѓ—гѓ¬гѓјг‚№еЇѕеїњ(гѓЄгѓ—гѓ¬гѓјг‚№_00007)                   ##
+##                         гѓ»CopyrightгЃ®е‰Љй™¤                                  ##
+##                         гѓ»з’°еўѓдѕќе­еЂ¤гЃ®е¤‰ж•°еЊ–                               ##
+##                         гѓ»p.pga_used_memг‚’p.pga_alloc_memгЃ«е¤‰ж›ґ            ##
 ##                                                                            ##
-##   [–Я‚и’l]                                                                 ##
-##      0 : ђіЏн                                                              ##
-##      8 : €ЩЏн                                                              ##
+##   [ж€»г‚ЉеЂ¤]                                                                 ##
+##      0 : ж­Јеёё                                                              ##
+##      8 : з•°еёё                                                              ##
 ##                                                                            ##
-##   [ѓpѓ‰ѓЃЃ[ѓ^]                                                             ##
-##      1 : —e—К(MB)                                                          ##
-##      2 : ЋћЉФ(•b)                                                          ##
+##   [гѓ‘гѓ©гѓЎгѓјг‚ї]                                                             ##
+##      1 : е®№й‡Џ(MB)                                                          ##
+##      2 : ж™‚й–“(з§’)                                                          ##
 ##                                                                            ##
-##   [Ћg—p•ы–@]                                                               ##
-##      /uspg/jp1/zc/shl/<ЉВ‹«€Л‘¶’l>/ZCZZ_WI_AUTOKILL.ksh                    ##
+##   [дЅїз”Ёж–№жі•]                                                               ##
+##      /uspg/jp1/zc/shl/<з’°еўѓдѕќе­еЂ¤>/ZCZZ_WI_AUTOKILL.ksh                    ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 •Пђ”’и‹`                                   ##
+##                                 е¤‰ж•°е®љзѕ©                                   ##
 ################################################################################
 
 ##2014/07/31 S.Noguchi Add Start
-##ЉВ‹«€Л‘¶’l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##ЌЕ‰є‘w‚МѓJѓЊѓ“ѓgѓfѓBѓЊѓNѓgѓЉ–ј
+##з’°еўѓдѕќе­еЂ¤
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##жњЂдё‹е±¤гЃ®г‚«гѓ¬гѓігѓ€гѓ‡г‚Јгѓ¬г‚Їгѓ€гѓЄеђЌ
 ##2014/07/31 S.Noguchi Add End
-L_sherumei=`/bin/basename $0`            #ѓVѓFѓ‹–ј
-L_hosutomei=`/bin/hostname`              #ѓzѓXѓg–ј
-L_hizuke=`/bin/date "+%y%m%d"`           #“ъ•t
+L_sherumei=`/bin/basename $0`            #г‚·г‚§гѓ«еђЌ
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_hosutomei=`/bin/hostname`              #гѓ›г‚№гѓ€еђЌ
+L_hosutomei=`/bin/hostname -s`           #гѓ›г‚№гѓ€еђЌ
+##2021/09/30 Hitachi,Ltd Mod End
+L_hizuke=`/bin/date "+%y%m%d"`           #ж—Ґд»
 ##2014/07/31 S.Noguchi Mod Start
-#L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #ѓЌѓOѓpѓX
-L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #ѓЌѓOѓtѓ@ѓCѓ‹Љi”[ѓfѓBѓЊѓNѓgѓЉ
+#L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #гѓ­г‚°гѓ‘г‚№
+L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #гѓ­г‚°гѓ•г‚Ўг‚¤гѓ«ж јзґЌгѓ‡г‚Јгѓ¬г‚Їгѓ€гѓЄ
 ##2014/07/31 S.Noguchi Mod End
-L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .sh`"${L_hosutomei}${L_hizuke}.log"   #ѓЌѓO–ј
-L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #‹¤’КЉВ‹«•Пђ”ѓtѓ@ѓCѓ‹–ј
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .sh`"${L_hosutomei}${L_hizuke}.log"   #гѓ­г‚°еђЌ
+#L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #е…±йЂљз’°еўѓе¤‰ж•°гѓ•г‚Ўг‚¤гѓ«еђЌ
+L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #гѓ­г‚°еђЌ
+L_zczzcomn=`/usr/bin/dirname $0`"/ZCZZCOMN.env"     #е…±йЂљз’°еўѓе¤‰ж•°гѓ•г‚Ўг‚¤гѓ«еђЌ
+##2021/09/30 Hitachi,Ltd Mod End
 
-##ѓVѓFѓ‹ЊЕ—LЉВ‹«•Пђ”
-KILL_PID_LIST=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_pid_list_temp2.lst    #kill‘ОЏЫPIDѓЉѓXѓg€кЋћѓtѓ@ѓCѓ‹
+##г‚·г‚§гѓ«е›єжњ‰з’°еўѓе¤‰ж•°
+KILL_PID_LIST=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_pid_list_temp2.lst    #killеЇѕи±ЎPIDгѓЄг‚№гѓ€дёЂж™‚гѓ•г‚Ўг‚¤гѓ«
 
 ################################################################################
-##                                 ЉЦђ”’и‹`                                   ##
+##                                 й–ўж•°е®љзѕ©                                   ##
 ################################################################################
 
-### ѓЌѓOЏo—НЏ€—ќ ###
+### гѓ­г‚°е‡єеЉ›е‡¦зђ† ###
 L_rogushuturyoku()
 {
    echo `/bin/date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_rogumei}
 }
 
-### ЏI—№Џ€—ќ ###
+### зµ‚дє†е‡¦зђ† ###
 L_shuryo()
 {
   
@@ -70,51 +77,51 @@ L_shuryo()
   exit ${L_Modorichi}
 }
 
-### trap Џ€—ќ ###
+### trap е‡¦зђ† ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
 
-### Џ€—ќЉJЋnЏo—Н ###
-L_rogushuturyoku "ZCZZ00001:${L_sherumei} ЉJЋn"
+### е‡¦зђ†й–‹е§‹е‡єеЉ› ###
+L_rogushuturyoku "ZCZZ00001:${L_sherumei} й–‹е§‹"
 
-### ЉВ‹«ђЭ’иѓtѓ@ѓCѓ‹“ЗЌћ‚Э ###
-### Љо”Х‹¤’КЉВ‹«•Пђ” ###
+### з’°еўѓиЁ­е®љгѓ•г‚Ўг‚¤гѓ«иЄ­иѕјгЃї ###
+### еџєз›¤е…±йЂљз’°еўѓе¤‰ж•° ###
 if [ -r ${L_zczzcomn} ]
 then
    . ${L_zczzcomn}
 else
-## 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
-##   echo "ZCZZ00003:[Error] ZCZZCOMN.env ‚Є‘¶ЌЭ‚µ‚И‚ўЃA‚Ь‚Ѕ‚НЊ©‚В‚©‚и‚Ь‚№‚сЃB HOST=${L_hosutomei}" \
-  echo "ZCZZ00003:[Error] ZCZZCOMN.env ‚Є‘¶ЌЭ‚µ‚И‚ўЃA‚Ь‚Ѕ‚НЊ©‚В‚©‚и‚Ь‚№‚сЃB HOST=${L_hosutomei} STATUS:8" \
+## 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
+##   echo "ZCZZ00003:[Error] ZCZZCOMN.env гЃЊе­ењЁгЃ—гЃЄгЃ„гЂЃгЃѕгЃџгЃЇи¦‹гЃ¤гЃ‹г‚ЉгЃѕгЃ›г‚“гЂ‚ HOST=${L_hosutomei}" \
+  echo "ZCZZ00003:[Error] ZCZZCOMN.env гЃЊе­ењЁгЃ—гЃЄгЃ„гЂЃгЃѕгЃџгЃЇи¦‹гЃ¤гЃ‹г‚ЉгЃѕгЃ›г‚“гЂ‚ HOST=${L_hosutomei} STATUS:8" \
        | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-## 2011/10/04 t.yoshimoto Mod End E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Mod End E_жњ¬зЁје‹•_07971
   L_shuryo 8
 fi
 
-### DBЉВ‹«ђЭ’и ###
+### DBз’°еўѓиЁ­е®љ ###
 if [ -r ${TE_ZCZZDB} ]
 then
   . ${TE_ZCZZDB}
 else
-## 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
-##   echo "ZCZZ00003:[Error] ZCZZDB.env ‚Є‘¶ЌЭ‚µ‚И‚ўЃA‚Ь‚Ѕ‚НЊ©‚В‚©‚и‚Ь‚№‚сЃB HOST=${L_hosutomei}" \
-  echo "ZCZZ00003:[Error] ZCZZDB.env ‚Є‘¶ЌЭ‚µ‚И‚ўЃA‚Ь‚Ѕ‚НЊ©‚В‚©‚и‚Ь‚№‚сЃB HOST=${L_hosutomei} STATUS:${TE_ZCZZIJOUSHURYO}" \
+## 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
+##   echo "ZCZZ00003:[Error] ZCZZDB.env гЃЊе­ењЁгЃ—гЃЄгЃ„гЂЃгЃѕгЃџгЃЇи¦‹гЃ¤гЃ‹г‚ЉгЃѕгЃ›г‚“гЂ‚ HOST=${L_hosutomei}" \
+  echo "ZCZZ00003:[Error] ZCZZDB.env гЃЊе­ењЁгЃ—гЃЄгЃ„гЂЃгЃѕгЃџгЃЇи¦‹гЃ¤гЃ‹г‚ЉгЃѕгЃ›г‚“гЂ‚ HOST=${L_hosutomei} STATUS:${TE_ZCZZIJOUSHURYO}" \
        | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
 ##   L_shuryo ${TE_ZCZZKEIKOKUSHURYO}
   L_shuryo ${TE_ZCZZIJOUSHURYO}
-## 2011/10/04 t.yoshimoto Mod End E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Mod End E_жњ¬зЁје‹•_07971
 fi
 
-## 2011/10/04 t.yoshimoto Add Start E_–{‰Т“®_07971
-### INѓpѓ‰ѓЃЃ[ѓ^Ћж“ѕ ###
+## 2011/10/04 t.yoshimoto Add Start E_жњ¬зЁје‹•_07971
+### INгѓ‘гѓ©гѓЎгѓјг‚їеЏ–еѕ— ###
 L_para1=${1}
 L_para2=${2}
-## 2011/10/04 t.yoshimoto Add End E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Add End E_жњ¬зЁје‹•_07971
 
-### kill‘ОЏЫPIDЋж“ѕ ###
+### killеЇѕи±ЎPIDеЏ–еѕ— ###
 ${ORACLE_HOME}/bin/sqlplus -s apps/apps << EOF >> /dev/null
 WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT FAILURE
@@ -126,7 +133,7 @@ alter session set nls_date_format='yyyy/mm/dd hh24:mi:ss';
 set head off
 set feedback off
 spool ${KILL_PID_LIST}
--- 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
+-- 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
 --select p.spid, s.SQL_ID, round(p.PGA_USED_MEM/1024/1024) PGA_MG
 --from v\$session s, v\$process p
 --where s.paddr = p.addr and status = 'ACTIVE' and Module is not null and round(p.PGA_USED_MEM/1024/1024) > 1000
@@ -153,35 +160,35 @@ AND   TRUNC(SYSDATE) BETWEEN TRUNC(lvvl.start_date_active)
 AND   ((ROUND(p.pga_alloc_mem / 1024 / 1024) > ${L_para1} )
 --2014/07/31 S.Noguchi Mod End
   OR   (s.seconds_in_wait >= ${L_para2}));
--- 2011/10/04 t.yoshimoto Mod End E_–{‰Т“®_07971
+-- 2011/10/04 t.yoshimoto Mod End E_жњ¬зЁје‹•_07971
 spool off
 exit
 EOF
 
-### SQL ЏI—№”»’и ###
+### SQL зµ‚дє†е€¤е®љ ###
 
 if [ $? != 0 ]
 then
-## 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
-##   echo "[ERROR]:kill‘ОЏЫPIDЋж“ѕ‚ЙЋё”s‚µ‚Ь‚µ‚Ѕ" >> ${L_rogumei}
+## 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
+##   echo "[ERROR]:killеЇѕи±ЎPIDеЏ–еѕ—гЃ«е¤±ж•—гЃ—гЃѕгЃ—гЃџ" >> ${L_rogumei}
 ##   exit 8
-  echo "[ERROR]:kill‘ОЏЫPIDЋж“ѕ‚ЙЋё”s‚µ‚Ь‚µ‚ЅЃB STATUS:${TE_ZCZZIJOUSHURYO}" >> ${L_rogumei}
+  echo "[ERROR]:killеЇѕи±ЎPIDеЏ–еѕ—гЃ«е¤±ж•—гЃ—гЃѕгЃ—гЃџгЂ‚ STATUS:${TE_ZCZZIJOUSHURYO}" >> ${L_rogumei}
   exit ${TE_ZCZZIJOUSHURYO}
-## 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
 fi
 
-### webInquiryѓvѓЌѓZѓXkill ###
-## 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
+### webInquiryгѓ—гѓ­г‚»г‚№kill ###
+## 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
 ##while read L_KILL_PID L_SQL_ID L_PGA_SIZE
 while read L_KILL_PID L_SQL_ID L_PGA_SIZE L_SESSION_IN_WAIT
-## 2011/10/04 t.yoshimoto Mod End E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Mod End E_жњ¬зЁје‹•_07971
 do 
-  if [ -n "${L_KILL_PID}" ] #‹у”’Ќs”»’иЃispoolѓtѓ@ѓCѓ‹‚М1Ќs–Ъ‚Є‰ьЌs‚М‚Э‚М‚Ѕ‚ЯЃj
+  if [ -n "${L_KILL_PID}" ] #з©єз™ЅиЎЊе€¤е®љпј€spoolгѓ•г‚Ўг‚¤гѓ«гЃ®1иЎЊз›®гЃЊж”№иЎЊгЃ®гЃїгЃ®гЃџг‚Ѓпј‰
   then
-## 2011/10/04 t.yoshimoto Mod Start E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Mod Start E_жњ¬зЁје‹•_07971
 ##       L_rogushuturyoku "kill PID : ${L_KILL_PID} SQL_ID : ${L_SQL_ID} PGA_SIZE : ${L_PGA_SIZE}"
     L_rogushuturyoku "kill PID : ${L_KILL_PID} SQL_ID : ${L_SQL_ID} PGA_SIZE : ${L_PGA_SIZE} SESSION_IN_WAIT : ${L_SESSION_IN_WAIT}"
-## 2011/10/04 t.yoshimoto Mod End E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Mod End E_жњ¬зЁје‹•_07971
     kill -9 ${L_KILL_PID}
 
   fi
@@ -189,11 +196,11 @@ do
 
 done < ${KILL_PID_LIST}
 
-### ѓЉѓXѓgѓtѓ@ѓCѓ‹ЌнЏњ ###
+### гѓЄг‚№гѓ€гѓ•г‚Ўг‚¤гѓ«е‰Љй™¤ ###
 rm -f ${KILL_PID_LIST} >> ${L_rogumei}
 
-## 2011/10/04 t.yoshimoto Add Start E_–{‰Т“®_07971
-### Џ€—ќЏI—№Џo—НЃiђіЏнЃj ###
-L_rogushuturyoku "ZCZZ00002:${L_sherumei} ЏI—№ STATUS:${TE_ZCZZSEIJOUSHURYO}"
-## 2011/10/04 t.yoshimoto Add End E_–{‰Т“®_07971
+## 2011/10/04 t.yoshimoto Add Start E_жњ¬зЁје‹•_07971
+### е‡¦зђ†зµ‚дє†е‡єеЉ›пј€ж­Јеёёпј‰ ###
+L_rogushuturyoku "ZCZZ00002:${L_sherumei} зµ‚дє† STATUS:${TE_ZCZZSEIJOUSHURYO}"
+## 2011/10/04 t.yoshimoto Add End E_жњ¬зЁје‹•_07971
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
