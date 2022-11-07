@@ -1,55 +1,58 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [ŠT—v]                                                                   ##
-##          ƒA[ƒJƒCƒuƒƒOƒtƒ@ƒCƒ‹Eƒ[ƒJƒ‹o—ÍŠÄ‹                          ##
+##   [æ¦‚è¦]                                                                   ##
+##          ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ»ãƒ­ãƒ¼ã‚«ãƒ«å‡ºåŠ›ç›£è¦–                          ##
 ##                                                                            ##
-##   [ì¬/XV—š—ğ]                                                          ##
-##        ì¬Ò  F   SCSK   ‹àŠâ           2014/07/31 2.0.0                 ##
-##        XV—š—ğF   SCSK   ‹àŠâ           2014/07/31 2.0.0                 ##
-##                       ‰”Å/HWƒŠƒvƒŒ[ƒX‘Î‰(ƒŠƒvƒŒ[ƒX_00007)              ##
+##   [ä½œæˆ/æ›´æ–°å±¥æ­´]                                                          ##
+##        ä½œæˆè€…  ï¼š   SCSK   é‡‘å²©           2014/07/31 2.0.0                 ##
+##        æ›´æ–°å±¥æ­´ï¼š   SCSK   é‡‘å²©           2014/07/31 2.0.0                 ##
+##                       åˆç‰ˆ/HWãƒªãƒ—ãƒ¬ãƒ¼ã‚¹å¯¾å¿œ(ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00007)              ##
 ##                                                                            ##
-##   [–ß‚è’l]                                                                 ##
-##      0 : ³í                                                              ##
-##      8 : ˆÙí                                                              ##
+##   [æˆ»ã‚Šå€¤]                                                                 ##
+##      0 : æ­£å¸¸                                                              ##
+##      8 : ç•°å¸¸                                                              ##
 ##                                                                            ##
-##   [ƒpƒ‰ƒ[ƒ^]                                                             ##
-##      ‚È‚µ                                                                  ##
+##   [ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿]                                                             ##
+##      ãªã—                                                                  ##
 ##                                                                            ##
-##   [g—p•û–@]                                                               ##
-##      /uspg/jp1/zc/shl/<ŠÂ‹«ˆË‘¶’l>/ZCZZ_DB_CHECK_ARCLOCAL.ksh              ##
+##   [ä½¿ç”¨æ–¹æ³•]                                                               ##
+##      /uspg/jp1/zc/shl/<ç’°å¢ƒä¾å­˜å€¤>/ZCZZ_DB_CHECK_ARCLOCAL.ksh              ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
-## ŠÂ‹«ˆË‘¶’l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##Å‰º‘w‚ÌƒJƒŒƒ“ƒgƒfƒBƒŒƒNƒgƒŠ–¼
+## ç’°å¢ƒä¾å­˜å€¤
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##æœ€ä¸‹å±¤ã®ã‚«ãƒ¬ãƒ³ãƒˆãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªå
 
-## ƒfƒBƒŒƒNƒgƒŠ’è‹`
-  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ƒƒOƒtƒ@ƒCƒ‹Ši”[ƒfƒBƒŒƒNƒgƒŠ
+## ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªå®šç¾©
+  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«æ ¼ç´ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 
-## •Ï”’è‹`
-  L_hizuke=`/bin/date "+%y%m%d"`     ##ƒVƒFƒ‹Às“ú•t
-  L_sherumei=`/bin/basename $0`      ##ÀsƒVƒFƒ‹–¼
-  L_hosutomei=`/bin/hostname`        ##ÀsƒzƒXƒg–¼
-  L_enbufairumei="ZCZZCOMN.env"      ##Šî”Õ‹¤’ÊŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹–¼
-  L_ijou=8                           ##ƒVƒFƒ‹ˆÙíI—¹‚ÌƒŠƒ^[ƒ“ƒR[ƒh
+## å¤‰æ•°å®šç¾©
+  L_hizuke=`/bin/date "+%y%m%d"`     ##ã‚·ã‚§ãƒ«å®Ÿè¡Œæ—¥ä»˜
+  L_sherumei=`/bin/basename $0`      ##å®Ÿè¡Œã‚·ã‚§ãƒ«å
+##2021/09/30 Hitachi,Ltd Mod Start
+#  L_hosutomei=`/bin/hostname`        ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+  L_hosutomei=`/bin/hostname -s`     ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+##2021/09/30 Hitachi,Ltd Mod End
+  L_enbufairumei="ZCZZCOMN.env"      ##åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«å
+  L_ijou=8                           ##ã‚·ã‚§ãƒ«ç•°å¸¸çµ‚äº†æ™‚ã®ãƒªã‚¿ãƒ¼ãƒ³ã‚³ãƒ¼ãƒ‰
 
-## ƒtƒ@ƒCƒ‹’è‹`
-  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ƒƒOƒtƒ@ƒCƒ‹(ƒtƒ‹ƒpƒX)
-  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##Šî”Õ‹¤’ÊŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹(ƒtƒ‹ƒpƒX)
+## ãƒ•ã‚¡ã‚¤ãƒ«å®šç¾©
+  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«(ãƒ•ãƒ«ãƒ‘ã‚¹)
+  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«(ãƒ•ãƒ«ãƒ‘ã‚¹)
 
 
 ################################################################################
-##                                 ŠÖ”’è‹`                                   ##
+##                                 é–¢æ•°å®šç¾©                                   ##
 ################################################################################
 
 
-### ƒƒOo—Íˆ— ###
+### ãƒ­ã‚°å‡ºåŠ›å‡¦ç† ###
 
   L_rogushuturyoku()
   {
@@ -57,63 +60,69 @@
   }
 
 
-### I—¹ˆ— ###
+### çµ‚äº†å‡¦ç† ###
 
   L_shuryo()
   {
     L_modorichi=${1:-0}
-    L_rogushuturyoku "ZCZZ00002:${L_sherumei} I—¹  END_CD="${L_modorichi}
+    L_rogushuturyoku "ZCZZ00002:${L_sherumei} çµ‚äº†  END_CD="${L_modorichi}
     exit ${L_modorichi}
   }
 
-### trap ˆ— ###
+### trap å‡¦ç† ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
-##                                 ƒƒCƒ“                                     ##
+##                                 ãƒ¡ã‚¤ãƒ³                                     ##
 ################################################################################
 
 
 
-### ˆ—ŠJno—Í ###
+### å‡¦ç†é–‹å§‹å‡ºåŠ› ###
 
   touch ${L_rogumei}
-  L_rogushuturyoku "ZCZZ00001:${L_sherumei} ŠJn"
+  L_rogushuturyoku "ZCZZ00001:${L_sherumei} é–‹å§‹"
 
 
-### ŠÂ‹«İ’èŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹“Ç‚İ‚İ ###
+### ç’°å¢ƒè¨­å®šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ ###
 
-## Šî”Õ‹¤’Êƒtƒ@ƒCƒ‹“Ç‚İ‚İ
-  L_rogushuturyoku "Šî”Õ‹¤’ÊŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹‚ğ“Ç‚İ‚İ‚Ü‚·B"
+## åŸºç›¤å…±é€šãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿
+  L_rogushuturyoku "åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«ã‚’èª­ã¿è¾¼ã¿ã¾ã™ã€‚"
 
   if [ -r "${L_enbufairu}" ]
     then
       . ${L_enbufairu}
-      L_rogushuturyoku "Šî”Õ‹¤’ÊŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹‚ğ“Ç‚İ‚İ‚Ü‚µ‚½B"
+      L_rogushuturyoku "åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«ã‚’èª­ã¿è¾¼ã¿ã¾ã—ãŸã€‚"
   else
-      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` ‚ª‘¶İ‚µ‚È‚¢A‚Ü‚½‚ÍŒ©‚Â‚©‚è‚Ü‚¹‚ñB   HOST=${L_hosutomei}"
-      echo "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` ‚ª‘¶İ‚µ‚È‚¢A‚Ü‚½‚ÍŒ©‚Â‚©‚è‚Ü‚¹‚ñB   HOST=${L_hosutomei}" 1>&2
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` ãŒå­˜åœ¨ã—ãªã„ã€ã¾ãŸã¯è¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_enbufairu}` ãŒå­˜åœ¨ã—ãªã„ã€ã¾ãŸã¯è¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚   HOST=${L_hosutomei}" 1>&2
       L_shuryo ${L_ijou}
   fi
 
-## ƒ[ƒJƒ‹ƒfƒBƒXƒN‚Éo—Í‚³‚ê‚Ä‚¢‚éƒA[ƒJƒCƒuƒƒOƒtƒ@ƒCƒ‹‚Ì”ƒ`ƒFƒbƒN(ƒƒCƒ“)
-  L_archfilesu=`/usr/bin/ls -l ${TE_ZCZZLOCALARCHPASU}/thread* | /usr/bin/wc -l`
- 
+## ãƒ­ãƒ¼ã‚«ãƒ«ãƒ‡ã‚£ã‚¹ã‚¯ã«å‡ºåŠ›ã•ã‚Œã¦ã„ã‚‹ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã®æ•°ãƒã‚§ãƒƒã‚¯(ãƒ¡ã‚¤ãƒ³)
+##2021/09/30 Hitachi,Ltd Mod Start
+#  L_archfilesu=`/usr/bin/ls -l ${TE_ZCZZLOCALARCHPASU}/thread* | /usr/bin/wc -l`
+  L_archfilesu=`/bin/ls -l ${TE_ZCZZLOCALARCHPASU}/thread* | /usr/bin/wc -l`
+##2021/09/30 Hitachi,Ltd Mod End
+
   if [ ${L_archfilesu} -ge ${TE_ZCZZLOCALARCHMAXCNT} ]
     then
       L_message="${L_hosutomei} [${TE_ZCZZLOCALARCHPASU}] more than ${TE_ZCZZLOCALARCHMAXCNT} files are stored at `date +'%a %b %d %I:%M:%S %Y'`"
       /opt/jp1base/bin/jevsend -i ${TE_ZCZZLOCALARCH_EVENTID} -m "${L_message}" -e SEVERITY=Warning
   fi
   
-## ƒ[ƒJƒ‹ƒfƒBƒXƒN‚Éo—Í‚³‚ê‚Ä‚¢‚éƒA[ƒJƒCƒuƒƒOƒtƒ@ƒCƒ‹‚Ì”ƒ`ƒFƒbƒN(ƒ~ƒ‰[)
-  L_archfilesu=`/usr/bin/ls -l ${TE_ZCZZLOCALARCHMPASU}/thread* | /usr/bin/wc -l`
- 
+## ãƒ­ãƒ¼ã‚«ãƒ«ãƒ‡ã‚£ã‚¹ã‚¯ã«å‡ºåŠ›ã•ã‚Œã¦ã„ã‚‹ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã®æ•°ãƒã‚§ãƒƒã‚¯(ãƒŸãƒ©ãƒ¼)
+##2021/09/30 Hitachi,Ltd Mod Start
+  #L_archfilesu=`/usr/bin/ls -l ${TE_ZCZZLOCALARCHMPASU}/thread* | /usr/bin/wc -l`
+  L_archfilesu=`/bin/ls -l ${TE_ZCZZLOCALARCHMPASU}/thread* | /usr/bin/wc -l`
+##2021/09/30 Hitachi,Ltd Mod End
+
   if [ ${L_archfilesu} -ge ${TE_ZCZZLOCALARCHMAXCNT} ]
     then
       L_message="${L_hosutomei} [${TE_ZCZZLOCALARCHMPASU}] more than ${TE_ZCZZLOCALARCHMAXCNT} files are stored at `date +'%a %b %d %I:%M:%S %Y'`"
       /opt/jp1base/bin/jevsend -i ${TE_ZCZZLOCALARCH_EVENTID} -m "${L_message}" -e SEVERITY=Warning
   fi
   
-### ƒVƒFƒ‹‚ÌI—¹ ###
+### ã‚·ã‚§ãƒ«ã®çµ‚äº† ###
 
   L_shuryo ${TE_ZCZZSEIJOUSHURYO}
