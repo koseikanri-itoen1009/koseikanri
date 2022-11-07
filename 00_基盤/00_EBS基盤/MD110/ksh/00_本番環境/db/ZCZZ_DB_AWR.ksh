@@ -1,118 +1,121 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [ŠT—v]                                                                   ##
-##          ƒf[ƒ^ƒx[ƒX‚ÌAWR‚ðŽÀs‚·‚éBEBS’âŽ~’¼‘OA‹N“®’¼Œã‚ÉŽÀs‚³‚êA    ##
-##          ˆÙíI—¹‚µ‚½ê‡‚Í–ß‚è’l‚ð5‚Æ‚µ‚ÄŒã‘±‚ÌƒWƒ‡ƒu‚ðŽÀs‚·‚éB         ##
+##   [æ¦‚è¦]                                                                   ##
+##          ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ã®AWRã‚’å®Ÿè¡Œã™ã‚‹ã€‚EBSåœæ­¢ç›´å‰ã€èµ·å‹•ç›´å¾Œã«å®Ÿè¡Œã•ã‚Œã€    ##
+##          ç•°å¸¸çµ‚äº†ã—ãŸå ´åˆã¯æˆ»ã‚Šå€¤ã‚’5ã¨ã—ã¦å¾Œç¶šã®ã‚¸ãƒ§ãƒ–ã‚’å®Ÿè¡Œã™ã‚‹ã€‚         ##
 ##                                                                            ##
-##   [ì¬/XV—š—ð]                                                          ##
-##        ì¬ŽÒ  F   SCSK   –ìŒû           2014/07/31 2.0.0                 ##
-##        XV—š—ðF   SCSK   –ìŒû           2014/07/31 2.0.0                 ##
-##                       ‰”Å/HWƒŠƒvƒŒ[ƒX‘Î‰ž(ƒŠƒvƒŒ[ƒX_00007)              ##
+##   [ä½œæˆ/æ›´æ–°å±¥æ­´]                                                          ##
+##        ä½œæˆè€…  ï¼š   SCSK   é‡Žå£           2014/07/31 2.0.0                 ##
+##        æ›´æ–°å±¥æ­´ï¼š   SCSK   é‡Žå£           2014/07/31 2.0.0                 ##
+##                       åˆç‰ˆ/HWãƒªãƒ—ãƒ¬ãƒ¼ã‚¹å¯¾å¿œ(ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00007)              ##
 ##                                                                            ##
-##   [–ß‚è’l]                                                                 ##
-##      0 : ³í                                                              ##
-##      5 : ˆÙí                                                              ##
+##   [æˆ»ã‚Šå€¤]                                                                 ##
+##      0 : æ­£å¸¸                                                              ##
+##      5 : ç•°å¸¸                                                              ##
 ##                                                                            ##
-##   [ƒpƒ‰ƒ[ƒ^]                                                             ##
-##      ‚È‚µ                                                                  ##
+##   [ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿]                                                             ##
+##      ãªã—                                                                  ##
 ##                                                                            ##
-##   [Žg—p•û–@]                                                               ##
-##      /uspg/jp1/zc/shl/<ŠÂ‹«ˆË‘¶’l>/ZCZZ_DB_AWR.ksh                         ##
+##   [ä½¿ç”¨æ–¹æ³•]                                                               ##
+##      /uspg/jp1/zc/shl/<ç’°å¢ƒä¾å­˜å€¤>/ZCZZ_DB_AWR.ksh                         ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
-## ŠÂ‹«ˆË‘¶’l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##Å‰º‘w‚ÌƒJƒŒƒ“ƒgƒfƒBƒŒƒNƒgƒŠ–¼
+## ç’°å¢ƒä¾å­˜å€¤
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##æœ€ä¸‹å±¤ã®ã‚«ãƒ¬ãƒ³ãƒˆãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªå
 
-## ƒfƒBƒŒƒNƒgƒŠ’è‹`
-  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ƒƒOƒtƒ@ƒCƒ‹Ši”[ƒfƒBƒŒƒNƒgƒŠ
+## ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªå®šç¾©
+  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«æ ¼ç´ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 
-## •Ï”’è‹`
-  L_hizuke=`/bin/date "+%y%m%d"`     ##ƒVƒFƒ‹ŽÀs“ú•t
-  L_sherumei=`/bin/basename $0`      ##ŽÀsƒVƒFƒ‹–¼
-  L_hosutomei=`/bin/hostname`        ##ŽÀsƒzƒXƒg–¼
-  L_enbufairumei="ZCZZCOMN.env"      ##Šî”Õ‹¤’ÊŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹–¼
-  L_ijou=8                           ##ƒVƒFƒ‹ˆÙíI—¹Žž‚ÌƒŠƒ^[ƒ“ƒR[ƒh
-  L_keikokushuryo="5"                ##ŒxI—¹ƒR[ƒh
+## å¤‰æ•°å®šç¾©
+  L_hizuke=`/bin/date "+%y%m%d"`     ##ã‚·ã‚§ãƒ«å®Ÿè¡Œæ—¥ä»˜
+  L_sherumei=`/bin/basename $0`      ##å®Ÿè¡Œã‚·ã‚§ãƒ«å
+##2021/09/30 Hitachi,Ltd Mod Start
+#  L_hosutomei=`/bin/hostname`        ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+  L_hosutomei=`/bin/hostname -s`     ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+##2021/09/30 Hitachi,Ltd Mod End
+  L_enbufairumei="ZCZZCOMN.env"      ##åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«å
+  L_ijou=8                           ##ã‚·ã‚§ãƒ«ç•°å¸¸çµ‚äº†æ™‚ã®ãƒªã‚¿ãƒ¼ãƒ³ã‚³ãƒ¼ãƒ‰
+  L_keikokushuryo="5"                ##è­¦å‘Šçµ‚äº†ã‚³ãƒ¼ãƒ‰
 
-## ƒtƒ@ƒCƒ‹’è‹`
-  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ƒƒOƒtƒ@ƒCƒ‹(ƒtƒ‹ƒpƒX)
-  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##Šî”Õ‹¤’ÊŠÂ‹«•Ï”ƒtƒ@ƒCƒ‹(ƒtƒ‹ƒpƒX)
+## ãƒ•ã‚¡ã‚¤ãƒ«å®šç¾©
+  L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«(ãƒ•ãƒ«ãƒ‘ã‚¹)
+  L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•°ãƒ•ã‚¡ã‚¤ãƒ«(ãƒ•ãƒ«ãƒ‘ã‚¹)
 
 
 
 ################################################################################
-##                                 ŠÖ”’è‹`                                   ##
+##                                 é–¢æ•°å®šç¾©                                   ##
 ################################################################################
 
-### ƒƒOo—Íˆ— ###
+### ãƒ­ã‚°å‡ºåŠ›å‡¦ç† ###
 L_rogushuturyoku()
 {
    echo `/bin/date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_rogumei}
 }
 
-### I—¹ˆ— ###
+### çµ‚äº†å‡¦ç† ###
 L_shuryo()
 {
-   ### ˆêŽžƒtƒ@ƒCƒ‹íœ ###
+   ### ä¸€æ™‚ãƒ•ã‚¡ã‚¤ãƒ«å‰Šé™¤ ###
    if [ -f ${TE_ZCZZHYOUJUNERA} ]
    then
-      L_rogushuturyoku "ˆêŽžƒtƒ@ƒCƒ‹íœŽÀs"
+      L_rogushuturyoku "ä¸€æ™‚ãƒ•ã‚¡ã‚¤ãƒ«å‰Šé™¤å®Ÿè¡Œ"
       rm ${TE_ZCZZHYOUJUNERA}
    fi
    
    L_modorichi=${1:-0}
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} I—¹  END_CD="${L_modorichi}
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} çµ‚äº†  END_CD="${L_modorichi}
    exit ${L_modorichi}
 }
 
-### trap ˆ— ###
+### trap å‡¦ç† ###
 trap 'L_shuryo 5' 1 2 3 15
 
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
 
-### ˆ—ŠJŽno—Í ###
-L_rogushuturyoku "ZCZZ00001:${L_sherumei} ŠJŽn"
+### å‡¦ç†é–‹å§‹å‡ºåŠ› ###
+L_rogushuturyoku "ZCZZ00001:${L_sherumei} é–‹å§‹"
 
 
-### ŠÂ‹«Ý’èƒtƒ@ƒCƒ‹“Çž‚Ý ###
-L_rogushuturyoku "ŠÂ‹«Ý’èƒtƒ@ƒCƒ‹“Çž‚Ý ŠJŽn"
+### ç’°å¢ƒè¨­å®šãƒ•ã‚¡ã‚¤ãƒ«èª­è¾¼ã¿ ###
+L_rogushuturyoku "ç’°å¢ƒè¨­å®šãƒ•ã‚¡ã‚¤ãƒ«èª­è¾¼ã¿ é–‹å§‹"
 
-### Šî”Õ‹¤’ÊŠÂ‹«•Ï” ###
+### åŸºç›¤å…±é€šç’°å¢ƒå¤‰æ•° ###
 if [ -r ${L_enbufairu} ]
 then
    . ${L_enbufairu}
 else
-   echo "ZCZZ00003:[Error] ZCZZCOMN.env ‚ª‘¶Ý‚µ‚È‚¢A‚Ü‚½‚ÍŒ©‚Â‚©‚è‚Ü‚¹‚ñB HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZCOMN.env ãŒå­˜åœ¨ã—ãªã„ã€ã¾ãŸã¯è¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚ HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo 5
 fi
 
-### DBŠÂ‹«Ý’è ###
+### DBç’°å¢ƒè¨­å®š ###
 if [ -r ${TE_ZCZZDB} ]
 then
    . ${TE_ZCZZDB}
 else
-   echo "ZCZZ00003:[Error] ZCZZDB.env ‚ª‘¶Ý‚µ‚È‚¢A‚Ü‚½‚ÍŒ©‚Â‚©‚è‚Ü‚¹‚ñB HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZDB.env ãŒå­˜åœ¨ã—ãªã„ã€ã¾ãŸã¯è¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚ HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo ${L_keikokushuryo}
 fi
 
-L_rogushuturyoku "ŠÂ‹«Ý’èƒtƒ@ƒCƒ‹“Çž‚Ý I—¹"
+L_rogushuturyoku "ç’°å¢ƒè¨­å®šãƒ•ã‚¡ã‚¤ãƒ«èª­è¾¼ã¿ çµ‚äº†"
 
 
-### AWRŽæ“¾ ###
-L_rogushuturyoku "AWRŽæ“¾ ŠJŽn"
+### AWRå–å¾— ###
+L_rogushuturyoku "AWRå–å¾— é–‹å§‹"
 
-#AWRŽÀs
+#AWRå®Ÿè¡Œ
 ${ORACLE_HOME}/bin/sqlplus -s / as sysdba  << EOF >> ${L_rogumei} 2> ${TE_ZCZZHYOUJUNERA}
 WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT FAILURE
@@ -121,16 +124,19 @@ execute dbms_workload_repository.create_snapshot(flush_level => 'TYPICAL');
 exit
 EOF
 
-#ŽÀsŒ‹‰Ê”»’è
+#å®Ÿè¡Œçµæžœåˆ¤å®š
 if [ $? -ne 0 ]
 then
    echo ${TE_ZCZZ01800} | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   /usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+##2021/09/30 Hitachi,Ltd Mod Start
+   #/usr/bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+   /bin/cat ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+##2021/09/30 Hitachi,Ltd Mod Start
    L_shuryo ${L_keikokushuryo}
 fi
 
-L_rogushuturyoku "AWRŽæ“¾ I—¹"
+L_rogushuturyoku "AWRå–å¾— çµ‚äº†"
 
 
-### ˆ—I—¹o—Í ###
+### å‡¦ç†çµ‚äº†å‡ºåŠ› ###
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
