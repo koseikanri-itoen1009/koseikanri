@@ -1,65 +1,74 @@
 #!/bin/ksh
 ################################################################################
 ##                                                                            ##
-##   [�T�v]                                                                   ##
-##      �ꎞ�\�̈���w��T�C�Y�ȏ�g�p���Ă���Z�b�V������kill����            ##
+##   [概要]                                                                   ##
+##      一時表領域を指定サイズ以上使用しているセッションをkillする            ##
 ##                                                                            ##
-##   [�쐬/�X�V����]                                                          ##
-##        �쐬��  �F   SCSK �A��             2019/09/26 1.0.0                 ##
-##        �X�V�����F   SCSK �A��             2020/08/07 1.1.0                 ##
-##                       E_�{�ғ�_16487�y��Ձz�ꎞ�\�̈�̊g���G���[�����Ή� ##
-##                             �E�Ώ�SQL ID���Q�ƃ^�C�v����擾               ##
-##                             �E���O�ɎQ�ƃ^�C�v�̑Ώۋ@�\�����o��           ##
+##   [作成/更新履歴]                                                          ##
+##        作成者  ：   SCSK 廣守             2019/09/26 1.0.0                 ##
+##        更新履歴：   SCSK 廣守             2020/08/07 1.1.0                 ##
+##                       E_本稼動_16487【基盤】一時表領域の拡張エラー発生対応 ##
+##                             ・対象SQL IDを参照タイプから取得               ##
+##                             ・ログに参照タイプの対象機能名を出力           ##
 ##                                                                            ##
-##   [�߂�l]                                                                 ##
-##      0 : ����                                                              ##
-##      8 : �ُ�                                                              ##
+##   [戻り値]                                                                 ##
+##      0 : 正常                                                              ##
+##      8 : 異常                                                              ##
 ##                                                                            ##
-##   [�p�����[�^]                                                             ##
-##      1 : �e��(GB)                                                          ##
+##   [パラメータ]                                                             ##
+##      1 : 容量(GB)                                                          ##
 ##                                                                            ##
-##   [�g�p���@]                                                               ##
-##      /uspg/jp1/zc/shl/<���ˑ��l>/ZCZZ_TU_AUTOKILL.ksh                    ##
+##   [使用方法]                                                               ##
+##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_TU_AUTOKILL.ksh                    ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 �ϐ���`                                   ##
+##                                 変数定義                                   ##
 ################################################################################
 
-##���ˑ��l
-L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##�ŉ��w�̃J�����g�f�B���N�g����
-L_sherumei=`/bin/basename $0`            #�V�F����
-L_hosutomei=`/bin/hostname`              #�z�X�g��
-L_hizuke=`/bin/date "+%y%m%d"`           #���t
-L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #���O�t�@�C���i�[�f�B���N�g��
-L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #���O�� E_�{�ғ�_16487�Ή� Rev1.1.0 �g���q�C�� 
-L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #���ʊ��ϐ��t�@�C����
+##環境依存値
+L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##最下層のカレントディレクトリ名
+L_sherumei=`/bin/basename $0`            #シェル名
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_hosutomei=`/bin/hostname`              #ホスト名
+L_hosutomei=`/bin/hostname -s`           #ホスト名
+##2021/09/30 Hitachi,Ltd Mod End
+L_hizuke=`/bin/date "+%y%m%d"`           #日付
+L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #ログファイル格納ディレクトリ
+L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名 E_本稼動_16487対応 Rev1.1.0 拡張子修正 
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #共通環境変数ファイル名
+L_zczzcomn=`/usr/bin/dirname $0`"/ZCZZCOMN.env"     #共通環境変数ファイル名
+##2021/09/30 Hitachi,Ltd Mod End
 
-### IN�p�����[�^�擾 ###
-## 臒l��GB�P�ʂŎw��
-if [ ${1} -ge 0 ]
+### INパラメータ取得 ###
+## 閾値をGB単位で指定
+##2021/09/30 Hitachi,Ltd Mod Start
+#if [ ${1} -ge 0 ]
+if [ $# -ge 1 ]
+##2021/09/30 Hitachi,Ltd Mod End
 then
    GSIZE=${1}
 else
    GSIZE=30
 fi
 
-##�V�F���ŗL���ϐ�
-KILL_SID_LIST=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_sid_list_temp.lst    #kill�Ώ�SID���X�g�ꎞ�t�@�C��
-KILL_SID_LIST2=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_sid_list_temp2.lst    #kill�Ώ�SID���X�g�ꎞ�t�@�C��
+##シェル固有環境変数
+KILL_SID_LIST=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_sid_list_temp.lst    #kill対象SIDリスト一時ファイル
+KILL_SID_LIST2=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_sid_list_temp2.lst    #kill対象SIDリスト一時ファイル
 
 ################################################################################
-##                                 �֐���`                                   ##
+##                                 関数定義                                   ##
 ################################################################################
 
-### ���O�o�͏��� ###
+### ログ出力処理 ###
 L_rogushuturyoku()
 {
    echo `/bin/date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_rogumei}
 }
 
-### �I������ ###
+### 終了処理 ###
 L_shuryo()
 {
    
@@ -67,42 +76,42 @@ L_shuryo()
    exit ${L_modorichi}
 }
 
-### trap ���� ###
+### trap 処理 ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
 
-### �����J�n�o�� ###
-L_rogushuturyoku "ZCZZ00001:${L_sherumei} �J�n"
+### 処理開始出力 ###
+L_rogushuturyoku "ZCZZ00001:${L_sherumei} 開始"
 
-### ���ݒ�t�@�C���Ǎ��� ###
+### 環境設定ファイル読込み ###
 
-### ��Ջ��ʊ��ϐ� ###
+### 基盤共通環境変数 ###
 if [ -r ${L_zczzcomn} ]
 then
    . ${L_zczzcomn}
 else
-   echo "ZCZZ00003:[Error] ZCZZCOMN.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZCOMN.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I�� (${TE_ZCZZIJOUSHURYO})"
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了 (${TE_ZCZZIJOUSHURYO})"
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
 
-### DB���ݒ� ###
+### DB環境設定 ###
 if [ -r ${TE_ZCZZDB} ]
 then
    . ${TE_ZCZZDB}
 else
-   echo "ZCZZ00003:[Error] ZCZZDB.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZDB.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I�� (${TE_ZCZZIJOUSHURYO})"
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了 (${TE_ZCZZIJOUSHURYO})"
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
 
-### �ꎞ�\�̈� kill�Ώۊm�F ###
-${ORACLE_HOME}/bin/sqlplus -s apps/apps<< EOF1 >> /dev/null  # E_�{�ғ�_16487�Ή� Rev1.1.0 ���s�X�L�[�}�ύX
+### 一時表領域 kill対象確認 ###
+${ORACLE_HOME}/bin/sqlplus -s apps/apps<< EOF1 >> /dev/null  # E_本稼動_16487対応 Rev1.1.0 実行スキーマ変更
 WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT FAILURE
 
@@ -130,20 +139,20 @@ select
    ,program
    ,machine
    ,temp_space_allocated / 1024 / 1024 / 1024 temp_alloc_gb
-   ,lvvl.DESCRIPTION    -- E_�{�ғ�_16487�Ή� Rev1.1.0 �Q�ƃ^�C�v�E�E�v(�@�\��)�ǉ�
+   ,lvvl.DESCRIPTION    -- E_本稼動_16487対応 Rev1.1.0 参照タイプ・摘要(機能名)追加
 from
     v\$active_session_history
-   ,fnd_lookup_values_vl lvvl    -- E_�{�ғ�_16487�Ή� Rev1.1.0 �Q�ƃ^�C�v�ǉ�
+   ,fnd_lookup_values_vl lvvl    -- E_本稼動_16487対応 Rev1.1.0 参照タイプ追加
 where
     (temp_space_allocated / 1024 / 1024 / 1024) > ${GSIZE}
--- E_�{�ғ�_16487�Ή� Rev1.1.0 �C���J�n
+-- E_本稼動_16487対応 Rev1.1.0 修正開始
 --    and sql_id in('12wxxxpfgfq49', '8wt3rn9z02c0k', 'b5juyc9qavq7y')
     and sql_id = lvvl.meaning
     and lvvl.lookup_type  = 'XXCCP1_TU_KILL_MODULE'
     and lvvl.enabled_flag = 'Y'
     and TRUNC(SYSDATE) BETWEEN TRUNC(lvvl.start_date_active)
                           AND TRUNC(NVL(lvvl.end_date_active, SYSDATE))
--- E_�{�ғ�_16487�Ή� Rev1.1.0 �C���I��
+-- E_本稼動_16487対応 Rev1.1.0 修正終了
     and sample_time > to_timestamp (sysdate - 2/1440, 'YYYY/MM/DD HH24:MI:SS') 
     and sample_time = (select max(sample_time)
                        from v\$active_session_history
@@ -155,21 +164,21 @@ spool off
 exit
 EOF1
 
-### SQL �I������ ###
+### SQL 終了判定 ###
 
 if [ $? != 0 ]
 then
-   echo "[ERROR]:kill�Ώ�SID�擾�Ɏ��s���܂���" >> ${L_rogumei}
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I�� (${TE_ZCZZIJOUSHURYO})"
+   echo "[ERROR]:kill対象SID取得に失敗しました" >> ${L_rogumei}
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了 (${TE_ZCZZIJOUSHURYO})"
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
 
-### Active Session �m�F ###
+### Active Session 確認 ###
 while IFS=, read L_TIME L_SID L_SERIAL L_SEQ L_USER L_SQL_ID L_TSQL_ID L_EVENT L_STATE L_PROGRAM L_MACHINE L_TEMP
 do 
-   if [ -n "${L_SQL_ID}" ] #�󔒍s����ispool�t�@�C����1�s�ڂ����s�݂̂̂��߁j
+   if [ -n "${L_SQL_ID}" ] #空白行判定（spoolファイルの1行目が改行のみのため）
    then
-      read L_DESC      ### E_�{�ғ�_16487�Ή� Rev1.1.0 �Q�ƃ^�C�v�E�E�v(�@�\��) L_DESC�ǉ�
+      read L_DESC      ### E_本稼動_16487対応 Rev1.1.0 参照タイプ・摘要(機能名) L_DESC追加
 
       L_SQL_ID=`echo ${L_SQL_ID} | tr -d " "`
 
@@ -223,26 +232,26 @@ do
       exit
 EOF2
 
-### SQL �I������ ###
+### SQL 終了判定 ###
 
       if [ $? != 0 ]
       then
-         echo "[ERROR]:kill�Ώ�SID�擾2�Ɏ��s���܂���" >> ${L_rogumei}
-         L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I�� (${TE_ZCZZIJOUSHURYO})"
+         echo "[ERROR]:kill対象SID取得2に失敗しました" >> ${L_rogumei}
+         L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了 (${TE_ZCZZIJOUSHURYO})"
          L_shuryo ${TE_ZCZZIJOUSHURYO}
       fi
 
-### �Z�b�V����kill ###
-###   �Z�b�V�����������I�������SQL�G���[�ɂȂ邽�߁A���s����SQL�G���[�͖������� ###
+### セッションkill ###
+###   セッションを強制終了するとSQLエラーになるため、実行時のSQLエラーは無視する ###
       while IFS=, read L_SID2 L_SERIAL2 L_SEQ2 L_USER2 L_TBS L_BLOCK L_PROCESS L_SQL_ID2 L_SQL_TEXT
       do 
-         if [ -n "${L_SQL_ID2}" ] #�󔒍s����ispool�t�@�C����1�s�ڂ����s�݂̂̂��߁j
+         if [ -n "${L_SQL_ID2}" ] #空白行判定（spoolファイルの1行目が改行のみのため）
          then
              L_SID2=`echo ${L_SID2} | tr -d " "`
              L_SERIAL2=`echo ${L_SERIAL2} | tr -d " "`
 
              L_rogushuturyoku "kill Session SID : ${L_SID2} SERIAL# : ${L_SERIAL2} TEMP_USED(GB) : ${L_TEMP}"
-### E_�{�ғ�_16487�Ή� Rev1.1.0 �Q�ƃ^�C�v�E�E�v(�@�\��) L_DESC�ǉ�
+### E_本稼動_16487対応 Rev1.1.0 参照タイプ・摘要(機能名) L_DESC追加
 #             L_rogushuturyoku "     USER : ${L_USER} PROCESS : ${L_PROCESS} PROGRAM : ${L_PROGRAM} MACHINE : ${L_MACHINE} SQL_ID : ${L_SQL_ID}"
              L_rogushuturyoku "     USER : ${L_USER} PROCESS : ${L_PROCESS} PROGRAM : ${L_PROGRAM} MACHINE : ${L_MACHINE} SQL_ID : ${L_SQL_ID} Function : ${L_DESC}"
              L_rogushuturyoku "     SQL_TEXT : ${L_SQL_TEXT}"
@@ -257,12 +266,12 @@ EOF2
             exit
 EOF3
 
-### SQL �I������ ###
+### SQL 終了判定 ###
 
             if [ $? != 0 ] && [ $? != 31 ]
             then
-               echo "[ERROR]:�Z�b�V������ kill �Ɏ��s���܂���" >> ${L_rogumei}
-               L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I�� (${TE_ZCZZIJOUSHURYO})"
+               echo "[ERROR]:セッションの kill に失敗しました" >> ${L_rogumei}
+               L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了 (${TE_ZCZZIJOUSHURYO})"
                exit ${TE_ZCZZIJOUSHURYO}
             fi
 
@@ -274,11 +283,11 @@ EOF3
    sleep 1
 done < ${KILL_SID_LIST}
 
-### ���X�g�t�@�C���폜 ###
+### リストファイル削除 ###
 rm -f ${KILL_SID_LIST} >> ${L_rogumei}
 rm -f ${KILL_SID_LIST2} >> ${L_rogumei}
 
-### �����J�n�o�� ###
-L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I�� (${TE_ZCZZSEIJOUSHURYO})"
+### 処理開始出力 ###
+L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了 (${TE_ZCZZSEIJOUSHURYO})"
 
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
