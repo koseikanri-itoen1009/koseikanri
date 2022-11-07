@@ -1,111 +1,117 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [�T�v]                                                                   ##
-##      �����ŕۑ����Ԃ��߂���DB�T�[�o�̃��[�J���ɏo�͂��ꂽ�A�[�J�C�u        ##
-##      ���O�t�@�C���̍폜�����{����B                                        ##
+##   [概要]                                                                   ##
+##      日次で保存期間を過ぎたDBサーバのローカルに出力されたアーカイブ        ##
+##      ログファイルの削除を実施する。                                        ##
 ##                                                                            ##
-##   [�쐬/�X�V����]                                                          ##
-##        �쐬��  �F   SCSK   ����           2014/07/31 2.0.0                 ##
-##        �X�V�����F   SCSK   ����           2014/07/31 2.0.0                 ##
-##                       ����(���v���[�X_00007)                               ##
+##   [作成/更新履歴]                                                          ##
+##        作成者  ：   SCSK   髙橋           2014/07/31 2.0.0                 ##
+##        更新履歴：   SCSK   髙橋           2014/07/31 2.0.0                 ##
+##                       初版(リプレース_00007)                               ##
 ##                                                                            ##
-##   [�߂�l]                                                                 ##
-##      0 : ����                                                              ##
-##      8 : �ُ�                                                              ##
+##   [戻り値]                                                                 ##
+##      0 : 正常                                                              ##
+##      8 : 異常                                                              ##
 ##                                                                            ##
-##   [�p�����[�^]                                                             ##
-##      �Ȃ�                                                                  ##
+##   [パラメータ]                                                             ##
+##      なし                                                                  ##
 ##                                                                            ##
-##   [�g�p���@]                                                               ##
-##      /uspg/jp1/zc/shl/<���ˑ��l>/ZCZZ_DB_LOGMNG_ARC_LOCAL.ksh            ##
+##   [使用方法]                                                               ##
+##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_DB_LOGMNG_ARC_LOCAL.ksh            ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 �ϐ���`                                   ##
+##                                 変数定義                                   ##
 ################################################################################
 
 
-## ���ˑ��l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##�ŉ��w�̃J�����g�f�B���N�g����
+## 環境依存値
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##最下層のカレントディレクトリ名
 
-## �f�B���N�g����`
-  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##���O�t�@�C���i�[�f�B���N�g��
+## ディレクトリ定義
+  L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"      ##ログファイル格納ディレクトリ
 
-## �ϐ���`
-L_sherumei=`/bin/basename $0`            #�V�F����
-L_hosutomei=`/bin/hostname`              #�z�X�g��
-L_hizuke=`/bin/date "+%y%m%d"`           #���t
-L_lhizuke=`/bin/date "+%Y%m%d"`          #���O���t
-L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #���O��
-L_zczzcomn="`/bin/dirname $0`/ZCZZCOMN.env"     #���ʊ��ϐ��t�@�C����
+## 変数定義
+L_sherumei=`/bin/basename $0`            #シェル名
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_hosutomei=`/bin/hostname`              #ホスト名
+L_hosutomei=`/bin/hostname -s`           #ホスト名
+##2021/09/30 Hitachi,Ltd Mod End
+L_hizuke=`/bin/date "+%y%m%d"`           #日付
+L_lhizuke=`/bin/date "+%Y%m%d"`          #ログ日付
+L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_zczzcomn="`/bin/dirname $0`/ZCZZCOMN.env"     #共通環境変数ファイル名
+L_zczzcomn="`/usr/bin/dirname $0`/ZCZZCOMN.env"     #共通環境変数ファイル名
+##2021/09/30 Hitachi,Ltd Mod Start
 
 
 ################################################################################
-##                                 �֐���`                                   ##
+##                                 関数定義                                   ##
 ################################################################################
 
-### ���O�o�͏��� ###
+### ログ出力処理 ###
 L_rogushuturyoku()
 {
    echo `/bin/date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_rogumei}
 }
 
-### �I������ ###
+### 終了処理 ###
 L_shuryo()
 {
-   ### �ꎞ�t�@�C���폜 ###
+   ### 一時ファイル削除 ###
    if [ -f ${TE_ZCZZHYOUJUNSHUTURYOKU} ]
    then
-      L_rogushuturyoku "�W���o�͈ꎞ�t�@�C���폜���s"
+      L_rogushuturyoku "標準出力一時ファイル削除実行"
       rm ${TE_ZCZZHYOUJUNSHUTURYOKU}
    fi
 
    if [ -f ${TE_ZCZZHYOUJUNERA} ]
    then
-      L_rogushuturyoku "�W���G���[�ꎞ�t�@�C���폜���s"
+      L_rogushuturyoku "標準エラー一時ファイル削除実行"
       rm ${TE_ZCZZHYOUJUNERA}
    fi
 
    L_modorichi=${1:-0}
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��  END_CD="${L_modorichi}
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了  END_CD="${L_modorichi}
    exit ${L_modorichi}
 }
 
-### trap ���� ###
+### trap 処理 ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
 
-### �����J�n�o�� ###
-L_rogushuturyoku "ZCZZ00001:${L_sherumei} �J�n"
+### 処理開始出力 ###
+L_rogushuturyoku "ZCZZ00001:${L_sherumei} 開始"
 
 
-### ���ݒ�t�@�C���Ǎ��� ###
-L_rogushuturyoku "���ݒ�t�@�C���Ǎ��� �J�n"
+### 環境設定ファイル読込み ###
+L_rogushuturyoku "環境設定ファイル読込み 開始"
 
-### ��Ջ��ʊ��ϐ� ###
+### 基盤共通環境変数 ###
 if [ -r ${L_zczzcomn} ]
 then
    . ${L_zczzcomn}
 else
-   echo "ZCZZ00003:[Error] ZCZZCOMN.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZCOMN.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo 8
 fi
-L_rogushuturyoku "���ݒ�t�@�C���Ǎ��� �I��"
+L_rogushuturyoku "環境設定ファイル読込み 終了"
 
-### �폜�Ώۃ��O�t�@�C�����݊m�F����э폜 ###
-L_rogushuturyoku "�폜�Ώۃ��O�t�@�C�����݊m�F����э폜 �J�n"
+### 削除対象ログファイル存在確認および削除 ###
+L_rogushuturyoku "削除対象ログファイル存在確認および削除 開始"
 
-#�t�@�C���ǂݍ��݃`�F�b�N
+#ファイル読み込みチェック
 if [ ! -r ${TE_ZCZZDBDELFILEARCLOCAL} ]
 then
-   echo "ZCZZ00003:[Error] ZCZZDBDELFILEARCLOCAL.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZDBDELFILEARCLOCAL.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
@@ -113,22 +119,28 @@ fi
 L_zczzdbdelarclocvalue=${TE_ZCZZTENPUPASU}/`/bin/basename ${L_sherumei} .ksh`".tmp"
 cat ${TE_ZCZZDBDELFILEARCLOCAL} | sed -e "s/<HOSTNAME>/${L_hosutomei}/g" > ${L_zczzdbdelarclocvalue}
 
-#L_direkutori �폜���O�p�X
-#L_fmei       �폜���O��
-#L_fmeisyo    ���O����
-#L_hozonkikan ���O�ۑ�����
+#L_direkutori 削除ログパス
+#L_fmei       削除ログ名
+#L_fmeisyo    ログ名称
+#L_hozonkikan ログ保存期間
 
 while read L_direkutori L_fmei L_fmeisyo L_hozonkikan
 do
    L_moji=`echo ${L_direkutori} | cut -c 1`
-   if [ ${L_moji:-#} != "#" ]           # �R�����g�s���ǂ����m�F
+   if [ ${L_moji:-#} != "#" ]           # コメント行かどうか確認
    then
-      echo "### ${L_fmeisyo} ���O�t�@�C�� ###" >> ${L_rogumei}
+      echo "### ${L_fmeisyo} ログファイル ###" >> ${L_rogumei}
       /usr/bin/find ${L_direkutori} -name "${L_fmei}" -mmin +${L_hozonkikan} -print > ${TE_ZCZZHYOUJUNSHUTURYOKU}
-      L_kensu=`/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l`
+##2021/09/30 Hitachi,Ltd Mod Start
+#      L_kensu=`/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l`
+      L_kensu=`/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l`
+##2021/09/30 Hitachi,Ltd Mod End
       if [ ${L_kensu} -ne 0 ]
       then
-         /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+##2021/09/30 Hitachi,Ltd Mod Start
+#         /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+         /bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} >> ${L_rogumei}
+##2021/09/30 Hitachi,Ltd Mod End
          /usr/bin/find ${L_direkutori} -name "${L_fmei}" -mmin +${L_hozonkikan} -exec rm {} \;
       else
          echo ${TE_ZCZZ01000} >> ${L_rogumei}
@@ -141,8 +153,8 @@ then
   rm ${L_zczzdbdelarclocvalue}
 fi
 
-L_rogushuturyoku "�폜�Ώۃ��O�t�@�C�����݊m�F����э폜 �I��"
+L_rogushuturyoku "削除対象ログファイル存在確認および削除 終了"
 
 
-### �����I���o�� ###
+### 処理終了出力 ###
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
