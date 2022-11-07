@@ -2,173 +2,185 @@
 
 ################################################################################
 ##                                                                            ##
-##   [�g�p���@]                                                               ##
+##   [使用方法]                                                               ##
 ##      ZCZZ_DB_LOGMNG_ARC.ksh                                                ##
 ##                                                                            ##
-##   [�W���u��]                                                               ##
-##      ����DB�T�[�o�A�[�J�C�u���O�t�@�C���폜                                ##
+##   [ジョブ名]                                                               ##
+##      日次DBサーバアーカイブログファイル削除                                ##
 ##                                                                            ##
-##   [�T�v]                                                                   ##
-##      �����ŕۑ����Ԃ��߂���DB�T�[�o�̃A�[�J�C�u���O�t�@�C����              ##
-##      �폜�����{����B                                                      ##
+##   [概要]                                                                   ##
+##      日次で保存期間を過ぎたDBサーバのアーカイブログファイルの              ##
+##      削除を実施する。                                                      ##
 ##                                                                            ##
-##   [�쐬/�X�V����]                                                          ##
-##        �쐬��  �F   SCS ���_              2009/07/06 1.0.1                 ##
-##        �X�V�����F   SCS ���_              2009/07/06 1.0.1                 ##
-##                       ����                                                 ##
-##                     SCSK ����             2014/07/31 2.0.0                 ##
-##                       HW���v���[�X�Ή�(���v���[�X_00007)                   ##
-##                         �ECopyright�̍폜                                  ##
-##                         �E���ˑ��l�̕ϐ���                               ##
-##                         �E�g�p���@�̒ǉ�                                   ##
-##                         �E�V�F�����ύX                                     ##
-##                         �EGRID���ݒ�t�@�C���̓ǂݍ��ݏ�����ǉ�         ##
-##                         �E�폜�Ώۃt�@�C���̎擾���@�̕ύX                 ##
-##                         �E�A�[�J�C�u���O�̍폜���@��ύX                   ##
-##                         �ESQL�̎��s���菈����ǉ�                          ##
+##   [作成/更新履歴]                                                          ##
+##        作成者  ：   SCS 長濱              2009/07/06 1.0.1                 ##
+##        更新履歴：   SCS 長濱              2009/07/06 1.0.1                 ##
+##                       初版                                                 ##
+##                     SCSK 髙橋             2014/07/31 2.0.0                 ##
+##                       HWリプレース対応(リプレース_00007)                   ##
+##                         ・Copyrightの削除                                  ##
+##                         ・環境依存値の変数化                               ##
+##                         ・使用方法の追加                                   ##
+##                         ・シェル名変更                                     ##
+##                         ・GRID環境設定ファイルの読み込み処理を追加         ##
+##                         ・削除対象ファイルの取得方法の変更                 ##
+##                         ・アーカイブログの削除方法を変更                   ##
+##                         ・SQLの実行判定処理を追加                          ##
 ##                                                                            ##
-##   [�߂�l]                                                                 ##
-##      0 : ����                                                              ##
-##      8 : �ُ�                                                              ##
+##   [戻り値]                                                                 ##
+##      0 : 正常                                                              ##
+##      8 : 異常                                                              ##
 ##                                                                            ##
-##   [�p�����[�^]                                                             ##
-##      �Ȃ�                                                                  ##
+##   [パラメータ]                                                             ##
+##      なし                                                                  ##
 ##                                                                            ##
-##   [�g�p���@]                                                               ##
-##      /uspg/jp1/zc/shl/<���ˑ��l>/ZCZZ_DB_LOGMNG_ARC.ksh                  ##
+##   [使用方法]                                                               ##
+##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_DB_LOGMNG_ARC.ksh                  ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 �ϐ���`                                   ##
+##                                 変数定義                                   ##
 ################################################################################
 
 ##2014/07/31 S.Takahashi Add Start
-##���ˑ��l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##�ŉ��w�̃J�����g�f�B���N�g����
+##環境依存値
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##最下層のカレントディレクトリ名
 ##2014/07/31 S.Takahashi Add End
 
-L_sherumei=`/bin/basename $0`            #�V�F����
-L_hosutomei=`/bin/hostname`              #�z�X�g��
-L_hizuke=`/bin/date "+%y%m%d"`           #���t
-L_lhizuke=`/bin/date "+%Y%m%d"`          #���O���t
+L_sherumei=`/bin/basename $0`            #シェル名
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_hosutomei=`/bin/hostname`              #ホスト名
+L_hosutomei=`/bin/hostname -s`           #ホスト名
+##2021/09/30 Hitachi,Ltd Mod End
+L_hizuke=`/bin/date "+%y%m%d"`           #日付
+L_lhizuke=`/bin/date "+%Y%m%d"`          #ログ日付
 ##2014/07/31 S.Takahashi Mod Start
-#L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #���O�p�X
-L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #���O�p�X
+#L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #ログパス
+L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #ログパス
 ##2014/07/31 S.Takahashi Mod End
-L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #���O��
-L_zczzcomn="`/bin/dirname $0`/ZCZZCOMN.env"     #���ʊ��ϐ��t�@�C����
+L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_zczzcomn="`/bin/dirname $0`/ZCZZCOMN.env"     #共通環境変数ファイル名
+L_zczzcomn="`/usr/bin/dirname $0`/ZCZZCOMN.env"     #共通環境変数ファイル名
+##2021/09/30 Hitachi,Ltd Mod End
 
 ##2014/07/31 S.Takahashi Add Start
-L_zczzgrid="`/bin/dirname $0`/ZCZZGRID.env"                                                   #GRID���ϐ��t�@�C����
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_zczzgrid="`/bin/dirname $0`/ZCZZGRID.env"                                                   #GRID環境変数ファイル名
+L_zczzgrid="`/usr/bin/dirname $0`/ZCZZGRID.env"                                                   #GRID環境変数ファイル名
+##2021/09/30 Hitachi,Ltd Mod End
 
-##�V�F���ŗL���ϐ�
-L_rogurisuto="`/bin/dirname $0`/tmp/"`/bin/basename ${L_sherumei} .ksh`".lst"                 #SQL�ꎞ�t�@�C��
+##シェル固有環境変数
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_rogurisuto="`/bin/dirname $0`/tmp/"`/bin/basename ${L_sherumei} .ksh`".lst"                 #SQL一時ファイル
+L_rogurisuto="`/usr/bin/dirname $0`/tmp/"`/bin/basename ${L_sherumei} .ksh`".lst"                 #SQL一時ファイル
+##2021/09/30 Hitachi,Ltd Mod End
 ##2014/07/31 S.Takahashi Add End
 
 ################################################################################
-##                                 �֐���`                                   ##
+##                                 関数定義                                   ##
 ################################################################################
 
-### ���O�o�͏��� ###
+### ログ出力処理 ###
 L_rogushuturyoku()
 {
    echo `/bin/date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_rogumei}
 }
 
-### �I������ ###
+### 終了処理 ###
 L_shuryo()
 {
-   ### �ꎞ�t�@�C���폜 ###
+   ### 一時ファイル削除 ###
    if [ -f ${TE_ZCZZHYOUJUNSHUTURYOKU} ]
    then
-      L_rogushuturyoku "�W���o�͈ꎞ�t�@�C���폜���s"
+      L_rogushuturyoku "標準出力一時ファイル削除実行"
       rm ${TE_ZCZZHYOUJUNSHUTURYOKU}
    fi
 
    if [ -f ${TE_ZCZZHYOUJUNERA} ]
    then
-      L_rogushuturyoku "�W���G���[�ꎞ�t�@�C���폜���s"
+      L_rogushuturyoku "標準エラー一時ファイル削除実行"
       rm ${TE_ZCZZHYOUJUNERA}
    fi
 
 ##2014/07/31 S.Takahashi Add Start
-   ### SQL�ꎞ�t�@�C���폜 ###
+   ### SQL一時ファイル削除 ###
    if [ -f ${L_rogurisuto} ]
    then
-      L_rogushuturyoku "SQL�ꎞ�t�@�C���폜���s"
+      L_rogushuturyoku "SQL一時ファイル削除実行"
       rm ${L_rogurisuto}
    fi
 ##2014/07/31 S.Takahashi Add End
 
    L_modorichi=${1:-0}
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��  END_CD="${L_modorichi}
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了  END_CD="${L_modorichi}
    exit ${L_modorichi}
 }
 
-### trap ���� ###
+### trap 処理 ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
 
-### �����J�n�o�� ###
-L_rogushuturyoku "ZCZZ00001:${L_sherumei} �J�n"
+### 処理開始出力 ###
+L_rogushuturyoku "ZCZZ00001:${L_sherumei} 開始"
 
 
-### ���ݒ�t�@�C���Ǎ��� ###
-L_rogushuturyoku "���ݒ�t�@�C���Ǎ��� �J�n"
+### 環境設定ファイル読込み ###
+L_rogushuturyoku "環境設定ファイル読込み 開始"
 
-### ��Ջ��ʊ��ϐ� ###
+### 基盤共通環境変数 ###
 if [ -r ${L_zczzcomn} ]
 then
    . ${L_zczzcomn}
 else
-   echo "ZCZZ00003:[Error] ZCZZCOMN.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZCOMN.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo 8
 fi
-L_rogushuturyoku "���ݒ�t�@�C���Ǎ��� �I��"
+L_rogushuturyoku "環境設定ファイル読込み 終了"
 
 ##2014/07/31 S.Takahashi Add Start
-## GRID���ݒ�t�@�C���ǂݍ���
-  L_rogushuturyoku "GRID���ݒ�t�@�C����ǂݍ��݂܂��B"
+## GRID環境設定ファイル読み込み
+  L_rogushuturyoku "GRID環境設定ファイルを読み込みます。"
 
   if [ -r "${L_zczzgrid}" ]
     then
       . ${L_zczzgrid}
-      L_rogushuturyoku "GRID���ݒ�t�@�C����ǂݍ��݂܂����B"
+      L_rogushuturyoku "GRID環境設定ファイルを読み込みました。"
   else
-      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_zczzgrid}` �����݂��Ȃ��A�܂��͌�����܂���B   HOST=${L_hosutomei}"
-      echo "ZCZZ00003:[Error] `/bin/basename ${L_zczzgrid}` �����݂��Ȃ��A�܂��͌�����܂���B   HOST=${L_hosutomei}" 1>&2
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_zczzgrid}` が存在しない、または見つかりません。   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_zczzgrid}` が存在しない、または見つかりません。   HOST=${L_hosutomei}" 1>&2
       L_shuryo 8
   fi
 ##2014/07/31 S.Takahashi Add End
 
 
 ##2014/07/31 S.Takahashi Del Start  
-#### ���O�t�@�C�����̕ύX ###
-#L_rogushuturyoku "���O�t�@�C�����̕ύX �J�n"
+#### ログファイル名称変更 ###
+#L_rogushuturyoku "ログファイル名称変更 開始"
 #
-##�t�@�C���ǂݍ��݃`�F�b�N
+##ファイル読み込みチェック
 #if [ ! -r ${TE_ZCZZDBDELFILEARC} ]
 #then
-#   echo "ZCZZ00003:[Error] ZCZZDBDELFILEARC.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+#   echo "ZCZZ00003:[Error] ZCZZDBDELFILEARC.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
 #        | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
 #   L_shuryo ${TE_ZCZZIJOUSHURYO}
 #fi
 #
-##L_direkutori �폜���O�p�X
-##L_fmei       �폜���O��
-##L_furagu=1   �t�@�C�����̕ύX�s�v
-##L_furagu=2   �t�@�C�����̕ύX�K�v
-##L_fmeisyo    ���O����
-##L_hozonkikan ���O�ۑ�����
+##L_direkutori 削除ログパス
+##L_fmei       削除ログ名
+##L_furagu=1   ファイル名称変更不要
+##L_furagu=2   ファイル名称変更必要
+##L_fmeisyo    ログ名称
+##L_hozonkikan ログ保存期間
 #while read L_direkutori L_fmei L_furagu L_fmeisyo L_hozonkikan
 #do
 #   L_moji=`echo ${L_direkutori} | cut -c 1`
-#   if [ ${L_moji:-#} != "#" ]           # �R�����g�s���ǂ����m�F
+#   if [ ${L_moji:-#} != "#" ]           # コメント行かどうか確認
 #   then
 #      if [ ${L_furagu} = "2" ]
 #      then
@@ -178,18 +190,18 @@ L_rogushuturyoku "���ݒ�t�@�C���Ǎ��� �I��"
 #   fi
 #done < ${TE_ZCZZDBDELFILEARC}
 #
-#L_rogushuturyoku "���O�t�@�C�����̕ύX �I��"
+#L_rogushuturyoku "ログファイル名称変更 終了"
 #
 #
-#### �폜�Ώۃ��O�t�@�C�����݊m�F����э폜 ###
-#L_rogushuturyoku "�폜�Ώۃ��O�t�@�C�����݊m�F����э폜 �J�n"
+#### 削除対象ログファイル存在確認および削除 ###
+#L_rogushuturyoku "削除対象ログファイル存在確認および削除 開始"
 #
 #while read L_direkutori L_fmei L_furagu L_fmeisyo L_hozonkikan
 #do
 #   L_moji=`echo ${L_direkutori} | cut -c 1`
-#   if [ ${L_moji:-#} != "#" ]           # �R�����g�s���ǂ����m�F
+#   if [ ${L_moji:-#} != "#" ]           # コメント行かどうか確認
 #   then
-#      echo "### ${L_fmeisyo} ���O�t�@�C�� ###" >> ${L_rogumei}
+#      echo "### ${L_fmeisyo} ログファイル ###" >> ${L_rogumei}
 #      if [ ${L_furagu} = "1" ]
 #      then
 #         /usr/bin/find ${L_direkutori} -name "${L_fmei}" -mtime +${L_hozonkikan} -print > ${TE_ZCZZHYOUJUNSHUTURYOKU}
@@ -218,8 +230,8 @@ L_rogushuturyoku "���ݒ�t�@�C���Ǎ��� �I��"
 
 
 ##2014/07/31 S.Takahashi Add Start
-### �폜�ΏۃA�[�J�C�u���O�t�@�C���̎擾 ###
-L_rogushuturyoku "�폜�ΏۃA�[�J�C�u���O�t�@�C���̎擾 �J�n"
+### 削除対象アーカイブログファイルの取得 ###
+L_rogushuturyoku "削除対象アーカイブログファイルの取得 開始"
 
 sqlplus -s / as sysasm << EOF >> ${L_rogumei} 2> ${TE_ZCZZHYOUJUNERA}
 WHENEVER OSERROR EXIT FAILURE
@@ -248,42 +260,49 @@ spool off
 exit
 EOF
 
-#SQL���s����
+#SQL実行判定
 if [ $? -ne 0 ]
 then
-   echo "ZCZZ00008:[Error] SQL*Plus�̎��s�Ɏ��s���܂����B HOST=${L_hosutomei}" \
+   echo "ZCZZ00008:[Error] SQL*Plusの実行に失敗しました。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   /usr/bin/cat ${L_hyoujunshuturyoku} >> ${L_rogumei}
-   /usr/bin/cat ${L_hyoujunera} >> ${L_rogumei}
+##2021/09/30 Hitachi,Ltd Mod Start
+#   /usr/bin/cat ${L_hyoujunshuturyoku} >> ${L_rogumei}
+#   /usr/bin/cat ${L_hyoujunera} >> ${L_rogumei}
+   /bin/cat ${L_hyoujunshuturyoku} >> ${L_rogumei}
+   /bin/cat ${L_hyoujunera} >> ${L_rogumei}
+##2021/09/30 Hitachi,Ltd Mod End
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
 
-L_rogushuturyoku "�폜�ΏۃA�[�J�C�u���O�t�@�C���̎擾 �I��"
+L_rogushuturyoku "削除対象アーカイブログファイルの取得 終了"
 
 
-### �A�[�J�C�u���O�t�@�C���̍폜 ###
-L_rogushuturyoku "�A�[�J�C�u���O�t�@�C���폜 �J�n"
+### アーカイブログファイルの削除 ###
+L_rogushuturyoku "アーカイブログファイル削除 開始"
 
 
-#L_fmei �폜���O��
+#L_fmei 削除ログ名
 
 let cnt_err=0
-L_kensu=`/usr/bin/cat ${L_rogurisuto} | /usr/bin/wc -l | awk '{print $1}'`
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_kensu=`/usr/bin/cat ${L_rogurisuto} | /usr/bin/wc -l | awk '{print $1}'`
+L_kensu=`/bin/cat ${L_rogurisuto} | /usr/bin/wc -l | awk '{print $1}'`
+##2021/09/30 Hitachi,Ltd Mod End
 if [ ${L_kensu} -ne 0 ]
 then
   while read L_fmei 
   do
     if [ "X" != "${L_fmei}X" ]
     then
-      L_rogushuturyoku "## �폜�Ώۃt�@�C��(${L_fmei})"
+      L_rogushuturyoku "## 削除対象ファイル(${L_fmei})"
       asmcmd rm ${L_fmei}
       asmcmd ls ${L_fmei}
       L_risutostat=$?
       if [ ${L_risutostat} -ne 0 ]
       then
-        L_rogushuturyoku "�폜����"
+        L_rogushuturyoku "削除成功"
       else
-        L_rogushuturyoku "�폜���s"
+        L_rogushuturyoku "削除失敗"
         let cnt_err=cnt_err+1
       fi
     fi
@@ -292,18 +311,18 @@ else
   echo ${TE_ZCZZ01000} >> ${L_rogumei}
 fi
 
-#�A�[�J�C�u���O�t�@�C���폜����
+#アーカイブログファイル削除判定
 if [ "$cnt_err" -ne 0 ]
 then
-   echo "ZCZZ00009:[Error] �A�[�J�C�u���O�t�@�C���̍폜�Ɏ��s���܂����B HOST=${L_hosutomei}" \
+   echo "ZCZZ00009:[Error] アーカイブログファイルの削除に失敗しました。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
 ##2014/07/31 S.Takahashi Add End
 
 
-L_rogushuturyoku "�폜�Ώۃ��O�t�@�C�����݊m�F����э폜 �I��"
+L_rogushuturyoku "削除対象ログファイル存在確認および削除 終了"
 
 
-### �����I���o�� ###
+### 処理終了出力 ###
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
