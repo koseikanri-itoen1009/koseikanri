@@ -1,64 +1,70 @@
-#!/usr/bin/ksh
+#!/bin/ksh
 
 ################################################################################
 ##                                                                            ##
-##   [ŠT—v]                                                                   ##
-##          CRSƒT[ƒrƒX‹N“®E’â~Šm”F                                         ##
+##   [æ¦‚è¦]                                                                   ##
+##          CRSã‚µãƒ¼ãƒ“ã‚¹èµ·å‹•ãƒ»åœæ­¢ç¢ºèª                                         ##
 ##                                                                            ##
-##   [ì¬/XV—š—ğ]                                                          ##
-##        ì¬Ò  F   Oracle –xˆä           2008/05/27 1.0.1                 ##
-##        XV—š—ğF   Oracle –xˆä           2008/05/27 1.0.1                 ##
-##                       ‰”Å                                                 ##
-##                     SCSK ûü‹´             2014/07/31 2.0.0                 ##
-##                       HWƒŠƒvƒŒ[ƒX‘Î‰(ƒŠƒvƒŒ[ƒX_00007)                   ##
-##                         ECopyright‚Ìíœ                                  ##
-##                         ECRSƒvƒƒZƒX‚Ì”»’è•û–@‚ğ•ÏX                      ##
+##   [ä½œæˆ/æ›´æ–°å±¥æ­´]                                                          ##
+##        ä½œæˆè€…  ï¼š   Oracle å €äº•           2008/05/27 1.0.1                 ##
+##        æ›´æ–°å±¥æ­´ï¼š   Oracle å €äº•           2008/05/27 1.0.1                 ##
+##                       åˆç‰ˆ                                                 ##
+##                     SCSK é«™æ©‹             2014/07/31 2.0.0                 ##
+##                       HWãƒªãƒ—ãƒ¬ãƒ¼ã‚¹å¯¾å¿œ(ãƒªãƒ—ãƒ¬ãƒ¼ã‚¹_00007)                   ##
+##                         ãƒ»Copyrightã®å‰Šé™¤                                  ##
+##                         ãƒ»CRSãƒ—ãƒ­ã‚»ã‚¹ã®åˆ¤å®šæ–¹æ³•ã‚’å¤‰æ›´                      ##
 ##                                                                            ##
-##   [–ß‚è’l]                                                                 ##
-##      ‚È‚µ                                                                  ##
+##   [æˆ»ã‚Šå€¤]                                                                 ##
+##      ãªã—                                                                  ##
 ##                                                                            ##
-##   [ƒpƒ‰ƒ[ƒ^]                                                             ##
-##      ‚È‚µ                                                                  ##
+##   [ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿]                                                             ##
+##      ãªã—                                                                  ##
 ##                                                                            ##
-##   [g—p•û–@]                                                               ##
-##      /uspg/jp1/zc/shl/<ŠÂ‹«ˆË‘¶’l>/ZCZZ_CRS_PROCESS_CHECK.ksh              ##
+##   [ä½¿ç”¨æ–¹æ³•]                                                               ##
+##      /uspg/jp1/zc/shl/<ç’°å¢ƒä¾å­˜å€¤>/ZCZZ_CRS_PROCESS_CHECK.ksh              ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 •Ï”’è‹`                                   ##
+##                                 å¤‰æ•°å®šç¾©                                   ##
 ################################################################################
 
 
-## •Ï”’è‹`
-L_hosutomei=`/bin/hostname`        ##ÀsƒzƒXƒg–¼
-L_crs_f=""                         ##CRSŠm”F—pƒtƒ‰ƒO
+## å¤‰æ•°å®šç¾©
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_hosutomei=`/bin/hostname`        ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+L_hosutomei=`/bin/hostname -s`     ##å®Ÿè¡Œãƒ›ã‚¹ãƒˆå
+##2021/09/30 Hitachi,Ltd Mod End
+L_crs_f=""                         ##CRSç¢ºèªç”¨ãƒ•ãƒ©ã‚°
 
 
 ################################################################################
-##                                 ƒƒCƒ“                                     ##
+##                                 ãƒ¡ã‚¤ãƒ³                                     ##
 ################################################################################
 
 
-# CRSƒvƒƒZƒX‹N“®Šm”F
+# CRSãƒ—ãƒ­ã‚»ã‚¹èµ·å‹•ç¢ºèª
 ##2014/07/31 S.Takahashi Mod Start
 #L_purosesu=`/usr/bin/ps -ef | /usr/bin/grep "ocssd.bin" | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
-L_purosesu=`/usr/bin/ps -ef | /usr/bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon' | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_purosesu=`/usr/bin/ps -ef | /usr/bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon' | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+L_purosesu=`/bin/ps -ef | /bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon' | /bin/grep -v "grep" | /usr/bin/wc -l`
+##2021/09/30 Hitachi,Ltd Mod End
 ##2014/07/31 S.Takahashi Mod End
 
 if [ "${L_purosesu}" -eq 0 ]
 then
-   L_crs_f=0      # CRSƒvƒƒZƒX’â~Ï‚İ
+   L_crs_f=0      # CRSãƒ—ãƒ­ã‚»ã‚¹åœæ­¢æ¸ˆã¿
 else
    L_crs_f=1
 fi
 
 
-# ”»’è
+# åˆ¤å®š
 if [ "${L_crs_f}" -eq 0 ]
 then
-   echo "${L_hosutomei}ƒT[ƒo‚ÌCRSƒvƒƒZƒX‚Í’â~‚µ‚Ä‚¢‚Ü‚·"
+   echo "${L_hosutomei}ã‚µãƒ¼ãƒã®CRSãƒ—ãƒ­ã‚»ã‚¹ã¯åœæ­¢ã—ã¦ã„ã¾ã™"
 else
-   echo "${L_hosutomei}ƒT[ƒo‚ÌCRSƒvƒƒZƒX‚Í‹N“®‚µ‚Ä‚¢‚Ü‚·"
+   echo "${L_hosutomei}ã‚µãƒ¼ãƒã®CRSãƒ—ãƒ­ã‚»ã‚¹ã¯èµ·å‹•ã—ã¦ã„ã¾ã™"
 fi
 
