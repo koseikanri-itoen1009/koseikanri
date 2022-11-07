@@ -1,65 +1,72 @@
 #!/bin/ksh
 ################################################################################
 ##                                                                            ##
-##   [�T�v]                                                                   ##
-##      �ꎞ�\�̈��1���Ԉȏ�g�p���Ă��鉺�L�@�\�̃v���Z�X��kill����(�{�ԗp) ##
-##          1:�N�C�b�N��(OEXOETEL)                                          ##
-##          2:AR����(ARXRWMAI)                                                ##
-##          3:AR���(ARXTWMAI)                                                ##
-##          4:AR���(ARXCWMAI)                                                ##
+##   [概要]                                                                   ##
+##      一時表領域を1時間以上使用している下記機能のプロセスをkillする(本番用) ##
+##          1:クイック受注(OEXOETEL)                                          ##
+##          2:AR入金(ARXRWMAI)                                                ##
+##          3:AR取引(ARXTWMAI)                                                ##
+##          4:AR回収(ARXCWMAI)                                                ##
 ##                                                                            ##
-##   [�쐬/�X�V����]                                                          ##
-##        �쐬��  �F   SCS �g��              2011/07/13 1.0.0                 ##
-##        �X�V�����F   SCSK ����             2014/07/31 2.0.0                 ##
-##                       HW���v���[�X�Ή�(���v���[�X_00007)                   ##
-##                         �ECopyright�̍폜                                  ##
-##                         �E���ˑ��l�̕ϐ���                               ##
+##   [作成/更新履歴]                                                          ##
+##        作成者  ：   SCS 吉元              2011/07/13 1.0.0                 ##
+##        更新履歴：   SCSK 髙橋             2014/07/31 2.0.0                 ##
+##                       HWリプレース対応(リプレース_00007)                   ##
+##                         ・Copyrightの削除                                  ##
+##                         ・環境依存値の変数化                               ##
 ##                                                                            ##
-##   [�߂�l]                                                                 ##
-##      0 : ����                                                              ##
-##      8 : �ُ�                                                              ##
+##   [戻り値]                                                                 ##
+##      0 : 正常                                                              ##
+##      8 : 異常                                                              ##
 ##                                                                            ##
-##   [�p�����[�^]                                                             ##
-##      �Ȃ�                                                                  ##
+##   [パラメータ]                                                             ##
+##      なし                                                                  ##
 ##                                                                            ##
-##   [�g�p���@]                                                               ##
-##      /uspg/jp1/zc/shl/<���ˑ��l>/ZCZZ_SU_AUTOKILL.ksh                    ##
+##   [使用方法]                                                               ##
+##      /uspg/jp1/zc/shl/<環境依存値>/ZCZZ_SU_AUTOKILL.ksh                    ##
 ##                                                                            ##
 ################################################################################
 
 ################################################################################
-##                                 �ϐ���`                                   ##
+##                                 変数定義                                   ##
 ################################################################################
 
 ##2014/07/31 S.Takahashi Add Start
-##���ˑ��l
-  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##�ŉ��w�̃J�����g�f�B���N�g����
+##環境依存値
+  L_kankyoumei=`dirname $0 | sed -e "s/.*\///"` ##最下層のカレントディレクトリ名
 ##2014/07/31 S.Takahashi Add End
 
-L_sherumei=`/bin/basename $0`            #�V�F����
-L_hosutomei=`/bin/hostname`              #�z�X�g��
-L_hizuke=`/bin/date "+%y%m%d"`           #���t
+L_sherumei=`/bin/basename $0`            #シェル名
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_hosutomei=`/bin/hostname`              #ホスト名
+L_hosutomei=`/bin/hostname -s`           #ホスト名
+##2021/09/30 Hitachi,Ltd Mod End
+L_hizuke=`/bin/date "+%y%m%d"`           #日付
 ##2014/07/31 S.Takahashi Mod Start
-#L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #���O�p�X
-L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #���O�t�@�C���i�[�f�B���N�g��
+#L_rogupasu="/var/EBS/jp1/PEBSITO/log"    #ログパス
+L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #ログファイル格納ディレクトリ
 ##2014/07/31 S.Takahashi Mod End
-L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .sh`"${L_hosutomei}${L_hizuke}.log"   #���O��
-L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #���ʊ��ϐ��t�@�C����
+##2021/09/30 Hitachi,Ltd Mod Start
+#L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .sh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
+#L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #共通環境変数ファイル名
+L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
+L_zczzcomn=`/usr/bin/dirname $0`"/ZCZZCOMN.env"     #共通環境変数ファイル名
+##2021/09/30 Hitachi,Ltd Mod End
 
-##�V�F���ŗL���ϐ�
-KILL_PID_LIST=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_pid_list_temp.lst    #kill�Ώ�PID���X�g�ꎞ�t�@�C��
+##シェル固有環境変数
+KILL_PID_LIST=/uspg/jp1/zc/shl/tmp/ZCZZ_kill_pid_list_temp.lst    #kill対象PIDリスト一時ファイル
 
 ################################################################################
-##                                 �֐���`                                   ##
+##                                 関数定義                                   ##
 ################################################################################
 
-### ���O�o�͏��� ###
+### ログ出力処理 ###
 L_rogushuturyoku()
 {
    echo `/bin/date "+%Y/%m/%d %H:%M:%S"` ${@} >> ${L_rogumei}
 }
 
-### �I������ ###
+### 終了処理 ###
 L_shuryo()
 {
    
@@ -67,41 +74,41 @@ L_shuryo()
    exit ${L_modorichi}
 }
 
-### trap ���� ###
+### trap 処理 ###
 trap 'L_shuryo 8' 1 2 3 15
 
 ################################################################################
 ##                                   Main                                     ##
 ################################################################################
 
-### �����J�n�o�� ###
-L_rogushuturyoku "ZCZZ00001:${L_sherumei} �J�n"
+### 処理開始出力 ###
+L_rogushuturyoku "ZCZZ00001:${L_sherumei} 開始"
 
-### ���ݒ�t�@�C���Ǎ��� ###
+### 環境設定ファイル読込み ###
 
-### ��Ջ��ʊ��ϐ� ###
+### 基盤共通環境変数 ###
 if [ -r ${L_zczzcomn} ]
 then
    . ${L_zczzcomn}
 else
-   echo "ZCZZ00003:[Error] ZCZZCOMN.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZCOMN.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��"
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了"
    L_shuryo 8
 fi
 
-### DB���ݒ� ###
+### DB環境設定 ###
 if [ -r ${TE_ZCZZDB} ]
 then
    . ${TE_ZCZZDB}
 else
-   echo "ZCZZ00003:[Error] ZCZZDB.env �����݂��Ȃ��A�܂��͌�����܂���B HOST=${L_hosutomei}" \
+   echo "ZCZZ00003:[Error] ZCZZDB.env が存在しない、または見つかりません。 HOST=${L_hosutomei}" \
         | /usr/bin/fold -w 75 | /usr/bin/tee -a ${L_rogumei} 1>&2
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��"
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了"
    L_shuryo ${TE_ZCZZIJOUSHURYO}
 fi
 
-###�ꎞ�\�̈� kill�Ώ�PID�擾
+###一時表領域 kill対象PID取得
 ${ORACLE_HOME}/bin/sqlplus -s apps/apps << EOF >> /dev/null
 WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT FAILURE
@@ -139,19 +146,19 @@ spool off
 exit
 EOF
 
-### SQL �I������ ###
+### SQL 終了判定 ###
 
 if [ $? != 0 ]
 then
-   echo "[ERROR]:kill�Ώ�PID�擾�Ɏ��s���܂���" >> ${L_rogumei}
-   L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��"
+   echo "[ERROR]:kill対象PID取得に失敗しました" >> ${L_rogumei}
+   L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了"
    exit 8
 fi
 
-### �v���Z�Xkill ###
+### プロセスkill ###
 while read L_MODULE L_KILL_PID L_SQL_ID L_SESSION_IN_WAIT
 do 
-   if [ -n "${L_KILL_PID}" ] #�󔒍s����ispool�t�@�C����1�s�ڂ����s�݂̂̂��߁j
+   if [ -n "${L_KILL_PID}" ] #空白行判定（spoolファイルの1行目が改行のみのため）
    then
        L_rogushuturyoku "kill MODULE : ${L_MODULE} PID : ${L_KILL_PID} SQL_ID : ${L_SQL_ID} SESSION_IN_WAIT : ${L_SESSION_IN_WAIT}"
        kill -9 ${L_KILL_PID}
@@ -160,10 +167,10 @@ do
 
 done < ${KILL_PID_LIST}
 
-### ���X�g�t�@�C���폜 ###
+### リストファイル削除 ###
 rm -f ${KILL_PID_LIST} >> ${L_rogumei}
 
-### �����J�n�o�� ###
-L_rogushuturyoku "ZCZZ00002:${L_sherumei} �I��"
+### 処理開始出力 ###
+L_rogushuturyoku "ZCZZ00002:${L_sherumei} 終了"
 
 L_shuryo ${TE_ZCZZSEIJOUSHURYO}
