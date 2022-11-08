@@ -1,8 +1,12 @@
-CREATE INDEX xxcok.xxcok_sales_deduction_n10
+CREATE INDEX xxcok.xxcok_sales_deduction_n10 
 ON xxcok.xxcok_sales_deduction(
-     data_type
-   , cancel_gl_date
-   , gl_date
-)
+     customer_code_from
+   , data_type
+   , recon_slip_num
+   , status
+   , source_category
+   , record_date
+   , report_decision_flag
+) invisible
 tablespace XXIDX2
 /
