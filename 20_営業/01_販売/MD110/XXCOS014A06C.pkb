@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2019/06/25    1.29  N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
  *  2022/05/17    1.31  R.Oikawa         [E_本稼動_18288]納品予定プルーフリスト性能改善
+ *  2022/11/16    1.32  N.Koyama         [E_本稼動_18770]特定チェーンでの伝票発行前伝送済条件追加対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -201,6 +202,9 @@ AS
   cv_msg_item_div_h               CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
 -- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+  ct_msg_sunsent_err              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-13153';                    --伝送済チェックエラーメッセージ
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
 --
   --トークン
   cv_tkn_data                     CONSTANT VARCHAR2(4)   := 'DATA';                                 --データ
@@ -229,6 +233,10 @@ AS
   --参照タイプ
   ct_qc_sale_class                CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_SALE_CLASS';                   --参照タイプ.売上区分
   ct_qc_consumption_tax_class     CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_CONSUMPTION_TAX_CLASS';        --参照タイプ.消費税区分
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+  --参照タイプ
+  ct_send_chk_chain_code          CONSTANT fnd_lookup_values.lookup_type%TYPE :=  'XXCOS1_SEND_CHK_CHAIN_CODE';         --参照タイプ.納品書出力時伝送済チェック対象チェーン
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
 --
   --その他
   cv_utl_file_mode                CONSTANT VARCHAR2(1)   := 'w';                                    --UTL_FILE.オープンモード
@@ -1700,6 +1708,10 @@ AS
     ln_tax_rate                       NUMBER;
     ln_general_add_item10             NUMBER;
 -- 2019/06/25 V1.29 N.Miyamoto ADD END
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+    lt_chk_chain_code               fnd_lookup_values.lookup_code%TYPE;                --納品書出力時伝送済チェック対象チェーンコード
+    lt_edi_delivery_schedule_flag   xxcos_edi_headers.edi_delivery_schedule_flag%TYPE; --EDI納品予定送信済フラグ
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec    g_input_rtype
@@ -3118,6 +3130,9 @@ AS
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     ,NULL                                                               ordered_item                  -- 受注明細品目コード(手入力のみで使用)
 -- 2012/01/06 K.Kiriu Ver1.23 Add End
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+                    ,xeh.edi_delivery_schedule_flag                                     edi_delivery_schedule_flag    --EDI納品予定送信済フラグ
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END *************************************
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
 --              FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
 /* 2010/06/18 Ver1.20 Mod Start */
@@ -4933,6 +4948,9 @@ AS
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     ,oola.ordered_item                                                  ordered_item                  -- 受注明細品目コード
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+                    ,'Y'                                                                edi_delivery_schedule_flag    --EDI納品予定送信済フラグ
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     --受注ヘッダ情報インラインビュー
 -- Ver1.31 Mod Start
@@ -5505,6 +5523,31 @@ AS
         l_chain_rec.chain_name := g_msg_rec.customer_notfound;
     END;
 --
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+    --==============================================================
+    --納品書出力時伝送済チェック対象チェーン情報取得
+    --==============================================================
+    BEGIN
+      SELECT  xlvv.lookup_code        -- コード
+        INTO  lt_chk_chain_code
+        FROM  xxcos_lookup_values_v        xlvv          -- ルックアップマスタ
+       WHERE  xlvv.lookup_type  = ct_send_chk_chain_code -- ルックアップ.タイプ
+         AND  xlvv.lookup_code  = g_input_rec.chain_code
+         AND  g_other_rec.process_date
+              BETWEEN NVL(xlvv.start_date_active,g_other_rec.process_date)
+              AND     NVL(xlvv.end_date_active,g_other_rec.process_date)  -- 業務日付がFROM-TO内
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lt_chk_chain_code := NULL;
+    END;
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => 'lt_chk_chain_code:'||lt_chk_chain_code
+--    );
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
     --==============================================================
     --グローバル変数の設定
     --==============================================================
@@ -5907,10 +5950,19 @@ AS
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD END
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
        ,lt_ordered_item                                                                                       -- 受注明細品目コード
--- 2012/01/06 K.Kiriu Ver1.23 Add Start
+-- 2012/01/06 K.Kiriu Ver1.23 Add End
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+       ,lt_edi_delivery_schedule_flag
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
       ;
 out_line(buff => '1');
       EXIT WHEN cur_data_record%NOTFOUND;
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => 'lt_edi_delivery_schedule_flag:'||lt_edi_delivery_schedule_flag
+--    );
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
 -- 2011/04/28 T.Ishiwata Ver.1.21 ADD START
       -- 変数の初期化
       ln_reason_id            := NULL;
@@ -6034,7 +6086,31 @@ out_line(buff => '1');
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
         lt_last_bargain_class   := lt_bargain_class;
         lb_mix_error_order      := FALSE;
-        lb_out_flag_error_order := FALSE;
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+--
+      --==============================================================
+      --伝送済チェック
+      --==============================================================
+        IF (lt_chk_chain_code IS NOT NULL) AND (lt_edi_delivery_schedule_flag = 'N') THEN
+          lb_error := TRUE;
+          lb_out_flag_error_order := TRUE;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         cv_apl_name
+                        ,ct_msg_sunsent_err
+                        ,cv_tkn_order_no
+                        ,l_data_tab('INVOICE_NUMBER')
+                       );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+          lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+        ELSE
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
+          lb_out_flag_error_order := FALSE;
+--******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
+        END IF;
+--******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
       END IF;
 --
       --==============================================================
