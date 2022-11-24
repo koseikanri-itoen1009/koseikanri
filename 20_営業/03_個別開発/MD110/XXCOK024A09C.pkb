@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *                                       [E_本稼動_17540]8月31日以前の控除を除外
  *  2021/12/17    1.8   SCSK K.Yoshikawa [E_本稼動_17540]8月31日以前かつ承認済の控除を除外
  *  2022/03/03    1.9   SCSK Y.Koh        E_本稼動_17939 定額協賛金対応
+ *  2022/11/22    1.10  K.Yoshikawa      [E_本稼動_18519]入金相殺の消込（AR連携）
+ *                      M.Akachi         [E_本稼動_18801]額固定の二重計上
  *
  *****************************************************************************************/
 --
@@ -124,6 +126,10 @@ AS
   cv_msg_slip_date_err_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10809';               -- 支払処理対象外メッセージ内訳
   cv_msg_slip_date_ins_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10810';               -- 支払処理済マイナス控除データ登録メッセージ内訳
   cv_msg_slip_date_dis_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10811';               -- 支払処理対象外メッセージ入金時値引内訳
+-- 2022/11/22 Ver1.10 ADD Start
+  cv_msg_slip_date_offset   CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10851';               -- 支払処理対象外メッセージ入金相殺消込
+  cv_msg_slip_date_off_d    CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10850';               -- 支払処理対象外メッセージ入金相殺消込内訳
+-- 2022/11/22 Ver1.10 ADD End
 -- 2021/10/21 Ver1.5 ADD End
   cv_msg_lock_err           CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10632';               -- ロックエラーメッセージ
 -- 2021/11/25 Ver1.7 ADD Start
@@ -3108,9 +3114,18 @@ AS
     ln_msg_dis_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
     ln_msg_ins_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
 -- 2021/10/21 Ver1.5 ADD End
+-- 2022/11/22 Ver1.10 ADD Start
+    ln_msg_off_cnt          NUMBER DEFAULT 0;                          -- メッセージ見出し制御
+-- 2022/11/22 Ver1.10 ADD End
 -- 2021/12/17 Ver1.8 ADD Start
-   lv_recon_status          VARCHAR2(2)    DEFAULT NULL;               -- 消込ステータス
+    lv_recon_status         VARCHAR2(2)    DEFAULT NULL;               -- 消込ステータス
 -- 2021/12/17 Ver1.8 ADD End
+-- 2022/11/22 Ver1.10 ADD Start
+    ln_chk_cnt              NUMBER DEFAULT 0;                          -- 販売控除情報のレコード数（定額控除データのチェックで使用）
+    ld_min_record_date      DATE   DEFAULT NULL;                       -- MIN計上日
+    lv_deduction_flg        VARCHAR2(2)    DEFAULT NULL;               -- 控除有無フラグ
+    lv_this_month_flg       VARCHAR2(2)    DEFAULT NULL;               -- 当月判定フラグ
+-- 2022/11/22 Ver1.10 ADD End
 --
     -- *** ローカル例外 ***
     no_data_expt              EXCEPTION;               -- 対象データ0件エラー
@@ -3221,6 +3236,9 @@ AS
            ,recon.recon_status                   recon_status                           -- 消込ステータス
            ,to_char(recon.max_recon_due_date,'YYYY/MM/DD')             max_recon_due_date                     -- 支払予定日
            ,to_char(recon.target_date_end,'YYYY/MM/DD')                target_date_end                        -- 対象期間(to)
+-- 2022/11/22 Ver1.10 ADD Start
+           ,recon.memo_line_name                 memo_line_name                         -- 入金相殺自動消込用請求内容
+-- 2022/11/22 Ver1.10 ADD End
       FROM (
            SELECT 
                     xsd.sales_deduction_id               sales_deduction_id             -- 販売控除ID
@@ -3242,6 +3260,9 @@ AS
                                                         max_recon_due_date              -- MAX支払予定日
 -- 2021/11/05 Ver1.6 MOD End
                    ,xdrh.target_date_end                target_date_end                 -- 対象期間(to)
+-- 2022/11/22 Ver1.10 ADD Start
+                  ,flv.attribute14                      memo_line_name                  -- 入金相殺自動消込用請求内容
+-- 2022/11/22 Ver1.10 ADD End
             FROM   xxcok_sales_deduction      xsd                                       -- 販売控除情報
                   ,fnd_lookup_values          flv                                       -- データ種類
                   ,fnd_lookup_values          flv2                                      -- 控除消込ヘッダーステータス
@@ -3310,6 +3331,9 @@ AS
                                                               max_recon_due_date        -- MAX支払予定日
 -- 2021/11/05 Ver1.6 MOD End
                   ,null                                target_date_end                  -- 対象期間(to)
+-- 2022/11/22 Ver1.10 ADD Start
+                  ,null                                memo_line_name                   -- 入金相殺自動消込用請求内容
+-- 2022/11/22 Ver1.10 ADD End
             FROM   xxcok_sales_deduction      xsd                                       -- 販売控除情報
                   ,fnd_lookup_values          flv                                       -- データ種類
                   ,ra_customer_trx_all        rct                                       -- AR取引ヘッダー
@@ -3359,10 +3383,16 @@ AS
            ,recon.recon_status                                                          -- 消込ステータス
            ,recon.max_recon_due_date                                                    -- 支払予定日
            ,recon.target_date_end                                                       -- 対象期間(to)
+-- 2022/11/22 Ver1.10 ADD Start
+           ,recon.memo_line_name                                                        -- 入金相殺自動消込用請求内容
+-- 2022/11/22 Ver1.10 ADD End
       ORDER BY 
             decode(recon.deduction_type,cv_030,'XXX', 
                    decode(recon.deduction_type,cv_040,'XXX','000'))                     -- データ種類
            ,recon.discount_target                                                       -- 入金時値引対象
+-- 2022/11/22 Ver1.10 ADD Start
+           ,decode(recon.memo_line_name,NULL,1,2)                                       -- 入金相殺自動消込用請求内容
+-- 2022/11/22 Ver1.10 ADD End
            ,recon.condition_no                                                          -- 控除番号
 -- 2021/11/05 Ver1.6 DEL Start
 --           ,condition_line_id                                                           -- 控除詳細ID
@@ -3482,6 +3512,42 @@ AS
                                                      ,1                  -- 改行
                                                      );
 --
+-- 2022/11/22 Ver1.10 ADD Start
+      ELSIF l_del_message_rec.memo_line_name IS NOT NULL THEN
+        IF ln_msg_off_cnt = 0 THEN
+          --入金相殺消込済の控除データの削除スキップメッセージ(入金相殺消込)見出し
+          lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                                 ,iv_name         => cv_msg_slip_date_off_d
+                                                 );
+--
+          lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                       ,lv_out_msg         -- メッセージ
+                                                       ,1                  -- 改行
+                                                       );
+        END IF;
+        ln_msg_off_cnt := ln_msg_off_cnt + 1;
+--
+        --入金相殺消込済の控除データの削除スキップメッセージ(入金相殺消込)
+        lv_out_msg := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_name
+                                               ,iv_name         => cv_msg_slip_date_offset
+                                               ,iv_token_name1  => cv_tkn_condition_no
+                                               ,iv_token_value1 => l_del_message_rec.condition_no          -- 控除番号
+                                               ,iv_token_name2  => cv_tkn_data_type
+                                               ,iv_token_value2 => l_del_message_rec.data_type             -- データ種類
+                                               ,iv_token_name3  => cv_tkn_recon_slip_num
+                                               ,iv_token_value3 => l_del_message_rec.recon_slip_num        -- 入金相殺伝票明細番号
+                                               ,iv_token_name4  => cv_tkn_target_date_end
+                                               ,iv_token_value4 => l_del_message_rec.target_date_end       -- 対象期間（TO)
+                                               ,iv_token_name5  => cv_tkn_due_date
+                                               ,iv_token_value5 => l_del_message_rec.max_recon_due_date    -- 入金予定日
+                                               );
+--
+        lb_retcode := xxcok_common_pkg.put_message_f( FND_FILE.OUTPUT    -- 出力区分
+                                                     ,lv_out_msg         -- メッセージ
+                                                     ,1                  -- 改行
+                                                     );
+--
+-- 2022/11/22 Ver1.10 ADD End
       ELSE
         IF ln_msg_err_cnt = 0 THEN
           --支払処理確定済(支払伝票が承認済)の控除データの削除スキップメッセージ見出し
@@ -3898,6 +3964,37 @@ AS
           -- メインカーソルのインデックス退避
           ln_main_idx := i ;
 --
+-- 2022/11/22 Ver1.10 ADD Start
+          -- 初期化
+          ln_chk_cnt := 0;
+          lv_deduction_flg  := NULL;
+          lv_this_month_flg := NULL;
+          -- 控除条件情報の控除条件.リカバリ対象フラグが「U：更新」の場合
+          -- すでに販売控除情報が存在するかチェック
+          IF ( gt_condition_work_tbl(i).header_recovery_flag = cv_u_flag ) THEN
+             SELECT COUNT(1)           AS cnt     -- チェック件数
+                   ,MIN(RECORD_DATE)   AS min_record_date
+             INTO   ln_chk_cnt
+                   ,ld_min_record_date
+             FROM   xxcok_sales_deduction xsd     -- 販売控除情報
+             WHERE  xsd.condition_id = gt_condition_work_tbl(i).condition_id  -- 控除条件ID
+             ;
+          END IF;
+-- 
+          IF ( ln_chk_cnt = 0 ) THEN
+             lv_deduction_flg  := cv_n_flag;
+             lv_this_month_flg := cv_n_flag;
+          -- MIN日付＝当月月初の場合
+          ELSIF ( trunc(ld_min_record_date,'MM') = LAST_DAY(ADD_MONTHS(gd_proc_date -1,-1)) + cn_1 ) THEN
+             lv_deduction_flg  := cv_n_flag;
+             lv_this_month_flg := cv_y_flag;
+          -- MIN日付＜当月月初の場合
+          ELSIF ( ld_min_record_date < LAST_DAY(ADD_MONTHS(gd_proc_date -1,-1)) + cn_1 ) THEN
+             lv_deduction_flg  := cv_y_flag;
+             lv_this_month_flg := cv_n_flag;
+          END IF;
+-- 2022/11/22 Ver1.10 ADD End
+--
           -- 開始期間確認
           -- 開始日が業務日付より未来の控除マスタの場合
 -- 2021/07/26 Ver1.3 MOD Start
@@ -3908,7 +4005,14 @@ AS
 -- 2022/03/03 Ver1.9 MOD End
 -- 2021/07/26 Ver1.3 MOD End
              NULL;
+-- 2022/11/22 Ver1.10 MOD Start
+--          ELSE
+          -- 控除条件情報の控除条件.リカバリ対象フラグが「U：更新」で、
+          -- すでに販売控除情報が存在する場合、登録は行いません。
+          ELSIF ( gt_condition_work_tbl(i).header_recovery_flag = cv_u_flag AND ln_chk_cnt > 0 AND lv_deduction_flg  = cv_y_flag ) THEN
+             NULL;
           ELSE
+-- 2022/11/22 Ver1.10 MOD End
 --
             -- 終了日が業務日付より未来の場合
 -- 2021/07/26 Ver1.3 MOD Start
@@ -3918,8 +4022,17 @@ AS
 --
               -- ワーク日付に業務日付の当月月初を設定
 -- 2021/07/26 Ver1.3 MOD Start
+-- 2022/11/22 Ver1.10 MOD Start
 --              gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date,-1)) + cn_1;
-              gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date -1,-1)) + cn_1;
+            gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date -1,-1)) + cn_1;
+            -- 修正で「当月有無判定＝Y」の場合,ワーク日付に業務日付の前月月初を設定
+            IF ( gt_condition_work_tbl(i).header_recovery_flag = cv_u_flag AND lv_this_month_flg = cv_y_flag ) THEN
+               gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date -1,-2)) + cn_1;
+            -- 修正で「当月有無判定＝N」の場合,ワーク日付に業務日付の当月月初を設定
+            ELSIF ( gt_condition_work_tbl(i).header_recovery_flag = cv_u_flag AND lv_this_month_flg = cv_n_flag ) THEN
+               gd_work_date := LAST_DAY(ADD_MONTHS(gd_proc_date -1,-1)) + cn_1;
+            END IF;
+-- 2022/11/22 Ver1.10 MOD End
 -- 2021/07/26 Ver1.3 MOD End
 --
               -- ワーク日付(業務日付)が開始日よりも大きい間は繰返し処理を実施
