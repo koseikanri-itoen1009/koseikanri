@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A18C(body)
  * Description      : アップロードファイルから単品別の年間商品計画データの洗い替え
  * MD.050           : 年間商品計画単品別アップロード MD050_CSM_002_A18
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2019/01/30    1.0   K.Nara           新規作成
  *  2019/03/25    1.1   K.Nara           予算算出の不具合対応
+ *  2022/12/06    1.2   R.Oikawa         E_本稼動_18133【経営】オープン価格の対応
  *
  *****************************************************************************************/
 --
@@ -1453,7 +1454,13 @@ AS
       END IF;
       --
       --掛率
-      IF ( on_credit_rate < cn_min_crerate ) OR ( cn_max_crerate < on_credit_rate ) THEN
+-- Ver.1.2 MOD START
+--      IF ( on_credit_rate < cn_min_crerate ) OR ( cn_max_crerate < on_credit_rate ) THEN
+      IF ( ( on_credit_rate < cn_min_crerate ) OR ( cn_max_crerate < on_credit_rate ) )
+         AND
+           in_fixed_price <> 0                -- 定価0以外
+      THEN
+-- Ver.1.2 MOD END
         --掛率は許容範囲を超えてしまいます。
         lv_out_msg  := xxccp_common_pkg.get_msg(
                         iv_application          => cv_appl_short_name_csm
