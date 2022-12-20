@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
  *  2019/12/19    1.31  N.Koyama         [E_本稼動_16112]パフォーマンス対応()受注日の期間絞り
  *  2020/01/08    1.32  N.Koyama         [E_本稼動_16112]パフォーマンス対応(受注日の期間絞り追加対応)
+ *  2022/12/08    1.33  M.Akachi         [E_本稼動_18895]納品予定データ作成（解除用）機能対応
  *
  *****************************************************************************************/
 --
@@ -6012,9 +6013,13 @@ AS
     iv_proc_date        IN  VARCHAR2,      --  14.処理日
 /* 2010/06/11 Ver1.21 Mod Start */
 --    iv_proc_time        IN  VARCHAR2       --  15.処理時刻
-    iv_proc_time        IN  VARCHAR2,      --  15.処理時刻
-/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
-    iv_cancel_bace_code IN  VARCHAR2,      --  16.解除拠点コード
+/* Ver1.33 Mod Start */
+--    iv_proc_time        IN  VARCHAR2,      --  15.処理時刻
+--/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+--    iv_cancel_bace_code IN  VARCHAR2,      --  16.解除拠点コード
+    iv_cancel_bace_code IN  VARCHAR2,      --  15.解除拠点コード
+    iv_proc_time        IN  VARCHAR2,      --  16.処理時刻
+/* Ver1.33 Mod End */
 /* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
     iv_slct_base_code   IN  VARCHAR2       --  17.出力拠点コード
 /* 2010/06/11 Ver1.21 Mod End */
