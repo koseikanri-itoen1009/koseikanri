@@ -7,7 +7,7 @@ AS
  * Description      : 控除額の支払・入金相殺データが承認されたデータを対象に、控除消込情報を基に、
  *                    控除情報から消込仕訳情報を抽出してGL仕訳の作成し、一般会計OIFに連携する処理
  * MD.050           : 控除データ決済仕訳情報取得 MD050_COK_024_A18
- * Version          : 1.3
+ * Version          : 1.4
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -32,6 +32,7 @@ AS
  *  2021/05/18    1.1   SCSK K.Yoshikawa GROUP_ID追加対応
  *  2022/07/20    1.2   SCSK Y.Koh       E_本稼動_18509 長時間走行対応
  *  2022/09/06    1.3   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
+ *  2022/12/01    1.4   SCSK M.Akachi    E_本稼動_18519【収益認識】入金相殺の消込（AR連携）
  *
  *****************************************************************************************/
 --
@@ -529,7 +530,10 @@ AS
     SELECT drh.deduction_recon_head_id  deduction_recon_head_id  -- 控除消込ヘッダーID
           ,drh.recon_slip_num           recon_slip_num           -- 支払伝票番号
 -- 2022/09/06 Ver1.3 MOD Start
-          ,DECODE(drh.interface_div,'AP',drh.cancel_gl_date,'WP',drh.gl_date)
+-- 2022/12/01 Ver1.4 MOD Start
+--          ,DECODE(drh.interface_div,'AP',drh.cancel_gl_date,'WP',drh.gl_date)
+          ,DECODE(drh.interface_div,'AP',drh.cancel_gl_date,'AR',drh.cancel_gl_date,'WP',drh.gl_date)
+-- 2022/12/01 Ver1.4 MOD End
                                         gl_date                  -- 取消GL記帳日
 --          ,LAST_DAY(drh.gl_date)        gl_date                  -- GL記帳日
 -- 2022/09/06 Ver1.3 MOD End
