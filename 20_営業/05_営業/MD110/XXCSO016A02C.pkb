@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_016_A02_情報系-EBSインターフェース：
  *                    (OUT)営業員マスタ
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009-04-16    1.3   K.Satomura      【ST障害T01_0172】営業員名称、営業員名称（カナ）を全角置換
  *  2009-05-01    1.4   Tomoko.Mori      T1_0897対応
  *  2009-10-09    1.5   D.Abe            0001515対応
+ *  2022-12-12    1.6   N.Koyama         E_本稼働_18759対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1111,6 +1112,10 @@ AS
     /* 2009.10.09 D.Abe 0001515対応 START */
     cv_job_type_code01 CONSTANT VARCHAR2(2) := '01';      -- 営業職
     /* 2009.10.09 D.Abe 0001515対応 END   */
+    /* 2022/12/12 Ver1.6 N.Koyama E_本稼働_18759対応 START */
+    cv_resource_group_member        CONSTANT VARCHAR2(15) := 'RS_GROUP_MEMBER';
+    cv_n                            CONSTANT VARCHAR2(1)  := 'N';
+    /* 2022/12/12 Ver1.6 N.Koyama E_本稼働_18759対応 END */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     ld_sysdate      DATE;           -- システム日付
@@ -1215,6 +1220,14 @@ AS
               )
              )
         /* 2009.10.09 D.Abe 0001515対応 END   */
+    /* 2022/12/12 Ver1.6 N.Koyama E_本稼働_18759対応 START */
+        AND  EXISTS (SELECT 1 FROM jtf_rs_role_relations      jrrr
+                      WHERE  NVL(xrrv.group_member_id_new,jrrr.role_resource_id) = jrrr.role_resource_id
+                        AND  jrrr.start_date_active                  <= ld_date
+                        AND  NVL(jrrr.end_date_active,ld_date )      >= ld_date
+                        AND  jrrr.role_resource_type                  = cv_resource_group_member
+                        AND  jrrr.delete_flag                         = cv_n)
+    /* 2022/12/12 Ver1.6 N.Koyama E_本稼働_18759対応 END */
       ;
     --CURSOR get_person_data_cur
     --IS
