@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
  *  2022/05/17    1.31  R.Oikawa         [E_本稼動_18288]納品予定プルーフリスト性能改善
  *  2022/11/16    1.32  N.Koyama         [E_本稼動_18770]特定チェーンでの伝票発行前伝送済条件追加対応
+ *  2022/12/28    1.33  N.Koyama         [E_本稼動_18910]特定チェーンでの伝票発行前伝送済条件追加(手書き)対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -4949,7 +4950,10 @@ AS
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     ,oola.ordered_item                                                  ordered_item                  -- 受注明細品目コード
 --******************************************* 2022/11/16 1.32 N.Koyama ADD START *************************************
-                    ,'Y'                                                                edi_delivery_schedule_flag    --EDI納品予定送信済フラグ
+--******************************************* 2022/12/28 1.33 N.Koyama MOD START *************************************
+--                    ,'Y'                                                                edi_delivery_schedule_flag    --EDI納品予定送信済フラグ
+                    ,ooha.edi_delivery_schedule_flag                                    edi_delivery_schedule_flag    --EDI納品予定送信済フラグ
+--******************************************* 2022/12/28 1.33 N.Koyama MOD END   *************************************
 --******************************************* 2022/11/16 1.32 N.Koyama ADD END   *************************************
 -- 2012/01/06 K.Kiriu Ver1.23 Add Start
                     --受注ヘッダ情報インラインビュー
@@ -4988,10 +4992,16 @@ AS
                            ,xca.deli_center_code                                        deli_center_code
                            ,xca.deli_center_name                                        deli_center_name
                            ,xca.cust_store_name                                         cust_store_name
+--******************************************* 2022/12/28 1.33 N.Koyama ADD START *************************************
+                           ,xeh.edi_delivery_schedule_flag                              edi_delivery_schedule_flag
+--******************************************* 2022/12/28 1.33 N.Koyama ADD END   *************************************
                     FROM    oe_order_headers_all                                        ooha                          --受注ヘッダ情報テーブル
                            ,hz_cust_accounts                                            hca                           --顧客マスタ
                            ,xxcmm_cust_accounts                                         xca                           --顧客マスタアドオン
                            ,oe_order_sources                                            oos                           --受注ソーステーブル
+--******************************************* 2022/12/28 1.33 N.Koyama ADD START *************************************
+                           ,xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
+--******************************************* 2022/12/28 1.33 N.Koyama ADD END   *************************************
                     WHERE   hca.cust_account_id     = ooha.sold_to_org_id
                     AND     hca.customer_class_code IN (cv_cust_class_chain_store,cv_cust_class_uesama)
                     AND     xca.customer_id         = hca.cust_account_id
@@ -5020,6 +5030,9 @@ AS
                     AND     ooha.ordered_date >= TO_DATE(i_input_rec.shop_delivery_date_from,cv_date_fmt) - g_prf_rec.ordered_date_from
                     AND     ooha.ordered_date < TO_DATE(i_input_rec.shop_delivery_date_from,cv_date_fmt) + g_prf_rec.ordered_date_to + 1
 -- Ver1.31 Add End
+--******************************************* 2022/12/28 1.33 N.Koyama ADD START   *************************************
+                    AND     ooha.orig_sys_document_ref = xeh.order_connection_number(+)                             --外部システム受注番号 = 受注関連番号
+--******************************************* 2022/12/28 1.33 N.Koyama ADD END     *************************************
                     )                                                                   ooha
                     --OPM品目情報インラインビュー
                   ,(SELECT  iimb.item_id                                                item_id
@@ -6091,7 +6104,10 @@ out_line(buff => '1');
       --==============================================================
       --伝送済チェック
       --==============================================================
-        IF (lt_chk_chain_code IS NOT NULL) AND (lt_edi_delivery_schedule_flag = 'N') THEN
+--******************************************* 2022/12/28 1.33 N.Koyama MOD START *************************************
+--        IF (lt_chk_chain_code IS NOT NULL) AND (lt_edi_delivery_schedule_flag = 'N') THEN
+        IF (lt_chk_chain_code IS NOT NULL) AND (NVL(lt_edi_delivery_schedule_flag,'N') = 'N') THEN
+--******************************************* 2022/12/28 1.33 N.Koyama MOD END   *************************************
           lb_error := TRUE;
           lb_out_flag_error_order := TRUE;
           lv_errmsg := xxccp_common_pkg.get_msg(
