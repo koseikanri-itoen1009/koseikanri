@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 3.2                                                       ##
+## Version          : 3.3                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -106,6 +106,8 @@
 ##                                       バックアップ前に「ls」追加             ##
 ##  2022/09/01    3.2   Nobuo.Koyama     [E_本稼動_18570]                       ##
 ##                                       リトライ対応                           ##
+##  2023/01/12    3.3   Nobuo.Koyama     [E_本稼動_19015]                       ##
+##                                       バックアップエラー無視対応             ##
 ##                                                                              ##
 ##################################################################################
 
@@ -1977,16 +1979,23 @@ done
 EOF
     . $C_std_out
     #(メッセージをセット)
-    if [ -z "${L_status_err}" ]
-    then
-      L_status_err="${C_10065_msg}"
-    else
-      L_status_err="${L_status_err}\n${C_10065_msg}"
-    fi
-    #(ジョブ状況ステータスを終了に更新)
-    update_job_process ${L_if_job_status_id_all}
-    #(処理終了)
-    shell_end ${L_status_err}
+# 2023/01/12 Ver3.3 Nobuo.Koyama Del Start
+#    if [ -z "${L_status_err}" ]
+#    then
+#      L_status_err="${C_10065_msg}"
+#    else
+#      L_status_err="${L_status_err}\n${C_10065_msg}"
+#    fi
+# 2023/01/12 Ver3.3 Nobuo.Koyama Del End
+# 2023/01/12 Ver3.3 Nobuo.Koyama Add Start
+    echo "${C_10065_msg}" >>`echo ${C_ofil}`
+# 2023/01/12 Ver3.3 Nobuo.Koyama Add End
+# 2023/01/12 Ver3.3 Nobuo.Koyama Del Start
+#    #(ジョブ状況ステータスを終了に更新)
+#    update_job_process ${L_if_job_status_id_all}
+#    #(処理終了)
+#    shell_end ${L_status_err}
+# 2023/01/12 Ver3.3 Nobuo.Koyama Del End
   fi
 # 2009/04/02 Ver.1.4 Masayuki.Sano add END
 
