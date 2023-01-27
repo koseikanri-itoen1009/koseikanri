@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP001A02C(body)
  * Description      : 不正販売実績検知
  * MD.070           : 不正販売実績検知(MD070_IPO_CCP_001_A02)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/08/06    1.0   N.Koyama         [E_本稼動_16546]新規作成
  *  2020/11/24    1.1   N.Koyama         [E_本稼動_16781]不正な販売実績を検知する 税額差異
+ *  2023/01/25    1.2   N.Koyama         [E_本稼動_19044]成績者コードチェックは桁数判断
  *
  *****************************************************************************************/
 --
@@ -148,11 +149,14 @@ AS
               ,xseh.results_employee_code                 AS results_employee_code
          FROM xxcos_sales_exp_headers xseh
        WHERE xseh.business_date = ld_date
-         AND NOT EXISTS  (SELECT 1
-                            FROM per_all_people_f pap
-                           WHERE pap.employee_number  = xseh.results_employee_code
-                             AND xseh.delivery_date BETWEEN pap.effective_start_date
-                               AND  NVL( pap.effective_end_date, ld_date ))
+-- Ver1.2 Mod Start
+--         AND NOT EXISTS  (SELECT 1
+--                            FROM per_all_people_f pap
+--                           WHERE pap.employee_number  = xseh.results_employee_code
+--                             AND xseh.delivery_date BETWEEN pap.effective_start_date
+--                               AND  NVL( pap.effective_end_date, ld_date ))
+         AND LENGTHB(xseh.results_employee_code) < 5
+-- Ver1.2 Mod End
 --  Ver1.1 Add Start
        UNION ALL
 --  販売実績ヘッダ税額不正
