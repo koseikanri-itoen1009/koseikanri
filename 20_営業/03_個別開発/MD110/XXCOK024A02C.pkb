@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A02C (body)
  * Description      : 控除マスタCSV出力
  * MD.050           : 控除マスタCSV出力 MD050_COK_024_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,7 +25,8 @@ AS
  *  2020/05/21    1.0   Y.Nakajima       新規作成
  *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
  *  2022/02/24    1.2   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
- 
+ *  2023/01/31    1.3   M.Akachi         E_本稼動_19033 控除マスタCSV出力権限変更
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -258,15 +259,43 @@ AS
           SELECT /*+ INDEX(xch1 XXCOK_CONDITION_HEADER_N01) */
                  xch1.condition_id            AS condition_id
           FROM   xxcok_condition_header       xch1
+-- Ver1.3 Add Start
+                ,fnd_lookup_values_vl         flvv1                     -- チェーンマスタ
+                ,xxcmm_cust_accounts          xca                       -- 顧客マスタ
+-- Ver1.3 Add End
           WHERE  iv_corp_code                     IS NOT NULL
-          AND    xch1.corp_code                 = iv_corp_code
+-- Ver1.3 Mod Start
+--          AND    xch1.corp_code                 = iv_corp_code
+          -- チェーン
+          AND    xch1.deduction_chain_code = flvv1.lookup_code(+)       -- 控除条件.控除用チェーンコード ＝ チェーンマスタ.控除用チェーンコード
+          AND    flvv1.lookup_type(+)      = cv_type_chain_code
+          -- 顧客
+          AND    xch1.customer_code        = xca.customer_code(+)       -- 控除条件.顧客コード ＝ 顧客マスタ.顧客コード
+          AND
+          ( xch1.corp_code      = iv_corp_code                          -- 指定された企業指定の控除マスタ
+            OR flvv1.attribute1 = iv_corp_code                          -- 企業傘下の控除用チェーン
+            OR xca.intro_chain_code2 IN ( SELECT flvv2.lookup_code      -- 企業傘下の顧客
+                                          FROM   fnd_lookup_values_vl flvv2
+                                          WHERE  flvv2.lookup_type = cv_type_chain_code
+                                          AND    flvv2.attribute1  = iv_corp_code ) )
+-- Ver1.3 Mod End
           UNION
           -- 2.チェーン指定時
           SELECT /*+ INDEX(xch2 XXCOK_CONDITION_HEADER_N02) */
                  xch2.condition_id            AS condition_id
           FROM   xxcok_condition_header       xch2
+-- Ver1.3 Add Start
+                ,xxcmm_cust_accounts          xca                       -- 顧客マスタ
+-- Ver1.3 Add End
           WHERE  iv_introduction_code             IS NOT NULL
-          AND    xch2.deduction_chain_code   = iv_introduction_code
+-- Ver1.3 Mod Start
+--          AND    xch2.deduction_chain_code   = iv_introduction_code
+          -- 顧客
+          AND    xch2.customer_code = xca.customer_code(+)              -- 控除条件.顧客コード ＝ 顧客マスタ.顧客コード
+          AND
+          ( xch2.deduction_chain_code = iv_introduction_code            -- 指定された控除用チェーンの控除マスタ
+            OR xca.intro_chain_code2  = iv_introduction_code )          -- 控除用チェーン傘下の顧客
+-- Ver1.3 Mod End
           UNION
           -- 3.顧客指定時
           SELECT /*+ INDEX(xch3 XXCOK_CONDITION_HEADER_N03) */
@@ -454,15 +483,43 @@ AS
           SELECT /*+ INDEX(xch1 XXCOK_CONDITION_HEADER_EST_N01) */
                  xch1.condition_id            AS condition_id
           FROM   xxcok_condition_header_est   xch1
+-- Ver1.3 Add Start
+                ,fnd_lookup_values_vl         flvv1                     -- チェーンマスタ
+                ,xxcmm_cust_accounts          xca                       -- 顧客マスタ
+-- Ver1.3 Add End
           WHERE  iv_corp_code                     IS NOT NULL
-          AND    xch1.corp_code                 = iv_corp_code
+-- Ver1.3 Mod Start
+--          AND    xch1.corp_code                 = iv_corp_code
+          -- チェーン
+          AND    xch1.deduction_chain_code = flvv1.lookup_code(+)       -- 控除条件.控除用チェーンコード ＝ チェーンマスタ.控除用チェーンコード
+          AND    flvv1.lookup_type(+)      = cv_type_chain_code
+          -- 顧客
+          AND    xch1.customer_code        = xca.customer_code(+)       -- 控除条件.顧客コード ＝ 顧客マスタ.顧客コード
+          AND
+          ( xch1.corp_code      = iv_corp_code                          -- 指定された企業指定の控除マスタ
+            OR flvv1.attribute1 = iv_corp_code                          -- 企業傘下の控除用チェーン
+            OR xca.intro_chain_code2 IN ( SELECT flvv2.lookup_code      -- 企業傘下の顧客
+                                          FROM   fnd_lookup_values_vl flvv2
+                                          WHERE  flvv2.lookup_type = cv_type_chain_code
+                                          AND    flvv2.attribute1  = iv_corp_code ) )
+-- Ver1.3 Mod End
           UNION
           -- 2.チェーン指定時
           SELECT /*+ INDEX(xch2 XXCOK_CONDITION_HEADER_EST_N02) */
                  xch2.condition_id            AS condition_id
           FROM   xxcok_condition_header_est   xch2
+-- Ver1.3 Add Start
+                ,xxcmm_cust_accounts          xca                       -- 顧客マスタ
+-- Ver1.3 Add End
           WHERE  iv_introduction_code             IS NOT NULL
-          AND    xch2.deduction_chain_code   = iv_introduction_code
+-- Ver1.3 Mod Start
+--          AND    xch2.deduction_chain_code   = iv_introduction_code
+          -- 顧客
+          AND    xch2.customer_code = xca.customer_code(+)              -- 控除条件.顧客コード ＝ 顧客マスタ.顧客コード
+          AND
+          ( xch2.deduction_chain_code = iv_introduction_code            -- 指定された控除用チェーンの控除マスタ
+            OR xca.intro_chain_code2  = iv_introduction_code )          -- 控除用チェーン傘下の顧客
+-- Ver1.3 Mod End
           UNION
           -- 3.顧客指定時
           SELECT /*+ INDEX(xch3 XXCOK_CONDITION_HEADER_EST_N03) */
