@@ -108,6 +108,8 @@
 ##                                       リトライ対応                           ##
 ##  2023/01/12    3.3   Nobuo.Koyama     [E_本稼動_19015]                       ##
 ##                                       バックアップエラー無視対応             ##
+##  2023/02/28    3.4   Nobuo.Koyama     [E_本稼動_19079]                       ##
+##                                       リトライ時間60秒→1秒                  ##
 ##                                                                              ##
 ##################################################################################
 
@@ -1957,7 +1959,10 @@ do
     break
   fi
   i=`expr 1 + $i`
-  sleep 60
+# 2023/02/28 Ver3.4 Nobuo.Koyama Mod Start
+#  sleep 60
+  sleep 1
+# 2023/02/28 Ver3.4 Nobuo.Koyama Mod End
 # 2022/09/01 Ver3.2 Nobuo.Koyama Add End
 # 2022/08/05 Ver3.1 Nobuo.Koyama Add End
 # 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
