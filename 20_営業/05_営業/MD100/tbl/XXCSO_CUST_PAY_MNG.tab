@@ -3,13 +3,14 @@
  * TABLE Name      : xxcso_cust_pay_mng
  * Description     : 自販機顧客支払管理情報テーブル
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2022/03/24    1.0  R.Oikawa       初回作成(E_本稼動_18060)
+ *  2022/08/25    1.1  K.Kanada       E_本稼動_18060（実績按分と情報系連携）
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_cust_pay_mng (
      cust_pay_mng_id                NUMBER        NOT NULL
@@ -36,6 +37,7 @@ CREATE TABLE xxcso.xxcso_cust_pay_mng (
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
+    ,BASE_CODE                      VARCHAR2(4)  -- Add S ver.1.1 
     ,CONSTRAINT xxcso_cust_pay_mng_pk PRIMARY KEY ( cust_pay_mng_id )
      USING INDEX TABLESPACE xxidx2
     )
@@ -89,4 +91,6 @@ COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.program_application_id               
 COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.program_id                                  IS 'コンカレント・プログラムID'
 /
 COMMENT ON COLUMN xxcso.xxcso_cust_pay_mng.program_update_date                         IS 'プログラム更新日'
+/
+COMMENT ON COLUMN XXCSO.XXCSO_CUST_PAY_MNG.BASE_CODE                                   IS '拠点コード'
 /
