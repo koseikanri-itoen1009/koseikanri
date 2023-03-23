@@ -119,6 +119,9 @@ SELECT xca.customer_id customer_id,
        xca.offset_cust_code offset_cust_code,
        xca.bp_customer_code bp_customer_code,
 -- 2017/06/14 [E_本稼動_14271]add end
+-- 2023/03/01 [E_本稼動_19080]add start
+       xca.invoice_tax_div,
+-- 2023/03/01 [E_本稼動_19080]add end
        xca.created_by created_by,
        xca.creation_date creation_date,
        xca.last_updated_by last_updated_by,
@@ -338,6 +341,10 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.offset_cust_code IS '相殺用顧客コー
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.bp_customer_code IS '取引先顧客コード'
 /
 -- 2017/06/14 [E_本稼動_14271]add end
+-- 2023/03/01 [E_本稼動_19080]add start
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.invoice_tax_div IS '請求書消費税積上げ計算方式'
+/
+-- 2023/03/01 [E_本稼動_19080]add end
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.created_by IS '作成者'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.creation_date IS '作成日'
