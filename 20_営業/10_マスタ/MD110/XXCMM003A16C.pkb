@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A16C(body)
  * Description      : AFF顧客マスタ更新
  * MD.050           : MD050_CMM_003_A16_AFF顧客マスタ更新
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/04/07    1.2   Yutaka.Kuboshima 障害T1_0320の対応
  *  2009/12/08    1.3   Yutaka.Kuboshima 障害E_本稼動_00382の対応
  *  2010/01/05    1.4   Yutaka.Kuboshima 障害E_本稼動_00069の対応
+ *  2023/03/24    1.5   Keisuke.Yoshikawa 障害E_本稼動_19110の対応
  *
  *****************************************************************************************/
 --
@@ -666,10 +667,20 @@ AS
 -- 2009/12/07 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
     IS
       SELECT hca.account_number       customer_code,    --顧客コード
-             hca.account_name         customer_name     --顧客名称
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify start by Keisuke.Yoshikawa
+--             hca.account_name         customer_name     --顧客名称
+               substrb(hp.party_name,1,240)            customer_name     --顧客名称
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify end by Keisuke.Yoshikawa
       FROM   hz_cust_accounts     hca,                  --顧客マスタ
-             xxcmm_cust_accounts  xca                   --顧客追加情報マスタ
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify start by Keisuke.Yoshikawa
+--             xxcmm_cust_accounts  xca                   --顧客追加情報マスタ
+             xxcmm_cust_accounts  xca,                   --顧客追加情報マスタ
+             hz_parties           hp                     --パーティーマスタ
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify end by Keisuke.Yoshikawa
       WHERE  hca.cust_account_id  = xca.customer_id
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify start by Keisuke.Yoshikawa
+      AND    hca.party_id = hp.party_id
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify end by Keisuke.Yoshikawa
 -- 2010/01/05 Ver1.4 E_本稼動_00069 modify start by Yutaka.Kuboshima
 --      AND    xca.business_low_type IN (SELECT flvs.lookup_code
 --                                       FROM   fnd_lookup_values flvs
@@ -692,7 +703,11 @@ AS
 --      AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
 --             BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
       AND   ((hca.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to)
-        OR   (xca.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to))
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify start by Keisuke.Yoshikawa
+--        OR   (xca.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to))
+        OR   (xca.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to)
+        OR   (hp.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to))
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify end by Keisuke.Yoshikawa
 -- 2009/12/08 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
       AND    (NOT EXISTS (SELECT 1
                          FROM   fnd_flex_value_sets  ffvs,
@@ -702,7 +717,10 @@ AS
 -- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
 -- アカウント名がNULLの場合、必ず抽出対象となるので修正
 --                         AND    hca.account_name            =  ffvt.description
-                         AND    NVL(hca.account_name, 'X')  =  NVL(ffvt.description, 'X')
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify start by Keisuke.Yoshikawa
+--                         AND    NVL(hca.account_name, 'X')  =  NVL(ffvt.description, 'X')
+                          AND    NVL(substrb(hp.party_name,1,240), 'X')  =  NVL(ffvt.description, 'X')
+-- 2023/03/24 Ver1.5 E_本稼動_19110 modify end by Keisuke.Yoshikawa
 -- 2009/12/08 Ver1.3 E_本稼動_00382 modify end by Yutaka.Kuboshima
                          AND    ffvs.flex_value_set_name    =  cv_fset_name
                          AND    ffvs.flex_value_set_id      =  ffvv.flex_value_set_id
