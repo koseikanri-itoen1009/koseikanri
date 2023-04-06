@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A44C (body)
  * Description      : 控除未作成入金相殺伝票CSV出力
  * MD.050           : 控除未作成入金相殺伝票CSV出力 MD050_COK_024_A44
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/10/21    1.0   R.Oikawa         main新規作成
+ *  2023/03/29    1.1   K.Yoshikawa      E_本稼動_18519 特権拠点変更
  *
  *****************************************************************************************/
 --
@@ -106,7 +107,10 @@ AS
   cv_prof_trx_type            CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOK1_RA_TRX_TYPE_VARIABLE_CONS';     -- 取引タイプ_変動対価相殺
   -- 参照タイプ
   cv_type_header              CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XXCOK1_RECEIVABLE_SLIPS_HEAD';  -- 控除未作成入金相殺伝票用見出し
-  cv_type_dec_pri_base        CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XXCOK1_DEC_PRIVILEGE_BASE';     -- 控除マスタ特権拠点
+-- 2023/03/29 Ver.1.1 ADD START
+--  cv_type_dec_pri_base        CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XXCOK1_DEC_PRIVILEGE_BASE';     -- 控除マスタ特権拠点
+  cv_type_dec_pri_base        CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XXCOK1_24A13F_FORM_CONTROL';     -- 控除消込画面制御拠点
+-- 2023/03/29 Ver.1.1 ADD END
   cv_type_deduction_data      CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XXCOK1_DEDUCTION_DATA_TYPE';    -- 控除データ種類
   cv_type_slip_types          CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XX03_SLIP_TYPES';               -- 伝票種別
   cv_type_wf_statuses         CONSTANT  fnd_lookup_values.lookup_type%TYPE  := 'XX03_WF_STATUSES';              -- ステータス
