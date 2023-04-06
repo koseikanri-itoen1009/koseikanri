@@ -1,0 +1,13 @@
+/dev/mapper/vg_data3-lv_data3 /backup                 ext4    defaults        1 2
+/dev/mapper/vg_data6-lv_data6 /ebsdblog               ext4    defaults        1 2
+/dev/mapper/vg_data2-lv_data2 /ebsloc                 ext4    defaults        1 2
+/dev/mapper/rhel-lv_home /home                   ext4    defaults        1 2
+/dev/mapper/rhel-lv_jp1pfm /jp1pfm                 ext4    defaults        1 2
+/dev/mapper/vg_data10-lv_data10 /rman_backup            ext4    defaults        1 2
+/dev/mapper/vg_data1-lv_data1 /uspg                   ext4    defaults        1 2
+bebsfssv00:/ebsif /ebsif nfs defaults 0 0
+bebsfssv00:/ebslog /ebslog nfs defaults 0 0
+xebsfssv11:/ebswork /ebswork nfs defaults 0 0
+/dev/vg_data8/lv_data8 /hulft
+/dev/vg_data7/lv_data7 /jp1
+

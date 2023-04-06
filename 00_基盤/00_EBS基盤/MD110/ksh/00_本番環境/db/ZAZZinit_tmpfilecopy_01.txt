@@ -1,0 +1,8 @@
+【概要】
+ZAZZ_JB_temporaryfile_copy_01.kshの呼び出し参照ファイルとする。
+
+#一時出力先フォルダからバックアップフォルダへコピー
+ZA0100 /var/job_bk/ /backup/job_bk/
+
+#ログ出力先フォルダからバックアップフォルダへコピー
+ZA0200 /uspg/jp1/za/shl/exec/logs/RC_STDERR_ZAZZ_jp1backup.log /backup/job_bk/

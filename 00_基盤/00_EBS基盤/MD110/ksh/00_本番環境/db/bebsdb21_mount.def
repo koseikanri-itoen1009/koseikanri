@@ -1,0 +1,10 @@
+/dev/mapper/vg_data3-lv_data3 /backup                 ext4    defaults        1 2
+UUID=4e4d05d4-75ee-4d17-8960-f6c84361ca96 /boot                   ext4    defaults        1 2
+/dev/mapper/vg_data5-lv_data5 /ebsdblog               ext4    defaults        1 2
+/dev/mapper/vg_data2-lv_data2 /ebsloc                 ext4    defaults        1 2
+/dev/mapper/rhel-lv_home /home                   ext4    defaults        1 2
+/dev/mapper/rhel-lv_jp1pfm /jp1pfm                 ext4    defaults        1 2
+/dev/mapper/vg_data1-lv_data1 /uspg                   ext4    defaults        1 2
+bebsfssv00:/ebsif /ebsif nfs defaults 0 0
+bebsfssv00:/ebslog /ebslog nfs defaults 0 0
+xebsfssv11:/ebswork /ebswork nfs defaults 0 0
