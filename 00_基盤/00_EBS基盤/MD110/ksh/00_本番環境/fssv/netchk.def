@@ -1,0 +1,4 @@
+### netchk.def - bebsfssv11
+bebsfssv11:eth0,10.10.200.112
+bebsfssv11:eth0:1,10.10.200.110
+bebsfssv11:eth1,10.10.201.112
