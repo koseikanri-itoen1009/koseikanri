@@ -1,0 +1,10 @@
+/dev/rhel/lv_home       /home                   ext3    defaults        1 2
+/dev/vg_data2/lv_data3  /uspg                   ext3    defaults        1 2
+/dev/vg_data/lv_data2   /backup                 ext3    defaults        1 2
+/dev/rhel2/lv_jp1pfm    /jp1pfm                 ext3    defaults        1 2
+/dev/vg_data/lv_data1   /ebsloc                 ext3    defaults        1 2
+bebsfssv00:/ebs /ebs nfs defaults 0 0
+bebsfssv00:/ebsif /ebsif nfs defaults 0 0
+bebsfssv00:/ebslog /ebslog nfs defaults 0 0
+xebsfssv11:/ebswork /ebswork nfs defaults 0 0
+/dev/vg_data3/lv_data4  /jp1                    ext3    noauto          1 0

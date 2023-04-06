@@ -1,0 +1,4 @@
+### netchk.def - bebscon11.itoen.master
+bebscon11.itoen.master:eth0,10.10.200.21
+bebscon11.itoen.master:eth0:1,10.10.200.22
+bebscon11.itoen.master:eth1,10.10.201.21
