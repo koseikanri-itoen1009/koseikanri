@@ -1,0 +1,20 @@
+【概要】
+ZAZZ_JB_phygicalfilecopy_01.kshの呼び出し参照ファイルとする。
+
+《Base物理環境》
+運用手順書表7.4.1-1(#1-24)
+ZA0001 /etc/opt/jp1base/conf/ jp1base/
+
+《AJS2/Agent物理環境》
+運用手順書表7.4.3-1(#1-11)
+ZA0002 /etc/opt/jp1ajs2/conf/ jp1ajs2/
+
+《その他環境ファイル》
+運用手順書表7.3.4-1(#1-4)
+ZA0003 /etc/profile profile 
+
+ZA0004 /etc/profile .profile
+
+ZA0005 /etc/hosts hosts
+
+ZA0006 /etc/services services

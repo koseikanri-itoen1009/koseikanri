@@ -1,0 +1,5 @@
+/dev/vg_data/lv_data1   /ebs                    ext3    defaults        1 2
+/dev/rhel/lv_home       /home                   ext3    defaults        1 2
+/dev/vg_data2/lv_data3  /uspg                   ext3    defaults        1 2
+/dev/vg_data/lv_data2   /backup                 ext3    defaults        1 2
+/dev/rhel2/lv_jp1pfm    /jp1pfm                 ext3    defaults        1 2
