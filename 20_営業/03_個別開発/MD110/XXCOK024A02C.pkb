@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A02C (body)
  * Description      : 控除マスタCSV出力
  * MD.050           : 控除マスタCSV出力 MD050_COK_024_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
  *  2022/02/24    1.2   SCSK Y.Koh       E_本稼動_17938 単価チェックリスト対応
  *  2023/01/31    1.3   M.Akachi         E_本稼動_19033 控除マスタCSV出力権限変更
+ *  2023/03/29    1.4   M.Akachi         E_本稼動_19101 控除マスタCSV出力権限変更（改修）
  *
  *****************************************************************************************/
 --
@@ -377,6 +378,17 @@ AS
 --      OR     xcl.accounting_base       = gv_user_base_code                              -- 控除詳細.計上拠点           ＝ 所属拠点コード
       OR     xca2.sale_base_code       = gv_user_base_code                              -- 控除詳細.計上顧客           ＝ 所属拠点コード
 -- 2021/04/06 Ver1.1 MOD End
+-- Ver1.4 Add Start
+      OR     gv_user_base_code        IN ( SELECT sale_base_code AS sale_base_code                  -- チェーン傘下顧客の担当拠点
+                                           FROM   xxcmm_cust_accounts xca
+                                           WHERE  xca.intro_chain_code2 = xch.deduction_chain_code )
+      OR     gv_user_base_code        IN ( SELECT sale_base_code AS sale_base_code                  -- 企業傘下顧客の担当拠点
+                                           FROM   xxcmm_cust_accounts xca
+                                           WHERE  xca.intro_chain_code2 IN ( SELECT flvv.lookup_code AS chain_code
+                                                                             FROM   fnd_lookup_values_vl flvv
+                                                                             WHERE  flvv.lookup_type = cv_type_chain_code
+                                                                             AND    flvv.attribute1  = xch.corp_code ) )
+-- Ver1.4 Add End
              )
     -- ヘッダ従業員情報
     AND    fu.user_id                  = xch.last_updated_by
@@ -598,6 +610,17 @@ AS
       OR     flvv1.attribute3          = gv_user_base_code                              -- チェーンマスタ.本部担当拠点 ＝ 所属拠点コード
       OR     xca.sale_base_code        = gv_user_base_code                              -- 顧客.売上担当拠点           ＝ 所属拠点コード
       OR     xca2.sale_base_code       = gv_user_base_code                              -- 控除詳細.計上顧客           ＝ 所属拠点コード
+-- Ver1.4 Add Start
+      OR     gv_user_base_code        IN ( SELECT sale_base_code AS sale_base_code                  -- チェーン傘下顧客の担当拠点
+                                           FROM   xxcmm_cust_accounts xca
+                                           WHERE  xca.intro_chain_code2 = xch.deduction_chain_code )
+      OR     gv_user_base_code        IN ( SELECT sale_base_code AS sale_base_code                  -- 企業傘下顧客の担当拠点
+                                           FROM   xxcmm_cust_accounts xca
+                                           WHERE  xca.intro_chain_code2 IN ( SELECT flvv.lookup_code AS chain_code
+                                                                             FROM   fnd_lookup_values_vl flvv
+                                                                             WHERE  flvv.lookup_type = cv_type_chain_code
+                                                                             AND    flvv.attribute1  = xch.corp_code ) )
+-- Ver1.4 Add End
              )
     -- ヘッダ従業員情報
     AND    fu.user_id                  = xch.last_updated_by
