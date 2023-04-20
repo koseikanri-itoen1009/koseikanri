@@ -1,0 +1,16 @@
+CREATE INDEX "XXCOS"."XXCOS_SALES_EXP_L_N01" ON "XXCOS"."XXCOS_SALES_EXP_LINES_ARC"
+  (sales_exp_header_id, to_calculate_fees_flag) 
+TABLESPACE "XXCVR2" ;
+
+CREATE INDEX "XXCOS"."XXCOS_SALES_EXP_L_N02" ON "XXCOS"."XXCOS_SALES_EXP_LINES_ARC"
+  (unit_price_mst_flag, sales_class) 
+TABLESPACE "XXCVR2" ;
+
+CREATE INDEX "XXCOS"."XXCOS_SALES_EXP_L_N03" ON "XXCOS"."XXCOS_SALES_EXP_LINES_ARC"
+  (inv_interface_flag, delivery_pattern_class) 
+TABLESPACE "XXCVR2" ;
+
+CREATE INDEX "XXCOS"."XXCOS_SALES_EXP_L_N04" ON "XXCOS"."XXCOS_SALES_EXP_LINES_ARC"
+  (item_code, delivery_base_code, sales_class) 
+TABLESPACE "XXCVR2" ;
+
