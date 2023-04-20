@@ -1,0 +1,1 @@
+ALTER TABLE xxcoi.XXCOI_INV_RECEPTION_MONTH_ARC  add constraint XXCOI_INV_RECEP_MONTH_ARC_PK PRIMARY KEY ( subinventory_code, inventory_item_id, practice_date, practice_month, inventory_kbn, organization_id, base_code, inv_seq  ) USING INDEX TABLESPACE XXCVR2;
