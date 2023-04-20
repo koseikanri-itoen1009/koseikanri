@@ -1,2 +1,4 @@
 CREATE OR REPLACE DIRECTORY XGV_OUTPUT_DIR
-  AS '/xebst2/xebs09/xebs09comn/admin/out/xebs09_xebscon21';
+--2022.11.30 Mod [E_–{‰Ò“®_18678]
+--  AS '/xebst2/xebs09/xebs09comn/admin/out/xebs09_xebscon21';
+  AS '/ebslog/xebs09/out/xebs09_xebscon21';
