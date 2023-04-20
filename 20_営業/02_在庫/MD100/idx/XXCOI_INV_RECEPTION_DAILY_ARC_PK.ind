@@ -1,0 +1,1 @@
+ALTER TABLE xxcoi.XXCOI_INV_RECEPTION_DAILY_ARC  add constraint XXCOI_INV_RECEPTION_DAY_ARC_PK PRIMARY KEY ( subinventory_code, inventory_item_id, practice_date, organization_id, base_code  ) USING INDEX TABLESPACE XXCVR2;
