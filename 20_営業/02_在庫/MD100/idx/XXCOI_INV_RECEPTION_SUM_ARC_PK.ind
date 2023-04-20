@@ -1,0 +1,1 @@
+ALTER TABLE xxcoi.XXCOI_INV_RECEPTION_SUM_ARC  add constraint XXCOI_INV_RECEPTION_SUM_ARC_PK PRIMARY KEY ( base_code, subinventory_code, practice_date, inventory_item_id  ) USING INDEX TABLESPACE XXCVR2;
