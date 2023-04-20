@@ -1,0 +1,124 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_VD_COLUMN_HEADERS_ARC
+ * Description : VDコラム別取引ヘッダテーブル_アーカイブ
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2021/10/05    1.0   SCSK Nishikawa   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC
+(
+  ORDER_NO_HHT                    NUMBER(10)   NOT NULL,                      --受注No.(HHT)
+  DIGESTION_LN_NUMBER             NUMBER(2)    NOT NULL,                      --枝番
+  ORDER_NO_EBS                    NUMBER(9),                                  --受注No.(EBS)
+  BASE_CODE                       VARCHAR2(4),                                --拠点コード
+  PERFORMANCE_BY_CODE             VARCHAR2(5),                                --成績者コード
+  DLV_BY_CODE                     VARCHAR2(5),                                --納品者コード
+  HHT_INVOICE_NO                  VARCHAR2(12),                               --HHT伝票No.
+  DLV_DATE                        DATE,                                       --納品日
+  INSPECT_DATE                    DATE,                                       --検収日
+  SALES_CLASSIFICATION            VARCHAR2(4),                                --売上分類区分
+  SALES_INVOICE                   VARCHAR2(3),                                --売上伝票区分
+  CARD_SALE_CLASS                 VARCHAR2(1),                                --カード売区分
+  DLV_TIME                        VARCHAR2(4),                                --時間
+  CHANGE_OUT_TIME_100             VARCHAR2(4),                                --つり銭切れ時間100円
+  CHANGE_OUT_TIME_10              VARCHAR2(4),                                --つり銭切れ時間10円
+  CUSTOMER_NUMBER                 VARCHAR2(9),                                --顧客コード
+  DLV_FORM                        VARCHAR2(10),                               --納品形態
+  SYSTEM_CLASS                    VARCHAR2(2),                                --業態区分
+  INVOICE_TYPE                    VARCHAR2(1),                                --伝票区分
+  INPUT_CLASS                     VARCHAR2(1),                                --入力区分
+  CONSUMPTION_TAX_CLASS           VARCHAR2(1),                                --消費税区分
+  TOTAL_AMOUNT                    NUMBER(11),                                 --合計金額
+  SALE_DISCOUNT_AMOUNT            NUMBER(11),                                 --売上値引額
+  SALES_CONSUMPTION_TAX           NUMBER(11),                                 --売上消費税額
+  TAX_INCLUDE                     NUMBER(11),                                 --税込金額
+  KEEP_IN_CODE                    VARCHAR2(9),                                --預け先コード
+  DEPARTMENT_SCREEN_CLASS         VARCHAR2(1),                                --百貨店画面種別
+  DIGESTION_VD_RATE_MAKED_DATE    DATE,                                       --消化VD掛率作成済年月日
+  RED_BLACK_FLAG                  VARCHAR2(1),                                --赤黒フラグ
+  FORWARD_FLAG                    VARCHAR2(1),                                --連携フラグ
+  FORWARD_DATE                    DATE,                                       --連携日付
+  VD_RESULTS_FORWARD_FLAG         VARCHAR2(1),                                --ベンダ納品実績情報連携済フラグ
+  CANCEL_CORRECT_CLASS            VARCHAR2(1),                                --取消・訂正区分
+  TOTAL_SALES_AMT                 NUMBER(8),                                  --総販売金額
+  CASH_TOTAL_SALES_AMT            NUMBER(8),                                  --現金売りトータル販売金額
+  PPCARD_TOTAL_SALES_AMT          NUMBER(8),                                  --PPカードトータル販売金額
+  IDCARD_TOTAL_SALES_AMT          NUMBER(8),                                  --IDカードトータル販売金額
+  HHT_RECEIVED_FLAG               VARCHAR2(1),                                --HHT受信フラグ
+  HHT_INPUT_DATE                  DATE,                                       --HHT入力日
+  PURGE_FLAG                      VARCHAR2(1),                                --パージフラグ
+  RETURN_FLAG                     VARCHAR2(1),                                --再登録フラグ  
+  CREATED_BY                      NUMBER(15)    NOT NULL,                     --作成者
+  CREATION_DATE                   DATE          NOT NULL,                     --作成日
+  LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                     --最終更新者
+  LAST_UPDATE_DATE                DATE          NOT NULL,                     --最終更新日
+  LAST_UPDATE_LOGIN               NUMBER(15),                                 --最終更新ログイン
+  REQUEST_ID                      NUMBER(15),                                 --要求ID
+  PROGRAM_APPLICATION_ID          NUMBER(15),                                 --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                      NUMBER(15),                                 --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE             DATE,                                       --プログラム更新日
+  CONSTRAINT XXCOS_VD_COLUMN_HEADERS_ARC_PK PRIMARY KEY ( ORDER_NO_HHT, DIGESTION_LN_NUMBER  )
+  USING INDEX TABLESPACE xxcvr2
+  ) 
+  TABLESPACE xxcvr2
+  ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.ORDER_NO_HHT                  IS '受注No.(HHT)';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DIGESTION_LN_NUMBER           IS '枝番';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.ORDER_NO_EBS                  IS '受注No.(EBS)';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.BASE_CODE                     IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.PERFORMANCE_BY_CODE           IS '成績者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DLV_BY_CODE                   IS '納品者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.HHT_INVOICE_NO                IS 'HHT伝票No.';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DLV_DATE                      IS '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.INSPECT_DATE                  IS '検収日';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.SALES_CLASSIFICATION          IS '売上分類区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.SALES_INVOICE                 IS '売上伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CARD_SALE_CLASS               IS 'カード売区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DLV_TIME                      IS '時間';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CHANGE_OUT_TIME_100           IS 'つり銭切れ時間100円';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CHANGE_OUT_TIME_10            IS 'つり銭切れ時間10円';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CUSTOMER_NUMBER               IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DLV_FORM                      IS '納品形態';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.SYSTEM_CLASS                  IS '業態区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.INVOICE_TYPE                  IS '伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.INPUT_CLASS                   IS '入力区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CONSUMPTION_TAX_CLASS         IS '消費税区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.TOTAL_AMOUNT                  IS '合計金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.SALE_DISCOUNT_AMOUNT          IS '売上値引額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.SALES_CONSUMPTION_TAX         IS '売上消費税額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.TAX_INCLUDE                   IS '税込金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.KEEP_IN_CODE                  IS '預け先コード';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DEPARTMENT_SCREEN_CLASS       IS '百貨店画面種別';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.DIGESTION_VD_RATE_MAKED_DATE  IS '消化VD掛率作成済年月日';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.RED_BLACK_FLAG                IS '赤黒フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.FORWARD_FLAG                  IS '連携フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.FORWARD_DATE                  IS '連携日付';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.VD_RESULTS_FORWARD_FLAG       IS 'ベンダ納品実績情報連携済フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CANCEL_CORRECT_CLASS          IS '取消・訂正区分';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.TOTAL_SALES_AMT               IS '総販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CASH_TOTAL_SALES_AMT          IS '現金売りトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.PPCARD_TOTAL_SALES_AMT        IS 'PPカードトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.IDCARD_TOTAL_SALES_AMT        IS 'IDカードトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.HHT_RECEIVED_FLAG             IS 'HHT受信フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.HHT_INPUT_DATE                IS 'HHT入力日';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.PURGE_FLAG                    IS 'パージフラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.RETURN_FLAG                   IS '再登録フラグ';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CREATED_BY                    IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.CREATION_DATE                 IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.LAST_UPDATED_BY               IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.LAST_UPDATE_DATE              IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.LAST_UPDATE_LOGIN             IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.REQUEST_ID                    IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.PROGRAM_APPLICATION_ID        IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.PROGRAM_ID                    IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC.PROGRAM_UPDATE_DATE           IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_VD_COLUMN_HEADERS_ARC                               IS 'VDコラム別取引ヘッダバックアップテーブル';
