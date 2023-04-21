@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO013A03C(body)
  * Description      : 固定資産の物件をリース・FA領域に連携するOIFデータを作成します。
  * MD.050           : CSI→FAインタフェース：（OUT）固定資産資産情報 <MD050_CSO_013_A03>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  * 2014/06/10    1.0   Kazuyuki Kiriu   新規作成
  * 2016/02/09    1.1   H.Okada          E_本稼動_13456対応
+ * 2023/04/05    1.2   M.Akachi         E_本稼動_18758対応
  *
  *****************************************************************************************/
 --
@@ -2120,8 +2121,17 @@ AS
       --------------------------
       -- 新古台以外
       IF ( NVL( l_get_new_old_data_rec.newold_flag, cv_no ) <> cv_yes ) THEN
-        g_if_rec.date_placed_in_service     :=
-          TRUNC( ADD_MONTHS( l_get_new_old_data_rec.new_first_install_date, cn_1 ), cv_mm );  -- 事業供用日(初回設置日翌月１日)
+-- Ver.1.2 Mod Start
+--        g_if_rec.date_placed_in_service     :=
+--          TRUNC( ADD_MONTHS( l_get_new_old_data_rec.new_first_install_date, cn_1 ), cv_mm );  -- 事業供用日(初回設置日翌月１日)
+        IF ( l_get_new_old_data_rec.new_first_install_date IS NOT NULL ) THEN
+          g_if_rec.date_placed_in_service     :=
+            TRUNC( ADD_MONTHS( l_get_new_old_data_rec.new_first_install_date, cn_1 ), cv_mm );  -- 事業供用日(初回設置日翌月１日)       
+        ELSE
+          g_if_rec.date_placed_in_service     :=
+            TRUNC( ADD_MONTHS( l_get_new_old_data_rec.new_creation_date, cn_1 ), cv_mm );       -- 事業供用日(作成日翌月１日)
+        END IF;
+-- Ver.1.2 Mod End
       ELSE
         g_if_rec.date_placed_in_service     :=
           TRUNC( ADD_MONTHS( l_get_new_old_data_rec.new_creation_date, cn_1 ), cv_mm );       -- 事業供用日(作成日翌月１日)
