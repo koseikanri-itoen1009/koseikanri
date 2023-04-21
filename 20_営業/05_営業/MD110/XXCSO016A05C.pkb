@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2015-09-04    1.20  S.Yamashita      E_本稼動_09738対応 物件取得条件に論理削除フラグを追加
  *  2016-01-22    1.21  K.Kiriu          E_本稼動_13456対応 自販機管理システム代替対応
  *  2018-10-16    1.22  Y.Sasaki         E_本稼動_15340対応
+ *  2023-04-05    1.23  T.Okuyama        E_本稼動_18758対応 納品検収改修に伴う自販機管理システム連携データ変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -124,6 +125,9 @@ AS
   cv_houmon_kbn_taget    CONSTANT VARCHAR2(1)   := '1';             -- 訪問対象区分（訪問対象：1）
   cv_source_obj_type_cd  CONSTANT VARCHAR2(10)  := 'PARTY';         -- ソースオブジェクトタイプコード
   cv_delete_flg          CONSTANT VARCHAR2(10)  := 'N';             -- 削除フラグ
+-- 2023/04/05 v1.23 T.Okuyama E_本稼動_18758対応 START
+  cn_job_kbn_delivery    CONSTANT NUMBER        := 0;               -- 作業テーブルの作業区分(納品:0)
+-- 2023/04/05 v1.23 T.Okuyama E_本稼動_18758対応 END
   cn_job_kbn             CONSTANT NUMBER        := 5;               -- 作業テーブルの作業区分(引揚:5)
 /*20090327_yabuki_T1_0193 START*/
   cn_job_kbn_new_replace CONSTANT NUMBER        := 3;               -- 作業テーブルの作業区分(新台代替:3)
@@ -1030,7 +1034,10 @@ AS
 --                 AND xiw.job_kbn      = cn_job_kbn_old_replace
 --               )
 --             )
-        AND  xiw.job_kbn IN ( cn_job_kbn, cn_job_kbn_new_replace, cn_job_kbn_old_replace ) --引揚・新台代替・旧台代替
+-- 2023/04/05 v1.23 T.Okuyama E_本稼動_18758対応 MOD START
+--        AND  xiw.job_kbn IN ( cn_job_kbn, cn_job_kbn_new_replace, cn_job_kbn_old_replace ) --引揚・新台代替・旧台代替
+        AND  xiw.job_kbn IN ( cn_job_kbn_delivery, cn_job_kbn, cn_job_kbn_new_replace, cn_job_kbn_old_replace ) --納品・引揚・新台代替・旧台代替
+-- 2023/04/05 v1.23 T.Okuyama E_本稼動_18758対応 MOD END
 -- 2016.01.22 K.Kiriu E_本稼動_13456対応 MOD END
       ORDER BY xiw.actual_work_date  DESC
      ;
