@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_016_A06_情報系-EBSインターフェース：(OUT)什器移動明細
  *                    
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -43,7 +43,7 @@ AS
  *  2009-12-09    1.6   Kazuyo.Hosoi     E_本稼動_00219対応
  *  2010-01-15    1.7   Kazuyo.Hosoi     E_本稼動_01178対応
  *  2016-07-06    1.8   Kazuyuki.Kiriu   E_本稼動_13716対応
- *
+ *  2023-04-05    1.9   T.Okuyama        E_本稼動_18758対応 納品検収改修に伴う自販機管理システム連携データ変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -101,6 +101,9 @@ AS
   cv_appl_short_name     CONSTANT VARCHAR2(10)  := 'XXCCP';         -- アドオン：共通・IF領域
 --
   cv_active_status       CONSTANT VARCHAR2(1)   := 'A';             -- アクティブ
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 START
+  cn_job_kbn_delivery    CONSTANT NUMBER        := 0;               -- 什器移動区分(0[納品])
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 END
   cn_job_kbn_1           CONSTANT NUMBER        := 1;               -- 什器移動区分(1[新台設置])
   cn_job_kbn_2           CONSTANT NUMBER        := 2;               -- 什器移動区分(2[旧台設置])
   cn_job_kbn_3           CONSTANT NUMBER        := 3;               -- 什器移動区分(3[新台代替])
@@ -1061,11 +1064,14 @@ AS
 --    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 17[廃棄引取])の場合
     /* 2009.11.25 D.Abe E_本稼動_00045 対応 START */
     ---- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚], 15[転送], 16[転売], 18[廃棄引取])の場合
-    -- 什器移動区分=(3[新台代替], 4[旧台代替],5[引揚])の場合
+    -- 什器移動区分=(0[納品], 3[新台代替], 4[旧台代替],5[引揚])の場合
     /* 2009.11.25 D.Abe E_本稼動_00045 対応 END */
     IF ((l_get_rec.install_code2 IS NOT NULL)
 /* 2009.11.25 D.Abe E_本稼動_00045 対応 START */
-          AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5)) ) THEN
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 START
+--          AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5)) ) THEN
+          AND (l_get_rec.job_kbn IN (cn_job_kbn_delivery, cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5)) ) THEN
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 END
 --          AND (l_get_rec.job_kbn IN (cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
 ----                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)) ) THEN
 --                                     cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)) ) THEN
@@ -1911,7 +1917,10 @@ AS
     /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 END */
              ,xiwd.line_number line_number                  -- 行番号
              ,(CASE                                         -- 年月日
-                WHEN (xiwd.job_kbn IN(cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 START
+--                WHEN (xiwd.job_kbn IN(cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+                WHEN (xiwd.job_kbn IN(cn_job_kbn_delivery, cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 END
                                       cn_job_kbn_6,cn_job_kbn_8)) THEN
                 xiwd.actual_work_date 
                 WHEN (xiwd.job_kbn IN(cn_job_kbn_15,cn_job_kbn_16)) THEN
@@ -1927,7 +1936,10 @@ AS
              ,xiwd.job_kbn job_kbn                          -- 什器移動区分
              ,xiwd.delete_flag delete_flag                  -- 削除フラグ
       FROM xxcso_in_work_data xiwd                          -- 作業データテーブル
-      WHERE xiwd.job_kbn IN (cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 START
+--      WHERE xiwd.job_kbn IN (cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+      WHERE xiwd.job_kbn IN (cn_job_kbn_delivery, cn_job_kbn_1,cn_job_kbn_2,cn_job_kbn_3,cn_job_kbn_4,cn_job_kbn_5,
+-- 2023/04/05 v1.9 T.Okuyama E_本稼動_18758対応 END
     /* 2009.06.09 K.Hosoi T1_1240 対応 START */
 --                             cn_job_kbn_6,cn_job_kbn_8,cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_17)
                              cn_job_kbn_6,cn_job_kbn_8,cn_job_kbn_15,cn_job_kbn_16,cn_job_kbn_dspsl_lv)
