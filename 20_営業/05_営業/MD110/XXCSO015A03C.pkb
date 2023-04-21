@@ -7,7 +7,7 @@ AS
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
- * Version          : 1.36
+ * Version          : 1.37
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2016-02-05    1.34  S.Niki           E_本稼動_13456対応
  *  2016-12-15    1.35  S.Niki           E_本稼動_13903対応 新自販機管理システムからの物件データ連携対応（Q2198,2239）
  *  2017-01-27    1.36  S.Niki           E_本稼動_13903追加対応
+ *  2023-04-05    1.37  M.Akachi         E_本稼動_18758対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -326,6 +327,9 @@ AS
   gt_vld_org_id           mtl_parameters.organization_id%TYPE;           -- 検証組織ID
   gt_txn_type_id          csi_txn_types.transaction_type_id%TYPE;        -- 取引タイプID
   gt_bukken_item_id       mtl_system_items_b.inventory_item_id%TYPE;     -- 物件用品目ID
+-- Ver.1.37 Add Start
+  gt_instance_status_id_0 csi_instance_statuses.instance_status_id%TYPE; -- 在庫
+-- Ver.1.37 Add End
   gt_instance_status_id_1 csi_instance_statuses.instance_status_id%TYPE; -- 稼働中
   gt_instance_status_id_2 csi_instance_statuses.instance_status_id%TYPE; -- 使用可
   gt_instance_status_id_3 csi_instance_statuses.instance_status_id%TYPE; -- 整備中
@@ -536,6 +540,10 @@ AS
     cv_appl_short_name        CONSTANT VARCHAR2(10)  := 'XXCCP';
     -- プロファイル名
 --
+-- Ver.1.37 Add Start
+    -- 参照タイプのIBステータス(在庫)コード
+    cv_instance_status_0      CONSTANT VARCHAR2(1)   := '0';
+-- Ver.1.37 Add End
     -- 参照タイプのIBステータス(稼働中)コード
     cv_instance_status_1      CONSTANT VARCHAR2(1)   := '1';
     -- 参照タイプのIBステータス(使用可)コード
@@ -597,6 +605,10 @@ AS
     cv_cust_acct_sites_info1  CONSTANT VARCHAR2(100) := '什器引揚拠点の顧客マスタ情報';
     -- 抽出内容名(顧客コード)
     cv_cust_account_number    CONSTANT VARCHAR2(100) := '顧客コード';
+-- Ver.1.37 Add Start
+    -- ステータス名(在庫)
+    cv_statuses_name00        CONSTANT VARCHAR2(100) := '在庫';
+-- Ver.1.37 Add End
     -- ステータス名(稼働中)
     cv_statuses_name01        CONSTANT VARCHAR2(100) := '稼働中';
     -- ステータス名(使用可)
@@ -1154,6 +1166,53 @@ AS
     -- =================================
     -- インスタンスステータスID取得処理 
     -- =================================
+-- Ver.1.37 Add Start
+   -- 初期化
+    lv_status_name   := '';
+    -- 「在庫」
+    BEGIN
+      lv_status_name := xxcso_util_common_pkg.get_lookup_meaning(
+                           cv_xxcso1_instance_status
+                          ,cv_instance_status_0
+                          ,ld_process_date);
+      SELECT cis.instance_status_id                                     -- インスタンスステータスID
+      INTO   gt_instance_status_id_0
+      FROM   csi_instance_statuses cis                                  -- インスタンスステータスマスタ
+      WHERE  cis.name = lv_status_name
+        AND  ld_process_date 
+             BETWEEN TRUNC(NVL(cis.start_date_active, ld_process_date)) 
+               AND TRUNC(NVL(cis.end_date_active, ld_process_date))
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_08             -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                       ,iv_token_value1 => cv_csi_instance_statuses     -- トークン値1
+                       ,iv_token_name2  => cv_tkn_status_name           -- トークンコード2
+                       ,iv_token_value2 => cv_statuses_name00           -- トークン値2
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_09             -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                       ,iv_token_value1 => cv_csi_instance_statuses     -- トークン値1
+                       ,iv_token_name2  => cv_tkn_status_name           -- トークンコード2
+                       ,iv_token_value2 => cv_statuses_name00           -- トークン値2
+                       ,iv_token_name3  => cv_tkn_errmsg                -- トークンコード3
+                       ,iv_token_value3 => SQLERRM                      -- トークン値3
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+-- Ver.1.37 Add End
+--
     -- 初期化
     lv_status_name   := '';
     -- 「稼動中」
@@ -3023,6 +3082,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver.1.37 Add Start
+    cn_jon_kbn_0             CONSTANT NUMBER := 0;  -- 納品
+-- Ver.1.37 Add End
     cn_jon_kbn_1             CONSTANT NUMBER := 1;  -- 新台設置
     cn_jon_kbn_2             CONSTANT NUMBER := 2;  -- 旧台設置
     cn_jon_kbn_3             CONSTANT NUMBER := 3;  -- 新台代替
@@ -3362,8 +3424,16 @@ AS
       WHEN NO_DATA_FOUND THEN
         -- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
         -- 物件データの物件コードと一致である場合
-        IF ((ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
-               AND lv_install_code = NVL(lv_install_code1, ' ')) THEN 
+        -- または作業区分が「納品」かつ作業データの物件コード２（引揚用）が物件データの物件コードと一致である場合
+-- Ver.1.37 Mod Start
+--        IF ((ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
+--               AND lv_install_code = NVL(lv_install_code1, ' ')) THEN 
+        IF (((ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
+               AND lv_install_code = NVL(lv_install_code1, ' '))
+            OR
+            (ln_job_kbn = cn_jon_kbn_0 
+               AND lv_install_code = NVL(lv_install_code2, ' '))) THEN
+-- Ver.1.37 Mod End
           -- 物件の新規登録フラグを「TRUE」に設定
           gb_insert_process_flg := TRUE;
 --        
@@ -3513,6 +3583,9 @@ AS
     cn_num3                  CONSTANT NUMBER        := 3;
     cn_num4                  CONSTANT NUMBER        := 4;
     cn_num9                  CONSTANT NUMBER        := 9;
+-- Ver.1.37 Add Start
+    cn_jon_kbn_0             CONSTANT NUMBER        := 0;                   -- 納品
+-- Ver.1.37 Add End
     cn_jon_kbn_1             CONSTANT NUMBER        := 1;                   -- 新台設置
     cn_jon_kbn_2             CONSTANT NUMBER        := 2;                   -- 旧台設置
     cn_jon_kbn_3             CONSTANT NUMBER        := 3;                   -- 新台代替
@@ -3831,13 +3904,28 @@ AS
     -- 機器状態１が「１：稼動中」の場合
     ELSIF (ln_machinery_status1 = cn_num1) THEN
       ln_instance_status_id := gt_instance_status_id_1;
+    -- 作業区分が「０：納品」以外
     -- 機器状態１が「２：滞留」
     -- 機器状態２が「０：情報無」または「１：整備済」
     -- 機器状態３が「０：予定無し」の場合
-    ELSIF (ln_machinery_status1 = cn_num2
+-- Ver.1.37 Mod Start
+--   ELSIF (ln_machinery_status1 = cn_num2
+    ELSIF (  ln_job_kbn <> cn_jon_kbn_0 AND ln_machinery_status1 = cn_num2
+-- Ver.1.37 Mod End
              AND (ln_machinery_status2 = cn_num0 OR ln_machinery_status2 = cn_num1)
              AND ln_machinery_status3  = cn_num0) THEN
       ln_instance_status_id := gt_instance_status_id_2;
+-- Ver.1.37 Add Start
+    -- 作業区分が「０：納品」
+    -- 機器状態１が「２：滞留」
+    -- 機器状態２が「１：整備済」
+    -- 機器状態３が「０：予定無し」の場合
+    ELSIF (  ln_job_kbn = cn_jon_kbn_0 
+             AND ln_machinery_status1 = cn_num2
+             AND ln_machinery_status2 = cn_num1
+             AND ln_machinery_status3  = cn_num0 ) THEN
+      ln_instance_status_id := gt_instance_status_id_0;
+-- Ver.1.37 Add End
     -- 機器状態１が「２：滞留」
     -- 機器状態２が「２：整備予定」または「３：保管」または「９：故障中」
     ELSIF (ln_machinery_status1 = cn_num2
@@ -4146,9 +4234,19 @@ AS
 --        RAISE skip_process_expt;
 --      END IF;
 --
-      --そのまま設定(取得価格・申告地)
+      --そのまま設定(取得価格)
       lv_get_price  := io_inst_base_data_rec.get_price;
-      lv_dclr_place := io_inst_base_data_rec.declaration_place;
+-- Ver.1.37 Mod Start
+--      lv_dclr_place := io_inst_base_data_rec.declaration_place;
+      --(申告地)
+      --作業区分が納品の場合、引揚申告地コードを設定
+      --作業区分が納品以外の場合、そのまま設定
+      IF (ln_job_kbn = cn_jon_kbn_0) THEN
+        lv_dclr_place := gv_dclr_place_code;
+      ELSE
+        lv_dclr_place := io_inst_base_data_rec.declaration_place;
+      END IF;
+-- Ver.1.37 Mod End
 /* Ver.1.34 MOD END */
     --リース区分が固定資産以外
     ELSE
@@ -4495,10 +4593,14 @@ AS
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.fa_move_date;
     l_ext_attrib_values_tab(ln_cnt).attribute_value := TO_CHAR(io_inst_base_data_rec.actual_work_date);
 --
+-- Ver.1.37 Mod Start
 /* Ver.1.35 Q2239 ADD START */
     -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
-    IF ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
+--    IF ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
 /* Ver.1.35 Q2239 ADD END */
+    -- 作業区分が0：納品、１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+    IF ( ln_job_kbn IN ( cn_jon_kbn_0 ,cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
+-- Ver.1.37 Mod End
       -- 最終有効実作業日時
       ln_cnt := ln_cnt + 1;
       l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_act_date_time;
@@ -4789,7 +4891,10 @@ AS
           ,program_id                             -- コンカレント・プログラムID PROGRAM_ID
           ,program_update_date                    -- プログラム更新日
         )VALUES(
-           lv_install_code1                       -- 物件コード
+-- Ver.1.37 Mod Start
+--           lv_install_code1                       -- 物件コード
+           DECODE( ln_job_kbn, cn_jon_kbn_0, lv_install_code2, lv_install_code1 ) -- 物件コード
+-- Ver.1.37 Mod End
           ,ld_date                                -- 履歴作成日
           ,cv_flg_no                              -- 連携済フラグ
 /* Ver.1.34 MOD START */
@@ -6774,7 +6879,10 @@ AS
       l_instance_rec.attribute1                 := lv_un_number;                 -- 機種(コード)
       l_instance_rec.attribute2                 := lv_install_number;            -- 機番
       /* 2009.05.26 M.Ohtsuki T1_1141対応 START*/
-      IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
+      -- Ver.1.37 Mod Start
+--      IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
+      IF ( ln_job_kbn = cn_jon_kbn_1 ) THEN                                      --新台設置の場合
+      -- Ver.1.37 Mod End
         l_instance_rec.attribute3 := TO_CHAR(TO_DATE(TO_CHAR(
           io_inst_base_data_rec.first_install_date),'yyyy/mm/dd'), 'yyyy/mm/dd hh24:mi:ss'); -- 初回設置日
       END IF;
