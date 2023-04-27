@@ -7,7 +7,7 @@ AS
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
- * Version          : 1.37
+ * Version          : 1.38
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2016-12-15    1.35  S.Niki           E_本稼動_13903対応 新自販機管理システムからの物件データ連携対応（Q2198,2239）
  *  2017-01-27    1.36  S.Niki           E_本稼動_13903追加対応
  *  2023-04-05    1.37  M.Akachi         E_本稼動_18758対応
+ *  2023-04-27    1.38  M.Akachi         E_本稼動_18758不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6879,9 +6880,12 @@ AS
       l_instance_rec.attribute1                 := lv_un_number;                 -- 機種(コード)
       l_instance_rec.attribute2                 := lv_install_number;            -- 機番
       /* 2009.05.26 M.Ohtsuki T1_1141対応 START*/
-      -- Ver.1.37 Mod Start
+--      -- Ver.1.37 Mod Start
 --      IF (io_inst_base_data_rec.new_old_flg = cv_flg_yes) THEN                                        -- 新古台フラグがYの場合
-      IF ( ln_job_kbn = cn_jon_kbn_1 ) THEN                                      --新台設置の場合
+      -- Ver.1.38 Mod Start
+--      IF ( ln_job_kbn = cn_jon_kbn_1 ) THEN                                      --新台設置の場合
+      IF ( ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3 ) THEN          --新台設置または新台代替の場合
+      -- Ver.1.38 Mod End
       -- Ver.1.37 Mod End
         l_instance_rec.attribute3 := TO_CHAR(TO_DATE(TO_CHAR(
           io_inst_base_data_rec.first_install_date),'yyyy/mm/dd'), 'yyyy/mm/dd hh24:mi:ss'); -- 初回設置日
