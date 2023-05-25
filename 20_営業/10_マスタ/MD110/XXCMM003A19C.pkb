@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2019/07/30    1.14  N.Koyama         障害E_本稼動_15472の追加対応
  *  2019/09/26    1.15  N.Koyama         障害E_本稼動_15949の対応
  *  2019/10/10    1.16  N.Koyama         障害E_本稼動_15949の追加対応
+ *  2023/04/24    1.17  M.Akachi         障害E_本稼動_19057の対応
  *
  *****************************************************************************************/
 --
@@ -87,6 +88,10 @@ AS
   -- ===============================
   gv_out_file_dir  VARCHAR2(100);
   gv_out_file_file VARCHAR2(100);
+-- Ver1.17 Add Start
+  gv_sp_supp_use_yes VARCHAR2(100);
+  gv_sp_supp_use_no  VARCHAR2(100);
+-- Ver1.17 Add End
 --
 --##########################  固定共通例外宣言部 START  ###########################
 --
@@ -199,6 +204,12 @@ AS
     cv_out_file_file CONSTANT VARCHAR2(30) := 'XXCMM1_003A19_OUT_FILE_FIL';   --XXCMM: HHT系連携IFデータ作成用CSVファイル名
     cv_invalid_path  CONSTANT VARCHAR2(25) := 'CSV出力ディレクトリ';          --プロファイル取得失敗（ディレクトリ）
     cv_invalid_name  CONSTANT VARCHAR2(20) := 'CSV出力ファイル名';            --プロファイル取得失敗（ファイル名）
+-- Ver1.17 Add Start
+    cv_sp_supp_use_yes       CONSTANT VARCHAR2(30) := 'XXCMM1_SP_SUPP_USE_YES';    --XXCSO:SP専決設置協賛金あり固定文言
+    cv_sp_supp_use_no        CONSTANT VARCHAR2(30) := 'XXCMM1_SP_SUPP_USE_NO';     --XXCSO:SP専決設置協賛金なし固定文言
+    cv_invalid_supp_use_yes  CONSTANT VARCHAR2(25) := 'SP専決設置協賛金あり';      --プロファイル取得失敗（SP専決設置協賛金あり）
+    cv_invalid_supp_use_no   CONSTANT VARCHAR2(25) := 'SP専決設置協賛金なし';      --プロファイル取得失敗（SP専決設置協賛金なし）
+-- Ver1.17 Add End
 --
     -- *** ローカル変数 ***
 -- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
@@ -241,6 +252,31 @@ AS
       RAISE init_err_expt;
     END IF;
 --
+-- Ver1.17 Add Start
+--
+    --SP専決設置協賛金あり固定文言をプロファイルより取得。失敗時はエラー
+    gv_sp_supp_use_yes := FND_PROFILE.VALUE(cv_sp_supp_use_yes);
+    IF (gv_sp_supp_use_yes IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                            cv_profile_err_msg,
+                                            cv_ng_profile,
+                                            cv_invalid_supp_use_yes);
+      lv_errbuf := lv_errmsg;
+      RAISE init_err_expt;
+    END IF;
+--
+    --SP専決設置協賛金なし固定文言をプロファイルより取得。失敗時はエラー
+    gv_sp_supp_use_no := FND_PROFILE.VALUE(cv_sp_supp_use_no);
+    IF (gv_sp_supp_use_no IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                            cv_profile_err_msg,
+                                            cv_ng_profile,
+                                            cv_invalid_supp_use_no);
+      lv_errbuf := lv_errmsg;
+      RAISE init_err_expt;
+    END IF;
+--
+-- Ver1.17 Add End
 -- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
     -- ファイル存在チェック
     UTL_FILE.FGETATTR(gv_out_file_dir, gv_out_file_file, lv_file_chk, ln_file_size, ln_block_size);
@@ -458,6 +494,9 @@ AS
     cv_min_time           CONSTANT VARCHAR2(7)      := '000000';                  --時分秒最小
     cv_max_time           CONSTANT VARCHAR2(7)      := '235959';                  --時分秒最大
 -- 2009/08/24 Ver1.5 add end by Yutaka.Kuboshima
+-- Ver1.17 Add Start
+    cv_sp_supp_pay_type   CONSTANT VARCHAR2(30)     := 'XXCSO1_SP_INST_SUPP_PAY_TYPE'; -- SP専決支払条件（設置協賛金）
+-- Ver1.17 Add End
     -- *** ローカル変数 ***
     lv_output_str                  VARCHAR2(4095)   := NULL;                      --出力文字列格納用変数
     ln_output_cnt                  NUMBER           := 0;                         --出力件数
@@ -481,6 +520,11 @@ AS
 -- Ver1.15 add Start
     lt_tax_rounding_rule    xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE;
 -- Ver1.15 add End
+-- Ver1.17 Add Start
+    ld_sp_supp_next_date           DATE;                                        -- 協賛（3）次回予定日
+    lv_sp_supp_use                 VARCHAR2(40);                                -- 協賛（3）用途
+    lv_sp_supp_products            VARCHAR2(40);                                -- 協賛（3）協賛商品１
+-- Ver1.17 Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -614,6 +658,16 @@ AS
                FROM   xxcos_cust_hierarchy_mv xchm
                WHERE  xchm.bill_last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
 -- 2019/10/10 Ver1.16 N.koyama Add End
+-- Ver1.17 Add Start
+               UNION
+               -- 契約管理テーブル
+               SELECT /*+ INDEX(xcm xxcso_contract_managements_n08) */
+                      xcm.install_account_id customer_id
+               FROM   xxcso_contract_managements  xcm
+               WHERE  xcm.status = cv_on_sts
+               AND    xcm.batch_proc_status = cv_zr_sts
+               AND    xcm.last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- Ver1.17 Add End
              ) def
       WHERE  hca.cust_account_id = def.customer_id
       ORDER BY hca.account_number;
@@ -1113,6 +1167,33 @@ AS
         AND hca.customer_class_code = cv_base
         AND hca.account_number      = p_sale_base_code;
 -- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
+-- Ver1.17 Add Start
+    -- 設置協賛金情報カーソル
+    CURSOR serch_sp_supp_cur(p_install_account_id IN VARCHAR2)
+    IS
+      SELECT xsdh.install_supp_payment_date install_supp_payment_date,          -- SP専決ヘッダ.支払期日（設置協賛金）
+             xsdh.install_supp_amt          install_supp_amt,                   -- SP専決ヘッダ.総額（設置協賛金）
+             xsdh.install_supp_this_time    install_supp_this_time,             -- SP専決ヘッダ.今回支払（設置協賛金）
+             TO_NUMBER(flvv.attribute2)     months                              -- 支払条件（設置協賛金）月数
+      FROM   xxcso_sp_decision_headers   xsdh,                                  -- SP専決ヘッダ
+             xxcso_contract_managements  xcm1,                                  -- 契約管理テーブル
+             fnd_lookup_values_vl        flvv                                   -- クイックコード
+      WHERE  xsdh.sp_decision_header_id  = xcm1.sp_decision_header_id           -- SP専決ヘッダ. SP専決ヘッダID = 契約管理テーブル. SP専決ヘッダID
+      AND    xcm1.status = cv_on_sts                                            -- 契約管理テーブル.ステータス（1:確定済）
+      AND    xcm1.batch_proc_status = cv_zr_sts                                 -- 契約管理テーブル.バッチ処理ステータス（0:正常）
+      AND    xcm1.install_account_id = p_install_account_id                     -- 契約管理テーブル.設置先顧客ＩＤ
+      AND    xcm1.contract_number = ( SELECT MAX(xcm2.contract_number)          -- 契約管理テーブル.契約書番号 = 顧客の最大契約書番号
+                                      FROM   xxcso_contract_managements xcm2
+                                      WHERE  xcm2.status = cv_on_sts
+                                      AND    xcm2.batch_proc_status = cv_zr_sts
+                                      AND    xcm2.install_account_id = p_install_account_id )
+      AND    flvv.lookup_type = cv_sp_supp_pay_type
+      AND    flvv.lookup_code = xsdh.install_supp_payment_type                  -- 支払条件（設置協賛金）
+      AND    flvv.enabled_flag  = cv_enabled_flag
+      AND    gd_process_date
+             BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                 AND NVL(TRUNC(flvv.end_date_active),gd_process_date);
+-- Ver1.17 Add End
 -- 2009/08/24 Ver1.5 add start by Yutaka.Kuboshima
     -- 差分連携対象顧客取得カーソルレコード型
     def_cust_rec def_cust_cur%ROWTYPE;
@@ -1124,6 +1205,9 @@ AS
 -- 2009/04/13 Ver1.2 add start by Yutaka.Kuboshima
     serch_base_rec serch_base_cur%ROWTYPE;
 -- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
+-- Ver1.17 Add Start
+    serch_sp_supp_rec serch_sp_supp_cur%ROWTYPE;
+-- Ver1.17 Add End
 --
   BEGIN
 --
@@ -1375,6 +1459,39 @@ AS
 -- 2019/10/10 Ver1.16 N.koyama Del End
         -- 変数初期化
         serch_base_rec := NULL;
+-- Ver1.17 Add Start
+        -- 変数初期化
+        serch_sp_supp_rec    := NULL;
+        ld_sp_supp_next_date := NULL;
+        lv_sp_supp_use       := NULL;
+        lv_sp_supp_products  := NULL;
+        --
+        -- 顧客区分が「10:顧客」の場合
+        IF ( cust_data_rec.customer_class_code = cv_cust_cd ) THEN
+          -- 設置協賛金情報抽出
+          OPEN serch_sp_supp_cur(def_cust_rec.customer_id);
+          FETCH serch_sp_supp_cur INTO serch_sp_supp_rec;
+          -- 設置協賛金情報が取得できない
+          IF ( serch_sp_supp_cur%ROWCOUNT = 0 ) THEN
+            lv_sp_supp_use := gv_sp_supp_use_no;
+          -- パラメータの最終更新日(開始)  < 支払期日（設置協賛金）
+          ELSIF ( ld_proc_date_from < serch_sp_supp_rec.install_supp_payment_date ) THEN
+            ld_sp_supp_next_date := serch_sp_supp_rec.install_supp_payment_date;
+            lv_sp_supp_use := gv_sp_supp_use_yes;
+            -- 総額支払い
+            IF ( serch_sp_supp_rec.months = 0 ) THEN
+              lv_sp_supp_products := serch_sp_supp_rec.install_supp_amt || '円';
+            ELSE
+              lv_sp_supp_products := serch_sp_supp_rec.install_supp_this_time || '円';
+            END IF;
+          -- 支払期日（設置協賛金）≦ パラメータの最終更新日(開始) 
+          ELSIF ( serch_sp_supp_rec.install_supp_payment_date <= ld_proc_date_from ) THEN
+            ld_sp_supp_next_date := ADD_MONTHS( serch_sp_supp_rec.install_supp_payment_date,serch_sp_supp_rec.months );
+            lv_sp_supp_use := gv_sp_supp_use_no;
+          END IF;
+          CLOSE serch_sp_supp_cur;
+        END IF;
+-- Ver1.17 Add End
         -- ===============================
         -- 出力値設定
         -- ===============================
@@ -1435,6 +1552,11 @@ AS
 -- Ver1.14 add start
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.tax_rounding_rule, 1, 7), cv_date_null)       || cv_dqu;  --税金端数処理
 -- Ver1.14 add end
+-- Ver1.17 Add Start
+        lv_output_str := lv_output_str || cv_comma || NVL(TO_CHAR(ld_sp_supp_next_date, cv_fnd_date), cv_null_code);                                -- 協賛（3）次回予定日
+        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(lv_sp_supp_use, cv_date_null)                                       || cv_dqu;  -- 協賛（3）用途
+        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(lv_sp_supp_products, cv_date_null)                                  || cv_dqu;  -- 協賛（3）協賛商品１
+-- Ver1.17 Add End
 --
         --文字列出力
         BEGIN
@@ -1498,6 +1620,11 @@ AS
         CLOSE serch_base_cur;
       END IF;
 -- 2009/04/13 Ver1.2 add end by Yutaka.Kuboshima
+-- Ver1.17 Add Start
+      IF (serch_sp_supp_cur%ISOPEN) THEN
+        CLOSE serch_sp_supp_cur;
+      END IF;
+-- Ver1.17 Add End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
