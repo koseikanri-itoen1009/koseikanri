@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP003A05C(body)
  * Description      : 不正控除支払検知
  * MD.070           : 不正控除支払検知(MD070_IPO_CCP_003_A05)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  2022/03/15    1.0   K.Yoshikawa     [E_本稼動_18075]新規作成
  *  2022/06/08    1.1   K.Yoshikawa     [E_本稼動_18306]
  *  2022/08/02    1.2   SCSK Y.Koh      [E_本稼動_18517]
+ *  2023/05/25    1.3   K.Yoshikawa     [E_本稼動_19244]
  *
  *****************************************************************************************/
 --
@@ -596,6 +597,9 @@ AS
           xsd.condition_no        , -- 控除番号
           xsd.tax_code            , -- 税コード
           xsd.customer_code_to    , -- 振替先顧客コード
+-- 2023/05/25 Ver1.3 ADD Start
+          xsd.base_code_to        , -- 振替先拠点コード
+-- 2023/05/25 Ver1.3 ADD End
           xsd.deduction_chain_code, -- 控除用チェーンコード
           xsd.corp_code           , -- 企業コード
           xsd.item_code             -- 品目コード
