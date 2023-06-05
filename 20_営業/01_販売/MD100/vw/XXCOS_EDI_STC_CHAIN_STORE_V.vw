@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_edi_stc_chain_store_v
  * Description     : EDIチェーン店コードview
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   x.xxxxxxx        新規作成
+ *  2023/06/02    1.1   R.Oikawa         E_本稼動_19250対応  2018/8/6に対応した性能障害のヒント句対応（問合せ#3128）
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_edi_stc_chain_store_v (
    chain_store_code   --EDIチェーン店コード
@@ -17,7 +18,8 @@ CREATE OR REPLACE VIEW xxcos_edi_stc_chain_store_v (
   ,ship_storage_code  --出荷元保管場所(条件)
 )
 AS
-   SELECT   hca2.chain_store_code
+   SELECT   /*+ leading(hca1.xca) */
+            hca2.chain_store_code
            ,hca2.party_name
            ,hca1.ship_storage_code
    FROM     ( SELECT  xca.ship_storage_code  ship_storage_code --出荷元保管場所
