@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2011/03/23    1.10  Naoki.Horigome   E_本稼動_02541、02550対応
  *  2011/11/11    1.11  Atsushi.Shirakawa E_本稼動_08398対応
  *  2016/02/05    1.12  Shigeto.Niki     E_本稼動_13456対応
+ *  2023/04/26    1.13  Ryo.Oikawa       E_本稼動_19141対応
  *
  *****************************************************************************************/
 --
@@ -198,6 +199,10 @@ AS
   cv_comp_cd_other    CONSTANT VARCHAR2(1)  := 'I';                           -- 会社コード(GV以外)
 -- Ver1.12 add end
 -- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
+-- 2023/04/26 Ver1.13 add start
+  cv_flex_set_dept     CONSTANT VARCHAR2(30) := 'XX03_DEPARTMENT';             -- 値セット（部門）
+  cv_validation_type_i CONSTANT VARCHAR2(1)  := 'I';
+-- 2023/04/26 Ver1.13 add end
 -- 
   -- ===============================
   -- ユーザー定義グローバル型
@@ -242,6 +247,9 @@ AS
     ,dpt_name              hz_parties.party_name%TYPE                          -- (HOST)支店営業所名
     ,comp_cd               VARCHAR2(1)                                         -- 会社CD
 -- Ver1.12 mod end
+-- 2023/04/26 Ver1.13 add start
+    ,new_division_code     VARCHAR2(6)                                         -- 本部コード（新）
+-- 2023/04/26 Ver1.13 add end
   );
 --
   -- 所属マスタIF出力（自販機管理）レイアウト テーブルタイプ
@@ -833,6 +841,20 @@ AS
                    ,gv_gv_bumon_cd  ,cv_comp_cd_gv   -- GVの場合は「G」
                    ,cv_comp_cd_other                 -- GV以外は「I」
              )                           AS comp_cd             -- 会社CD
+-- 2023/04/26 Ver1.13 add start
+            ,(SELECT ffv.attribute9      AS new_division_code
+              FROM   applsys.fnd_flex_value_sets ffvs -- 値セット定義マスタ
+                    ,applsys.fnd_flex_values     ffv  -- 値セット値定義マスタ
+                    ,applsys.fnd_flex_values_tl  ffvt -- 値セット値名称定義マスタ
+              WHERE  ffvs.flex_value_set_name =  cv_flex_set_dept
+              AND    ffvs.validation_type     =  cv_validation_type_i
+              AND    ffvt.language            =  cv_language_ja
+              AND    ffv.enabled_flag         =  cv_y_flag
+              AND    ffv.flex_value_set_id    =  ffvs.flex_value_set_id
+              AND    ffv.flex_value_id        =  ffvt.flex_value_id
+              AND    ffv.flex_value           =  hca.account_number
+             )                          AS new_division_code   -- 本部コード（新）
+-- 2023/04/26 Ver1.13 add end
       FROM   hz_cust_accounts         hca   -- 顧客マスタ
             ,hz_parties               hp    -- パーティマスタ
             ,hz_party_sites           hps   -- パーティサイト
@@ -1248,7 +1270,10 @@ AS
       -- 会社コード
       lv_outline := lv_outline || cv_sep || cv_dqu || gt_out_tab(ln_idx).comp_cd || cv_dqu;
       -- 対応支店CD
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+-- 2023/04/26 Ver1.13 mod start
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+      lv_outline := lv_outline || cv_sep || cv_dqu || gt_out_tab(ln_idx).new_division_code || cv_dqu;
+-- 2023/04/26 Ver1.13 mod end
       -- 対応出張所CD
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
 -- Ver1.12 mod end
