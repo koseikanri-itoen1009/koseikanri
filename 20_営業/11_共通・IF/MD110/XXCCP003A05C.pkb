@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP003A05C(body)
  * Description      : 不正控除支払検知
  * MD.070           : 不正控除支払検知(MD070_IPO_CCP_003_A05)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2022/06/08    1.1   K.Yoshikawa     [E_本稼動_18306]
  *  2022/08/02    1.2   SCSK Y.Koh      [E_本稼動_18517]
  *  2023/05/25    1.3   K.Yoshikawa     [E_本稼動_19244]
+ *  2023/06/14    1.4   K.Yoshikawa     [E_本稼動_19244]
  *
  *****************************************************************************************/
 --
@@ -481,6 +482,9 @@ AS
           (SELECT NVL(SUM(deduction_tax),0) FROM xxcok.xxcok_deduction_item_recon i WHERE i.recon_slip_num = h.recon_slip_num)  deduction_tax_diff       --税額異常値
        FROM  xxcok.xxcok_deduction_recon_head h
        WHERE h.recon_status  IN ('AD','EG','SD','SG')  
+-- 2023/06/14 Ver1.4 ADD Start
+       AND   h.interface_div <> 'AR' --入金相殺を除く
+-- 2023/06/14 Ver1.4 ADD End
        AND (  h.last_update_date >= ld_date 
              OR
              (SELECT MAX(n.last_update_date) FROM xxcok.xxcok_deduction_num_recon n WHERE n.recon_slip_num = h.recon_slip_num) >= ld_date 
