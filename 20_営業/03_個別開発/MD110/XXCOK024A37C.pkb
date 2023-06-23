@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A37C(body)
  * Description      : 控除データIF出力（情報系）
  * MD.050           : 控除データIF出力（情報系） MD050_COK_024_A37
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2021/08/04    1.3   T.Nishikawa      [E_本稼動_17409] GL記帳日追加対応
  *  2022/07/21    1.4   K.Yoshikawa      [E_本稼動_N1424] IaaSリフト障害No.21
  *  2022/09/06    1.5   SCSK Y.Koh        E_本稼動_18172  控除支払伝票取消時の差額
+ *  2023/06/22    1.6   SCSK R.Oikawa     E_本稼動_19294  入金相殺伝票取消時の差額控除の連携不良
  *
  *****************************************************************************************/
 --
@@ -1238,7 +1239,12 @@ AS
         ELSIF (lt_csv_deduction_tab( i ).status = cv_status_cancel ) THEN
 -- 2022/09/06 Ver1.5 MOD Start
           BEGIN
-            SELECT DECODE(xdrh.interface_div,'AP',xdrh.cancel_gl_date,'WP',xdrh.gl_date)  gl_date
+-- Ver1.6 MOD Start
+--            SELECT DECODE(xdrh.interface_div,'AP',xdrh.cancel_gl_date,'WP',xdrh.gl_date)  gl_date
+            SELECT DECODE(xdrh.interface_div,'AP',xdrh.cancel_gl_date,
+                          'AR',xdrh.cancel_gl_date,
+                          'WP',xdrh.gl_date)  gl_date
+-- Ver1.6 MOD End
             INTO   ld_gl_date
             FROM   xxcok_deduction_recon_head  xdrh
             WHERE  xdrh.recon_slip_num   = lt_csv_deduction_tab( i ).recon_slip_num;
