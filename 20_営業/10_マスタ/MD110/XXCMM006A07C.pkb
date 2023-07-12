@@ -6,7 +6,7 @@ AS
  * Package Name    : XXCMM006A07C
  * Description     : 値リストの値IF抽出
  * MD.050          : T_MD050_CMM_006_A07_値リストの値IF抽出_EBSコンカレント
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Program List
  * -------------------- -----------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor        Description
  * ------------- ----- ------------- -------------------------------------
  *  2022-12-07    1.0   T.Okuyama     初回作成
+ *  2023-07-05    1.1   Y.Sato        E_本稼動_19314対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -268,7 +269,12 @@ AS
     WHERE
         ffvs.flex_value_set_name = p_flex_value_set_name
     AND ffvs.flex_value_set_id   = ffvv.flex_value_set_id
-    AND ( gd_pre_process_date is null or ffvv.last_update_date > gd_pre_process_date )
+-- Ver 1.1 Mod Start
+--    AND ( gd_pre_process_date is null or ffvv.last_update_date > gd_pre_process_date )
+    AND ( gd_pre_process_date is null or (     ffvv.last_update_date > gd_pre_process_date
+                                           AND ffvv.last_update_date <= gd_process_date)
+    )
+-- Ver 1.1 Mod End
     AND SUBSTR(ffvv.flex_value, -1) != CHR(9)
     ORDER BY
       ffvv.flex_value;           -- 値
@@ -290,7 +296,12 @@ AS
               fnd_flex_value_hierarchies  ffvh
           WHERE
               ffvs.flex_value_set_id = ffvh.flex_value_set_id
-          AND ( gd_pre_process_date is null or ffvh.last_update_date > gd_pre_process_date )
+-- Ver 1.1 Mod Start
+--          AND ( gd_pre_process_date is null or ffvh.last_update_date > gd_pre_process_date )
+          AND ( gd_pre_process_date is null or (     ffvh.last_update_date > gd_pre_process_date 
+                                                 AND ffvh.last_update_date <= gd_process_date)
+          )
+-- Ver 1.1 Mod End
         );
 --
   --(2)-2. AFF（部門、勘定科目）階層の値セットIDより連携データを抽出する。
@@ -373,7 +384,12 @@ AS
     WHERE
       ffvs.flex_value_set_name = p_flex_value_set_name
     AND ffvs.flex_value_set_id = ffvv.flex_value_set_id
-    AND ( gd_pre_process_date IS NULL OR ffvv.last_update_date > gd_pre_process_date )
+-- Ver 1.1 Mod Start
+--    AND ( gd_pre_process_date IS NULL OR ffvv.last_update_date > gd_pre_process_date )
+    AND ( gd_pre_process_date IS NULL OR (     ffvv.last_update_date > gd_pre_process_date
+                                           AND ffvv.last_update_date <= gd_process_date)
+    )
+-- Ver 1.1 Mod End
     ORDER BY
       ffvv.flex_value;
 --
