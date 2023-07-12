@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A02C (body)
  * Description      : 仕入先マスタIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_001_A02_仕入先マスタIF抽出_EBSコンカレント
- * Version          : 1.10
+ * Version          : 1.11
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -45,6 +45,7 @@ AS
  *  2023-02-21    1.8   Y.Ooyama         シナリオテスト不具合No.ST0018対応
  *  2023-03-22    1.9   Y.Ooyama         移行障害No.5対応
  *  2023-06-20    1.10  F.Hasebe         初期流動障害No.4対応
+ *  2023-07-03    1.11  Y.Sato           E_本稼動_19314対応
  *
  *****************************************************************************************/
 --
@@ -1163,7 +1164,12 @@ AS
         , xxcmm_oic_vd_evac  xove  -- OIC仕入先退避テーブル
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pv.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pv.last_update_date > gt_pre_process_date)
+           OR (    pv.last_update_date > gt_pre_process_date
+               AND pv.last_update_date <= gt_cur_process_date)
+           )
+-- Ver1.11 Mod End
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
       AND EXISTS (
               SELECT
@@ -1744,7 +1750,12 @@ AS
         , xxcmm_oic_vd_site_evac  xovse  -- OIC仕入先サイト退避テーブル
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pvsa.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pvsa.last_update_date > gt_pre_process_date)
+           OR (    pvsa.last_update_date > gt_pre_process_date
+               AND pvsa.last_update_date <= gt_cur_process_date)
+           )
+-- Ver1.11 Mod End
       AND pvsa.org_id         = gt_target_organization_id
       AND pvsa.vendor_id      = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
@@ -2289,7 +2300,12 @@ AS
         , ap_terms                at        -- 支払条件
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pvsa.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pvsa.last_update_date > gt_pre_process_date)
+           OR (    pvsa.last_update_date > gt_pre_process_date
+               AND pvsa.last_update_date <= gt_cur_process_date)
+           )
+-- Ver1.11 Mod End
       AND pvsa.org_id              = gt_target_organization_id
       AND pvsa.vendor_id           = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
@@ -3102,7 +3118,12 @@ AS
         , ap_distribution_sets      ads              -- 配分セット
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pvsa.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pvsa.last_update_date > gt_pre_process_date)
+           OR (    pvsa.last_update_date > gt_pre_process_date
+               AND pvsa.last_update_date <= gt_cur_process_date)
+           )
+-- Ver1.11 Mod End
       AND pvsa.org_id                        = gt_target_organization_id
       AND pvsa.vendor_id                     = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
@@ -3431,7 +3452,12 @@ AS
         , xxcmm_oic_vd_contact_evac  xovce  -- OIC仕入先担当者退避テーブル
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pvc.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pvc.last_update_date > gt_pre_process_date
+           OR (    pvc.last_update_date > gt_pre_process_date
+               AND pvc.last_update_date <= gt_cur_process_date)
+           )
+-- Ver1.11 Mod End
       AND pvc.vendor_site_id    = pvsa.vendor_site_id
       AND pvsa.org_id           = gt_target_organization_id
       AND pvsa.vendor_id        = pv.vendor_id
@@ -3920,7 +3946,12 @@ AS
 --          (   gt_pre_process_date IS NULL
 --           OR pvc.last_update_date > gt_pre_process_date)
           (   gt_pre_process_date IS NULL
-           OR pvc.creation_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pvc.creation_date > gt_pre_process_date)
+           OR (    pvc.creation_date > gt_pre_process_date
+               AND pvc.creation_date <= gt_cur_process_date)
+          )
+-- Ver1.11 Mod End
 -- Ver1.4(E125) Mod End
       AND pvc.vendor_site_id = pvsa.vendor_site_id
       AND pvsa.org_id        = gt_target_organization_id
@@ -4134,8 +4165,14 @@ AS
           , po_vendors                pv     -- 仕入先マスタ
           , xxcmm_oic_bank_acct_evac  xobae  -- OIC銀行口座退避テーブル
         WHERE
-            (   abaa.last_update_date  > gt_pre_process_date
-             OR abaua.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--            (   abaa.last_update_date  > gt_pre_process_date
+--             OR abaua.last_update_date > gt_pre_process_date)
+            (   (      abaa.last_update_date  > gt_pre_process_date
+                   AND abaa.last_update_date  <= gt_cur_process_date)
+             OR (      abaua.last_update_date > gt_pre_process_date
+                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.11 Mod End
         AND abb.bank_branch_id   = abaa.bank_branch_id
         AND abaa.bank_account_id = abaua.external_bank_account_id
         AND abaua.vendor_id      = pvsa.vendor_id
@@ -4185,8 +4222,15 @@ AS
                  ,ap_bank_account_uses_all  abaua
               WHERE
                   (   gt_pre_process_date IS NULL
-                   OR abaa.last_update_date  > gt_pre_process_date
-                   OR abaua.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--                   OR abaa.last_update_date  > gt_pre_process_date
+--                   OR abaua.last_update_date > gt_pre_process_date)
+                   OR (    abaa.last_update_date  > gt_pre_process_date
+                       AND abaa.last_update_date  <= gt_cur_process_date)
+                   OR (    abaua.last_update_date > gt_pre_process_date
+                       AND abaua.last_update_date <= gt_cur_process_date)
+                  )
+-- Ver1.11 Mod End
               AND abaa.bank_account_id = abaua.external_bank_account_id
               AND abaua.vendor_id      = pvsa.vendor_id
               AND abaua.vendor_site_id = pvsa.vendor_site_id
@@ -4207,13 +4251,25 @@ AS
 --                AND ((   af.last_update_date_pv    > gt_pre_process_date
 --                      OR af.last_update_date_pvsa  > gt_pre_process_date
 --                      OR af.last_update_date_abaua > gt_pre_process_date
-                AND ((   af.creation_date_pv    > gt_pre_process_date
-                      OR af.creation_date_pvsa  > gt_pre_process_date
-                      OR af.creation_date_abaua > gt_pre_process_date
+-- Ver1.11 Mod Start
+--                AND ((   af.creation_date_pv    > gt_pre_process_date
+--                      OR af.creation_date_pvsa  > gt_pre_process_date
+--                      OR af.creation_date_abaua > gt_pre_process_date
+                AND ((   (    af.creation_date_pv    > gt_pre_process_date
+                          AND af.creation_date_pv    <= gt_cur_process_date)
+                      OR (    af.creation_date_pvsa  > gt_pre_process_date
+                          AND af.creation_date_pvsa  <= gt_cur_process_date)
+                      OR (    af.creation_date_abaua > gt_pre_process_date
+                          AND af.creation_date_abaua <= gt_cur_process_date)
+-- Ver1.11 Mod End
 -- Ver1.10 Mod End
                      )
                      OR
-                     (    af.last_update_date_abaa > gt_pre_process_date
+-- Ver1.11 Mod Start
+--                     (    af.last_update_date_abaa > gt_pre_process_date
+                     (  (      af.last_update_date_abaa > gt_pre_process_date
+                           AND af.last_update_date_abaa <= gt_cur_process_date)
+-- Ver1.11 Mod End
                       AND af.spec_items_chg_flag = cv_y
                      ))
             )
@@ -4429,8 +4485,14 @@ AS
           , po_vendors                pv     -- 仕入先マスタ
           , xxcmm_oic_bank_acct_evac  xobae  -- OIC銀行口座退避テーブル
         WHERE
-            (   abaa.last_update_date  > gt_pre_process_date
-             OR abaua.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--            (   abaa.last_update_date  > gt_pre_process_date
+--             OR abaua.last_update_date > gt_pre_process_date)
+            (   (      abaa.last_update_date  > gt_pre_process_date
+                   AND abaa.last_update_date  <= gt_cur_process_date)
+             OR (      abaua.last_update_date > gt_pre_process_date
+                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.11 Mod End
         AND abb.bank_branch_id   = abaa.bank_branch_id
         AND abaa.bank_account_id = abaua.external_bank_account_id
         AND abaua.vendor_id      = pvsa.vendor_id
@@ -4487,8 +4549,15 @@ AS
         , xxcmm_oic_bank_acct_evac  xobae  -- OIC銀行口座退避テーブル
       WHERE
           (   gt_pre_process_date IS NULL
-           OR abaa.last_update_date  > gt_pre_process_date
-           OR abaua.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR abaa.last_update_date  > gt_pre_process_date
+--           OR abaua.last_update_date > gt_pre_process_date)
+              OR (   (      abaa.last_update_date  > gt_pre_process_date
+                        AND abaa.last_update_date  <= gt_cur_process_date)
+              OR (          abaua.last_update_date > gt_pre_process_date
+                        AND abaua.last_update_date <= gt_cur_process_date))
+           )
+-- Ver1.11 Mod End
       AND abb.bank_branch_id   = abaa.bank_branch_id
       AND abaa.bank_account_id = abaua.external_bank_account_id
       AND abaua.vendor_id      = pvsa.vendor_id
@@ -4513,13 +4582,25 @@ AS
 --                AND ((   af.last_update_date_pv    > gt_pre_process_date
 --                      OR af.last_update_date_pvsa  > gt_pre_process_date
 --                      OR af.last_update_date_abaua > gt_pre_process_date
-                AND ((   af.creation_date_pv    > gt_pre_process_date
-                      OR af.creation_date_pvsa  > gt_pre_process_date
-                      OR af.creation_date_abaua > gt_pre_process_date
+-- Ver1.11 Mod Start
+--                AND ((   af.creation_date_pv    > gt_pre_process_date
+--                      OR af.creation_date_pvsa  > gt_pre_process_date
+--                      OR af.creation_date_abaua > gt_pre_process_date
+                AND ((   (    af.creation_date_pv    > gt_pre_process_date
+                          AND af.creation_date_pv    <= gt_cur_process_date)
+                      OR (    af.creation_date_pvsa  > gt_pre_process_date
+                          AND af.creation_date_pvsa  <= gt_cur_process_date)
+                      OR (    af.creation_date_abaua > gt_pre_process_date
+                          AND af.creation_date_abaua <= gt_cur_process_date)
+-- Ver1.11 Mod End
 -- Ver1.10 Mod End
                      )
                      OR
-                     (    af.last_update_date_abaa > gt_pre_process_date
+-- Ver1.11 Mod Start
+--                     (    af.last_update_date_abaa > gt_pre_process_date
+                     (  (      af.last_update_date_abaa > gt_pre_process_date
+                           AND af.last_update_date_abaa <= gt_cur_process_date)
+-- Ver1.11 Mod End
                       AND af.spec_items_chg_flag = cv_y
                      ))
             )
@@ -4756,8 +4837,14 @@ AS
           , po_vendors                pv     -- 仕入先マスタ
           , xxcmm_oic_bank_acct_evac  xobae  -- OIC銀行口座退避テーブル
         WHERE
-            (   abaa.last_update_date  > gt_pre_process_date
-             OR abaua.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--            (   abaa.last_update_date  > gt_pre_process_date
+--             OR abaua.last_update_date > gt_pre_process_date)
+            (   (      abaa.last_update_date  > gt_pre_process_date
+                   AND abaa.last_update_date  <= gt_cur_process_date)
+             OR (      abaua.last_update_date > gt_pre_process_date
+                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.11 Mod End
         AND abb.bank_branch_id   = abaa.bank_branch_id
         AND abaa.bank_account_id = abaua.external_bank_account_id
         AND abaua.vendor_id      = pvsa.vendor_id
@@ -4792,8 +4879,14 @@ AS
         , po_vendors                pv     -- 仕入先マスタ
       WHERE
           (   gt_pre_process_date IS NULL
-           OR abaa.last_update_date  > gt_pre_process_date
-           OR abaua.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR abaa.last_update_date  > gt_pre_process_date
+--           OR abaua.last_update_date > gt_pre_process_date)
+             OR  (      abaa.last_update_date  > gt_pre_process_date
+                   AND abaa.last_update_date  <= gt_cur_process_date)
+             OR (      abaua.last_update_date > gt_pre_process_date
+                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.11 Mod End
       AND abaa.bank_account_id = abaua.external_bank_account_id
       AND abaua.vendor_id      = pvsa.vendor_id
       AND abaua.vendor_site_id = pvsa.vendor_site_id
@@ -4816,13 +4909,25 @@ AS
 --                AND ((   af.last_update_date_pv    > gt_pre_process_date
 --                      OR af.last_update_date_pvsa  > gt_pre_process_date
 --                      OR af.last_update_date_abaua > gt_pre_process_date
-                AND ((   af.creation_date_pv    > gt_pre_process_date
-                      OR af.creation_date_pvsa  > gt_pre_process_date
-                      OR af.creation_date_abaua > gt_pre_process_date
+-- Ver1.11 Mod Start
+--                AND ((   af.creation_date_pv    > gt_pre_process_date
+--                      OR af.creation_date_pvsa  > gt_pre_process_date
+--                      OR af.creation_date_abaua > gt_pre_process_date
+                AND ((   (    af.creation_date_pv    > gt_pre_process_date
+                          AND af.creation_date_pv    <= gt_cur_process_date)
+                      OR (    af.creation_date_pvsa  > gt_pre_process_date
+                          AND af.creation_date_pvsa  <= gt_cur_process_date)
+                      OR (    af.creation_date_abaua > gt_pre_process_date
+                          AND af.creation_date_abaua <= gt_cur_process_date)
+-- Ver1.11 Mod End
 -- Ver1.10 Mod End
                      )
                      OR
-                     (    af.last_update_date_abaa > gt_pre_process_date
+-- Ver1.11 Mod Start
+--                     (    af.last_update_date_abaa > gt_pre_process_date
+                     (  (      af.last_update_date_abaa > gt_pre_process_date
+                           AND af.last_update_date_abaa <= gt_cur_process_date)
+-- Ver1.11 Mod End
                       AND af.spec_items_chg_flag = cv_y
                      ))
             )
@@ -5032,7 +5137,12 @@ AS
           po_vendors  pv  -- 仕入先マスタ
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pv.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pv.last_update_date > gt_pre_process_date)
+           OR (    pv.last_update_date > gt_pre_process_date
+               AND pv.last_update_date <= gt_cur_process_date)
+          )
+-- Ver1.11 Mod End
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
       AND EXISTS (
               SELECT
@@ -5088,7 +5198,12 @@ AS
         , po_vendors           pv    -- 仕入先マスタ
       WHERE
           (   gt_pre_process_date IS NULL
-           OR pvsa.last_update_date > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--           OR pvsa.last_update_date > gt_pre_process_date)
+           OR (    pvsa.last_update_date > gt_pre_process_date
+               AND pvsa.last_update_date <= gt_cur_process_date)
+           )
+-- Ver1.11 Mod End
       AND pvsa.org_id    = gt_target_organization_id
       AND pvsa.vendor_id = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
@@ -5338,8 +5453,14 @@ AS
                 , po_vendors                pv         -- 仕入先マスタ
               WHERE
                    (   gt_pre_process_date IS NULL
-                    OR abaa_sub.last_update_date > gt_pre_process_date
-                    OR abaua.last_update_date    > gt_pre_process_date)
+-- Ver1.11 Mod Start
+--                    OR abaa_sub.last_update_date > gt_pre_process_date
+--                    OR abaua.last_update_date    > gt_pre_process_date)
+                    OR (      abaa_sub.last_update_date > gt_pre_process_date
+                          AND abaa_sub.last_update_date <= gt_cur_process_date)
+                    OR (      abaua.last_update_date    > gt_pre_process_date
+                          AND abaua.last_update_date    <= gt_cur_process_date))
+-- Ver1.11 Mod End
                AND abaa_sub.bank_account_id = abaa.bank_account_id
                AND abaa_sub.bank_account_id = abaua.external_bank_account_id
                AND abaua.vendor_id          = pvsa.vendor_id
