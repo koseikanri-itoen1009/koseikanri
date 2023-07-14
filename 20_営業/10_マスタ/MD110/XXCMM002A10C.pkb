@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A10C (body)
  * Description      : 社員データIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_002_A10_社員データIF抽出_EBSコンカレント
- * Version          : 1.16
+ * Version          : 1.18
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -43,7 +43,8 @@ AS
  *  2023-04-18    1.14  T.Mizutani       PTテスト不具合No.0009
  *  2023-05-22    1.15  F.Hasebe         システム統合テストNo.5修正対応
  *  2023-06-05    1.16  F.Hasebe         内部ToDoNo.50修正対応
- *
+ *  2023-07-11    1.17  F.Hasebe         E_本稼働_19324対応
+ *  2023-07-06    1.18  F.Hasebe         E_本稼働_19314対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -221,6 +222,10 @@ AS
   cv_prf_def_account_cd     CONSTANT VARCHAR2(30)  := 'XXCMM1_002A10_DEF_ACCOUNT_CD';
   -- XXCMM:デフォルト費用勘定の補助科目（OIC連携）
   cv_prf_def_sub_acct_cd    CONSTANT VARCHAR2(30)  := 'XXCMM1_002A10_DEF_SUB_ACCT_CD';
+-- Ver1.17 Add Start
+  -- XXCMM:PaaS処理用の新入社員情報ファイル名（OIC連携）
+  cv_prf_new_emp_out_file   CONSTANT VARCHAR2(30)  := 'XXCMM1_002A10_NE_OUT_FILE_FIL';
+-- Ver1.17 Add End
 --
   -- メッセージ名
   cv_input_param_msg        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-60001';       -- パラメータ出力メッセージ
@@ -323,6 +328,10 @@ AS
   gt_prf_val_def_account_cd     fnd_profile_option_values.profile_option_value%TYPE;
   -- XXCMM:デフォルト費用勘定の補助科目（OIC連携）
   gt_prf_val_def_sub_acct_cd    fnd_profile_option_values.profile_option_value%TYPE;
+-- Ver1.17 Add Start
+  -- XXCMM:PaaS処理用の新入社員情報ファイル名（OIC連携）
+  gt_prf_val_new_emp_out_file   fnd_profile_option_values.profile_option_value%TYPE;
+-- Ver1.17 Add End
 --
   -- OIC連携処理管理テーブルの登録・更新データ
   gt_conc_program_name          fnd_concurrent_programs.concurrent_program_name%TYPE;    -- コンカレントプログラム名
@@ -332,6 +341,9 @@ AS
 --
   gt_if_dest_date               DATE;                                                    -- 連携日付
   gv_str_pre_process_date       VARCHAR2(19);                                            -- 前回処理日時（文字列）
+-- Ver1.18 Add Start
+  gv_str_cur_process_date       VARCHAR2(19);                                            -- 今回処理日時（文字列）
+-- Ver1.18 Add End
 --
   -- ファイルハンドル
   gf_wrk_file_handle            UTL_FILE.FILE_TYPE;         -- 従業員情報連携データファイル
@@ -343,6 +355,9 @@ AS
   gf_new_usr_file_handle        UTL_FILE.FILE_TYPE;         -- PaaS処理用の新規ユーザー情報ファイル
   gf_emp_bnk_file_handle        UTL_FILE.FILE_TYPE;         -- PaaS処理用の従業員経費口座情報ファイル
   gf_emp_inf_file_handle        UTL_FILE.FILE_TYPE;         -- PaaS処理用の社員差分情報ファイル
+-- Ver1.17 Add Start
+  gf_new_emp_file_handle        UTL_FILE.FILE_TYPE;         -- PaaS処理用の新入社員情報ファイル
+-- Ver1.17 Add End
 --
   -- 個別件数
   -- 抽出件数
@@ -373,6 +388,9 @@ AS
   gn_out_wk2_cnt                NUMBER;                     -- 従業員情報（上長・新規採用退職者）連携データファイル出力件数
   gn_out_p_bank_acct_cnt        NUMBER;                     -- PaaS処理用の従業員経費口座情報ファイル出力件数
   gn_out_p_emp_info_cnt         NUMBER;                     -- PaaS処理用の社員差分情報ファイル出力件数
+-- Ver1.17 Add Start
+  gn_out_p_new_emp_cnt          NUMBER;                     -- PaaS処理用の新入社員情報ファイル出力件数
+-- Ver1.17 Add End
 --  
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -612,6 +630,15 @@ AS
     l_prf_tab(ln_prf_idx).prf_name  := cv_prf_def_sub_acct_cd;
     l_prf_tab(ln_prf_idx).prf_value := gt_prf_val_def_sub_acct_cd;
     --
+-- Ver1.17 Add Start
+    -- 13.XXCMM:PaaS処理用の新入社員情報ファイル名（OIC連携）
+    gt_prf_val_new_emp_out_file := FND_PROFILE.VALUE( cv_prf_new_emp_out_file );
+    -- プロファイル用テーブルに設定
+    ln_prf_idx := ln_prf_idx + 1;
+    l_prf_tab(ln_prf_idx).prf_name  := cv_prf_new_emp_out_file;
+    l_prf_tab(ln_prf_idx).prf_value := gt_prf_val_new_emp_out_file;
+    --
+-- Ver1.17 Add End
     -- プロファイル値チェック
     <<prf_chk_loop>>
     FOR i IN 1..l_prf_tab.COUNT LOOP
@@ -711,6 +738,12 @@ AS
     ln_file_name_idx := ln_file_name_idx + 1;
     l_file_name_tab(ln_file_name_idx) := gt_prf_val_emp_inf_out_file;
     --
+-- Ver1.17 Add Start
+    -- PaaS処理用の新入社員情報ファイル名
+    ln_file_name_idx := ln_file_name_idx + 1;
+    l_file_name_tab(ln_file_name_idx) := gt_prf_val_new_emp_out_file;
+    --
+-- Ver1.17 Add End
     <<file_name_out_loop>>
     FOR i IN 1..l_file_name_tab.COUNT LOOP
       --
@@ -947,6 +980,16 @@ AS
                                  , open_mode    => cv_open_mode_w
                                  , max_linesize => cn_max_linesize
                                  );
+-- Ver1.17 Add Start
+      --
+      -- PaaS処理用の新入社員情報ファイル
+      gf_new_emp_file_handle  := UTL_FILE.FOPEN(
+                                   location     => gt_prf_val_out_file_dir
+                                 , filename     => gt_prf_val_new_emp_out_file
+                                 , open_mode    => cv_open_mode_w
+                                 , max_linesize => cn_max_linesize
+                                 );
+-- Ver1.17 Add End
   EXCEPTION
     WHEN OTHERS THEN
       lv_errmsg := SUBSTRB(
@@ -963,6 +1006,14 @@ AS
       RAISE global_process_expt;
     END;
 --
+-- Ver1.18 Add Start
+    -- ==============================================================
+    -- 14.今回処理日時（文字列）の設定
+    -- （従業員マスタ、アサイメントマスタのDFF検索用）
+    -- ==============================================================
+    gv_str_cur_process_date := TO_CHAR( gt_cur_process_date , cv_datetime_fmt );
+--
+-- Ver1.18 Add Start
   EXCEPTION
     -- *** ロックエラー例外ハンドラ ***
     WHEN global_lock_expt THEN
@@ -1321,13 +1372,28 @@ AS
 -- Ver1.2(E056) Add Start
       AND pvsa.vendor_site_code(+)      = cv_site_code_comp
 -- Ver1.2(E056) Add End
-      AND (   papf.last_update_date >= gt_pre_process_date
--- Ver1.13 Mod Start
---           OR papf.attribute23      >= gv_str_pre_process_date)
-           OR papf.attribute23      >= gv_str_pre_process_date
-           OR pvsa.last_update_date >= gt_pre_process_date
+-- Ver1.18 Mod Start
+--      AND (   papf.last_update_date >= gt_pre_process_date
+---- Ver1.13 Mod Start
+----           OR papf.attribute23      >= gv_str_pre_process_date)
+--           OR papf.attribute23      >= gv_str_pre_process_date
+--           OR pvsa.last_update_date >= gt_pre_process_date
+--          )
+---- Ver1.13 Mod End
+      AND (   
+              (     papf.last_update_date >= gt_pre_process_date
+                AND papf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    papf.attribute23      >= gv_str_pre_process_date
+                AND papf.attribute23      <  gv_str_cur_process_date
+              )
+           OR (
+                    pvsa.last_update_date >= gt_pre_process_date
+                AND pvsa.last_update_date <  gt_cur_process_date
+              )
           )
--- Ver1.13 Mod End
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -1376,8 +1442,19 @@ AS
               )
       AND papf.person_id                = pv.employee_id(+)
       AND pv.vendor_type_lookup_code(+) = cv_vd_type_employee
-      AND (   papf.last_update_date >= gt_pre_process_date
-           OR papf.attribute23      >= gv_str_pre_process_date)
+-- Ver1.18 Mod Start
+--      AND (   papf.last_update_date >= gt_pre_process_date
+--           OR papf.attribute23      >= gv_str_pre_process_date)
+      AND (   
+              (     papf.last_update_date >= gt_pre_process_date
+                AND papf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    papf.attribute23      >= gv_str_pre_process_date
+                AND papf.attribute23      <  gv_str_cur_process_date
+              )
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -1423,8 +1500,19 @@ AS
               )
       AND papf.person_id                = pv.employee_id(+)
       AND pv.vendor_type_lookup_code(+) = cv_vd_type_employee
-      AND (   papf.last_update_date >= gt_pre_process_date
-           OR papf.attribute23      >= gv_str_pre_process_date)
+-- Ver1.18 Mod Start
+--      AND (   papf.last_update_date >= gt_pre_process_date
+--           OR papf.attribute23      >= gv_str_pre_process_date)
+      AND (   
+              (     papf.last_update_date >= gt_pre_process_date
+                AND papf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    papf.attribute23      >= gv_str_pre_process_date
+                AND papf.attribute23      <  gv_str_cur_process_date
+              )
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -1469,11 +1557,17 @@ AS
                )
       AND papf.person_id                = pv.employee_id(+)
       AND pv.vendor_type_lookup_code(+) = cv_vd_type_employee
--- Ver1.10 Mod Start
---      AND (   papf.last_update_date >= gt_pre_process_date
---           OR papf.attribute23      >= gv_str_pre_process_date)
-      AND papf.creation_date >= gt_pre_process_date
--- Ver1.10 Mod End
+-- Ver1.18 Mod Start
+---- Ver1.10 Mod Start
+----      AND (   papf.last_update_date >= gt_pre_process_date
+----           OR papf.attribute23      >= gv_str_pre_process_date)
+--      AND papf.creation_date >= gt_pre_process_date
+---- Ver1.10 Mod End
+      AND (
+                papf.creation_date >= gt_pre_process_date
+            AND papf.creation_date <  gt_cur_process_date
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -1553,7 +1647,13 @@ AS
 -- Ver1.4 Add Start
       AND ppos.person_id            = xoedi_new.person_id(+)
 -- Ver1.4 Add End
-      AND ppos.last_update_date     >= gt_pre_process_date
+-- Ver1.18 Mod Start
+--      AND ppos.last_update_date     >= gt_pre_process_date      
+      AND (
+                ppos.last_update_date >= gt_pre_process_date
+            AND ppos.last_update_date <  gt_cur_process_date
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
         , ppos.date_start ASC
@@ -1588,8 +1688,18 @@ AS
                    papf2.person_id = papf.person_id
               )
       AND papf.person_id     = fu.employee_id
-      AND papf.creation_date >= gt_pre_process_date
-      AND fu.creation_date   >= gt_pre_process_date
+-- Ver1.18 Mod Start
+--      AND papf.creation_date >= gt_pre_process_date
+--      AND fu.creation_date   >= gt_pre_process_date
+      AND (
+                papf.creation_date >= gt_pre_process_date
+            AND papf.creation_date <  gt_cur_process_date
+          )
+      AND (
+                fu.creation_date   >= gt_pre_process_date
+            AND fu.creation_date   <  gt_cur_process_date
+          )
+-- Ver1.18 Mod End
       --
       UNION ALL
       -- ユーザーマスタが存在しない場合
@@ -1638,7 +1748,13 @@ AS
 --                    OR
 --                    paaf.ass_attribute19  >= gv_str_pre_process_date))
 --          )
-      AND papf.creation_date >= gt_pre_process_date
+-- Ver1.18 Mod Start
+--      AND papf.creation_date >= gt_pre_process_date
+      AND (
+                papf.creation_date >= gt_pre_process_date
+            AND papf.creation_date <  gt_cur_process_date
+          )
+-- Ver1.18 Mod Start
 -- Ver 1.2(E055) Mod End
       --
       ORDER BY
@@ -1727,8 +1843,19 @@ AS
       AND paaf.supervisor_id        = paaf_sup.person_id(+)
       AND (   ppos.actual_termination_date IS NULL
            OR xoedi.person_id IS NULL)
-      AND (   paaf.last_update_date >= gt_pre_process_date
-           OR paaf.ass_attribute19  >= gv_str_pre_process_date)
+-- Ver1.18 Mod Start
+--      AND (   paaf.last_update_date >= gt_pre_process_date
+--           OR paaf.ass_attribute19  >= gv_str_pre_process_date)
+      AND (   
+              (     paaf.last_update_date >= gt_pre_process_date
+                AND paaf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    paaf.ass_attribute19  >= gv_str_pre_process_date
+                AND paaf.ass_attribute19  <  gv_str_cur_process_date
+              )
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -1881,8 +2008,20 @@ AS
       AND paaf.supervisor_id        = paaf_sup.person_id(+)
       AND (   ppos.actual_termination_date IS NULL
            OR xoedi.person_id IS NULL)
-      AND (   paaf.last_update_date >= gt_pre_process_date
-           OR paaf.ass_attribute19  >= gv_str_pre_process_date)
+-- Ver1.18 Mod Start
+--      AND (   paaf.last_update_date >= gt_pre_process_date
+--           OR paaf.ass_attribute19  >= gv_str_pre_process_date)
+           
+      AND (   
+              (     paaf.last_update_date >= gt_pre_process_date
+                AND paaf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    paaf.ass_attribute19  >= gv_str_pre_process_date
+                AND paaf.ass_attribute19  <  gv_str_cur_process_date
+              )
+          )
+-- Ver1.18 Mod End
       ORDER BY
           paaf.assignment_number ASC
     ;
@@ -3025,6 +3164,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_file_data         VARCHAR2(30000) DEFAULT NULL;       -- 出力内容
+-- Ver1.17 Add Start
+    lv_new_emp_flag      VARCHAR2(1);                        -- 新入社員フラグ
+-- Ver1.17 Add End
 --
     -- *** ローカル・カーソル ***
     --------------------------------------
@@ -3041,6 +3183,9 @@ AS
              ELSE
                cv_n
            END)                         AS suspended            -- 停止
+-- Ver1.17 Add Start
+        , papf.person_id                AS person_id            -- 個人ID
+-- Ver1.17 Add End
       FROM
           per_all_people_f  papf  -- 従業員マスタ
         , fnd_user          fu    -- ユーザーマスタ
@@ -3068,8 +3213,16 @@ AS
                    xoedi.person_id  = papf.person_id
                AND xoedi.user_name IS NULL
               )
-      AND (   fu.last_update_date >= gt_pre_process_date
-           OR fu.end_date         = gt_if_dest_date)
+-- Ver1.18 Mod Start
+--      AND (   fu.last_update_date >= gt_pre_process_date
+--           OR fu.end_date         = gt_if_dest_date)
+      AND (   
+            (     fu.last_update_date >= gt_pre_process_date
+              AND fu.last_update_date <  gt_cur_process_date
+            )
+           OR     fu.end_date         = gt_if_dest_date
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -3159,12 +3312,65 @@ AS
           papf.employee_number ASC
     ;
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+--
+    --------------------------------------
+    -- 新入社員情報の抽出カーソル
+    --------------------------------------
+    CURSOR new_emp_cur (
+             in_person_id IN NUMBER
+    )
+    IS
+      SELECT
+          fu.user_name                                      AS user_name                    -- ユーザー名
+        , papf.employee_number                              AS employee_number              -- 従業員番号
+        , TO_CHAR(fu.start_date, cv_date_fmt)               AS start_date                   -- 開始日
+        , cv_y                                              AS generated_user_account_flag  -- 生成済ユーザー・アカウント
+        , papf.person_id                                    AS person_id                    -- 個人ID
+      FROM
+          per_all_people_f     papf  -- 従業員マスタ
+        , fnd_user             fu    -- ユーザーマスタ
+      WHERE
+          papf.attribute3 IN (cv_emp_kbn_internal, cv_emp_kbn_external , cv_emp_kbn_dummy)  -- 従業員区分（1:内部、2:外部、4:ダミー）
+      AND papf.attribute4 IS NULL    -- 仕入先コード
+      AND papf.attribute5 IS NULL    -- 運送業者
+      AND papf.employee_number NOT IN (cv_not_get_emp1, cv_not_get_emp2, cv_not_get_emp3, cv_not_get_emp4, 
+                                       cv_not_get_emp5, cv_not_get_emp6, cv_not_get_emp7, cv_not_get_emp8)  -- 従業員番号
+      AND papf.effective_start_date = 
+              (SELECT
+                   MAX(papf2.effective_start_date)
+               FROM
+                   per_all_people_f  papf2 -- 従業員マスタ
+               WHERE
+                   papf2.person_id = papf.person_id
+              )
+      AND papf.person_id     = fu.employee_id
+-- Ver1.18 Mod Start
+--      AND papf.creation_date >= gt_pre_process_date
+--      AND fu.creation_date   >= gt_pre_process_date
+      AND (
+                papf.creation_date >= gt_pre_process_date
+            AND papf.creation_date <  gt_cur_process_date
+           )
+      AND ( 
+                fu.creation_date   >= gt_pre_process_date
+            AND fu.creation_date   <  gt_cur_process_date
+          )
+-- Ver1.18 Mod End
+      AND papf.person_id = in_person_id
+      ORDER BY
+          employee_number ASC
+    ;
+-- Ver1.17 Add End
 --
     -- *** ローカル・レコード ***
     l_user_rec     user_cur%ROWTYPE;    -- ユーザーの抽出カーソルレコード
 -- Ver1.2(E055) Add Start
     l_user2_rec    user2_cur%ROWTYPE;   -- ユーザー（削除）の抽出カーソルレコード
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+    l_new_emp_rec  new_emp_cur%ROWTYPE; -- 新入社員情報の抽出カーソルレコード
+-- Ver1.17 Add End
 --
   BEGIN
 --
@@ -3188,22 +3394,24 @@ AS
       -- 抽出件数カウントアップ
       gn_get_user_cnt := gn_get_user_cnt + 1;
       --
-      -- ==============================================================
-      -- ユーザー情報のファイル出力(A-3-2)
-      -- ==============================================================
+-- Ver1.17 Del Start
+--      -- ==============================================================
+--      -- ユーザー情報のファイル出力(A-3-2)
+--      -- ==============================================================
       -- ヘッダー行の作成（初回のみ）
-      IF ( gn_get_user_cnt = 1 ) THEN
-        --
-        BEGIN
-          -- ヘッダー行のファイル出力
-          UTL_FILE.PUT_LINE( gf_usr_file_handle  -- ユーザー情報連携データファイル
-                           , cv_user_header
-                           );
-        EXCEPTION
-          WHEN OTHERS THEN
-            RAISE global_fileout_expt;
-        END;
-      END IF;
+--      IF ( gn_get_user_cnt = 1 ) THEN
+--        --
+--        BEGIN
+--          -- ヘッダー行のファイル出力
+--          UTL_FILE.PUT_LINE( gf_usr_file_handle  -- ユーザー情報連携データファイル
+--                           , cv_user_header
+--                           );
+--        EXCEPTION
+--          WHEN OTHERS THEN
+--            RAISE global_fileout_expt;
+--        END;
+--      END IF;
+-- Ver1.17 Del End
       --
       -- データ行の作成
       lv_file_data := cv_meta_merge;                                                      -- 1 : METADATA
@@ -3212,13 +3420,63 @@ AS
       lv_file_data := lv_file_data || cv_pipe || l_user_rec.user_name;                    -- 4 : Username（ユーザー名）
       lv_file_data := lv_file_data || cv_pipe || l_user_rec.suspended;                    -- 5 : Suspended（停止）
       --
+-- Ver1.17 Mod Start
+--      BEGIN
+--        -- データ行のファイル出力
+--        UTL_FILE.PUT_LINE( gf_usr_file_handle  -- ユーザー情報連携データファイル
+--                         , lv_file_data
+--                         );
+--        -- 出力件数カウントアップ
+--        gn_out_user_cnt := gn_out_user_cnt + 1;
+      -- ==============================================================
+      -- 新入社員情報の抽出(A-3-2)
+      -- ==============================================================
+      -- カーソルオープン
+      OPEN new_emp_cur (
+             l_user_rec.person_id
+           );
+      <<output_new_emp_loop>>
+      LOOP
+        --
+        FETCH new_emp_cur INTO l_new_emp_rec;
+        EXIT WHEN new_emp_cur%NOTFOUND;
+        --
+          lv_new_emp_flag := cv_y;
+          -- 一致する場合Yフラグをたてる
+      END LOOP output_new_emp_loop;
+--
+      -- カーソルクローズ
+      CLOSE new_emp_cur;
+--
+      -- ==============================================================
+      -- ユーザー情報のファイル出力(A-3-3)
+      -- ==============================================================
       BEGIN
-        -- データ行のファイル出力
-        UTL_FILE.PUT_LINE( gf_usr_file_handle  -- ユーザー情報連携データファイル
-                         , lv_file_data
-                         );
-        -- 出力件数カウントアップ
-        gn_out_user_cnt := gn_out_user_cnt + 1;
+        IF ( lv_new_emp_flag = cv_y ) THEN
+          -- データ行のファイル出力しない
+          gn_get_user_cnt := gn_get_user_cnt - 1;
+        ELSE
+          -- ヘッダー行の作成（2回目以降は出力しない）
+          IF ( gn_get_user_cnt = 1 ) THEN
+            --
+            BEGIN
+              -- ヘッダー行のファイル出力
+              UTL_FILE.PUT_LINE( gf_usr_file_handle  -- ユーザー情報連携データファイル
+                               , cv_user_header
+                               );
+            EXCEPTION
+              WHEN OTHERS THEN
+                RAISE global_fileout_expt;
+            END;
+          END IF;         
+          -- データ行のファイル出力する
+          UTL_FILE.PUT_LINE( gf_usr_file_handle  -- ユーザー情報連携データファイル
+                           , lv_file_data
+                           );
+          -- 出力件数カウントアップ
+          gn_out_user_cnt := gn_out_user_cnt + 1;
+        END IF;
+-- Ver1.17 Mod End
       EXCEPTION
         WHEN OTHERS THEN
           RAISE global_fileout_expt;
@@ -3300,6 +3558,12 @@ AS
         CLOSE user2_cur;
       END IF;
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       lv_errmsg := SUBSTRB(
                      xxccp_common_pkg.get_msg(
@@ -3329,6 +3593,12 @@ AS
         CLOSE user2_cur;
       END IF;
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -3343,8 +3613,14 @@ AS
       -- カーソルクローズ
       IF ( user2_cur%ISOPEN ) THEN
         CLOSE user2_cur;
-      END IF;
+     END IF;
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -3361,6 +3637,12 @@ AS
         CLOSE user2_cur;
       END IF;
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -3376,6 +3658,12 @@ AS
         CLOSE user2_cur;
       END IF;
 -- Ver1.2(E055) Add End
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -3543,8 +3831,20 @@ AS
       AND (   ppos.actual_termination_date IS NULL
            OR xoedi.person_id IS NULL)
 -- Ver1.12 Add End
-      AND (   paaf.last_update_date >= gt_pre_process_date
-           OR paaf.ass_attribute19  >= gv_str_pre_process_date)
+-- Ver1.18 Mod Start
+--      AND (   paaf.last_update_date >= gt_pre_process_date
+--           OR paaf.ass_attribute19  >= gv_str_pre_process_date)
+           
+      AND (
+              (     paaf.last_update_date >= gt_pre_process_date
+                AND paaf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    paaf.ass_attribute19  >= gv_str_pre_process_date
+                AND paaf.ass_attribute19  <  gv_str_cur_process_date
+              )
+          )
+-- Ver1.18 Mod End
       ORDER BY
         paaf.assignment_number ASC
     ;
@@ -3598,7 +3898,13 @@ AS
                    xoedi.person_id  = ppos.person_id
                AND xoedi.date_start = ppos.date_start
               )
-      AND ppos.last_update_date >= gt_pre_process_date
+-- Ver1.18 Mod Start
+--      AND ppos.last_update_date >= gt_pre_process_date
+      AND (
+                ppos.last_update_date >= gt_pre_process_date
+            AND ppos.last_update_date <  gt_cur_process_date
+          )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
     ;
@@ -3974,9 +4280,21 @@ AS
       AND abaua.external_bank_account_id = abaa.bank_account_id
       AND abaa.account_type              = cv_acct_type_sup
       AND abaa.bank_branch_id            = abb.bank_branch_id
-      AND (   abaua.creation_date   >= gt_pre_process_date
-           OR abaa.last_update_date >= gt_pre_process_date
-           OR abaa.inactive_date    =  gt_if_dest_date)
+-- Ver1.18 Mod Start
+--      AND (   abaua.creation_date   >= gt_pre_process_date
+--           OR abaa.last_update_date >= gt_pre_process_date
+--           OR abaa.inactive_date    =  gt_if_dest_date)
+      AND (
+               (      abaua.creation_date   >= gt_pre_process_date
+                  AND abaua.creation_date   <  gt_cur_process_date
+               )
+           OR  (
+                      abaa.last_update_date >= gt_pre_process_date
+                  AND abaa.last_update_date <  gt_cur_process_date
+               )
+           OR         abaa.inactive_date    =  gt_if_dest_date
+          )
+-- Ver1.18 Mod End
       ORDER BY
           abb.bank_number
         , abb.bank_num
@@ -4166,6 +4484,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_file_data         VARCHAR2(30000) DEFAULT NULL;       -- 出力内容
+-- Ver1.17 Add Start
+    lv_new_emp_flag      VARCHAR2(1);                        -- 新入社員フラグ
+-- Ver1.17 Add End
 --
     -- *** ローカル・カーソル ***
     --------------------------------------
@@ -4316,19 +4637,95 @@ AS
       AND paaf.period_of_service_id = ppos.period_of_service_id
       AND paaf.supervisor_id        = paaf_sup.person_id(+)
       AND papf.employee_number      = xoedi.employee_number(+)
-      AND (   papf.last_update_date >= gt_pre_process_date
-           OR papf.attribute23      >= gv_str_pre_process_date
-           OR paaf.last_update_date >= gt_pre_process_date
-           OR paaf.ass_attribute19  >= gv_str_pre_process_date
-           OR ppos.last_update_date >= gt_pre_process_date
+-- Ver1.18 Mod Start
+--      AND (   papf.last_update_date >= gt_pre_process_date
+--           OR papf.attribute23      >= gv_str_pre_process_date
+--           OR paaf.last_update_date >= gt_pre_process_date
+--           OR paaf.ass_attribute19  >= gv_str_pre_process_date
+--           OR ppos.last_update_date >= gt_pre_process_date
+--          )
+      AND (   
+              (     papf.last_update_date >= gt_pre_process_date
+                AND papf.last_update_date <  gt_cur_process_date
+            )
+           OR (
+                    papf.attribute23 >= gv_str_pre_process_date
+                AND papf.attribute23 <  gv_str_cur_process_date
+              )
+           OR (
+                    paaf.last_update_date >= gt_pre_process_date
+                AND paaf.last_update_date <  gt_cur_process_date
+              )
+           OR (
+                    paaf.ass_attribute19 >= gv_str_pre_process_date
+                AND paaf.ass_attribute19 <  gv_str_cur_process_date
+              )
+           OR (
+                    ppos.last_update_date >= gt_pre_process_date
+                AND ppos.last_update_date <  gt_cur_process_date
+              )
           )
+-- Ver1.18 Mod End
       ORDER BY
           papf.employee_number ASC
       FOR UPDATE OF xoedi.person_id NOWAIT
     ;
 --
+-- Ver1.17 Add Start
+    --------------------------------------
+    -- 新入社員情報の抽出カーソル
+    --------------------------------------
+    CURSOR new_emp_cur (
+             in_person_id IN NUMBER
+    )
+    IS
+      SELECT
+          fu.user_name                                      AS user_name                    -- ユーザー名
+        , papf.employee_number                              AS employee_number              -- 従業員番号
+        , TO_CHAR(fu.start_date, cv_date_fmt)               AS start_date                   -- 開始日
+        , cv_y                                              AS generated_user_account_flag  -- 生成済ユーザー・アカウント
+        , papf.person_id                                    AS person_id                    -- 個人ID
+      FROM
+          per_all_people_f     papf  -- 従業員マスタ
+        , fnd_user             fu    -- ユーザーマスタ
+      WHERE
+          papf.attribute3 IN (cv_emp_kbn_internal, cv_emp_kbn_external , cv_emp_kbn_dummy)  -- 従業員区分（1:内部、2:外部、4:ダミー）
+      AND papf.attribute4 IS NULL    -- 仕入先コード
+      AND papf.attribute5 IS NULL    -- 運送業者
+      AND papf.employee_number NOT IN (cv_not_get_emp1, cv_not_get_emp2, cv_not_get_emp3, cv_not_get_emp4, 
+                                       cv_not_get_emp5, cv_not_get_emp6, cv_not_get_emp7, cv_not_get_emp8)  -- 従業員番号
+      AND papf.effective_start_date = 
+              (SELECT
+                   MAX(papf2.effective_start_date)
+               FROM
+                   per_all_people_f  papf2 -- 従業員マスタ
+               WHERE
+                   papf2.person_id = papf.person_id
+              )
+      AND papf.person_id     = fu.employee_id
+-- Ver1.18 Mod Start
+--      AND papf.creation_date >= gt_pre_process_date
+--      AND fu.creation_date   >= gt_pre_process_date
+      AND (
+                papf.creation_date >= gt_pre_process_date
+            AND papf.creation_date <  gt_cur_process_date
+          )
+      AND (
+                fu.creation_date   >= gt_pre_process_date
+            AND fu.creation_date   <  gt_cur_process_date
+          )
+-- Ver1.18 Mod End
+      AND papf.person_id = in_person_id
+      ORDER BY
+          employee_number ASC
+    ;
+--
+-- Ver1.7 Add End
     -- *** ローカル・レコード ***
     l_emp_info_rec      emp_info_cur%ROWTYPE;    -- 社員差分情報の抽出カーソルレコード
+-- Ver1.17 Add Start
+    l_new_emp_rec       new_emp_cur%ROWTYPE;     -- 新入社員情報の抽出カーソルレコード
+-- Ver1.17 Add End
 --
   BEGIN
 --
@@ -4401,9 +4798,11 @@ AS
       IF ( l_emp_info_rec.roll_change_flag = cv_y ) THEN
         -- ロール変更フラグがYの場合
         --
+-- Ver1.17 Del Start
         -- ==============================================================
         -- 社員差分情報のファイル出力(A-6-3)
         -- ==============================================================
+-- Ver1.17 Del End
         -- データ行の作成
         lv_file_data := xxccp_oiccommon_pkg.to_csv_string( l_emp_info_rec.user_name       , cv_space );  --  1 : ユーザー名
         lv_file_data := lv_file_data || cv_comma ||
@@ -4435,13 +4834,56 @@ AS
         lv_file_data := lv_file_data || cv_comma ||
                         xxccp_oiccommon_pkg.to_csv_string( l_emp_info_rec.dpt6_cd         , cv_space );  -- 15 : ６階層目部門コード
         --
+-- Ver1.17 Mod Start
+--        BEGIN
+--         -- データ行のファイル出力
+--          UTL_FILE.PUT_LINE( gf_emp_inf_file_handle  -- PaaS処理用の社員差分情報ファイル
+--                           , lv_file_data
+--                           );
+--          -- 出力件数カウントアップ
+--          gn_out_p_emp_info_cnt := gn_out_p_emp_info_cnt + 1;
+    -- ==============================================================
+    -- 新入社員情報の抽出(A-6-3)
+    -- ==============================================================
+      -- カーソルオープン
+      OPEN new_emp_cur (
+             l_emp_info_rec.person_id
+           );
+      <<output_new_emp_loop>>
+      LOOP
+        --
+        FETCH new_emp_cur INTO l_new_emp_rec;
+        EXIT WHEN new_emp_cur%NOTFOUND;
+        --
+        -- emp_info_curとnew_emp_curを比較
+--        IF ( l_emp_info_rec.person_id = l_new_emp_rec.person_id ) THEN
+          lv_new_emp_flag := cv_y;
+          -- 一致する場合Yフラグをたてる
+--        END IF;
+      END LOOP output_new_emp_loop;
+--
+      -- カーソルクローズ
+      CLOSE new_emp_cur;
+        -- ==============================================================
+        -- 社員差分情報のファイル出力(A-6-4)
+        -- ==============================================================
         BEGIN
-          -- データ行のファイル出力
-          UTL_FILE.PUT_LINE( gf_emp_inf_file_handle  -- PaaS処理用の社員差分情報ファイル
-                           , lv_file_data
-                           );
-          -- 出力件数カウントアップ
-          gn_out_p_emp_info_cnt := gn_out_p_emp_info_cnt + 1;
+          IF ( lv_new_emp_flag = cv_y ) THEN
+            -- データ行のファイル出力
+            UTL_FILE.PUT_LINE( gf_new_emp_file_handle  -- PaaS処理用の新入社員情報ファイル
+                             , lv_file_data
+                             );
+            -- 出力件数カウントアップ
+            gn_out_p_new_emp_cnt := gn_out_p_new_emp_cnt + 1;
+          ELSE
+            UTL_FILE.PUT_LINE( gf_emp_inf_file_handle  -- PaaS処理用の社員差分情報ファイル
+                             , lv_file_data
+                             );
+            -- 出力件数カウントアップ
+            gn_out_p_emp_info_cnt := gn_out_p_emp_info_cnt + 1;
+          END IF;
+          --
+-- Ver1.17 Mod End
         EXCEPTION
           WHEN OTHERS THEN
             RAISE global_fileout_expt;
@@ -4454,9 +4896,14 @@ AS
       END IF;
       --
       --
+-- Ver1.17 Mod Start
+--      -- ==============================================================
+--      -- OIC社員差分情報テーブルの登録・更新処理(A-6-4)
+--      -- ==============================================================
       -- ==============================================================
-      -- OIC社員差分情報テーブルの登録・更新処理(A-6-4)
+      -- OIC社員差分情報テーブルの登録・更新処理(A-6-5)
       -- ==============================================================
+-- Ver1.17 Mod End
       IF (    l_emp_info_rec.roll_change_flag  = cv_y
            OR l_emp_info_rec.other_change_flag = cv_y ) THEN
         -- ロール変更フラグがY、または、その他変更フラグがYの場合
@@ -4600,9 +5047,15 @@ AS
       END IF;
       --
       --
+-- Ver1.17 Mod Start
+--      -- ==============================================================
+--      -- OIC社員差分情報バックアップテーブルの登録処理(A-6-5)
+--      -- ==============================================================
       -- ==============================================================
-      -- OIC社員差分情報バックアップテーブルの登録処理(A-6-5)
+      -- OIC社員差分情報バックアップテーブルの登録処理(A-6-6)
       -- ==============================================================
+
+-- Ver1.17 Mod End
       IF (    l_emp_info_rec.roll_change_flag  = cv_y
            OR l_emp_info_rec.other_change_flag = cv_y ) THEN
         -- ロール変更フラグがY、または、その他変更フラグがYの場合
@@ -4732,6 +5185,12 @@ AS
       IF ( emp_info_cur%ISOPEN ) THEN
         CLOSE emp_info_cur;
       END IF;
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_xxcmm             -- アプリケーション短縮名：XXCMM
@@ -4749,6 +5208,12 @@ AS
       IF ( emp_info_cur%ISOPEN ) THEN
         CLOSE emp_info_cur;
       END IF;
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       lv_errmsg := SUBSTRB(
                      xxccp_common_pkg.get_msg(
@@ -4772,6 +5237,12 @@ AS
       IF ( emp_info_cur%ISOPEN ) THEN
         CLOSE emp_info_cur;
       END IF;
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -4782,6 +5253,12 @@ AS
       IF ( emp_info_cur%ISOPEN ) THEN
         CLOSE emp_info_cur;
       END IF;
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -4792,6 +5269,12 @@ AS
       IF ( emp_info_cur%ISOPEN ) THEN
         CLOSE emp_info_cur;
       END IF;
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -4801,6 +5284,12 @@ AS
       IF ( emp_info_cur%ISOPEN ) THEN
         CLOSE emp_info_cur;
       END IF;
+-- Ver1.17 Add Start
+      -- カーソルクローズ
+      IF ( new_emp_cur%ISOPEN ) THEN
+        CLOSE new_emp_cur;
+      END IF;
+-- Ver1.17 Add End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -5044,6 +5533,9 @@ AS
     gn_out_wk2_cnt            := 0;     -- 従業員情報（上長・新規採用退職者）連携データファイル出力件数
     gn_out_p_bank_acct_cnt    := 0;     -- PaaS処理用の従業員経費口座情報ファイル出力件数
     gn_out_p_emp_info_cnt     := 0;     -- PaaS処理用の社員差分情報ファイル出力件数
+-- Ver1.17 Add Start
+    gn_out_p_new_emp_cnt      := 0;     -- PaaS処理用の新入社員情報ファイル出力件数
+-- Ver1.17 Add End
 --
     --
     --===============================================
@@ -5261,6 +5753,9 @@ AS
       gn_out_wk2_cnt          := 0;     -- 従業員情報（上長・新規採用退職者）連携データファイル出力件数
       gn_out_p_bank_acct_cnt  := 0;     -- PaaS処理用の従業員経費口座情報ファイル出力件数
       gn_out_p_emp_info_cnt   := 0;     -- PaaS処理用の社員差分情報ファイル出力件数
+-- Ver1.17 Add Start
+      gn_out_p_new_emp_cnt    := 0;     -- PaaS処理用の新入社員情報ファイル出力件数
+-- Ver1.17 Add End
       --
       -- エラー件数の設定
       gn_error_cnt            := 1;
@@ -5321,6 +5816,12 @@ AS
     IF ( UTL_FILE.IS_OPEN ( gf_emp_inf_file_handle )) THEN
       UTL_FILE.FCLOSE( gf_emp_inf_file_handle );
     END IF;
+-- Ver1.17 Add Start
+    -- PaaS処理用の新入社員情報ファイル
+    IF ( UTL_FILE.IS_OPEN ( gf_new_emp_file_handle )) THEN
+      UTL_FILE.FCLOSE( gf_new_emp_file_handle );
+    END IF;
+-- Ver1.17 Add End
 --    
     -------------------------------------------------
     -- 抽出件数の出力
@@ -5423,6 +5924,11 @@ AS
     -- PaaS処理用の社員差分情報ファイル
     l_out_cnt_tab(7).target  := gt_prf_val_emp_inf_out_file;
     l_out_cnt_tab(7).cnt     := TO_CHAR(gn_out_p_emp_info_cnt);
+-- Ver1.17 Add Start
+    -- PaaS処理用の新入社員情報ファイル
+    l_out_cnt_tab(8).target  := gt_prf_val_new_emp_out_file;
+    l_out_cnt_tab(8).cnt     := TO_CHAR(gn_out_p_new_emp_cnt);
+-- Ver1.17 Add End
     --
     <<out_count_out_loop>>
     FOR i IN 1..l_out_cnt_tab.COUNT LOOP
@@ -5479,7 +5985,11 @@ AS
 -- Ver1.2(E055) Add End
                      gn_out_wk2_cnt +
                      gn_out_p_bank_acct_cnt +
-                     gn_out_p_emp_info_cnt;
+-- Ver1.17 Mod Start
+--                     gn_out_p_emp_info_cnt;
+                     gn_out_p_emp_info_cnt +
+                     gn_out_p_new_emp_cnt;
+-- Ver1.17 Mod End
 --
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
