@@ -1,0 +1,60 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCMM_OIC_BANK_ACCT_EVAC
+ * Description     : OIC銀行口座退避テーブル
+ * Version         : 1.2
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/10/17    1.0   Y.Ooyama     新規作成
+ *  2023/02/21    1.1   Y.Ooyama     ST不具合No.0018対応：項目追加(銀行番号、銀行支店番号)
+ *  2023/04/10    1.2   Y.Ooyama     移行リハ2障害No.1対応：シノニム追加(銀行番号、銀行支店番号)
+ ************************************************************************/
+CREATE TABLE XXCMM.XXCMM_OIC_BANK_ACCT_EVAC (
+     bank_account_id                NUMBER(15)    NOT NULL
+    ,bank_account_num               VARCHAR2(30)  NOT NULL
+    ,bank_number                    VARCHAR2(30)
+    ,bank_branch_number             VARCHAR2(25)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcmm_oic_bank_acct_evac_pk PRIMARY KEY (bank_account_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcmm.xxcmm_oic_bank_acct_evac IS 'OIC銀行口座退避テーブル'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.bank_account_id                       IS '銀行口座ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.bank_account_num                      IS '銀行口座番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.bank_number                           IS '銀行番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.bank_branch_number                    IS '銀行支店番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.created_by                            IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.creation_date                         IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.last_updated_by                       IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.last_update_date                      IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.last_update_login                     IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.request_id                            IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.program_application_id                IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.program_id                            IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_bank_acct_evac.program_update_date                   IS 'プログラムによる更新日'
+/

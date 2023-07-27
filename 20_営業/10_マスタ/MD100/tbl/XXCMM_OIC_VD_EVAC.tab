@@ -1,0 +1,52 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCMM_OIC_VD_EVAC
+ * Description     : OIC仕入先退避テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/10/15    1.0   Y.Ooyama     新規作成
+ ************************************************************************/
+CREATE TABLE XXCMM.XXCMM_OIC_VD_EVAC (
+     vendor_id                      NUMBER        NOT NULL
+    ,vendor_name                    VARCHAR2(240) NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcmm_oic_vd_evac_pk PRIMARY KEY (vendor_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcmm.xxcmm_oic_vd_evac IS 'OIC仕入先退避テーブル'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.vendor_id                                    IS '仕入先ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.vendor_name                                  IS '仕入先名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.created_by                                   IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.creation_date                                IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.last_updated_by                              IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.last_update_date                             IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.last_update_login                            IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.request_id                                   IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.program_application_id                       IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.program_id                                   IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_vd_evac.program_update_date                          IS 'プログラムによる更新日'
+/

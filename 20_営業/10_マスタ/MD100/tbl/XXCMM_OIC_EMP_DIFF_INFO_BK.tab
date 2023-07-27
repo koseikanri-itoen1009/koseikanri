@@ -1,0 +1,149 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCMM_OIC_EMP_DIFF_INFO_BK
+ * Description     : OIC社員差分情報テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2023/01/09    1.0   Y.Ooyama     新規作成
+ ************************************************************************/
+CREATE TABLE XXCMM.XXCMM_OIC_EMP_DIFF_INFO_BK (
+     person_id                      NUMBER(10)
+    ,employee_number                VARCHAR2(30)
+    ,user_name                      VARCHAR2(100)
+    ,pre_last_name                  VARCHAR2(150)
+    ,pre_first_name                 VARCHAR2(150)
+    ,pre_location_code              VARCHAR2(4)
+    ,pre_license_code               VARCHAR2(3)
+    ,pre_job_post                   VARCHAR2(3)
+    ,pre_job_duty                   VARCHAR2(3)
+    ,pre_job_type                   VARCHAR2(3)
+    ,pre_dpt1_cd                    VARCHAR2(4)
+    ,pre_dpt2_cd                    VARCHAR2(4)
+    ,pre_dpt3_cd                    VARCHAR2(4)
+    ,pre_dpt4_cd                    VARCHAR2(4)
+    ,pre_dpt5_cd                    VARCHAR2(4)
+    ,pre_dpt6_cd                    VARCHAR2(4)
+    ,pre_sup_assignment_number      VARCHAR2(30)
+    ,pre_date_start                 DATE
+    ,pre_actual_termination_date    DATE
+    ,last_name                      VARCHAR2(150)
+    ,first_name                     VARCHAR2(150)
+    ,location_code                  VARCHAR2(4)
+    ,license_code                   VARCHAR2(3)
+    ,job_post                       VARCHAR2(3)
+    ,job_duty                       VARCHAR2(3)
+    ,job_type                       VARCHAR2(3)
+    ,dpt1_cd                        VARCHAR2(4)
+    ,dpt2_cd                        VARCHAR2(4)
+    ,dpt3_cd                        VARCHAR2(4)
+    ,dpt4_cd                        VARCHAR2(4)
+    ,dpt5_cd                        VARCHAR2(4)
+    ,dpt6_cd                        VARCHAR2(4)
+    ,sup_assignment_number          VARCHAR2(30)
+    ,date_start                     DATE
+    ,actual_termination_date        DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcmm.xxcmm_oic_emp_diff_info_bk IS 'OIC社員差分情報バックアップテーブル'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.person_id                           IS '個人ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.employee_number                     IS '従業員番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.user_name                           IS 'ユーザー名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_last_name                       IS '前回カナ姓'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_first_name                      IS '前回カナ名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_location_code                   IS '前回拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_license_code                    IS '前回資格コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_job_post                        IS '前回職位コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_job_duty                        IS '前回職務コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_job_type                        IS '前回職種コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_dpt1_cd                         IS '前回１階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_dpt2_cd                         IS '前回２階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_dpt3_cd                         IS '前回３階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_dpt4_cd                         IS '前回４階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_dpt5_cd                         IS '前回５階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_dpt6_cd                         IS '前回６階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_sup_assignment_number           IS '前回上長アサイメント番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_date_start                      IS '前回開始日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.pre_actual_termination_date         IS '前回退職日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.last_name                           IS 'カナ姓'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.first_name                          IS 'カナ名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.location_code                       IS '拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.license_code                        IS '資格コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.job_post                            IS '職位コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.job_duty                            IS '職務コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.job_type                            IS '職種コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.dpt1_cd                             IS '１階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.dpt2_cd                             IS '２階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.dpt3_cd                             IS '３階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.dpt4_cd                             IS '４階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.dpt5_cd                             IS '５階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.dpt6_cd                             IS '６階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.sup_assignment_number               IS '上長アサイメント番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.date_start                          IS '開始日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.actual_termination_date             IS '退職日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.request_id                          IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.program_application_id              IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.program_id                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info_bk.program_update_date                 IS 'プログラムによる更新日'
+/

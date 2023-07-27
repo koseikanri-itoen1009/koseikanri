@@ -1,0 +1,105 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCMM_OIC_EMP_DIFF_INFO
+ * Description     : OIC社員差分情報テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2023/01/12    1.0   Y.Ooyama     新規作成
+ ************************************************************************/
+CREATE TABLE XXCMM.XXCMM_OIC_EMP_DIFF_INFO (
+     person_id                      NUMBER(10)    NOT NULL
+    ,employee_number                VARCHAR2(30)  NOT NULL
+    ,user_name                      VARCHAR2(100)
+    ,last_name                      VARCHAR2(150) NOT NULL
+    ,first_name                     VARCHAR2(150)
+    ,location_code                  VARCHAR2(4)
+    ,license_code                   VARCHAR2(3)
+    ,job_post                       VARCHAR2(3)
+    ,job_duty                       VARCHAR2(3)
+    ,job_type                       VARCHAR2(3)
+    ,dpt1_cd                        VARCHAR2(4)
+    ,dpt2_cd                        VARCHAR2(4)
+    ,dpt3_cd                        VARCHAR2(4)
+    ,dpt4_cd                        VARCHAR2(4)
+    ,dpt5_cd                        VARCHAR2(4)
+    ,dpt6_cd                        VARCHAR2(4)
+    ,sup_assignment_number          VARCHAR2(30)
+    ,date_start                     DATE          NOT NULL
+    ,actual_termination_date        DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcmm_oic_emp_diff_info_pk PRIMARY KEY (person_id)
+  USING INDEX TABLESPACE xxidx2
+  ,CONSTRAINT xxcmm_oic_emp_diff_info_u01 UNIQUE (employee_number)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcmm.xxcmm_oic_emp_diff_info IS 'OIC社員差分情報テーブル'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.person_id                              IS '個人ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.employee_number                        IS '従業員番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.user_name                              IS 'ユーザー名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.last_name                              IS 'カナ姓'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.first_name                             IS 'カナ名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.location_code                          IS '拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.license_code                           IS '資格コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.job_post                               IS '職位コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.job_duty                               IS '職務コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.job_type                               IS '職種コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.dpt1_cd                                IS '１階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.dpt2_cd                                IS '２階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.dpt3_cd                                IS '３階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.dpt4_cd                                IS '４階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.dpt5_cd                                IS '５階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.dpt6_cd                                IS '６階層目部門コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.sup_assignment_number                  IS '上長アサイメント番号'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.date_start                             IS '開始日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.actual_termination_date                IS '退職日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.last_update_login                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.program_application_id                 IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.program_id                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_oic_emp_diff_info.program_update_date                    IS 'プログラムによる更新日'
+/
