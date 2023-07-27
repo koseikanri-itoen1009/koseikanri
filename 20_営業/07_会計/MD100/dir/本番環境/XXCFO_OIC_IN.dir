@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFO_OIC_IN
+  AS '/ebsif/inbound/cc_iffile/cc';
