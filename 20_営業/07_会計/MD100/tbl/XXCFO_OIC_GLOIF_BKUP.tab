@@ -1,0 +1,431 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCFO_OIC_GLOIF_BKUP
+ * Description     : OIC_GLOIFバックアップテーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/10/17    1.0   T.Okuyama    新規作成
+ ************************************************************************/
+CREATE TABLE xxcfo.XXCFO_OIC_GLOIF_BKUP (
+     status                         VARCHAR2(50)  NOT NULL
+    ,set_of_books_id                NUMBER(15)    NOT NULL
+    ,accounting_date                DATE          NOT NULL
+    ,currency_code                  VARCHAR2(15)  NOT NULL
+    ,date_created                   DATE          NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,actual_flag                    VARCHAR2(1)   NOT NULL
+    ,user_je_category_name          VARCHAR2(25)  NOT NULL
+    ,user_je_source_name            VARCHAR2(25)  NOT NULL
+    ,currency_conversion_date       DATE
+    ,encumbrance_type_id            NUMBER
+    ,budget_version_id              NUMBER
+    ,user_currency_conversion_type  VARCHAR2(30)
+    ,currency_conversion_rate       NUMBER
+    ,average_journal_flag           VARCHAR2(1)
+    ,originating_bal_seg_value      VARCHAR2(25)
+    ,segment1                       VARCHAR2(25)
+    ,segment2                       VARCHAR2(25)
+    ,segment3                       VARCHAR2(25)
+    ,segment4                       VARCHAR2(25)
+    ,segment5                       VARCHAR2(25)
+    ,segment6                       VARCHAR2(25)
+    ,segment7                       VARCHAR2(25)
+    ,segment8                       VARCHAR2(25)
+    ,segment9                       VARCHAR2(25)
+    ,segment10                      VARCHAR2(25)
+    ,segment11                      VARCHAR2(25)
+    ,segment12                      VARCHAR2(25)
+    ,segment13                      VARCHAR2(25)
+    ,segment14                      VARCHAR2(25)
+    ,segment15                      VARCHAR2(25)
+    ,segment16                      VARCHAR2(25)
+    ,segment17                      VARCHAR2(25)
+    ,segment18                      VARCHAR2(25)
+    ,segment19                      VARCHAR2(25)
+    ,segment20                      VARCHAR2(25)
+    ,segment21                      VARCHAR2(25)
+    ,segment22                      VARCHAR2(25)
+    ,segment23                      VARCHAR2(25)
+    ,segment24                      VARCHAR2(25)
+    ,segment25                      VARCHAR2(25)
+    ,segment26                      VARCHAR2(25)
+    ,segment27                      VARCHAR2(25)
+    ,segment28                      VARCHAR2(25)
+    ,segment29                      VARCHAR2(25)
+    ,segment30                      VARCHAR2(25)
+    ,entered_dr                     NUMBER
+    ,entered_cr                     NUMBER
+    ,accounted_dr                   NUMBER
+    ,accounted_cr                   NUMBER
+    ,transaction_date               DATE
+    ,reference1                     VARCHAR2(100)
+    ,reference2                     VARCHAR2(240)
+    ,reference3                     VARCHAR2(100)
+    ,reference4                     VARCHAR2(100)
+    ,reference5                     VARCHAR2(240)
+    ,reference6                     VARCHAR2(100)
+    ,reference7                     VARCHAR2(100)
+    ,reference8                     VARCHAR2(100)
+    ,reference9                     VARCHAR2(100)
+    ,reference10                    VARCHAR2(240)
+    ,reference11                    VARCHAR2(100)
+    ,reference12                    VARCHAR2(100)
+    ,reference13                    VARCHAR2(100)
+    ,reference14                    VARCHAR2(100)
+    ,reference15                    VARCHAR2(100)
+    ,reference16                    VARCHAR2(100)
+    ,reference17                    VARCHAR2(100)
+    ,reference18                    VARCHAR2(100)
+    ,reference19                    VARCHAR2(100)
+    ,reference20                    VARCHAR2(100)
+    ,reference21                    VARCHAR2(240)
+    ,reference22                    VARCHAR2(240)
+    ,reference23                    VARCHAR2(240)
+    ,reference24                    VARCHAR2(240)
+    ,reference25                    VARCHAR2(240)
+    ,reference26                    VARCHAR2(240)
+    ,reference27                    VARCHAR2(240)
+    ,reference28                    VARCHAR2(240)
+    ,reference29                    VARCHAR2(240)
+    ,reference30                    VARCHAR2(240)
+    ,je_batch_id                    NUMBER(15)
+    ,period_name                    VARCHAR2(15)
+    ,je_header_id                   NUMBER(15)
+    ,je_line_num                    NUMBER(15)
+    ,chart_of_accounts_id           NUMBER(15)
+    ,functional_currency_code       VARCHAR2(15)
+    ,code_combination_id            NUMBER(15)
+    ,date_created_in_gl             DATE
+    ,warning_code                   VARCHAR2(4)
+    ,status_description             VARCHAR2(240)
+    ,stat_amount                    NUMBER
+    ,group_id                       NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,subledger_doc_sequence_id      NUMBER
+    ,subledger_doc_sequence_value   NUMBER
+    ,attribute1                     VARCHAR2(150)
+    ,attribute2                     VARCHAR2(150)
+    ,gl_sl_link_id                  NUMBER
+    ,gl_sl_link_table               VARCHAR2(30)
+    ,attribute3                     VARCHAR2(150)
+    ,attribute4                     VARCHAR2(150)
+    ,attribute5                     VARCHAR2(150)
+    ,attribute6                     VARCHAR2(150)
+    ,attribute7                     VARCHAR2(150)
+    ,attribute8                     VARCHAR2(150)
+    ,attribute9                     VARCHAR2(150)
+    ,attribute10                    VARCHAR2(150)
+    ,attribute11                    VARCHAR2(150)
+    ,attribute12                    VARCHAR2(150)
+    ,attribute13                    VARCHAR2(150)
+    ,attribute14                    VARCHAR2(150)
+    ,attribute15                    VARCHAR2(150)
+    ,attribute16                    VARCHAR2(150)
+    ,attribute17                    VARCHAR2(150)
+    ,attribute18                    VARCHAR2(150)
+    ,attribute19                    VARCHAR2(150)
+    ,attribute20                    VARCHAR2(150)
+    ,context                        VARCHAR2(150)
+    ,context2                       VARCHAR2(150)
+    ,invoice_date                   DATE
+    ,tax_code                       VARCHAR2(15)
+    ,invoice_identifier             VARCHAR2(20)
+    ,invoice_amount                 NUMBER
+    ,context3                       VARCHAR2(150)
+    ,ussgl_transaction_code         VARCHAR2(30)
+    ,descr_flex_error_message       VARCHAR2(240)
+    ,jgzz_recon_ref                 VARCHAR2(240)
+    ,reference_date                 DATE
+    ,bk_created_by                  NUMBER(15)    NOT NULL
+    ,bk_creation_date               DATE          NOT NULL
+    ,bk_last_updated_by             NUMBER(15)    NOT NULL
+    ,bk_last_update_date            DATE          NOT NULL
+    ,bk_last_update_login           NUMBER(15)
+    ,bk_request_id                  NUMBER(15)
+    ,bk_program_application_id      NUMBER(15)
+    ,bk_program_id                  NUMBER(15)
+    ,bk_program_update_date         DATE)
+/
+COMMENT ON TABLE xxcfo.xxcfo_oic_gloif_bkup IS 'OIC_GLOIFバックアップテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.status                                    IS 'Status'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.set_of_books_id                           IS 'Set Of Books Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.accounting_date                           IS 'Accounting Date'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.currency_code                             IS 'Currency Code'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.date_created                              IS 'Date Created'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.created_by                                IS 'Created By'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.actual_flag                               IS 'Actual Flag'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.user_je_category_name                     IS 'User Je Category Name'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.user_je_source_name                       IS 'User Je Source Name'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.currency_conversion_date                  IS 'Currency Conversion Date'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.encumbrance_type_id                       IS 'Encumbrance Type Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.budget_version_id                         IS 'Budget Version Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.user_currency_conversion_type             IS 'User Currency Conversion Type'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.currency_conversion_rate                  IS 'Currency Conversion Rate'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.average_journal_flag                      IS 'Average Journal Flag'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.originating_bal_seg_value                 IS 'Originating Bal Seg Value'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment1                                  IS 'Segment1'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment2                                  IS 'Segment2'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment3                                  IS 'Segment3'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment4                                  IS 'Segment4'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment5                                  IS 'Segment5'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment6                                  IS 'Segment6'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment7                                  IS 'Segment7'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment8                                  IS 'Segment8'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment9                                  IS 'Segment9'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment10                                 IS 'Segment10'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment11                                 IS 'Segment11'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment12                                 IS 'Segment12'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment13                                 IS 'Segment13'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment14                                 IS 'Segment14'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment15                                 IS 'Segment15'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment16                                 IS 'Segment16'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment17                                 IS 'Segment17'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment18                                 IS 'Segment18'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment19                                 IS 'Segment19'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment20                                 IS 'Segment20'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment21                                 IS 'Segment21'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment22                                 IS 'Segment22'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment23                                 IS 'Segment23'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment24                                 IS 'Segment24'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment25                                 IS 'Segment25'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment26                                 IS 'Segment26'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment27                                 IS 'Segment27'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment28                                 IS 'Segment28'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment29                                 IS 'Segment29'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.segment30                                 IS 'Segment30'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.entered_dr                                IS 'Entered Dr'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.entered_cr                                IS 'Entered Cr'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.accounted_dr                              IS 'Accounted Dr'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.accounted_cr                              IS 'Accounted Cr'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.transaction_date                          IS 'Transaction Date'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference1                                IS 'Reference1'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference2                                IS 'Reference2'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference3                                IS 'Reference3'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference4                                IS 'Reference4'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference5                                IS 'Reference5'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference6                                IS 'Reference6'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference7                                IS 'Reference7'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference8                                IS 'Reference8'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference9                                IS 'Reference9'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference10                               IS 'Reference10'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference11                               IS 'Reference11'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference12                               IS 'Reference12'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference13                               IS 'Reference13'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference14                               IS 'Reference14'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference15                               IS 'Reference15'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference16                               IS 'Reference16'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference17                               IS 'Reference17'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference18                               IS 'Reference18'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference19                               IS 'Reference19'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference20                               IS 'Reference20'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference21                               IS 'Reference21'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference22                               IS 'Reference22'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference23                               IS 'Reference23'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference24                               IS 'Reference24'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference25                               IS 'Reference25'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference26                               IS 'Reference26'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference27                               IS 'Reference27'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference28                               IS 'Reference28'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference29                               IS 'Reference29'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference30                               IS 'Reference30'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.je_batch_id                               IS 'Je Batch Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.period_name                               IS 'Period Name'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.je_header_id                              IS 'Je Header Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.je_line_num                               IS 'Je Line Num'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.chart_of_accounts_id                      IS 'Chart Of Accounts Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.functional_currency_code                  IS 'Functional Currency Code'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.code_combination_id                       IS 'Code Combination Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.date_created_in_gl                        IS 'Date Created In Gl'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.warning_code                              IS 'Warning Code'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.status_description                        IS 'Status Description'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.stat_amount                               IS 'Stat Amount'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.group_id                                  IS 'Group Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.request_id                                IS 'Request Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.subledger_doc_sequence_id                 IS 'Subledger Doc Sequence Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.subledger_doc_sequence_value              IS 'Subledger Doc Sequence Value'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute1                                IS 'Attribute1'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute2                                IS 'Attribute2'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.gl_sl_link_id                             IS 'Gl Sl Link Id'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.gl_sl_link_table                          IS 'Gl Sl Link Table'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute3                                IS 'Attribute3'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute4                                IS 'Attribute4'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute5                                IS 'Attribute5'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute6                                IS 'Attribute6'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute7                                IS 'Attribute7'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute8                                IS 'Attribute8'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute9                                IS 'Attribute9'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute10                               IS 'Attribute10'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute11                               IS 'Attribute11'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute12                               IS 'Attribute12'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute13                               IS 'Attribute13'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute14                               IS 'Attribute14'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute15                               IS 'Attribute15'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute16                               IS 'Attribute16'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute17                               IS 'Attribute17'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute18                               IS 'Attribute18'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute19                               IS 'Attribute19'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.attribute20                               IS 'Attribute20'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.context                                   IS 'Context'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.context2                                  IS 'Context2'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.invoice_date                              IS 'Invoice Date'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.tax_code                                  IS 'Tax Code'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.invoice_identifier                        IS 'Invoice Identifier'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.invoice_amount                            IS 'Invoice Amount'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.context3                                  IS 'Context3'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.ussgl_transaction_code                    IS 'Ussgl Transaction Code'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.descr_flex_error_message                  IS 'Descr Flex Error Message'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.jgzz_recon_ref                            IS 'Jgzz Recon Ref'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.reference_date                            IS 'Reference Date'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_last_update_login                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_program_application_id                 IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_program_id                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_gloif_bkup.bk_program_update_date                    IS 'プログラムによる更新日'
+/

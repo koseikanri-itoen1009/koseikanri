@@ -1,0 +1,58 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCFO_OIC_JOURNAL_MNG_H
+ * Description     : OIC仕訳管理ヘッダテーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/10/17    1.0   T.Okuyama    新規作成
+ ************************************************************************/
+CREATE TABLE xxcfo.XXCFO_OIC_JOURNAL_MNG_H (
+     set_of_books_id                NUMBER(15)    NOT NULL
+    ,je_source                      VARCHAR2(25)  NOT NULL
+    ,je_category                    VARCHAR2(25)  NOT NULL
+    ,unsent_min_je_header_id        NUMBER(15)    NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcfo_oic_journal_mng_h_u01 UNIQUE (set_of_books_id, je_source, je_category)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcfo.xxcfo_oic_journal_mng_h IS 'OIC仕訳管理ヘッダテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.set_of_books_id                        IS '帳簿ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.je_source                              IS '仕訳ソース'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.je_category                            IS '仕訳カテゴリ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.unsent_min_je_header_id                IS '未連携_最小仕訳ヘッダID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.created_by                             IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.creation_date                          IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.last_updated_by                        IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.last_update_date                       IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.last_update_login                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.request_id                             IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.program_application_id                 IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.program_id                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_journal_mng_h.program_update_date                    IS 'プログラムによる更新日'
+/

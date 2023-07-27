@@ -1,0 +1,70 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCFO_OIC_TARGET_JOURNAL
+ * Description     : OIC連携対象仕訳テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/10/17    1.0   T.Okuyama    新規作成
+ ************************************************************************/
+CREATE TABLE xxcfo.XXCFO_OIC_TARGET_JOURNAL (
+     if_pattern                     VARCHAR2(1)   NOT NULL
+    ,set_of_books_id                NUMBER(15)    NOT NULL
+    ,name                           VARCHAR2(30)  NOT NULL
+    ,je_source                      VARCHAR2(25)  NOT NULL
+    ,je_source_name                 VARCHAR2(25)  NOT NULL
+    ,je_category                    VARCHAR2(25)  NOT NULL
+    ,je_category_name               VARCHAR2(25)  NOT NULL
+    ,file_name                      VARCHAR2(100) NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcfo_oic_target_journal_u01 UNIQUE (set_of_books_id, je_source, je_category)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcfo.xxcfo_oic_target_journal IS 'OIC連携対象仕訳テーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.if_pattern                            IS '連携パターン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.set_of_books_id                       IS '帳簿ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.name                                  IS '帳簿名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.je_source                             IS '仕訳ソース'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.je_source_name                        IS '仕訳ソース名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.je_category                           IS '仕訳カテゴリ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.je_category_name                      IS '仕訳カテゴリ名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.file_name                             IS 'ファイル名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.created_by                            IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.creation_date                         IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.last_updated_by                       IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.last_update_date                      IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.last_update_login                     IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.request_id                            IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.program_application_id                IS 'コンカレント・プログラムのアプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.program_id                            IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_oic_target_journal.program_update_date                   IS 'プログラムによる更新日'
+/

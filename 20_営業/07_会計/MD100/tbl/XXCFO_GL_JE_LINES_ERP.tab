@@ -1,0 +1,98 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : XXCFO_GL_JE_LINES_ERP
+ * Description     : GL仕訳明細_ERPテーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/10/14    1.0   Y.Fuku      新規作成
+ ************************************************************************/
+CREATE TABLE xxcfo.xxcfo_gl_je_lines_erp (
+     je_header_id                   NUMBER(15)    NOT NULL
+    ,je_line_num                    NUMBER(15)    NOT NULL
+    ,set_of_books_name              VARCHAR2(15)
+    ,period_name                    VARCHAR2(15)
+    ,je_source                      VARCHAR2(25)
+    ,je_category                    VARCHAR2(25)
+    ,effective_date                 DATE
+    ,entered_dr                     NUMBER
+    ,entered_cr                     NUMBER
+    ,accounted_dr                   NUMBER
+    ,accounted_cr                   NUMBER
+    ,segment1                       VARCHAR2(40)
+    ,segment2                       VARCHAR2(40)
+    ,segment3                       VARCHAR2(40)
+    ,segment4                       VARCHAR2(40)
+    ,segment5                       VARCHAR2(40)
+    ,segment6                       VARCHAR2(40)
+    ,segment7                       VARCHAR2(40)
+    ,segment8                       VARCHAR2(40)
+    ,payment_status_flag            VARCHAR2(1)
+    ,check_date                     DATE
+    ,cancelled_date                 DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,CONSTRAINT gl_je_lines_erp_pk PRIMARY KEY (je_header_id,je_line_num)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcfo.xxcfo_gl_je_lines_erp IS 'GL仕訳明細_ERPテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.entered_dr                               IS '借方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.entered_cr                               IS '貸方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.accounted_dr                             IS '換算後借方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.accounted_cr                             IS '換算後貸方金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment1                                 IS '勘定科目組合せ：会社'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment2                                 IS '勘定科目組合せ：部門'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment3                                 IS '勘定科目組合せ：勘定科目'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment4                                 IS '勘定科目組合せ：補助科目'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment5                                 IS '勘定科目組合せ：顧客コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment6                                 IS '勘定科目組合せ：企業コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment7                                 IS '勘定科目組合せ：予備１'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.segment8                                 IS '勘定科目組合せ：予備２'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.payment_status_flag                      IS '支払ステータスフラグ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.check_date                               IS '支払日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.cancelled_date                           IS '取消日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.created_by                               IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.creation_date                            IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.last_updated_by                          IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.last_update_date                         IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.last_update_login                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.request_id                               IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.program_id                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_je_lines_erp.program_update_date                      IS 'プログラム更新日'
+/

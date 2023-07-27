@@ -1,0 +1,88 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ * 
+ * TABLE Name      : xxcfo_gl_balances_erp_tmp
+ * Description     : GL残高_ERP_TMPテーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2022/11/28    1.0   Y.Fuku      新規作成
+ ************************************************************************/
+CREATE TABLE xxcfo.xxcfo_gl_balances_erp_tmp (
+     set_of_books_name              VARCHAR2(15)  NOT NULL
+    ,period_name                    VARCHAR2(15)  NOT NULL
+    ,begin_balance_dr               NUMBER
+    ,begin_balance_cr               NUMBER
+    ,period_net_dr                  NUMBER
+    ,period_net_cr                  NUMBER
+    ,segment1                       VARCHAR2(40)  NOT NULL
+    ,segment2                       VARCHAR2(40)  NOT NULL
+    ,segment3                       VARCHAR2(40)  NOT NULL
+    ,segment4                       VARCHAR2(40)  NOT NULL
+    ,segment5                       VARCHAR2(40)  NOT NULL
+    ,segment6                       VARCHAR2(40)  NOT NULL
+    ,segment7                       VARCHAR2(40)  NOT NULL
+    ,segment8                       VARCHAR2(40)  NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+    ,CONSTRAINT xxcfo_gl_balances_erp_tmp_u01 UNIQUE (set_of_books_name,period_name,segment1,segment2,segment3,segment4,segment5,segment6,segment7,segment8)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcfo.xxcfo_gl_balances_erp_tmp IS 'GL残高_ERP_TMPテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.set_of_books_name                        IS '会計帳簿名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.period_name                              IS '会計期間名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.begin_balance_dr                         IS '期首残高借方'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.begin_balance_cr                         IS '期首残高貸方'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.period_net_dr                            IS '期間発生額借方'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.period_net_cr                            IS '期間発生額貸方'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment1                                 IS '勘定科目組合せ：会社'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment2                                 IS '勘定科目組合せ：部門'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment3                                 IS '勘定科目組合せ：勘定科目'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment4                                 IS '勘定科目組合せ：補助科目'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment5                                 IS '勘定科目組合せ：顧客コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment6                                 IS '勘定科目組合せ：企業コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment7                                 IS '勘定科目組合せ：予備１'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.segment8                                 IS '勘定科目組合せ：予備２'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.created_by                               IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.creation_date                            IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.last_updated_by                          IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.last_update_date                         IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.last_update_login                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.request_id                               IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.program_id                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_gl_balances_erp_tmp.program_update_date                      IS 'プログラム更新日'
+/
