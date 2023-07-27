@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A07R(body)
  * Description      : ベンダー売上・入金照合表
  * MD.050           : MD050_COS_002_A07_ベンダー売上・入金照合表
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *  2012/10/12    1.0   K.Nakamura       新規作成
  *  2013/02/20    1.1   K.Nakamura       E_本稼動_09040 T4障害対応
  *  2013/03/18    1.2   K.Nakamura       E_本稼動_09040 T4障害対応
+ *  2022/12/29    1.3   T.Mizutani       E_本稼動_18765 SaaS対応
+ *  2023/04/26    1.4   T.Mizutani       E_本稼動_18060 自販機顧客別利益管理 対応
  *
  *****************************************************************************************/
 --
@@ -176,6 +178,9 @@ AS
   cv_desc_flex_context_code   CONSTANT VARCHAR2(10) := 'RESOURCE';                -- RESOURCE
   ct_lang                     CONSTANT fnd_lookup_values.language%TYPE
                                                     := USERENV('LANG');
+-- 2023/04/23 Ver1.4 Add Start
+  cv_period_start_saas        CONSTANT VARCHAR2(7)  := '2023-07';                 -- SaaS開始会計期間
+-- 2023/04/23 Ver1.4 Add End
   -- ログ用
   cv_proc_end                 CONSTANT VARCHAR2(3)  := 'END';
   cv_proc_cnt                 CONSTANT VARCHAR2(5)  := 'COUNT';
@@ -1914,6 +1919,9 @@ AS
       AND    gb.actual_flag                                             = cv_result_flag
       AND    TO_DATE(SUBSTRB(gb.period_name, 1, 7), cv_format_yyyymm1) >= gd_from_date
       AND    TO_DATE(SUBSTRB(gb.period_name, 1, 7), cv_format_yyyymm1) <= gd_to_date
+-- 2023/04/26 Ver1.4 Add Start
+      AND    gb.period_name                                             < cv_period_start_saas
+-- 2023/04/26 Ver1.4 Add End
       AND    gcc.segment3                                               = flv.lookup_code
       AND    flv.lookup_type                                            = cv_change_account
       AND    flv.language                                               = ct_lang
@@ -1928,6 +1936,47 @@ AS
              gb.period_name
            , gcc.segment2
            , gcc.segment5
+-- 2022/12/29 Ver1.3 Add Start
+      UNION
+      SELECT
+             TO_CHAR(TO_DATE(SUBSTRB(xgbe.period_name, 1, 7), cv_format_yyyymm1), cv_format_yyyymm3) AS year_months    -- 年月
+           , xgbe.segment2                                                                           AS segment2       -- 部門
+           , xgbe.segment5                                                                           AS segment5       -- 顧客
+           , SUM(xgbe.begin_balance_dr - xgbe.begin_balance_cr)                                      AS change_balance -- 期首釣銭残高
+      FROM   xxcfo_gl_balances_erp xgbe                    -- GL残高_ERPテーブル
+           , gl_period_statuses   gps                      -- 会計期間ステータス
+           , fnd_application      fa                       -- アプリケーション
+-- 2023/04/26 Ver1.4 Add Start
+           , fnd_lookup_values    flv
+-- 2023/04/26 Ver1.4 Add End
+           , gl_sets_of_books     gsob                     -- 会計帳簿テーブル
+      WHERE  gsob.set_of_books_id                                       = gn_set_of_books_id
+      AND    xgbe.set_of_books_name                                     = gsob.name
+      AND    gps.set_of_books_id                                        = gsob.set_of_books_id
+      AND    gps.period_name                                            = xgbe.period_name
+      AND    gps.application_id                                         = fa.application_id
+      AND    gps.adjustment_period_flag                                 = cv_adjustment_period_flag   -- 'N'
+      AND    fa.application_short_name                                  = cv_application_short_name1  -- 'SQLGL'
+      AND    TO_DATE(SUBSTRB(xgbe.period_name, 1, 7), cv_format_yyyymm1) >= gd_from_date
+      AND    TO_DATE(SUBSTRB(xgbe.period_name, 1, 7), cv_format_yyyymm1) <= gd_to_date
+-- 2023/04/26 Ver1.4 Add Start
+      AND    xgbe.period_name                                          >= cv_period_start_saas
+      AND    xgbe.segment3                                              = flv.lookup_code
+      AND    flv.lookup_type                                            = cv_change_account
+      AND    flv.language                                               = ct_lang
+-- 2023/04/26 Ver1.4 Add End
+      AND    xgbe.segment2                                              = iv_base_code
+      AND EXISTS (
+                   SELECT 1
+                   FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+                   WHERE  xrvspc.customer_code = xgbe.segment5
+                   AND    xrvspc.request_id    = cn_request_id
+                 )
+      GROUP BY
+             xgbe.period_name
+           , xgbe.segment2
+           , xgbe.segment5
+-- 2022/12/29 Ver1.3 Add End
     ;
     --
     get_change_balance_rec    get_change_balance_cur%ROWTYPE;
@@ -2110,6 +2159,35 @@ AS
            , gcc.segment2
            , gcc.segment5
            , xipm.check_date
+-- 2022/12/29 Ver1.3 Add Start
+      UNION
+      SELECT 
+             TO_CHAR(TO_DATE(SUBSTRB(xgjle.period_name, 1, 7), cv_format_yyyymm1), cv_format_yyyymm3) AS year_months -- 年月
+           , xgjle.segment2                                                                           AS segment2    -- 部門
+           , xgjle.segment5                                                                           AS segment5    -- 顧客
+           , TO_CHAR(xgjle.check_date, cv_format_yyyymmdd2)                                           AS check_date  -- 支払日
+           , SUM(NVL(xgjle.accounted_dr,0) - NVL(xgjle.accounted_cr,0))                               AS change_pay  -- 釣銭支払額
+      FROM   xxcfo_gl_je_lines_erp   xgjle     -- GL仕訳明細_ERPテーブル
+           , gl_sets_of_books        gsob      -- 会計帳簿テーブル
+      WHERE  xgjle.segment2                                               = iv_base_code
+      AND    xgjle.je_source                                              = cv_je_source_ap
+      AND    xgjle.je_category                                            = cv_je_categories_ap
+      AND    xgjle.set_of_books_name                                      = gsob.name
+      AND    gsob.set_of_books_id                                         = gn_set_of_books_id
+      AND    TO_DATE(SUBSTRB(xgjle.period_name, 1, 7), cv_format_yyyymm1) >= gd_from_date
+      AND    TO_DATE(SUBSTRB(xgjle.period_name, 1, 7), cv_format_yyyymm1) <= gd_to_date
+      AND EXISTS (
+                   SELECT 1
+                   FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+                   WHERE  xrvspc.customer_code = xgjle.segment5
+                   AND    xrvspc.request_id    = cn_request_id
+                 )
+      GROUP BY
+             xgjle.period_name
+           , xgjle.segment2
+           , xgjle.segment5
+           , xgjle.check_date
+-- 2022/12/29 Ver1.3 Add End
     ;
     --
     get_change_pay_rec        get_change_pay_cur%ROWTYPE;
@@ -2293,6 +2371,35 @@ AS
            , gcc.segment2
            , gcc.segment5
            , gjl.effective_date
+-- 2022/12/29 Ver1.3 Add Start
+      UNION
+      SELECT 
+             TO_CHAR(TO_DATE(SUBSTRB(xgjle.period_name, 1, 7), cv_format_yyyymm1), cv_format_yyyymm3) AS year_months    -- 年月
+           , xgjle.segment2                                                                           AS segment2       -- 部門
+           , xgjle.segment5                                                                           AS segment5       -- 顧客
+           , TO_CHAR(xgjle.effective_date, cv_format_yyyymmdd2)                                       AS effective_date -- GL記帳日
+           , SUM(NVL(xgjle.accounted_dr,0) - NVL(xgjle.accounted_cr,0))                               AS change_return  -- 釣銭仕訳金額
+      FROM   xxcfo_gl_je_lines_erp   xgjle     -- GL仕訳明細_ERPテーブル
+           , gl_sets_of_books        gsob      -- 会計帳簿テーブル
+      WHERE  xgjle.segment2                                               = iv_base_code
+      AND    xgjle.je_source                                              <> cv_je_source_ap
+      AND    xgjle.je_category                                            <> cv_je_categories_ap
+      AND    xgjle.set_of_books_name                                      = gsob.name
+      AND    gsob.set_of_books_id                                         = gn_set_of_books_id
+      AND    TO_DATE(SUBSTRB(xgjle.period_name, 1, 7), cv_format_yyyymm1) >= gd_from_date
+      AND    TO_DATE(SUBSTRB(xgjle.period_name, 1, 7), cv_format_yyyymm1) <= gd_to_date
+      AND EXISTS (
+                   SELECT 1
+                   FROM   xxcos_rep_vd_sales_pay_chk xrvspc
+                   WHERE  xrvspc.customer_code = xgjle.segment5
+                   AND    xrvspc.request_id    = cn_request_id
+                 )
+      GROUP BY
+             xgjle.period_name
+           , xgjle.segment2
+           , xgjle.segment5
+           , xgjle.effective_date
+-- 2022/12/29 Ver1.3 Add End
     ;
     --
     get_change_return_rec     get_change_return_cur%ROWTYPE;
