@@ -8,7 +8,7 @@ AS
  *                  : APへ連携します。また、承認後APに連携済の支払伝票が取消された場合、
  *                  : 赤伝票をAPへ連携します。
  * MD.050           : 問屋控除支払AP連携 MD050_COK_024_A16
- * Version          : 1.00
+ * Version          : 1.1
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -32,6 +32,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2020/08/25    1.0   N.Abe            新規作成
+ *  2022/11/29    1.1   T.Mizutani       E_本稼動_SaaS対応
  *
  *****************************************************************************************/
 --
@@ -190,6 +191,10 @@ AS
       ,invoice_date             ap_invoices_all.invoice_date%TYPE                         -- 請求書日付
       ,vendor_id                ap_invoices_all.vendor_id%TYPE                            -- 仕入先ID
       ,vendor_site_id           ap_invoices_all.vendor_site_id%TYPE                       -- 仕入先サイトID
+-- 2022/11/29 Ver1.1 Add Start
+      ,vendor_num               ap_invoices_interface.vendor_num%TYPE                     -- 仕入先コード
+      ,vendor_site_code         ap_invoices_interface.vendor_site_code%TYPE               -- 仕入先サイトコード
+-- 2022/11/29 Ver1.1 Add End
       ,invoice_amount           ap_invoices_all.invoice_amount%TYPE                       -- 請求金額
       ,terms_id                 ap_invoices_all.terms_id%TYPE                             -- 支払条件ID
       ,description              ap_invoices_all.description%TYPE                          -- 摘要
@@ -1375,6 +1380,40 @@ AS
     PRAGMA EXCEPTION_INIT(lock_expt, -54);                  -- ロックエラー
 --
     -- *** ローカル・カーソル ***
+-- 2022/11/29 Ver1.1 Add Start
+    -- 控除消込OIFヘッダ抽出カーソル
+    CURSOR cancel_head_oif_cur
+    IS
+      SELECT /*+ index(xdrh xxcok_deduction_recon_head_n02) */
+             aii.invoice_id                     AS invoice_id         -- 請求書ID
+            ,aii.invoice_type_lookup_code       AS type_code          -- 取引タイプ
+            ,aii.invoice_date                   AS invoice_date       -- 請求書日付
+            ,NULL                               AS vendor_id          -- 仕入先ID
+            ,NULL                               AS vendor_site_id     -- 仕入先サイトID
+            ,vendor_num                         AS vendor_num         -- 仕入先コード
+            ,vendor_site_code                   AS vendor_site_code   -- 仕入先サイトコード
+            ,aii.invoice_amount * -1            AS invoice_amount     -- 請求金額
+            ,aii.terms_id                       AS terms_id           -- 支払条件ID
+            ,aii.description                    AS description        -- 摘要
+            ,aii.attribute_category             AS attribute_category -- DFFコンテキスト
+            ,aii.attribute2                     AS attribute2         -- 請求書番号
+            ,aii.attribute3                     AS attribute3         -- 起票部門
+            ,aii.attribute4                     AS attribute4         -- 伝票入力者
+            ,aii.source                         AS source             -- 請求書ソース
+            ,aii.gl_date                        AS gl_date            -- 仕訳計上日
+            ,aii.accts_pay_code_combination_id  AS ccid               -- 負債勘定CCID
+            ,aii.org_id                         AS org_id             -- 組織ID
+            ,aii.terms_date                     AS terms_date         -- 支払起算日
+            ,xdrh.deduction_recon_head_id       AS header_id          -- 控除消込ヘッダーID
+      FROM   xxcok_deduction_recon_head    xdrh                       -- 控除消込ヘッダー情報
+            ,ap_invoices_interface         aii                        -- 請求書ヘッダーOIF
+      WHERE  xdrh.recon_status             = cv_cd                    -- 取消済
+      AND    xdrh.interface_div            = cv_wp                    -- AP問屋
+      AND    xdrh.ap_ar_if_flag            = 'Y'                      -- 連携済
+      AND    aii.attribute2                = xdrh.recon_slip_num      -- 伝票番号
+      FOR UPDATE OF xdrh.deduction_recon_head_id NOWAIT
+      ;
+-- 2022/11/29 Ver1.1 Add End
     -- 控除消込ヘッダ抽出カーソル
     CURSOR cancel_head_cur
     IS
@@ -1384,6 +1423,10 @@ AS
             ,aia.invoice_date                   AS invoice_date       -- 請求書日付
             ,aia.vendor_id                      AS vendor_id          -- 仕入先ID
             ,aia.vendor_site_id                 AS vendor_site_id     -- 仕入先サイトID
+-- 2022/11/29 Ver1.1 Add Start
+            ,NULL                               AS vendor_num         -- 仕入先コード
+            ,NULL                               AS vendor_site_code   -- 仕入先サイトコード
+-- 2022/11/29 Ver1.1 Add End
             ,aia.invoice_amount * -1            AS invoice_amount     -- 請求金額
             ,aia.terms_id                       AS terms_id           -- 支払条件ID
             ,aia.description                    AS description        -- 摘要
@@ -1421,6 +1464,21 @@ AS
     -- ============================================================
     -- 1.取消ヘッダ情報取得
     -- ============================================================
+-- 2022/11/29 Ver1.1 Add Start
+    -- カーソルオープン
+    OPEN  cancel_head_oif_cur;
+    -- データ取得
+    FETCH cancel_head_oif_cur BULK COLLECT INTO g_cancel_head_tbl;
+    -- カーソルクローズ
+    CLOSE cancel_head_oif_cur;
+--
+    -- 取得した取消数を対象件数(取消）に格納
+    gn_c_target_cnt := g_cancel_head_tbl.COUNT;        -- 対象件数（取消）
+--
+    IF gn_c_target_cnt > 0 THEN
+      RETURN;
+    END IF;
+-- 2022/11/29 Ver1.1 Add End
     -- カーソルオープン
     OPEN  cancel_head_cur;
     -- データ取得
@@ -1436,6 +1494,11 @@ AS
     -- ロックエラー
     WHEN lock_expt THEN
       -- カーソルクローズ
+-- 2022/11/29 Ver1.1 Add Start
+      IF ( cancel_head_oif_cur%ISOPEN ) THEN
+        CLOSE cancel_head_oif_cur;
+      END IF;
+-- 2022/11/29 Ver1.1 Add End
       IF ( cancel_head_cur%ISOPEN ) THEN
         CLOSE cancel_head_cur;
       END IF;
@@ -1454,6 +1517,11 @@ AS
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
       -- カーソルクローズ
+-- 2022/11/29 Ver1.1 Add Start
+      IF ( cancel_head_oif_cur%ISOPEN ) THEN
+        CLOSE cancel_head_oif_cur;
+      END IF;
+-- 2022/11/29 Ver1.1 Add End
       IF ( cancel_head_cur%ISOPEN ) THEN
         CLOSE cancel_head_cur;
       END IF;
@@ -1463,6 +1531,11 @@ AS
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       -- カーソルクローズ
+-- 2022/11/29 Ver1.1 Add Start
+      IF ( cancel_head_oif_cur%ISOPEN ) THEN
+        CLOSE cancel_head_oif_cur;
+      END IF;
+-- 2022/11/29 Ver1.1 Add End
       IF ( cancel_head_cur%ISOPEN ) THEN
         CLOSE cancel_head_cur;
       END IF;
@@ -1472,6 +1545,11 @@ AS
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       -- カーソルクローズ
+-- 2022/11/29 Ver1.1 Add Start
+      IF ( cancel_head_oif_cur%ISOPEN ) THEN
+        CLOSE cancel_head_oif_cur;
+      END IF;
+-- 2022/11/29 Ver1.1 Add End
       IF ( cancel_head_cur%ISOPEN ) THEN
         CLOSE cancel_head_cur;
       END IF;
@@ -1480,6 +1558,11 @@ AS
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       -- カーソルクローズ
+-- 2022/11/29 Ver1.1 Add Start
+      IF ( cancel_head_oif_cur%ISOPEN ) THEN
+        CLOSE cancel_head_oif_cur;
+      END IF;
+-- 2022/11/29 Ver1.1 Add End
       IF ( cancel_head_cur%ISOPEN ) THEN
         CLOSE cancel_head_cur;
       END IF;
@@ -1521,6 +1604,20 @@ AS
     -- *** ローカル例外 ***
 --
     -- *** ローカル・カーソル ***
+-- 2022/11/29 Ver1.1 Add Start
+    -- 取消明細OIF抽出カーソル
+    CURSOR cancel_line_oif_cur
+    IS
+      SELECT aili.line_number                   AS line_num           -- 明細番号
+            ,aili.line_type_lookup_code         AS line_type          -- 明細タイプ
+            ,aili.amount * -1                   AS amount             -- 明細金額
+            ,aili.description                   AS description        -- 摘要
+            ,aili.tax_code                      AS tax_code           -- 税区分
+            ,aili.dist_code_combination_id      AS ccid               -- CCID
+      FROM   ap_invoice_lines_interface     aili                      -- 請求書明細OIF
+      WHERE  aili.invoice_id            = g_cancel_head_tbl(gn_c_head_cnt).invoice_id
+      ;
+-- 2022/11/29 Ver1.1 Add End
     -- 取消明細抽出カーソル
     CURSOR cancel_line_cur
     IS
@@ -1549,6 +1646,18 @@ AS
     -- ============================================================
     -- 1.取消明細情報取得
     -- ============================================================
+-- 2022/11/29 Ver1.1 Add Start
+    -- カーソルオープン
+    OPEN  cancel_line_oif_cur;
+    -- データ取得
+    FETCH cancel_line_oif_cur BULK COLLECT INTO g_cancel_line_tbl;
+    -- カーソルクローズ
+    CLOSE cancel_line_oif_cur;
+--
+    IF g_cancel_line_tbl.COUNT > 0 THEN        -- 対象件数（取消）
+      RETURN;
+    END IF;
+-- 2022/11/29 Ver1.1 Add End
     -- カーソルオープン
     OPEN  cancel_line_cur;
     -- データ取得
@@ -1640,6 +1749,10 @@ AS
     , invoice_date                            -- 請求日付
     , vendor_id                               -- 仕入先ID
     , vendor_site_id                          -- 仕入先サイトID
+-- 2022/11/29 Ver1.1 Add Start
+    , vendor_num                              -- 仕入先コード
+    , vendor_site_code                        -- 仕入先サイトコード
+-- 2022/11/29 Ver1.1 Add End
     , invoice_amount                          -- 請求金額
     , terms_id                                -- 支払条件ID
     , description                             -- 摘要
@@ -1670,6 +1783,10 @@ AS
     , g_cancel_head_tbl(gn_c_head_cnt).invoice_date                       -- 業務処理日付
     , g_cancel_head_tbl(gn_c_head_cnt).vendor_id                          -- 仕入先ID
     , g_cancel_head_tbl(gn_c_head_cnt).vendor_site_ID                     -- 仕入先サイトID
+-- 2022/11/29 Ver1.1 Add Start
+    , g_cancel_head_tbl(gn_c_head_cnt).vendor_num                         -- 仕入先コード
+    , g_cancel_head_tbl(gn_c_head_cnt).vendor_site_code                   -- 仕入先サイトコード
+-- 2022/11/29 Ver1.1 Add End
     , g_cancel_head_tbl(gn_c_head_cnt).invoice_amount                     -- 請求金額
       , g_cancel_head_tbl(gn_c_head_cnt).terms_id                           -- 支払条件ID
     , g_cancel_head_tbl(gn_c_head_cnt).description                        -- 摘要
