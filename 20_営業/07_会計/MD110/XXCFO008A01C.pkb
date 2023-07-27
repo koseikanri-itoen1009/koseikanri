@@ -7,7 +7,7 @@ AS
  * Description     : 顧客マスタVD釣銭基準額の更新
  * MD.050          : MD050_CFO_008_A01_顧客マスタVD釣銭基準額の更新
  * MD.070          : MD050_CFO_008_A01_顧客マスタVD釣銭基準額の更新
- * Version         : 1.3
+ * Version         : 1.5
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -36,6 +36,10 @@ AS
  *  2009-11-24    1.2  SCS 寺内      [E_本稼動_00017]パフォーマンス改善
  *  2010/12/06    1.3  SCS 渡辺      [E_本稼動_05773]
  *                                     顧客マスタつり銭金額とＧＬ仮払つり銭金額不一致対応
+ *  2022/12/27    1.4  SCSK 水谷     [E_本稼動_18765]
+ *                                     顧客別釣銭の取得元をSaaS用テーブルに変更
+ *  2023/04/26    1.5  SCSK 水谷     [E_本稼動_18060]
+ *                                     自販機顧客別利益管理 対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -567,87 +571,141 @@ AS
     -- 顧客別釣銭残高抽出
     CURSOR get_customer_change_cur
     IS
-      SELECT /*+ LEADING(fnac glcc glbl)
-                 USE_NL (fnac glcc glbl)
-             */
-             glcc.segment5                segment5,         -- 顧客コード
+-- ************ 2022/12/27 1.4 T.Mizutani ADD START ************ --
+      SELECT xgbe.segment5                segment5,         -- 顧客コード
              hzca.cust_account_id         cust_account_id,  -- 顧客ID
              xxca.sale_base_code          sale_base_code,   -- 売上拠点コード
              fnlt.attribute1              attribute1,       -- 業態分類(中分類)
-             SUM( glbl.begin_balance_dr -
-                  glbl.begin_balance_cr +
-                  glbl.period_net_dr -
-                  glbl.period_net_cr )    change_balance    -- 当月末釣銭残高
-      FROM  gl_code_combinations glcc
-           ,gl_balances          glbl
-           ,fnd_lookup_values    fnac                       -- クイックコード(釣銭勘定科目コード)
-           ,fnd_lookup_values    fnlt                       -- クイックコード(業態分類(小分類))
-           ,hz_cust_accounts     hzca
-           ,xxcmm_cust_accounts  xxca
--- == 2009/06/26 V1.1 Added START ===============================================================
-           ,gl_sets_of_books     gsob
--- == 2009/06/26 V1.1 Added END   ===============================================================
-      WHERE glbl.set_of_books_id      = gn_set_of_bks_id
-        AND glbl.period_name          = gv_this_period_name
-        AND glbl.actual_flag          = cv_actual_flag_a
-        AND glbl.currency_code        = cv_currency_code
-        AND glcc.code_combination_id  = glbl.code_combination_id
--- == 2009/06/26 V1.1 Added START ===============================================================
-        AND glcc.chart_of_accounts_id = gsob.chart_of_accounts_id
-        AND gsob.set_of_books_id      = gn_set_of_bks_id
--- == 2009/06/26 V1.1 Added END   ===============================================================
-        AND fnac.lookup_type          = cv_type_change_account
-        AND fnac.language             = USERENV( 'LANG' )
-        AND fnac.enabled_flag         = cv_enabled_flag_y
-        AND NVL( fnac.start_date_active,gd_operation_date ) <= gd_operation_date
-        AND NVL( fnac.end_date_active,gd_operation_date )   >= gd_operation_date
-        AND glcc.segment3             = fnac.lookup_code
-        AND glcc.segment5             = hzca.account_number
-        AND xxca.customer_id          = hzca.cust_account_id
-        AND fnlt.lookup_type          = cv_type_cust_gyotai_sho
-        AND fnlt.language             = USERENV( 'LANG' )
-        AND fnlt.enabled_flag         = cv_enabled_flag_y
-        AND NVL( fnlt.start_date_active,gd_operation_date ) <= gd_operation_date
-        AND NVL( fnlt.end_date_active,gd_operation_date )   >= gd_operation_date
-        AND xxca.business_low_type   = fnlt.lookup_code
-        AND EXISTS (
--- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
---            SELECT /*+ INDEX(glblmv GL_BALANCES_N1) */
-            SELECT /*+
-                       LEADING(gcc    glblmv)
-                       USE_NL (gcc    glblmv)
-                       INDEX  (gcc    GL_CODE_COMBINATIONS_N5)
-                       INDEX  (glblmv GL_BALANCES_N1)
-                    */
--- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
-                   'X'
--- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
---            FROM gl_balances glblmv
-            FROM gl_code_combinations gcc
-                ,gl_balances          glblmv
--- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
---
--- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
---            WHERE glblmv.set_of_books_id     = gn_set_of_bks_id
-            WHERE gcc.code_combination_id    = glblmv.code_combination_id
-              AND glblmv.set_of_books_id     = gn_set_of_bks_id
--- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
-              AND glblmv.currency_code       = cv_currency_code
-              AND glblmv.actual_flag         = cv_actual_flag_a
-              AND glblmv.period_name         IN ( gv_this_period_name,
+             SUM( xgbe.begin_balance_dr -
+                  xgbe.begin_balance_cr +
+                  xgbe.period_net_dr -
+                  xgbe.period_net_cr )    change_balance    -- 当月末釣銭残高
+        FROM xxcfo_gl_balances_erp xgbe,                    -- GL残高_ERPテーブル
+-- ************ 2023/04/26 1.5 T.Mizutani ADD START ************ --
+             fnd_lookup_values     fnac,                    -- クイックコード(釣銭勘定科目コード)
+-- ************ 2023/04/26 1.5 T.Mizutani ADD END   ************ --
+             fnd_lookup_values     fnlt,                    -- クイックコード(業態分類(小分類))
+             hz_cust_accounts      hzca,                    -- 顧客マスタ
+             xxcmm_cust_accounts   xxca,                    -- 顧客追加情報テーブル
+             gl_sets_of_books      gsob                     -- 会計帳簿テーブル
+       WHERE gsob.set_of_books_id      = gn_set_of_bks_id
+         AND gsob.name                 = xgbe.set_of_books_name
+         AND xgbe.period_name          = gv_this_period_name
+-- ************ 2023/04/26 1.5 T.Mizutani ADD START ************ --
+         AND fnac.lookup_type          = cv_type_change_account
+         AND fnac.language             = USERENV( 'LANG' )
+         AND fnac.enabled_flag         = cv_enabled_flag_y
+         AND NVL( fnac.start_date_active,gd_operation_date ) <= gd_operation_date
+         AND NVL( fnac.end_date_active,gd_operation_date )   >= gd_operation_date
+         AND xgbe.segment3             = fnac.lookup_code
+-- ************ 2023/04/26 1.5 T.Mizutani ADD END   ************ --
+         AND xgbe.segment5             = hzca.account_number
+         AND xxca.customer_id          = hzca.cust_account_id
+         AND fnlt.lookup_type          = cv_type_cust_gyotai_sho
+         AND fnlt.language             = USERENV( 'LANG' )
+         AND fnlt.enabled_flag         = cv_enabled_flag_y
+         AND NVL( fnlt.start_date_active,gd_operation_date ) <= gd_operation_date
+         AND NVL( fnlt.end_date_active,gd_operation_date )   >= gd_operation_date
+         AND xxca.business_low_type    = fnlt.lookup_code
+         AND EXISTS (
+           SELECT 'X'
+             FROM xxcfo_gl_balances_erp xgbe2
+            WHERE xgbe2.set_of_books_name    =  xgbe.set_of_books_name
+              AND xgbe2.period_name          IN ( gv_this_period_name,
                                                   gv_last_period_name )
--- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
---              AND glblmv.code_combination_id = glbl.code_combination_id
-              AND gcc.segment3               =  glcc.segment3
-              AND gcc.segment5               =  glcc.segment5
--- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
-              AND ( glblmv. period_net_dr    <> 0
-                 OR glblmv. period_net_cr    <> 0 )
+              AND xgbe2.segment3             =  xgbe.segment3
+              AND xgbe2.segment5             =  xgbe.segment5
+              AND ( xgbe2.period_net_dr    <> 0
+                 OR xgbe2.period_net_cr    <> 0 )
             )
-      GROUP BY glcc.segment5,         -- 顧客コード
-               hzca.cust_account_id,  -- 顧客ID
-               xxca.sale_base_code,   -- 売上拠点コード
-               fnlt.attribute1        -- 業態分類(中分類)
+        GROUP BY xgbe.segment5,         -- 顧客コード
+                 hzca.cust_account_id,  -- 顧客ID
+                 xxca.sale_base_code,   -- 売上拠点コード
+                 fnlt.attribute1        -- 業態分類(中分類)
+-- ************ 2022/12/27 1.4 T.Mizutani ADD END   ************ --
+-- ************ 2022/12/27 1.4 T.Mizutani DEL START ************ --
+--      SELECT /*+ LEADING(fnac glcc glbl)
+--                 USE_NL (fnac glcc glbl)
+--             */
+--             glcc.segment5                segment5,         -- 顧客コード
+--             hzca.cust_account_id         cust_account_id,  -- 顧客ID
+--             xxca.sale_base_code          sale_base_code,   -- 売上拠点コード
+--             fnlt.attribute1              attribute1,       -- 業態分類(中分類)
+--             SUM( glbl.begin_balance_dr -
+--                  glbl.begin_balance_cr +
+--                  glbl.period_net_dr -
+--                  glbl.period_net_cr )    change_balance    -- 当月末釣銭残高
+--      FROM  gl_code_combinations glcc
+--           ,gl_balances          glbl
+--           ,fnd_lookup_values    fnac                       -- クイックコード(釣銭勘定科目コード)
+--           ,fnd_lookup_values    fnlt                       -- クイックコード(業態分類(小分類))
+--           ,hz_cust_accounts     hzca
+--           ,xxcmm_cust_accounts  xxca
+---- == 2009/06/26 V1.1 Added START ===============================================================
+--           ,gl_sets_of_books     gsob
+---- == 2009/06/26 V1.1 Added END   ===============================================================
+--      WHERE glbl.set_of_books_id      = gn_set_of_bks_id
+--        AND glbl.period_name          = gv_this_period_name
+--        AND glbl.actual_flag          = cv_actual_flag_a
+--        AND glbl.currency_code        = cv_currency_code
+--        AND glcc.code_combination_id  = glbl.code_combination_id
+---- == 2009/06/26 V1.1 Added START ===============================================================
+--        AND glcc.chart_of_accounts_id = gsob.chart_of_accounts_id
+--        AND gsob.set_of_books_id      = gn_set_of_bks_id
+---- == 2009/06/26 V1.1 Added END   ===============================================================
+--        AND fnac.lookup_type          = cv_type_change_account
+--        AND fnac.language             = USERENV( 'LANG' )
+--        AND fnac.enabled_flag         = cv_enabled_flag_y
+--        AND NVL( fnac.start_date_active,gd_operation_date ) <= gd_operation_date
+--        AND NVL( fnac.end_date_active,gd_operation_date )   >= gd_operation_date
+--        AND glcc.segment3             = fnac.lookup_code
+--        AND glcc.segment5             = hzca.account_number
+--        AND xxca.customer_id          = hzca.cust_account_id
+--        AND fnlt.lookup_type          = cv_type_cust_gyotai_sho
+--        AND fnlt.language             = USERENV( 'LANG' )
+--        AND fnlt.enabled_flag         = cv_enabled_flag_y
+--        AND NVL( fnlt.start_date_active,gd_operation_date ) <= gd_operation_date
+--        AND NVL( fnlt.end_date_active,gd_operation_date )   >= gd_operation_date
+--        AND xxca.business_low_type   = fnlt.lookup_code
+--        AND EXISTS (
+---- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+----            SELECT /*+ INDEX(glblmv GL_BALANCES_N1) */
+--            SELECT /*+
+--                       LEADING(gcc    glblmv)
+--                       USE_NL (gcc    glblmv)
+--                       INDEX  (gcc    GL_CODE_COMBINATIONS_N5)
+--                       INDEX  (glblmv GL_BALANCES_N1)
+--                    */
+---- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
+--                   'X'
+---- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+----            FROM gl_balances glblmv
+--            FROM gl_code_combinations gcc
+--                ,gl_balances          glblmv
+---- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
+----
+---- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+----            WHERE glblmv.set_of_books_id     = gn_set_of_bks_id
+--            WHERE gcc.code_combination_id    = glblmv.code_combination_id
+--              AND glblmv.set_of_books_id     = gn_set_of_bks_id
+---- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
+--              AND glblmv.currency_code       = cv_currency_code
+--              AND glblmv.actual_flag         = cv_actual_flag_a
+--              AND glblmv.period_name         IN ( gv_this_period_name,
+--                                                  gv_last_period_name )
+---- ************ 2010/12/06 1.3 M.Watanabe UPD START ************ --
+----              AND glblmv.code_combination_id = glbl.code_combination_id
+--              AND gcc.segment3               =  glcc.segment3
+--              AND gcc.segment5               =  glcc.segment5
+---- ************ 2010/12/06 1.3 M.Watanabe UPD END   ************ --
+--              AND ( glblmv. period_net_dr    <> 0
+--                 OR glblmv. period_net_cr    <> 0 )
+--            )
+--      GROUP BY glcc.segment5,         -- 顧客コード
+--               hzca.cust_account_id,  -- 顧客ID
+--               xxca.sale_base_code,   -- 売上拠点コード
+--               fnlt.attribute1        -- 業態分類(中分類)
+-- ************ 2022/12/27 1.4 T.mizutani DEL END ************ --
     ;
 --
     -- *** ローカル・レコード ***
@@ -743,51 +801,73 @@ AS
 --
     -- 釣銭未払い金額を取得する
     BEGIN
-      SELECT SUM( NVL( gljl.entered_dr,0 ) -
-                  NVL( gljl.entered_cr,0 )) change_unpaid
-      INTO gn_change_unpaid
-      FROM gl_code_combinations glcc,
-           fnd_lookup_values    fnac,
-           gl_je_headers        gljh,
-           gl_je_lines          gljl,
-           ap_invoices_all      apia
--- == 2009/06/26 V1.1 Added START ===============================================================
-          ,gl_sets_of_books     gsob
--- == 2009/06/26 V1.1 Added END   ===============================================================
-      WHERE gljh.set_of_books_id        = gn_set_of_bks_id
-        AND gljh.period_name            IN ( gv_this_period_name,
-                                             gv_last_period_name )
-        AND gljh.je_source              = cv_je_source_pay      -- 買掛管理
-        AND gljh.je_category            = cv_je_category_purinv -- 仕入請求書
-        AND gljh.actual_flag            = cv_actual_flag_a
-        AND gljh.currency_code          = cv_currency_code
-        AND gljh.status                 = cv_status_p
-        AND gljh.je_header_id           = gljl.je_header_id
-        AND fnac.lookup_type            = cv_type_change_account
-        AND fnac.language               = USERENV( 'LANG' )
-        AND fnac.enabled_flag           = cv_enabled_flag_y
-        AND NVL( fnac.start_date_active,gd_operation_date ) <= gd_operation_date
-        AND NVL( fnac.end_date_active,gd_operation_date )   >= gd_operation_date
-        AND glcc.segment3               = fnac.lookup_code
-        AND glcc.segment5               = gt_segment5( in_loop_cnt )
-        AND gljl.code_combination_id    = glcc.code_combination_id
-        AND gljl.reference_2            = apia.invoice_id
-        AND apia.cancelled_date         IS NULL
-        AND (( apia.payment_status_flag = cv_payment_status_n )
-          OR ( apia.payment_status_flag = cv_payment_status_y
-            AND EXISTS (
-                SELECT 'X'
-                FROM ap_invoice_payments_all apipa,
-                     ap_checks_all           apca
-                WHERE apipa.invoice_id = apia.invoice_id
-                  AND apca.check_id    = apipa.check_id
-                  AND apca.check_date  > gd_operation_date )))
--- == 2009/06/26 V1.1 Added START ===============================================================
-        AND glcc.chart_of_accounts_id   = gsob.chart_of_accounts_id
-        AND gsob.set_of_books_id        = gn_set_of_bks_id
-        AND gljl.period_name            IN ( gv_this_period_name,
-                                             gv_last_period_name )
--- == 2009/06/26 V1.1 Added END   ===============================================================
+-- ************ 2022/12/27 1.4 T.Mizutani ADD START ************ --
+      SELECT SUM( NVL( xgjle.entered_dr,0 ) -
+                  NVL( xgjle.entered_cr,0 )) change_unpaid
+        INTO gn_change_unpaid
+        FROM xxcfo_gl_je_lines_erp   xgjle     -- GL仕訳明細_ERPテーブル
+            ,gl_sets_of_books        gsob
+       WHERE xgjle.set_of_books_name      = gsob.name
+         AND xgjle.period_name            IN ( gv_this_period_name,
+                                               gv_last_period_name )
+         AND xgjle.je_source              = cv_je_source_pay      -- 買掛管理('Payables')
+         AND xgjle.je_category            = cv_je_category_purinv -- 仕入請求書('Purchase Invoices')
+         AND xgjle.segment5               = gt_segment5( in_loop_cnt ) -- 顧客コード
+         AND xgjle.cancelled_date         IS NULL                      -- 取消日
+         AND (( xgjle.payment_status_flag = cv_payment_status_n )
+           OR ( xgjle.payment_status_flag = cv_payment_status_y
+             AND xgjle.check_date  > gd_operation_date                 -- 支払日
+              )
+             )
+         AND gsob.set_of_books_id        = gn_set_of_bks_id
+-- ************ 2022/11/29 1.4 T.Mizutani ADD END   ************ --
+-- ************ 2022/11/29 1.4 T.Mizutani DEL START ************ --
+--      SELECT SUM( NVL( gljl.entered_dr,0 ) -
+--                  NVL( gljl.entered_cr,0 )) change_unpaid
+--      INTO gn_change_unpaid
+--      FROM gl_code_combinations glcc,
+--           fnd_lookup_values    fnac,
+--           gl_je_headers        gljh,
+--           gl_je_lines          gljl,
+--           ap_invoices_all      apia
+---- == 2009/06/26 V1.1 Added START ===============================================================
+--          ,gl_sets_of_books     gsob
+---- == 2009/06/26 V1.1 Added END   ===============================================================
+--      WHERE gljh.set_of_books_id        = gn_set_of_bks_id
+--        AND gljh.period_name            IN ( gv_this_period_name,
+--                                             gv_last_period_name )
+--        AND gljh.je_source              = cv_je_source_pay      -- 買掛管理
+--        AND gljh.je_category            = cv_je_category_purinv -- 仕入請求書
+--        AND gljh.actual_flag            = cv_actual_flag_a
+--        AND gljh.currency_code          = cv_currency_code
+--        AND gljh.status                 = cv_status_p
+--        AND gljh.je_header_id           = gljl.je_header_id
+--        AND fnac.lookup_type            = cv_type_change_account
+--        AND fnac.language               = USERENV( 'LANG' )
+--        AND fnac.enabled_flag           = cv_enabled_flag_y
+--        AND NVL( fnac.start_date_active,gd_operation_date ) <= gd_operation_date
+--        AND NVL( fnac.end_date_active,gd_operation_date )   >= gd_operation_date
+--        AND glcc.segment3               = fnac.lookup_code
+--        AND glcc.segment5               = gt_segment5( in_loop_cnt )
+--        AND gljl.code_combination_id    = glcc.code_combination_id
+--        AND gljl.reference_2            = apia.invoice_id
+--        AND apia.cancelled_date         IS NULL
+--        AND (( apia.payment_status_flag = cv_payment_status_n )
+--          OR ( apia.payment_status_flag = cv_payment_status_y
+--            AND EXISTS (
+--                SELECT 'X'
+--                FROM ap_invoice_payments_all apipa,
+--                     ap_checks_all           apca
+--                WHERE apipa.invoice_id = apia.invoice_id
+--                  AND apca.check_id    = apipa.check_id
+--                  AND apca.check_date  > gd_operation_date )))
+---- == 2009/06/26 V1.1 Added START ===============================================================
+--        AND glcc.chart_of_accounts_id   = gsob.chart_of_accounts_id
+--        AND gsob.set_of_books_id        = gn_set_of_bks_id
+--        AND gljl.period_name            IN ( gv_this_period_name,
+--                                             gv_last_period_name )
+---- == 2009/06/26 V1.1 Added END   ===============================================================
+-- ************ 2022/12/27 1.4 T.Mizutani DEL END   ************ --
       ;
 --
     EXCEPTION
@@ -862,39 +942,56 @@ AS
 --
     -- 釣銭戻し先日付金額を取得する
     BEGIN
-      SELECT SUM( NVL( gljl.entered_cr,0 ) -
-                  NVL( gljl.entered_dr,0 )) change_back
-      INTO gn_change_back
-      FROM gl_code_combinations glcc,
-           fnd_lookup_values    fnac,
-           gl_je_headers        gljh,
-           gl_je_lines          gljl
--- == 2009/06/26 V1.1 Added START ===============================================================
-          ,gl_sets_of_books     gsob
--- == 2009/06/26 V1.1 Added END   ===============================================================
-      WHERE gljh.set_of_books_id     = gn_set_of_bks_id
-        AND gljh.period_name         = gv_this_period_name
-        AND gljh.je_source           <> cv_je_source_pay      -- 買掛管理
-        AND gljh.je_category         <> cv_je_category_purinv -- 仕入請求書
-        AND gljh.actual_flag         = cv_actual_flag_a
-        AND gljh.currency_code       = cv_currency_code
-        AND gljh.status              = cv_status_p
-        AND gljh.je_header_id        = gljl.je_header_id
-        AND fnac.lookup_type         = cv_type_change_account
-        AND fnac.language            = USERENV( 'LANG' )
-        AND fnac.enabled_flag        = cv_enabled_flag_y
-        AND NVL(fnac.start_date_active,gd_operation_date) <= gd_operation_date
-        AND NVL(fnac.end_date_active,gd_operation_date)   >= gd_operation_date
-        AND glcc.segment3            = fnac.lookup_code
-        AND glcc.segment5            = gt_segment5( in_loop_cnt )
-        AND gljl.code_combination_id = glcc.code_combination_id
-        AND gljl.effective_date      > gd_operation_date
--- == 2009/06/26 V1.1 Added START ===============================================================
-        AND glcc.chart_of_accounts_id   = gsob.chart_of_accounts_id
-        AND gsob.set_of_books_id        = gn_set_of_bks_id
-        AND gljl.period_name            IN ( gv_this_period_name,
-                                             gv_last_period_name )
--- == 2009/06/26 V1.1 Added END   ===============================================================
+-- ************ 2022/12/27 1.4 T.Mizutani ADD START ************ --
+      SELECT SUM( NVL( xgjle.entered_cr,0 ) -
+                  NVL( xgjle.entered_dr,0 )) change_back
+        INTO gn_change_back
+        FROM xxcfo_gl_je_lines_erp   xgjle     -- GL仕訳明細_ERPテーブル
+            ,gl_sets_of_books        gsob      -- 会計帳簿テーブル
+       WHERE xgjle.set_of_books_name      = gsob.name
+         AND xgjle.period_name            IN ( gv_this_period_name,
+                                               gv_last_period_name )
+         AND xgjle.je_source              <> cv_je_source_pay          -- 買掛管理('Payables')
+         AND xgjle.je_category            <> cv_je_category_purinv     -- 仕入請求書('Purchase Invoices')
+         AND xgjle.segment5               = gt_segment5( in_loop_cnt ) -- 顧客コード
+         AND xgjle.effective_date         > gd_operation_date          -- 仕訳明細計上日
+         AND gsob.set_of_books_id         = gn_set_of_bks_id
+-- ************ 2022/12/27 1.4 T.Mizutani ADD END   ************ --
+-- ************ 2022/12/27 1.4 T.Mizutani DEL START ************ --
+--      SELECT SUM( NVL( gljl.entered_cr,0 ) -
+--                  NVL( gljl.entered_dr,0 )) change_back
+--      INTO gn_change_back
+--      FROM gl_code_combinations glcc,
+--           fnd_lookup_values    fnac,
+--           gl_je_headers        gljh,
+--           gl_je_lines          gljl
+---- == 2009/06/26 V1.1 Added START ===============================================================
+--          ,gl_sets_of_books     gsob
+---- == 2009/06/26 V1.1 Added END   ===============================================================
+--      WHERE gljh.set_of_books_id     = gn_set_of_bks_id
+--        AND gljh.period_name         = gv_this_period_name
+--        AND gljh.je_source           <> cv_je_source_pay      -- 買掛管理
+--        AND gljh.je_category         <> cv_je_category_purinv -- 仕入請求書
+--        AND gljh.actual_flag         = cv_actual_flag_a
+--        AND gljh.currency_code       = cv_currency_code
+--        AND gljh.status              = cv_status_p
+--        AND gljh.je_header_id        = gljl.je_header_id
+--        AND fnac.lookup_type         = cv_type_change_account
+--        AND fnac.language            = USERENV( 'LANG' )
+--        AND fnac.enabled_flag        = cv_enabled_flag_y
+--        AND NVL(fnac.start_date_active,gd_operation_date) <= gd_operation_date
+--        AND NVL(fnac.end_date_active,gd_operation_date)   >= gd_operation_date
+--        AND glcc.segment3            = fnac.lookup_code
+--        AND glcc.segment5            = gt_segment5( in_loop_cnt )
+--        AND gljl.code_combination_id = glcc.code_combination_id
+--        AND gljl.effective_date      > gd_operation_date
+---- == 2009/06/26 V1.1 Added START ===============================================================
+--        AND glcc.chart_of_accounts_id   = gsob.chart_of_accounts_id
+--        AND gsob.set_of_books_id        = gn_set_of_bks_id
+--        AND gljl.period_name            IN ( gv_this_period_name,
+--                                             gv_last_period_name )
+---- == 2009/06/26 V1.1 Added END   ===============================================================
+-- ************ 2022/12/27 1.4 T.Mizutani DEL END   ************ --
       ;
 --
     EXCEPTION
