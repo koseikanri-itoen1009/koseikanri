@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : Ğˆõƒf[ƒ^æˆ—
  * MD.050           : MD050_CMM_002_A01_Ğˆõƒf[ƒ^æ
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -115,6 +115,7 @@ AS
  *  2019/04/16    1.20 SCSK ˆ¢•” ’¼÷    áŠQE_–{‰Ò“®_15639 ‘Î‰
  *  2019/05/22    1.21 SCSK ˆ¢•” ’¼÷    áŠQE_–{‰Ò“®_15725 ‘Î‰
  *  2019/10/16    1.22 SCSK Šs —Li      áŠQE_–{‰Ò“®_15852 ‘Î‰
+ *  2022/11/29    1.23 SCSK …’J •”    E_–{‰Ò“®_SaaS ‘Î‰
  *
  *****************************************************************************************/
 --
@@ -5962,6 +5963,9 @@ AS
     -- ŠÇ—ÒXV
     UPDATE per_all_assignments_f
     SET    supervisor_id        = ir_masters_rec.supervisor_id
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+          ,ass_attribute19      = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
     WHERE  assignment_id        = ir_masters_rec.assignment_id
     AND    effective_start_date = ir_masters_rec.effective_start_date
     AND    effective_end_date   = ir_masters_rec.effective_end_date;
@@ -6371,6 +6375,9 @@ AS
         UPDATE per_all_assignments_f
         SET    ASS_ATTRIBUTE17 = TO_CHAR(gd_last_update_date,'YYYYMMDD HH24:MI:SS')
               ,ASS_ATTRIBUTE18 = TO_CHAR(gd_last_update_date,'YYYYMMDD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,ass_attribute19 = TO_CHAR(gd_last_update_date,'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  assignment_id        = ln_assignment_id_old
         AND    effective_start_date = ld_effective_start_date_old
         AND    effective_end_date   >= ld_effective_start_date_old
@@ -6692,6 +6699,9 @@ AS
     -- ŠÇ—ÒXV
     UPDATE per_all_assignments_f
     SET    supervisor_id        = ir_masters_rec.supervisor_id
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+          ,ass_attribute19      = TO_CHAR(gd_last_update_date,'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
     WHERE  assignment_id        = ir_masters_rec.assignment_id
     AND    effective_start_date = ir_masters_rec.effective_start_date
     AND    effective_end_date   = ir_masters_rec.effective_end_date;
@@ -9388,6 +9398,9 @@ AS
       FORALL j IN 1..lt_emp.COUNT
         UPDATE per_all_assignments_f
         SET    supervisor_id        = ln_app_id                       --³”FÒ‚Ì]‹ÆˆõID
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,ass_attribute19      = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  assignment_id        = lt_emp(j).assignment_id         --ƒAƒTƒCƒ“ƒƒ“ƒgID
         AND    effective_start_date = lt_emp(j).effective_start_date  --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(j).effective_end_date    --“o˜^ŠúŒÀ”NŒ“ú
@@ -9397,6 +9410,9 @@ AS
       FORALL k IN 1..lt_emp.COUNT
         UPDATE per_all_people_f
         SET    attribute30          = lt_wk_st(ln_wk_cnt).applica_dep_code    --\¿ÒŠ‘®ƒR[ƒh
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,attribute23          = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  person_id            = lt_emp(k).person_id             --]‹ÆˆõID
         AND    effective_start_date = lt_emp(k).effective_start_date  --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(k).effective_end_date    --“o˜^ŠúŒÀ”NŒ“ú
@@ -9570,6 +9586,9 @@ AS
       FORALL j IN 1..lt_emp.COUNT
         UPDATE per_all_assignments_f
         SET    supervisor_id        = ln_app_id                       --æ“¾‚µ‚½]‹Æˆõ
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,ass_attribute19      = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  assignment_id        = lt_emp(j).assignment_id         --ƒAƒTƒCƒ“ƒƒ“ƒgID
         AND    effective_start_date = lt_emp(j).effective_start_date  --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(j).effective_end_date    --“o˜^ŠúŒÀ”NŒ“ú
@@ -9579,6 +9598,9 @@ AS
       FORALL k IN 1..lt_emp.COUNT
         UPDATE per_all_people_f
         SET    attribute30          = lt_wk_all(ln_wk_cnt).approve_dep_code   --³”FÒŠ‘®ƒR[ƒh
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,attribute23          = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  person_id            = lt_emp(k).person_id                     --]‹ÆˆõID
         AND    effective_start_date = lt_emp(k).effective_start_date          --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(k).effective_end_date            --“o˜^ŠúŒÀ”NŒ“ú
@@ -9753,6 +9775,9 @@ AS
       FORALL j IN 1..lt_emp.COUNT
         UPDATE per_all_assignments_f
         SET    supervisor_id        = ln_app_id                       --æ“¾‚µ‚½]‹Æˆõ
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,ass_attribute19      = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  assignment_id        = lt_emp(j).assignment_id         --ƒAƒTƒCƒ“ƒƒ“ƒgID
         AND    effective_start_date = lt_emp(j).effective_start_date  --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(j).effective_end_date    --“o˜^ŠúŒÀ”NŒ“ú
@@ -9762,6 +9787,9 @@ AS
       FORALL k IN 1..lt_emp.COUNT
         UPDATE per_all_people_f
         SET    attribute30          = attribute28                     --‹N•[•”–å(Š‘®ƒR[ƒhiVj)
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,attribute23          = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  person_id            = lt_emp(k).person_id             --]‹ÆˆõID
         AND    effective_start_date = lt_emp(k).effective_start_date  --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(k).effective_end_date    --“o˜^ŠúŒÀ”NŒ“ú
@@ -9813,6 +9841,9 @@ AS
       FORALL k IN 1..lt_emp.COUNT
         UPDATE per_all_people_f
         SET    attribute30          = lt_wk_ok(ln_wk_cnt).approve_dep_code      --³”FÒŠ‘®CD(³”FÒ”ÍˆÍ)
+-- 2022/11/29 Ver1.23 add start by T.Mizutani
+              ,attribute23          = TO_CHAR(gd_last_update_date, 'YYYY/MM/DD HH24:MI:SS')
+-- 2022/11/29 Ver1.23 add end   by T.Mizutani
         WHERE  person_id            = lt_emp(k).person_id                       --]‹ÆˆõID
         AND    effective_start_date = lt_emp(k).effective_start_date            --“o˜^”NŒ“ú
         AND    effective_end_date   = lt_emp(k).effective_end_date              --“o˜^ŠúŒÀ”NŒ“ú
