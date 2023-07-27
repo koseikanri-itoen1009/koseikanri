@@ -1,0 +1,5 @@
+CREATE INDEX xxcfo.xxcfo_gl_balances_erp_n03 ON xxcfo.xxcfo_gl_balances_erp(
+  period_name
+ ,segment3
+ ,segment5
+) TABLESPACE xxidx2;

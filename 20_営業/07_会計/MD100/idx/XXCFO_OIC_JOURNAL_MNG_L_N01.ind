@@ -1,0 +1,6 @@
+CREATE INDEX xxcfo.xxcfo_oic_journal_mng_l_n01 ON xxcfo.xxcfo_oic_journal_mng_l(
+    set_of_books_id
+  , je_source
+  , je_category
+  , je_header_id
+) TABLESPACE xxidx2;

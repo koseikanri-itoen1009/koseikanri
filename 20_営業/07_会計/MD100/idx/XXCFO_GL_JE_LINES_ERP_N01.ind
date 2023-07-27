@@ -1,0 +1,6 @@
+CREATE INDEX xxcfo.xxcfo_gl_je_lines_erp_n01 ON xxcfo.xxcfo_gl_je_lines_erp(
+  set_of_books_name
+ ,period_name
+ ,segment5
+ ,effective_date
+) TABLESPACE xxidx2;
