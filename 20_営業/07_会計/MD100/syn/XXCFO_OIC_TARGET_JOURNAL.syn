@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_oic_target_journal FOR xxcfo.xxcfo_oic_target_journal;
