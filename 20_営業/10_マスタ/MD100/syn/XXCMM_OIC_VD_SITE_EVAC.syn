@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmm_oic_vd_site_evac FOR xxcmm.xxcmm_oic_vd_site_evac;

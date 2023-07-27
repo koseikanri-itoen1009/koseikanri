@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmm_oic_bank_acct_evac FOR xxcmm.xxcmm_oic_bank_acct_evac;
