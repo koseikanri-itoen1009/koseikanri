@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A44C (body)
  * Description      : 控除未作成入金相殺伝票CSV出力
  * MD.050           : 控除未作成入金相殺伝票CSV出力 MD050_COK_024_A44
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/10/21    1.0   R.Oikawa         main新規作成
  *  2023/03/29    1.1   K.Yoshikawa      E_本稼動_18519 特権拠点変更
+ *  2023/07/26    1.2   M.Akachi         E_本稼動_19333 入金相殺消込におけるEDI実績振替控除の消込不良
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
   cv_date_format_time         CONSTANT  VARCHAR2(30)  := 'YYYY/MM/DD HH24:MI:SS';   -- 日付書式(日時)
   cv_year_format              CONSTANT  VARCHAR2(10)  := 'YYYY';                    -- 日付書式(年)
   cv_month_format             CONSTANT  VARCHAR2(10)  := 'MM';                      -- 日付書式(日)
+-- Ver1.2 Add Start
+  cv_date_format2             CONSTANT VARCHAR2(10)  := 'YYYYMMDD';                          -- 日付書式
+-- Ver1.2 Add End
   --プロファイル
   cv_prof_trx_type            CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOK1_RA_TRX_TYPE_VARIABLE_CONS';     -- 取引タイプ_変動対価相殺
   -- 参照タイプ
@@ -716,7 +720,10 @@ AS
             -- 日が30以外の場合、減算した入金予定日に2で取得した日を設定する。
             ld_derivation_record_date := TO_DATE( TO_CHAR( ld_derivation_record_date, cv_year_format ) 
                                                   || TO_CHAR( ld_derivation_record_date, cv_month_format ) 
-                                                  || SUBSTR( iv_terms_name, 1, 2 ) , cv_date_format );
+-- Ver.1.2 Mod Start
+--                                                  || SUBSTR( iv_terms_name, 1, 2 ) , cv_date_format );
+                                                  || SUBSTR( iv_terms_name, 1, 2 ) , cv_date_format2 );
+-- Ver.1.2 Mod End
           END IF;
         EXCEPTION
           WHEN OTHERS THEN
@@ -756,15 +763,18 @@ AS
                                         )
       AND     xsd.record_date        <= ld_derivation_record_date                             -- 対象計上日導出ロジックで導出した日付
       AND     xsd.source_category    NOT IN ( cv_flag_d, cv_flag_u )                          -- 作成元区分 NOT IN  D:差額調整,U:アップロード
-      AND     (
-               ( xsd.source_category          = cv_flag_v                                     -- 作成元区分 = V:売上実績振替（振替割合）
-                 AND xsd.report_decision_flag = cv_flag_on                                    -- 速報確定フラグ:1(実績振替確定済み)
-               )
-              OR
-               ( xsd.source_category         <> cv_flag_v                                     -- 作成元区分がV:売上実績振替（振替割合）以外
-                 AND xsd.report_decision_flag IS NULL                                         -- 速報確定フラグ IS NULL)
-               )
-              )
+-- Ver.1.2 Mod Start
+--      AND     (
+--               ( xsd.source_category          = cv_flag_v                                     -- 作成元区分 = V:売上実績振替（振替割合）
+--                 AND xsd.report_decision_flag = cv_flag_on                                    -- 速報確定フラグ:1(実績振替確定済み)
+--               )
+--              OR
+--               ( xsd.source_category         <> cv_flag_v                                     -- 作成元区分がV:売上実績振替（振替割合）以外
+--                 AND xsd.report_decision_flag IS NULL                                         -- 速報確定フラグ IS NULL)
+--               )
+--              )
+      AND     ( xsd.report_decision_flag = cv_flag_on OR xsd.report_decision_flag IS NULL )     -- 速報確定フラグ:1(実績振替確定済み) またはNULL
+-- Ver.1.2 Mod End
       ;
     EXCEPTION
       WHEN OTHERS THEN
