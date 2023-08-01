@@ -7,7 +7,7 @@ AS
  * Description      : 入金相殺自動消込処理
  * MD.050           : MD050_COK_024_A42_入金相殺自動消込処理
  *
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------  -------------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- --------------------------------------------------
  *  2022-12-13    1.0   M.Akachi         新規作成 E_本稼動_18519 入金相殺の消込（AR連携）
+ *  2023-07-26    1.1   M.Akachi         E_本稼動_19275 入金相殺消込の14番顧客のチェック
+ *                                       E_本稼動_19333 入金相殺消込におけるEDI実績振替控除の消込不良
  *
  *****************************************************************************************/
   --
@@ -95,6 +97,9 @@ AS
   cv_flag_off               CONSTANT VARCHAR2(1)   := '0';                                 -- フラグOFF
   cv_flag_on                CONSTANT VARCHAR2(1)   := '1';                                 -- フラグON
   cv_date_format            CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                        -- 日付書式
+-- Ver1.1 Add Start
+  cv_date_format2           CONSTANT VARCHAR2(10)  := 'YYYYMMDD';                          -- 日付書式
+-- Ver1.1 Add End
   cv_year_format            CONSTANT VARCHAR2(10)  := 'YYYY';                              -- 日付書式(年)
   cv_month_format           CONSTANT VARCHAR2(10)  := 'MM';                                -- 日付書式(日)
   ct_deduction_data_type    CONSTANT fnd_lookup_values.lookup_type%TYPE  := 'XXCOK1_DEDUCTION_DATA_TYPE';  -- 控除データ種類
@@ -345,9 +350,12 @@ AS
                                       AND    flv.attribute14 = iv_slip_line_type_name )
       AND xsd.source_category <> cv_flag_d                                                    -- 作成元区分 <> D:差額調整
       AND xsd.record_date <= id_derivation_record_date                                        -- 対象計上日導出ロジックで導出した日付
-      AND ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )     -- (作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
-            OR                                                                                --  OR
-            ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )       --  作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL)
+-- Ver1.1 Mod Start
+--      AND ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )     -- (作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
+--            OR                                                                                --  OR
+--            ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )       --  作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL)
+      AND ( xsd.report_decision_flag = cv_flag_on OR xsd.report_decision_flag IS NULL )       -- 速報確定フラグ:1(実績振替確定済み)またはNULL
+-- Ver1.1 Mod End
       AND xsd.customer_code_to = xca.customer_code
       GROUP BY  xsd.customer_code_to      -- 振替先顧客コード
                ,xsd.deduction_chain_code  -- 控除用チェーンコード
@@ -578,6 +586,38 @@ AS
       ,xrs1.payment_scheduled_date  AS payment_scheduled_date              -- 入金予定日
       ,xrs1.terms_name              AS terms_name                          -- 支払条件名
       ,amlv.attribute3              AS slip_line_type_name                 -- 入金相殺消込用請求内容
+-- Ver1.1 Add Start
+      ,(SELECT distinct 1
+        FROM  xxcfr_cust_hierarchy_v xchv
+        WHERE xchv.cash_account_number <> hca.account_number
+        AND   xchv.bill_account_number <> hca.account_number
+        AND   xchv.ship_account_number = hca.account_number )  AS div1 -- 出荷先顧客コード
+      ,(SELECT distinct 2
+        FROM  xxcfr_cust_hierarchy_v xchv
+        WHERE xchv.cash_account_number <> hca.account_number
+        AND   xchv.bill_account_number = hca.account_number
+        AND   xchv.ship_account_number = hca.account_number )  AS div2 -- 出荷先顧客コード
+      ,(SELECT distinct 3
+        FROM  xxcfr_cust_hierarchy_v xchv
+        WHERE xchv.cash_account_number <> hca.account_number
+        AND   xchv.bill_account_number = hca.account_number
+        AND   xchv.ship_account_number <> hca.account_number ) AS div3 -- 請求先顧客コード
+      ,(SELECT distinct 4
+        FROM  xxcfr_cust_hierarchy_v xchv
+        WHERE xchv.cash_account_number = hca.account_number
+        AND   xchv.bill_account_number = hca.account_number
+        AND   xchv.ship_account_number = hca.account_number )  AS div4 -- 入金先顧客コード
+      ,(SELECT distinct 5
+        FROM  xxcfr_cust_hierarchy_v xchv
+        WHERE xchv.cash_account_number = hca.account_number
+        AND   xchv.bill_account_number = hca.account_number
+        AND   xchv.ship_account_number <> hca.account_number ) AS div5 -- 入金先顧客コード
+      ,(SELECT distinct 6
+        FROM  xxcfr_cust_hierarchy_v xchv
+        WHERE xchv.cash_account_number = hca.account_number
+        AND   xchv.bill_account_number <> hca.account_number
+        AND   xchv.ship_account_number <> hca.account_number ) AS div6 -- 入金先顧客コード
+-- Ver1.1 Add End
       FROM xx03_receivable_slips xrs1                                      -- AR部門入力
           ,xx03_receivable_slips_line xrsl                                 -- AR部門入力明細
           ,hz_cust_accounts hca                                            -- 顧客マスタ
@@ -598,7 +638,16 @@ AS
       AND hca.cust_account_id = xrs1.customer_id
       AND xrs1.gl_date >= gd_standard_date
       AND xrs1.gl_date <= gd_before_month_last_date
-      ORDER BY xrs1.invoice_date ASC
+-- Ver1.1 Mod Start
+--      ORDER BY xrs1.invoice_date ASC
+      ORDER BY div1 ASC
+              ,div2 ASC
+              ,div3 ASC
+              ,div4 ASC
+              ,div5 ASC
+              ,div6 ASC
+              ,xrs1.invoice_date ASC
+-- Ver1.1 Mod End
       ;
 --
     -- *** ローカル・カーソル (販売控除情報ロック情報)***
@@ -627,9 +676,12 @@ AS
                                       AND    flv.attribute14  = iv_slip_line_type_name )
       AND xsd.record_date <= id_derivation_record_date                                     -- 対象計上日導出ロジックで導出した日付
       AND xsd.source_category <> cv_flag_d                                                 -- 作成元区分 <> D:差額調整
-      AND ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )  -- (作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
-            OR                                                                             --  OR
-            ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )    --  作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL)
+-- Ver1.1 Mod Start
+--      AND ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )  -- (作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
+--            OR                                                                             --  OR
+--            ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )    --  作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL)
+      AND ( xsd.report_decision_flag = cv_flag_on OR xsd.report_decision_flag IS NULL )    -- 速報確定フラグ:1(実績振替確定済み)またはNULL
+-- Ver1.1 Mod End
       FOR UPDATE NOWAIT
       ;
 --
@@ -757,9 +809,12 @@ AS
             ld_derivation_record_date := TRUNC( LAST_DAY( ld_derivation_record_date ) );
           ELSE
             -- 日が30以外の場合、減算した入金予定日に2で取得した日を設定する。
-            ld_derivation_record_date := TO_DATE( TO_CHAR( ld_derivation_record_date, cv_year_format ) 
-                                                  || TO_CHAR( ld_derivation_record_date, cv_month_format ) 
-                                                  || SUBSTR( lt_receivable_slips_key_rec.terms_name, 1, 2 ) , cv_date_format );
+            ld_derivation_record_date := TO_DATE( TO_CHAR( ld_derivation_record_date, cv_year_format )
+                                                  || TO_CHAR( ld_derivation_record_date, cv_month_format )
+-- Ver1.1 Mod Start
+--                                                  || SUBSTR( lt_receivable_slips_key_rec.terms_name, 1, 2 ) , cv_date_format );
+                                                  || SUBSTR( lt_receivable_slips_key_rec.terms_name, 1, 2 ) , cv_date_format2 );
+-- Ver1.1 Mod End
           END IF;
         END IF;
       END IF;
@@ -817,9 +872,12 @@ AS
                                           AND    flv.attribute14  = lt_receivable_slips_key_rec.slip_line_type_name )
           AND xsd.record_date <= ld_derivation_record_date                                     -- 対象計上日導出ロジックで導出した日付
           AND xsd.source_category <> cv_flag_d                                                 -- 作成元区分 <> D:差額調整
-          AND ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )  -- ( 作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
-                OR                                                                             --   OR
-                ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )    --   作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL )
+-- Ver1.1 Mod Start
+--          AND ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )  -- ( 作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
+--                OR                                                                             --   OR
+--                ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )    --   作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL )
+          AND ( xsd.report_decision_flag = cv_flag_on OR xsd.report_decision_flag IS NULL )    -- 速報確定フラグ:1(実績振替確定済み)またはNULL
+-- Ver1.1 Mod End
           ;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
@@ -1039,9 +1097,12 @@ AS
                                          AND    flv.attribute14  = lt_receivable_slips_key_rec.slip_line_type_name )
         AND  xsd.record_date <= ld_derivation_record_date                                     -- 対象計上日導出ロジックで導出した日付
         AND  xsd.source_category <> cv_flag_d                                                 -- 作成元区分 <> D:差額調整
-        AND  ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )  -- ( 作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
-               OR                                                                             --   OR
-               ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )    --   作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL )
+-- Ver1.1 Mod Start
+--        AND  ( ( xsd.source_category = cv_flag_v AND xsd.report_decision_flag = cv_flag_on )  -- ( 作成元区分 = V:売上実績振替（振替割合）AND 速報確定フラグ:1(実績振替確定済み)
+--               OR                                                                             --   OR
+--               ( xsd.source_category <> cv_flag_v AND xsd.report_decision_flag IS NULL ) )    --   作成元区分 <> V:売上実績振替（振替割合）AND 速報確定フラグ IS NULL )
+        AND ( xsd.report_decision_flag = cv_flag_on OR xsd.report_decision_flag IS NULL )     -- 速報確定フラグ:1(実績振替確定済み)またはNULL
+-- Ver1.1 Mod End
         ;
         -- ==========================
         --A-8  控除消込ヘッダ情報作成
