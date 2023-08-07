@@ -6,7 +6,7 @@ AS
  * Package Name    : XXCFO010A05C
  * Description     : EBS仕訳抽出
  * MD.050          : T_MD050_CFO_010_A05_EBS仕訳抽出_EBSコンカレント
- * Version         : 1.5
+ * Version         : 1.6
  * 
  * Program List
  * -------------------- -----------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2023-03-07    1.3   Y.Ooyama      シナリオテスト不具合No.0063対応
  *  2023-03-17    1.4   Y.Ooyama      シナリオテスト不具合No.0090対応
  *  2023-05-10    1.5   S.Yoshioka    開発残課題07対応
+ *  2023-08-01    1.6   Y.Ryu         E_本稼動_19360【会計】ERP売掛管理仕訳転記処理の改善対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1707,6 +1708,12 @@ AS
           END IF;
           lv_file_name := lv_file_name || '_' || TO_CHAR(ln_out_file_idx, cv_fmt_fileno) || cv_extension;
 --
+-- Ver1.6 Add Start
+          -- ファイルクローズ
+          IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+            UTL_FILE.FCLOSE( lf_file_handle );
+          END IF;
+-- Ver1.6 Add End
           -- 新しい出力ファイル名（連番あり）をオープン
           open_output_file(ov_errbuf           => lv_errbuf,
                            ov_retcode          => lv_retcode,
@@ -2070,6 +2077,12 @@ AS
       END IF;
     END IF;
 --
+-- Ver1.6 Add Start
+    -- ファイルクローズ
+    IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+      UTL_FILE.FCLOSE( lf_file_handle );
+    END IF;
+-- Ver1.6 Add End
     -- GL仕訳連携の対象件数をセット
     gn_target_cnt  := ln_cnt;                    -- 連携データの件数
     -- 正常件数 = 対象件数（総数）
@@ -2078,9 +2091,14 @@ AS
   EXCEPTION
     WHEN global_lock_expt THEN  -- テーブルロックエラー
       -- ファイルクローズ
-      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
-                     , lv_retcode            -- リターン・コード              # 固定 #
-                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+-- Ver1.6 Mod Start
+--      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
+--                     , lv_retcode            -- リターン・コード              # 固定 #
+--                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+      IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+        UTL_FILE.FCLOSE( lf_file_handle );
+      END IF;
+-- Ver1.6 Mod End
       --
       lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(  cv_msg_kbn_cfo      -- 'XXCFO'
                                                     , cv_msg_cfo1_00019   -- ロックエラーメッセージ
@@ -2095,9 +2113,14 @@ AS
 --
     WHEN UTL_FILE.WRITE_ERROR THEN
       -- ファイルクローズ
-      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
-                     , lv_retcode            -- リターン・コード              # 固定 #
-                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+-- Ver1.6 Mod Start
+--      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
+--                     , lv_retcode            -- リターン・コード              # 固定 #
+--                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+      IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+        UTL_FILE.FCLOSE( lf_file_handle );
+      END IF;
+-- Ver1.6 Mod End
       --
       lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(  cv_msg_kbn_cfo      -- 'XXCFO'
                                                     , cv_msg_cfo1_00030   -- ファイル書き込みエラー
@@ -2114,29 +2137,51 @@ AS
 --
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
+-- Ver1.6 Add Start
+          -- ファイルクローズ
+          IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+            UTL_FILE.FCLOSE( lf_file_handle );
+          END IF;
+-- Ver1.6 Add End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+-- Ver1.6 Add Start
+          -- ファイルクローズ
+          IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+            UTL_FILE.FCLOSE( lf_file_handle );
+          END IF;
+-- Ver1.6 Add End
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       -- ファイルクローズ
-      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
-                     , lv_retcode            -- リターン・コード              # 固定 #
-                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+-- Ver1.6 Mod Start
+--      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
+--                     , lv_retcode            -- リターン・コード              # 固定 #
+--                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+      IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+        UTL_FILE.FCLOSE( lf_file_handle );
+      END IF;
+-- Ver1.6 Mod End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       -- ファイルクローズ
-      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
-                     , lv_retcode            -- リターン・コード              # 固定 #
-                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+-- Ver1.6 Mod Start
+--      file_close_proc( lv_errbuf             -- エラー・メッセージ            # 固定 #
+--                     , lv_retcode            -- リターン・コード              # 固定 #
+--                     , lv_errmsg);           -- ユーザー・エラー・メッセージ  # 固定 #
+      IF ( UTL_FILE.IS_OPEN ( lf_file_handle ) ) THEN
+        UTL_FILE.FCLOSE( lf_file_handle );
+      END IF;
+-- Ver1.6 Mod End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -2359,27 +2404,29 @@ AS
     -- =============
     -- A-5．終了処理
     -- =============
-    -- A-5-1．オープンしているすべてのファイルをクローズする
-    -- =====================================================
--- Ver1.1 Add Start
-    IF gv_fl_name_sales IS NOT NULL THEN
-      <<file_close_loop>>
-      FOR i IN 1..l_out_sale_tab.COUNT LOOP
-        IF ( UTL_FILE.IS_OPEN ( l_out_sale_tab(i).file_handle ) ) THEN
-          UTL_FILE.FCLOSE( l_out_sale_tab(i).file_handle );
-        END IF;
-      END LOOP file_close_loop;
-    END IF;
---
-    IF gv_fl_name_ifrs IS NOT NULL THEN
-      <<file_close_loop2>>
-      FOR i IN 1..l_out_ifrs_tab.COUNT LOOP
-        IF ( UTL_FILE.IS_OPEN ( l_out_ifrs_tab(i).file_handle ) ) THEN
-          UTL_FILE.FCLOSE( l_out_ifrs_tab(i).file_handle );
-        END IF;
-      END LOOP file_close_loop2;
-    END IF;
--- Ver1.1 Add End
+-- Ver1.6 Del Start
+--    -- A-5-1．オープンしているすべてのファイルをクローズする
+--    -- =====================================================
+---- Ver1.1 Add Start
+--    IF gv_fl_name_sales IS NOT NULL THEN
+--      <<file_close_loop>>
+--      FOR i IN 1..l_out_sale_tab.COUNT LOOP
+--        IF ( UTL_FILE.IS_OPEN ( l_out_sale_tab(i).file_handle ) ) THEN
+--          UTL_FILE.FCLOSE( l_out_sale_tab(i).file_handle );
+--        END IF;
+--      END LOOP file_close_loop;
+--    END IF;
+----
+--    IF gv_fl_name_ifrs IS NOT NULL THEN
+--      <<file_close_loop2>>
+--      FOR i IN 1..l_out_ifrs_tab.COUNT LOOP
+--        IF ( UTL_FILE.IS_OPEN ( l_out_ifrs_tab(i).file_handle ) ) THEN
+--          UTL_FILE.FCLOSE( l_out_ifrs_tab(i).file_handle );
+--        END IF;
+--      END LOOP file_close_loop2;
+--    END IF;
+---- Ver1.1 Add End
+-- Ver1.6 Del End
 -- Ver1.1 Del Start
 --    IF ( UTL_FILE.IS_OPEN ( gf_file_hand_01 ) ) THEN
 --      UTL_FILE.FCLOSE( gf_file_hand_01 );
