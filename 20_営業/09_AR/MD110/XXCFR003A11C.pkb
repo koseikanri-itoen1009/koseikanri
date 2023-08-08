@@ -6,7 +6,7 @@ create or replace PACKAGE BODY XXCFR003A11C AS
  * Description     : 汎用商品（単価毎集計）請求データ作成
  * MD.050          : MD050_CFR_003_A11_汎用商品（単価毎集計）請求データ作成
  * MD.070          : MD050_CFR_003_A11_汎用商品（単価毎集計）請求データ作成
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -34,6 +34,7 @@ create or replace PACKAGE BODY XXCFR003A11C AS
  *  2009-04-13    1.2   SCS 萱原 伸哉    T1_0129 BM金額取得,BM単価/率/額取得対応
  *  2009-10-05    1.3   SCS 白砂 幸世    IE535 顧客区分追加対応
  *  2010-01-29    1.4   SCS 安川 智博    障害「E_本稼動_01503」対応
+ *  2023-05-17    1.5   SCSK Y.Koh       E_本稼動_19168【AR】インボイス対応_イセトー、汎用請求書、請求金額一覧
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -83,6 +84,9 @@ create or replace PACKAGE BODY XXCFR003A11C AS
   -- プロファイルオプション
   ct_prof_name_set_of_bks_id  CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'GL_SET_OF_BKS_ID';
   ct_prof_name_org_id         CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'ORG_ID';
+-- 2023/05/17 Ver1.5 ADD Start
+  ct_invoice_t_no             CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'XXCMM1_INVOICE_T_NO';
+-- 2023/05/17 Ver1.5 ADD End
   --
   -- 参照タイプ
   ct_lookup_type_out          CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_003A06_BILL_DATA_SET';  -- 汎用請求出力用参照タイプ名
@@ -190,6 +194,9 @@ create or replace PACKAGE BODY XXCFR003A11C AS
   --
   gv_upd_bm_flag            VARCHAR2(1) := 'N';                        -- VD請求額更新判別
   --
+-- 2023/05/17 Ver1.5 ADD Start
+  gv_invoice_t_no           VARCHAR2(14);                              -- プロファイル・インボイス適格請求書発行事業者登録番号
+-- 2023/05/17 Ver1.5 ADD End
   --===============================================================
   -- グローバルカーソル
   --===============================================================
@@ -654,6 +661,22 @@ create or replace PACKAGE BODY XXCFR003A11C AS
                                                    ,5000);
       RAISE global_api_expt;
     END IF;
+-- 2023/05/17 Ver1.5 ADD Start
+    -- プロファイル:インボイス適格請求書発行事業者登録番号
+    gv_invoice_t_no := FND_PROFILE.VALUE(ct_invoice_t_no);
+    --
+    -- 取得できない場合はエラー
+    IF (gv_invoice_t_no IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_xxcfr_app_name -- 'XXCFR'
+                                                    ,ct_msg_cfr_00004  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(ct_invoice_t_no))
+                                                       -- 適格請求書発行事業者登録番号
+                                                   ,1
+                                                   ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- 2023/05/17 Ver1.5 ADD End
     --
     -- 所属部門コード取得
     gt_user_dept_code := xxcfr_common_pkg.get_user_dept(in_user_id  => FND_GLOBAL.USER_ID,
@@ -1812,7 +1835,11 @@ create or replace PACKAGE BODY XXCFR003A11C AS
      ,col57
      ,col58
      ,col59
-     ,col60)
+-- 2023/05/17 Ver1.5 ADD Start
+     ,col60
+     ,col61)        -- インボイス適格請求書発行事業者登録番号
+--     ,col60)
+-- 2023/05/17 Ver1.5 ADD End
     (SELECT gn_conc_request_id
            ,ROWNUM
            ,itoen_name               -- 取引先名
@@ -1875,6 +1902,9 @@ create or replace PACKAGE BODY XXCFR003A11C AS
            ,electric_charges         -- 電気代
            ,slip_type                -- 伝票区分
            ,classify_type            -- 分類区分
+-- 2023/05/17 Ver1.5 ADD Start
+           ,gv_invoice_t_no          -- インボイス適格請求書発行事業者登録番号
+-- 2023/05/17 Ver1.5 ADD End
     FROM (SELECT col1           itoen_name               -- 取引先名
                 ,col2           inv_creation_date        -- 作成日
                 ,col3           object_month             -- 対象年月
