@@ -7,7 +7,7 @@ AS
  * Description      : ÉCÉZÉgÅ[êøãÅèëÉfÅ[É^çÏê¨
  * MD.050           : MD050_CFR_003_A17_ÉCÉZÉgÅ[êøãÅèëÉfÅ[É^çÏê¨
  * MD.070           : MD050_CFR_003_A17_ÉCÉZÉgÅ[êøãÅèëÉfÅ[É^çÏê¨
- * Version          : 1.60
+ * Version          : 1.70
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2010-01-07    1.40 SCS à¿êÏ íqîé     è·äQÅuE_ñ{â“ìÆ_00951ÅvëŒâû
  *  2010-02-02    1.50 SCS à¿êÏ íqîé     è·äQÅuE_ñ{â“ìÆ_01503ÅvëŒâû
  *  2019-09-09    1.60 SCSK êŒà‰ óTçK    è·äQÅuE_ñ{â“ìÆ_15472ÅvëŒâû
+ *  2023-07-04    1.70 SCSK Y.Koh        E_ñ{â“ìÆ_19168ÅyARÅzÉCÉìÉ{ÉCÉXëŒâû_ÉCÉZÉgÅ[ÅAîƒópêøãÅèëÅAêøãÅã‡äzàÍóó
  *
  *****************************************************************************************/
 --
@@ -1200,8 +1201,20 @@ AS
                             xil.tax_amount + xil.ship_amount
                        END)                                                         slip_sum          -- ì`ï[ã‡äz
                   ,cv_layout_kbn2                                                   layout_kbn        -- ÉåÉCÉAÉEÉgãÊï™
-                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
-                  ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                       ELSE                                     xil.inv_amount_sum2
+                       END)                                                         slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                       ELSE                                     xil.tax_amount_sum2
+                       END)                                                         slip_tax          -- ì`ï[ê≈äz
+--                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+--                  ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                   ,get_14account_rec.cash_account_number                            payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                   ,get_14account_rec.cash_account_name                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
@@ -1491,8 +1504,20 @@ AS
                               xil.tax_amount + xil.ship_amount
                          END)                                                         slip_sum          -- ì`ï[ã‡äz
                     ,cv_layout_kbn2                                                   layout_kbn        -- ÉåÉCÉAÉEÉgãÊï™
-                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
-                    ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                    ,SUM(CASE
+                         WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                         WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                         ELSE                                     xil.inv_amount_sum2
+                         END)                                                         slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                    ,SUM(CASE
+                         WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                         WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                         ELSE                                     xil.tax_amount_sum2
+                         END)                                                         slip_tax          -- ì`ï[ê≈äz
+--                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+--                    ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                     ,get_14account_rec.cash_account_number                            payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                     ,get_14account_rec.cash_account_name                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
@@ -1787,8 +1812,20 @@ AS
                               xil.tax_amount + xil.ship_amount
                          END)                                                         slip_sum          -- ì`ï[ã‡äz
                     ,cv_layout_kbn2                                                   layout_kbn        -- ÉåÉCÉAÉEÉgãÊï™
-                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
-                    ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                    ,SUM(CASE
+                         WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                         WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                         ELSE                                     xil.inv_amount_sum2
+                         END)                                                         slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                    ,SUM(CASE
+                         WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                         WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                         ELSE                                     xil.tax_amount_sum2
+                         END)                                                         slip_tax          -- ì`ï[ê≈äz
+--                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+--                    ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                     ,get_14account_rec.cash_account_number                            payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                     ,get_14account_rec.cash_account_name                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
@@ -2066,8 +2103,20 @@ AS
                             xil.tax_amount + xil.ship_amount
                        END)                                                         slip_sum     -- ì`ï[ã‡äz
                   ,cv_layout_kbn1                                                   layout_kbn   -- ÉåÉCÉAÉEÉgãÊï™
-                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax  -- ì`ï[ê≈î≤äz
-                  ,SUM(xil.tax_amount)                                              slip_tax         -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                       ELSE                                     xil.inv_amount_sum2
+                       END)                                                         slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                       ELSE                                     xil.tax_amount_sum2
+                       END)                                                         slip_tax          -- ì`ï[ê≈äz
+--                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax  -- ì`ï[ê≈î≤äz
+--                  ,SUM(xil.tax_amount)                                              slip_tax         -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                   ,get_14account_rec.cash_account_number                            payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                   ,get_14account_rec.cash_account_name                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
@@ -2336,8 +2385,20 @@ AS
                             xil.tax_amount + xil.ship_amount
                        END)                                                         slip_sum          -- ì`ï[ã‡äz
                   ,cv_layout_kbn1                                                   layout_kbn        -- ÉåÉCÉAÉEÉgãÊï™
-                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
-                  ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                       ELSE                                     xil.inv_amount_sum2
+                       END)                                                         slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                       ELSE                                     xil.tax_amount_sum2
+                       END)                                                         slip_tax          -- ì`ï[ê≈äz
+--                  ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+--                  ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                   ,get_14account_rec.cash_account_number                            payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                   ,get_14account_rec.cash_account_name                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
@@ -2620,8 +2681,20 @@ AS
                               xil.tax_amount + xil.ship_amount
                          END)                                                         slip_sum          -- ì`ï[ã‡äz
                     ,cv_layout_kbn1                                                   layout_kbn        -- ÉåÉCÉAÉEÉgãÊï™
-                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
-                    ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                    ,SUM(CASE
+                         WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                         WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                         ELSE                                     xil.inv_amount_sum2
+                         END)                                                         slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                    ,SUM(CASE
+                         WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                         WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                         ELSE                                     xil.tax_amount_sum2
+                         END)                                                         slip_tax          -- ì`ï[ê≈äz
+--                    ,SUM(xil.ship_amount)                                             slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+--                    ,SUM(xil.tax_amount)                                              slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                     ,get_14account_rec.cash_account_number                            payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                     ,get_14account_rec.cash_account_name                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
@@ -2931,8 +3004,20 @@ AS
                             xil.tax_amount + xil.ship_amount
                         END)                                                         slip_sum          -- ì`ï[ã‡äz
                   ,cv_layout_kbn1                                                    layout_kbn        -- ÉåÉCÉAÉEÉgãÊï™
-                  ,SUM(xil.ship_amount)                                              slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
-                  ,SUM(xil.tax_amount)                                               slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD Start
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.ship_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.inv_amount_sum
+                       ELSE                                     xil.inv_amount_sum2
+                       END)                                                          slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+                  ,SUM(CASE
+                       WHEN xih.invoice_tax_div IS  NULL  THEN  xil.tax_amount
+                       WHEN xih.invoice_tax_div =   'N'   THEN  xil.tax_amount_sum
+                       ELSE                                     xil.tax_amount_sum2
+                       END)                                                          slip_tax          -- ì`ï[ê≈äz
+--                  ,SUM(xil.ship_amount)                                              slip_sum_ex_tax   -- ì`ï[ê≈î≤äz
+--                  ,SUM(xil.tax_amount)                                               slip_tax          -- ì`ï[ê≈äz
+-- 2023/07/04 Ver1.70 ADD End
                   ,NULL                                                              payment_cust_code -- ì¸ã‡êÊå⁄ãqÉRÅ[Éh
                   ,NULL                                                              payment_cust_name -- ì¸ã‡êÊå⁄ãqñº
 -- Modify 2009-11-20 Ver1.20 Start
