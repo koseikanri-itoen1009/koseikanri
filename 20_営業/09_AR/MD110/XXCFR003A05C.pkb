@@ -7,7 +7,7 @@ AS
  * Description      : 請求金額一覧表出力
  * MD.050           : MD050_CFR_003_A05_請求金額一覧表出力
  * MD.070           : MD050_CFR_003_A05_請求金額一覧表出力
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/12/24    1.5  SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
  *  2014/11/05    1.6  SCSK 竹下 昭範   E_本稼動_12310 対応
  *  2019/07/25    1.7  SCSK 郭 有司     E_本稼動_15472 対応
+ *  2023/05/17    1.8  SCSK 及川領      E_本稼動_19168 対応
  *
  *****************************************************************************************/
 --
@@ -137,6 +138,9 @@ AS
   --プロファイル
   cv_set_of_bks_id   CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID'; -- 会計帳簿ID
   cv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
+-- ADD Ver1.8 Start
+  cv_t_number        CONSTANT VARCHAR2(30) := 'XXCMM1_INVOICE_T_NO'; -- XXCMM:適格請求書発行事業者登録番号
+-- ADD Ver1.8 End
 --
   -- 使用DB名
   cv_table           CONSTANT VARCHAR2(50) := 'XXCFR_REP_INVOICE_LIST'; -- 請求金額一覧表帳票ワークテーブル
@@ -168,6 +172,10 @@ AS
   cv_format_date_ymdhns CONSTANT VARCHAR2(25) := 'YYYY/MM/DD HH24:MI:SS';     -- 日付フォーマット（年月日時分秒
   cv_format_date_ymds   CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';           -- 日付フォーマット（年月日スラッシュ付）
 --
+-- Add Ver1.8 Start
+  -- 請求書消費税積上げ計算方式
+  cn_invoice_tax_div CONSTANT VARCHAR2(1)   := 'N';         -- 税抜請求金額サマリに消費税率を乗じた値を摘要
+-- Add Ver1.8 End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -185,6 +193,9 @@ AS
   gv_output_date        VARCHAR2(19);                              -- 出力日
   gt_user_dept          per_all_people_f.attribute28%TYPE := NULL; -- ログインユーザ所属部門
   gv_inv_all_flag       VARCHAR2(1) := '0';                        -- 全社出力権限所持部門フラグ
+-- ADD Ver1.8 Start
+  gv_t_number           VARCHAR2(14);                              -- 登録番号
+-- ADD Ver1.8 End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -380,6 +391,22 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- ADD Ver1.8 Start
+    -- プロファイルから登録番号取得
+    gv_t_number := FND_PROFILE.VALUE(cv_t_number);
+--
+    -- 取得エラー時
+    IF (gv_t_number IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_003a05_010 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_t_number))
+                                                     -- 登録番号
+                          ,1
+                          ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- ADD Ver1.8 End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -621,8 +648,24 @@ AS
     IS
       SELECT xril.bill_cust_code      bill_cust_code      ,  --顧客コード
              xril.category            category            ,  --内訳分類(編集用)
-             SUM( xril.ship_amount )  tax_rate_by_sum     ,  --税別お買上げ額
-             SUM( xril.tax_amount )   tax_rate_by_tax_sum    --税別消費税額
+-- MOD Ver1.8 Start
+--             SUM( xril.ship_amount )  tax_rate_by_sum     ,  --税別お買上げ額
+--             SUM( xril.tax_amount )   tax_rate_by_tax_sum    --税別消費税額
+             SUM( CASE WHEN xril.invoice_tax_div IS NULL THEN
+                  xril.ship_amount                           --金額
+             WHEN xril.invoice_tax_div = cn_invoice_tax_div THEN
+                  xril.inv_amount_sum1                       --税抜合計１（税込みの場合：税込請求金額サマリに消費税率を除した値、税抜きの場合：税抜き請求金額サマリ）
+             ELSE
+                  xril.inv_amount_sum2                       --税抜合計２（請求明細の税抜額サマリ）
+             END )                    tax_rate_by_sum,       --税別お買上げ額
+             SUM( CASE WHEN xril.invoice_tax_div IS NULL THEN
+                  xril.tax_amount                            --税額
+             WHEN xril.invoice_tax_div = cn_invoice_tax_div THEN
+                  xril.tax_amount_sum1                       --税額合計１（税込みの場合：税込請求金額 － 税込請求金額サマリに消費税率を除した値、税抜きの場合：税抜き請求金額サマリに消費税率を乗じた値）
+             ELSE
+                  xril.tax_amount_sum2                       --税額合計２（請求明細の税額サマリ）
+             END )                    tax_rate_by_tax_sum    --税別消費税額
+-- MOD Ver1.8 End
       FROM   xxcfr_rep_invoice_list  xril
       WHERE  xril.request_id  = cn_request_id
       AND    xril.category   IS NOT NULL                     --内訳分類(編集用)
@@ -811,9 +854,33 @@ AS
       SELECT xrsi.cutoff_date                         cutoff_date             -- 締日
             ,xrsi.bill_cust_code                      bill_cust_code          -- 請求先顧客
             ,xrsi.bill_location_code                  bill_location_code      -- 拠点
-            ,SUM(xrsi.ship_amount + xrsi.tax_amount)  inv_amount_includ_tax   -- 請求額合計
-            ,SUM(xrsi.ship_amount)                    inv_amount_no_tax       -- 本体額合計
-            ,SUM(xrsi.tax_amount)                     tax_amount_sum          -- 税額合計
+-- MOD Ver1.8 Start
+--            ,SUM(xrsi.ship_amount + xrsi.tax_amount)  inv_amount_includ_tax   -- 請求額合計
+--            ,SUM(xrsi.ship_amount)                    inv_amount_no_tax       -- 本体額合計
+--            ,SUM(xrsi.tax_amount)                     tax_amount_sum          -- 税額合計
+            ,SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                ( xrsi.ship_amount + xrsi.tax_amount )                        --金額 + 税額
+             WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                ( xrsi.tax_amount_sum1 + xrsi.inv_amount_sum1 )               --税抜合計１（税込みの場合： (税込請求金額 － 税込請求金額サマリに消費税率を除した値) + 税込請求金額サマリに消費税率を除した値）
+                                                                              --          （税抜きの場合：税抜き請求金額サマリ + 税抜き請求金額サマリに消費税率を乗じた値）
+             ELSE
+                ( xrsi.tax_amount_sum2 + xrsi.inv_amount_sum2 )               --税額合計２（明細毎の積上税額）
+             END )                                    inv_amount_includ_tax   --請求額合計
+            ,SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                  xrsi.ship_amount                                            --金額
+             WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                  xrsi.inv_amount_sum1                                        --税抜合計１（税込みの場合：税込請求金額サマリに消費税率を除した値、税抜きの場合：税抜き請求金額サマリ）
+             ELSE
+                  xrsi.inv_amount_sum2                                        --税抜合計２（請求明細の税抜額サマリ）
+             END )                                    inv_amount_no_tax       --本体額合計
+            ,SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                  xrsi.tax_amount                                             --税額
+             WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                  xrsi.tax_amount_sum1                                        --税額合計１（税込みの場合：税込請求金額 － 税込請求金額サマリに消費税率を除した値、税抜きの場合：税抜き請求金額サマリに消費税率を乗じた値）
+             ELSE
+                  xrsi.tax_amount_sum2                                        --税額合計２（請求明細の税額サマリ）
+             END )                                    tax_amount_sum          --税額合計
+-- MOD Ver1.8 End
       FROM   xxcfr_rep_invoice_list xrsi       -- 請求金額一覧表帳票ワークテーブル
       WHERE  xrsi.request_id = cn_request_id   -- 要求ID
       GROUP BY
@@ -891,6 +958,14 @@ AS
       ,inv_amount_no_tax      -- 税抜請求額合計
       ,tax_amount_sum         -- 税額合計
       ,output_standard        -- 出力基準
+-- ADD Ver1.8 Start
+      ,invoice_tax_div        -- 請求書消費税積上げ計算方式
+      ,tax_amount_sum1        -- 税額合計１
+      ,tax_amount_sum2        -- 税額合計２
+      ,inv_amount_sum1        -- 税抜合計１
+      ,inv_amount_sum2        -- 税抜合計２
+      ,invoice_t_no           -- 適格請求書発行事業者登録番号
+-- ADD Ver1.8 End
     )
 -- Modify Ver1.6 End
 -- Modify Ver1.6 Start
@@ -1010,6 +1085,14 @@ AS
            xih.tax_amount_sum          tax_amount_sum,     -- 税額合計
            gv_output_standard          output_standard     -- 出力基準
 -- Modify Ver1.6 End
+-- ADD Ver1.8 Start
+           ,xih.invoice_tax_div         invoice_tax_div    -- 請求書消費税積上げ計算方式
+           ,SUM( xil.tax_amount_sum )   tax_amount_sum     -- 税額合計１
+           ,SUM( xil.tax_amount_sum2 )  tax_amount_sum2    -- 税額合計２
+           ,SUM( xil.inv_amount_sum )   inv_amount_sum     -- 税抜合計１
+           ,SUM( xil.inv_amount_sum2 )  inv_amount_sum2    -- 税抜合計２
+           ,gv_t_number                                     -- 登録番号
+-- ADD Ver1.8 End
     FROM xxcfr_invoice_headers          xih,  -- 請求ヘッダ
          xxcfr_invoice_lines            xil,  -- 請求明細
 -- Modify Ver1.6 Start
@@ -1274,6 +1357,9 @@ AS
               gv_output_standard        , -- 出力基準
               flv2.attribute2             -- 内訳分類
 -- 2019/07/25 Ver1.7 ADD End
+-- ADD Ver1.8 Start
+             ,xih.invoice_tax_div         -- 請求書消費税積上げ計算方式
+-- ADD Ver1.8 End
       ;
 --
     -- 対象件数
