@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
  * Description     : 汎用商品（全明細）請求データ作成
  * MD.050          : MD050_CFR_003_A08_汎用商品（全明細）請求データ作成
  * MD.070          : MD050_CFR_003_A08_汎用商品（全明細）請求データ作成
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -27,6 +27,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
  *  2009-10-01    1.1   SCS 窪   和重 AR仕様変更IE535対応
  *  2010-01-29    1.2   SCS 安川 智博 障害「E_本稼動_01503」対応
  *  2019-07-26    1.3   SCSK 石井 裕幸 障害「E_本稼動_15472」対応
+ *  2023-05-17    1.4   SCSK Y.Koh     E_本稼動_19168【AR】インボイス対応_イセトー、汎用請求書、請求金額一覧
  ************************************************************************/
 
 --
@@ -59,6 +60,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
 -- Modify 2009-10-01 Ver1.1 Start ----------------------------------------------
   cv_msg_cfr_00006  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFR1-00006';  -- 業務処理日付エラーメッセージ
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
+-- 2023/05/17 Ver1.4 ADD Start
+  ct_msg_cfr_00004  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFR1-00004';
+-- 2023/05/17 Ver1.4 ADD End
   
   cv_msg_ccp_90000  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCCP1-90000';
   cv_msg_ccp_90001  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCCP1-90001';
@@ -72,10 +76,16 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
   cv_tkn_count      CONSTANT VARCHAR2(30) := 'COUNT';                -- 処理件数
   cv_tkn_tab_name   CONSTANT VARCHAR2(30) := 'TABLE';                -- テーブル名
   cv_func_name      CONSTANT VARCHAR2(30) := 'FUNC_NAME';            -- 共通関数名
+-- 2023/05/17 Ver1.4 ADD Start
+  cv_tkn_prof       CONSTANT VARCHAR2(30) := 'PROF_NAME';            -- プロファイル
+-- 2023/05/17 Ver1.4 ADD End
   
   -- プロファイルオプション
   cv_prof_name_set_of_bks_id  CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'GL_SET_OF_BKS_ID';
   cv_prof_name_org_id         CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'ORG_ID';
+-- 2023/05/17 Ver1.4 ADD Start
+  ct_invoice_t_no             CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'XXCMM1_INVOICE_T_NO';
+-- 2023/05/17 Ver1.4 ADD End
   
   -- 参照タイプ
 -- Modify 2019-07-26 Ver1.3 Start ----------------------------------------------
@@ -143,6 +153,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
   gn_amount_inc_tax         NUMBER := 0;                               -- 税込請求金額 
   gn_tax_sum                NUMBER := 0;                               -- うち消費税金額
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
+-- 2023/05/17 Ver1.4 ADD Start
+  gv_invoice_t_no           VARCHAR2(14);                              -- プロファイル・インボイス適格請求書発行事業者登録番号
+-- 2023/05/17 Ver1.4 ADD End
   
 -- Modify 2009-10-01 Ver1.1 Start ----------------------------------------------
   --===============================================================
@@ -399,6 +412,22 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
     
     -- プロファイル営業単位取得
     gn_org_id := TO_NUMBER(FND_PROFILE.VALUE(cv_prof_name_org_id));
+-- 2023/05/17 Ver1.4 ADD Start
+    -- プロファイル:インボイス適格請求書発行事業者登録番号
+    gv_invoice_t_no := FND_PROFILE.VALUE(ct_invoice_t_no);
+    --
+    -- 取得できない場合はエラー
+    IF (gv_invoice_t_no IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_xxcfr_app_name -- 'XXCFR'
+                                                    ,ct_msg_cfr_00004  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(ct_invoice_t_no))
+                                                       -- 適格請求書発行事業者登録番号
+                                                   ,1
+                                                   ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- 2023/05/17 Ver1.4 ADD End
     
     -- 所属部門コード取得
     gv_user_dept_code := xxcfr_common_pkg.get_user_dept(in_user_id => FND_GLOBAL.USER_ID,
@@ -984,7 +1013,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
 -- Modify 2019-07-26 Ver1.3 Start ----------------------------------------------
 --      col60)
       col60,
-      col61)
+-- 2023/05/17 Ver1.4 ADD Start
+      col61,
+      col62)        -- インボイス適格請求書発行事業者登録番号
+--      col61)
+-- 2023/05/17 Ver1.4 ADD End
 -- Modify 2019-07-26 Ver1.3 End   ----------------------------------------------
       (SELECT FND_GLOBAL.CONC_REQUEST_ID,
           ROWNUM,
@@ -1051,6 +1084,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
 -- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
          ,col61
 -- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
+-- 2023/05/17 Ver1.4 ADD Start
+         ,gv_invoice_t_no               -- インボイス適格請求書発行事業者登録番号
+-- 2023/05/17 Ver1.4 ADD End
        FROM (SELECT col1,
                col2,
                col3,
