@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -96,6 +96,7 @@ AS
  *  2022-03-28    1.27  R.Oikawa         E_本稼動_18060対応
  *  2022-05-19    1.28  R.Oikawa         E_本稼動_18060本番障害対応
  *  2022-08-18    1.29  M.Akachi         E_本稼動_18060（実績の月別按分）対応
+ *  2023-05-25    1.30  R.Oikawa         E_本稼動_19179対応
  *
  *****************************************************************************************/
   --
@@ -381,6 +382,11 @@ AS
   -- 2020/12/14 Ver.1.26 Add Start
   cv_debug_msg89 CONSTANT VARCHAR2(200) := 'site_email_address           = ';
   -- 2020/12/14 Ver.1.26 Add End
+  -- Ver.1.30 ADD START
+  cv_debug_msg90 CONSTANT VARCHAR2(200) := 'invoice_t_flag               = ';
+  cv_debug_msg91 CONSTANT VARCHAR2(200) := 'invoice_t_no                 = ';
+  cv_debug_msg92 CONSTANT VARCHAR2(200) := 'invoice_tax_div_bm           = ';
+  -- Ver.1.30 ADD END
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -447,6 +453,11 @@ AS
     -- 2020/12/14 Ver.1.26 Add Start
     ,site_email_address           xxcso_destinations.site_email_address%TYPE           -- Eメールアドレス
     -- 2020/12/14 Ver.1.26 Add End
+    -- Ver.1.30 ADD START
+    ,invoice_t_flag               xxcso_destinations.invoice_t_flag%TYPE               -- 適格請求書発行事業者登録
+    ,invoice_t_no                 xxcso_destinations.invoice_t_no%TYPE                 -- 課税事業者番号
+    ,invoice_tax_div_bm           xxcso_destinations.invoice_tax_div_bm%TYPE           -- 税計算区分
+    -- Ver.1.30 ADD END
     -- 銀行口座情報
     ,bank_number             xxcso_bank_accounts.bank_number%TYPE             -- 銀行番号
     ,bank_name               xxcso_bank_accounts.bank_name%TYPE               -- 銀行名
@@ -1205,6 +1216,11 @@ AS
                 -- 2020/12/14 Ver.1.26 Add Start
                 ,site_attribute7              -- 仕入先サイト予備7
                 -- 2020/12/14 Ver.1.26 Add End
+                -- Ver.1.30 ADD START
+                ,site_attribute8              -- 仕入先サイト予備8
+                ,site_attribute9              -- 仕入先サイト予備9
+                ,site_attribute10             -- 仕入先サイト予備10
+                -- Ver.1.30 ADD END
                 ,site_bank_number             -- 仕入先サイト銀行支店コード
                 ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
                 ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1265,6 +1281,11 @@ AS
                 -- 2020/12/14 Ver.1.26 Add Start
                 ,SUBSTRB(it_mst_regist_info_rec.site_email_address, 1, 150)    -- 仕入先サイト予備7
                 -- 2020/12/14 Ver.1.26 Add End
+                -- Ver.1.30 ADD START
+                ,SUBSTRB(it_mst_regist_info_rec.invoice_t_flag, 1, 1)          -- 仕入先サイト予備8
+                ,SUBSTRB(it_mst_regist_info_rec.invoice_t_no, 1, 13)           -- 仕入先サイト予備9
+                ,SUBSTRB(it_mst_regist_info_rec.invoice_tax_div_bm, 1, 1)      -- 仕入先サイト予備10
+                -- Ver.1.30 ADD END
                 ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
                 ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
                 ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -1489,6 +1510,11 @@ AS
           -- 2020/12/14 Ver.1.26 Add Start
           ,site_attribute7              -- 仕入先サイト予備7
           -- 2020/12/14 Ver.1.26 Add End
+          -- Ver.1.30 ADD START
+          ,site_attribute8              -- 仕入先サイト予備8
+          ,site_attribute9              -- 仕入先サイト予備9
+          ,site_attribute10             -- 仕入先サイト予備10
+          -- Ver.1.30 ADD END
           ,site_bank_number             -- 仕入先サイト銀行支店コード
           ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
           ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1568,6 +1594,11 @@ AS
           -- 2020/12/14 Ver.1.26 Add Start
           ,SUBSTRB(it_mst_regist_info_rec.site_email_address, 1, 150)    -- 仕入先サイト予備7
           -- 2020/12/14 Ver.1.26 Add End
+          -- Ver.1.30 ADD START
+          ,SUBSTRB(it_mst_regist_info_rec.invoice_t_flag, 1, 1)          -- 仕入先サイト予備8
+          ,SUBSTRB(it_mst_regist_info_rec.invoice_t_no, 1, 13)           -- 仕入先サイト予備9
+          ,SUBSTRB(it_mst_regist_info_rec.invoice_tax_div_bm, 1, 1)      -- 仕入先サイト予備10
+          -- Ver.1.30 ADD END
           ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
           ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
           ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -5430,6 +5461,11 @@ AS
             -- 2020/12/14 Ver.1.26 Add Start
             ,xde.site_email_address           site_email_address           -- Eメールアドレス
             -- 2020/12/14 Ver.1.26 Add End
+            -- Ver.1.30 ADD START
+            ,xde.invoice_t_flag               invoice_t_flag               -- 適格請求書発行事業者登録
+            ,xde.invoice_t_no                 invoice_t_no                 -- 課税事業者番号
+            ,xde.invoice_tax_div_bm           invoice_tax_div_bm           -- 税計算区分
+            -- Ver.1.30 ADD END
             ,xba.bank_number                  bank_number                  -- 銀行番号
             ,xba.bank_name                    bank_name                    -- 銀行名
             ,xba.branch_number                branch_number                -- 支店番号
@@ -5577,6 +5613,11 @@ AS
         -- 2020/12/14 Ver.1.26 Add Start
         lt_mst_regist_info_rec.site_email_address           := lt_vendor_info_rec.site_email_address;
         -- 2020/12/14 Ver.1.26 Add End
+        -- Ver.1.30 ADD START
+        lt_mst_regist_info_rec.invoice_t_flag               := lt_vendor_info_rec.invoice_t_flag;
+        lt_mst_regist_info_rec.invoice_t_no                 := lt_vendor_info_rec.invoice_t_no;
+        lt_mst_regist_info_rec.invoice_tax_div_bm           := lt_vendor_info_rec.invoice_tax_div_bm;
+        -- Ver.1.30 ADD END
         lt_mst_regist_info_rec.bank_number                  := lt_vendor_info_rec.bank_number;
         lt_mst_regist_info_rec.bank_name                    := lt_vendor_info_rec.bank_name;
         lt_mst_regist_info_rec.branch_number                := lt_vendor_info_rec.branch_number;
@@ -5610,6 +5651,11 @@ AS
                      -- 2020/12/14 Ver.1.26 Add Start
                      cv_debug_msg89 || lt_vendor_info_rec.site_email_address           || CHR(10) ||
                      -- 2020/12/14 Ver.1.26 Add End
+                     -- Ver.1.30 ADD START
+                     cv_debug_msg90 || lt_vendor_info_rec.invoice_t_flag               || CHR(10) ||
+                     cv_debug_msg91 || lt_vendor_info_rec.invoice_t_no                 || CHR(10) ||
+                     cv_debug_msg92 || lt_vendor_info_rec.invoice_tax_div_bm           || CHR(10) ||
+                     -- Ver.1.30 ADD END
                      cv_debug_msg28 || lt_vendor_info_rec.bank_number                  || CHR(10) ||
                      cv_debug_msg29 || lt_vendor_info_rec.bank_name                    || CHR(10) ||
                      cv_debug_msg30 || lt_vendor_info_rec.branch_number                || CHR(10) ||

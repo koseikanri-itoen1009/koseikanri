@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.17
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,8 @@ AS
  *  2020-08-07    1.15  N.Abe            E_本稼動_15904対応（外税対応）16パターン化
  *  2020-12-03    1.16  K.Kanada         E_本稼動_15904対応（外税対応）条件内容編集、パターン修正
  *  2021-01-12    1.17  K.Kanada         E_本稼動_15904対応（外税対応不具合）条件内容編集（定率・定額）
+ *  2023-06-02    1.18  T.Okuyama        E_本稼動_19179対応 インボイス対応
+ *  2023-07-26    1.19  T.Okuyama        E_本稼動_19179対応 インボイス対応 登録番号取得要領
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -222,6 +224,11 @@ AS
   -- プロファイル名
   cv_interval           CONSTANT VARCHAR2(30)  := 'XXCSO1_INTERVAL_XXCSO010A04C'; -- XXCSO:待機間隔（覚書出力）
   cv_max_wait           CONSTANT VARCHAR2(30)  := 'XXCSO1_MAX_WAIT_XXCSO010A04C'; -- XXCSO:最大待機時間（覚書出力）
+--  Ver1.18 T.Okuyama Add Start
+  cv_t_number           CONSTANT VARCHAR2(30)  := 'XXCMM1_INVOICE_T_NO';          -- XXCMM:適格請求書発行事業者登録番号
+  cv_t_flag             CONSTANT VARCHAR2(1)   := 'T';                            -- Tフラグ
+  cv_t_none             CONSTANT VARCHAR2(1)   := ' ';                            -- 登録番号なし
+--  Ver1.18 T.Okuyama Add End
   -- 覚書出力コンカレント名
   cv_xxcso010a06        CONSTANT VARCHAR2(20)  := 'XXCSO010A06C';                 -- 覚書出力
   -- 覚書帳票区分
@@ -288,6 +295,9 @@ AS
   gn_is_amt_branch      NUMBER;       -- 支店長（設置協賛金総額上限）
   gn_is_amt_areamgr     NUMBER;       -- 地域営業本部長（設置協賛金総額上限）
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+--  Ver1.18 T.Okuyama Add Start
+  gv_t_number           VARCHAR2(14);                              -- 登録番号
+--  Ver1.18 T.Okuyama Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -347,6 +357,9 @@ AS
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD START */
     tax_type_name                 xxcso_rep_auto_sale_cont.tax_type_name%TYPE,                 -- 税区分名
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+--  Ver1.18 T.Okuyama Add Start
+    bm1_t_no                      xxcso_rep_auto_sale_cont.bm1_invoice_t_no%TYPE,              -- 登録番号（送付先）
+--  Ver1.18 T.Okuyama Add End
     condition_contents_flag       BOOLEAN,                                              -- 販売手数料情報有無フラグ
     install_support_amt_flag      BOOLEAN,                                              -- 設置協賛金有無フラグ
     electricity_information_flag  BOOLEAN                                              -- 電気代情報有無フラグ
@@ -781,6 +794,22 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+--  Ver1.18 T.Okuyama Add Start
+    -- 適格請求書発行事業者登録番号（自社）取得
+    gv_t_number := FND_PROFILE.VALUE(cv_t_number);
+    -- プロファイル値チェック
+    IF ( gv_t_number IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name       -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_15  -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_prof_name  -- トークンコード1
+                     ,iv_token_value1 => cv_t_number       -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--  Ver1.18 T.Okuyama Add End
     -- ===================================================
     -- 覚書の発行画面出力用名称の取得
     -- ===================================================
@@ -1346,6 +1375,22 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
               ,NVL( xd.bm_tax_kbn, '1' )                bm_tax_kbn                    -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--  Ver1.19 T.Okuyama Mod Start
+--  Ver1.18 T.Okuyama Add Start
+--              ,CASE WHEN ((NVL(xd.invoice_t_flag, cv_t_none) = cv_t_flag) AND (xd.invoice_t_no IS NOT NULL)) THEN
+--                 xd.invoice_t_flag || xd.invoice_t_no
+--               ELSE
+--                 NULL
+--               END                                      bm1_t_no                      -- 登録番号（送付先）
+              ,CASE WHEN pvs.vendor_id IS NULL     AND ((NVL(xd.invoice_t_flag, cv_t_none) = cv_t_flag) AND (xd.invoice_t_no IS NOT NULL)) THEN
+                      xd.invoice_t_flag || xd.invoice_t_no
+                    WHEN pvs.vendor_id IS NOT NULL AND ((NVL(pvs.attribute8, cv_t_none) = cv_t_flag) AND (pvs.attribute9 IS NOT NULL)) THEN
+                      pvs.attribute8 || pvs.attribute9
+                    ELSE
+                      NULL
+               END                                      bm1_t_no                      -- 登録番号（送付先）
+--  Ver1.18 T.Okuyama Add End
+--  Ver1.19 T.Okuyama Mod End
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
               ,o_rep_cont_data_rec.contract_name                 -- 契約者名
@@ -1431,12 +1476,19 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
               ,o_rep_cont_data_rec.bm_tax_kbn                    -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--
+--  Ver1.18 T.Okuyama Add Start
+              ,o_rep_cont_data_rec.bm1_t_no                      -- 登録番号（送付先）
+--  Ver1.18 T.Okuyama Add End
         FROM   xxcso_cust_accounts_v      xcav     -- 顧客マスタビュー
               ,xxcso_contract_managements xcm      -- 契約管理テーブル
               ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
               ,xxcso_destinations         xd       -- 送付先テーブル
               ,xxcso_bank_accounts        xba      -- 銀行口座アドオンマスタ
               ,xxcso_locations_v2         xlv2     -- 事業所マスタ（最新）ビュー
+--  Ver1.19 T.Okuyama Add Start
+              ,po_vendor_sites            pvs      -- 仕入先サイトマスタ
+--  Ver1.19 T.Okuyama Add End
               ,(SELECT (flvv.attribute1 || flvv.attribute2) attr
                 FROM   fnd_lookup_values_vl flvv -- 参照タイプ
                 WHERE
@@ -1557,6 +1609,9 @@ AS
           AND  xd.contract_management_id(+) = xcm.contract_management_id
           AND  xd.delivery_div(+) = cv_delivery_div_1
           AND  xd.delivery_id = xba.delivery_id(+)
+--  Ver1.19 T.Okuyama Add Start
+          AND  pvs.vendor_id(+)             = xd.supplier_id
+--  Ver1.19 T.Okuyama Add End
           AND  xlv2.dept_code = xcm.publish_dept_code
 -- == 2010/08/03 V1.9 Added START ===============================================================
         AND     xba.bank_account_type       =   flv.lookup_code(+)
@@ -1875,6 +1930,14 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
               ,NVL( xd.bm_tax_kbn, '1' )                bm_tax_kbn                    -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--
+--  Ver1.18 T.Okuyama Add Start
+              ,CASE WHEN ((NVL(pvs.attribute8, cv_t_none) = cv_t_flag) AND (pvs.attribute9 IS NOT NULL)) THEN
+                 pvs.attribute8 || pvs.attribute9
+               ELSE
+                 NULL
+               END                                      bm1_t_no                      -- 登録番号（送付先）
+--  Ver1.18 T.Okuyama Add End
 -- == 2010/08/03 V1.9 Modified END   ===============================================================
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
@@ -1961,6 +2024,10 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
               ,o_rep_cont_data_rec.bm_tax_kbn                    -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--
+--  Ver1.18 T.Okuyama Add Start
+              ,o_rep_cont_data_rec.bm1_t_no                      -- 登録番号（送付先）
+--  Ver1.18 T.Okuyama Add End
         FROM   xxcso_contract_managements xcm      -- 契約管理テーブル
               ,xxcso_cust_acct_sites_v    xcasv    -- 顧客マスタサイトビュー
               ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
@@ -3223,6 +3290,10 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
           ,bm_tax_kbn                       -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--  Ver1.18 T.Okuyama Add Start
+          ,bm1_invoice_t_no                 -- 登録番号（送付先）
+          ,invoice_t_no                     -- 登録番号（発行元）
+--  Ver1.18 T.Okuyama Add End
         )
       VALUES
         (  i_rep_cont_data_rec.install_location                 -- 設置ロケーション
@@ -3289,6 +3360,10 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
           ,i_rep_cont_data_rec.bm_tax_kbn                       -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--  Ver1.18 T.Okuyama Add Start
+          ,i_rep_cont_data_rec.bm1_t_no                         -- 登録番号（送付先）
+          ,gv_t_number                                          -- 登録番号（発行元）
+--  Ver1.18 T.Okuyama Add End
         );
 --
       -- ログ出力
@@ -3392,6 +3467,9 @@ AS
               ,program_application_id        -- コンカレントプログラムアプリケーションID
               ,program_id                    -- コンカレントプログラムID
               ,program_update_date           -- プログラム更新日
+--  Ver1.18 T.Okuyama Add Start
+              ,invoice_t_no                  -- 登録番号（発行元）
+--  Ver1.18 T.Okuyama Add End
       ) VALUES (
                i_rep_memo_data_rec.contract_number               -- 契約書番号
               ,i_rep_memo_data_rec.contract_other_custs_id       -- 契約先以外ID
@@ -3466,6 +3544,9 @@ AS
               ,cn_program_application_id                         -- コンカレントプログラムアプリケーションID
               ,cn_program_id                                     -- コンカレントプログラムID
               ,cd_program_update_date                            -- プログラム更新日
+--  Ver1.18 T.Okuyama Add Start
+              ,gv_t_number                                       -- 登録番号（発行元）
+--  Ver1.18 T.Okuyama Add End
       );
       -- ログ出力
       fnd_file.put_line(
