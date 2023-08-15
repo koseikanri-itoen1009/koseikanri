@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -15,6 +15,7 @@
 * 2015-02-02 1.6  SCSK山下翔太   [E_本稼動_12565]SP専決・契約書画面改修
 * 2019-02-19 1.7  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
 * 2022-03-31 1.8  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
+* 2023-06-08 1.9  SCSK赤地学     [E_本稼動_19179]インボイス対応（BM関連）
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -85,6 +86,10 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 //      bean.setReadOnly(true);
 // 2015-02-02 [E_本稼動_12565] Del End
 // 2009-04-09 [ST障害T1_0327] Add End
+// Ver.1.9 Add Start 
+      // レイアウト調整
+      adjustLayout(pageContext, webBean);
+// Ver.1.9 Add End
       return;
     }
 
@@ -124,8 +129,13 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       am.invokeMethod("initDetailsCopy", params);
     }
     am.invokeMethod("initPopList");
-    am.invokeMethod("afterProcess");
-    
+
+// Ver.1.9 Mod Start    
+//    am.invokeMethod("afterProcess");
+    Serializable[] afterProcessParams = {"processRequest"};
+    am.invokeMethod("afterProcess", afterProcessParams);
+// Ver.1.9 Mod End
+
     am.invokeMethod("setAttributeProperty");
 
     // レイアウト調整
@@ -1424,7 +1434,11 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       am.invokeMethod("handleOwnerChangeFlagChange");
     }
 
-    am.invokeMethod("afterProcess");
+// Ver.1.9 Mod Start    
+//    am.invokeMethod("afterProcess");
+    Serializable[] params = {event};
+    am.invokeMethod("afterProcess", params);
+// Ver.1.9 Mod End
 
     XxcsoUtils.debug(pageContext, "[END]");
   }

@@ -801,6 +801,9 @@
                                           <lovMap id="Bm1TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm1TaxKbnForm" useForValidation="no"/>
                                           <lovMap id="Bm1TaxKbnNmMap" resultTo="Bm1TaxKbnNmForm" lovItem="BmTaxKbnNm" useForValidation="no"/>
                                           <lovMap id="Bm1EmailAddressMap" useForValidation="no" lovItem="SIteEmailAddress" resultTo="Bm1EmailAddress"/>
+                                          <lovMap id="Bm1InvoiceTaxDivBmMap" lovItem="InvoiceTaxDivBm" resultTo="Bm1InvoiceTaxDivBm"/>
+                                          <lovMap id="Bm1InvoiceTFlagMap" lovItem="InvoiceTFlag" resultTo="Bm1InvoiceTFlag"/>
+                                          <lovMap id="Bm1InvoiceTNoMap" lovItem="InvoiceTNo" resultTo="Bm1InvoiceTNo"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm1BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout">
@@ -813,6 +816,12 @@
                                        <ui:contents>
                                           <oa:messageChoice id="Bm1BellingDetailsDivView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
                                           <oa:messageChoice id="Bm1BellingDetailsDiv" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm1InvoiceTaxDivBmLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTaxDivBmLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm1InvoiceTaxDivBmView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InvoiceTaxDivBm" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTaxDivBm" pickListViewName="XxcsoInvoiceTaxDivBmListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm1InvoiceTaxDivBm" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InvoiceTaxDivBm" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTaxDivBm" pickListViewName="XxcsoInvoiceTaxDivBmListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm1InvoiceReadOnlyFlg}"/>
                                        </ui:contents>
                                     </oa:messageLayout>
                                     <oa:messageLayout id="Bm1InqueryBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryBaseLayout">
@@ -858,6 +867,14 @@
                                     <oa:messageTextInput id="Bm1AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                     <oa:messageStyledText id="Bm1EmailAddressView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" prompt="BM1送付先Eメールアドレス(xxx@xxx)" viewAttr="SiteEmailAddress"/>
                                     <oa:messageTextInput id="Bm1EmailAddress" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" prompt="BM1送付先Eメールアドレス(xxx@xxx)" viewAttr="SiteEmailAddress"/>
+                                    <oa:messageLayout id="Bm1InvoiceTFlagLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTFlagLayout">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="Bm1InvoiceTFlagView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTFlag" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InvoiceTFlag" checkedValue="T" unCheckedValue="" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageCheckBox id="Bm1InvoiceTFlag" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTFlag" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InvoiceTFlag" checkedValue="T" unCheckedValue="" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm1InvoiceReadOnlyFlg}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm1InvoiceTNoView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InvoiceTNo" maximumLength="13" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTNo" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm1InvoiceTNo" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="InvoiceTNo" maximumLength="13" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTNo" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm1InvoiceReadOnlyFlg}"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm1DestSpacer02" height="20"/>
@@ -925,6 +942,7 @@
                                     <oa:messageStyledText id="Bm1VendorCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1VendorCode"/>
                                     <oa:messageStyledText id="Bm1BankTransferFeeDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout" required="no"/>
                                     <oa:messageStyledText id="Bm1BellingDetailsDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BellingDetailsDivLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm1InvoiceTaxDivBmBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTaxDivBmLayout" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm1InqueryBaseBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InqueryBaseLayout" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm1PaymentNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentName" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm1PaymentNameAltBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PaymentNameAlt" required="uiOnly"/>
@@ -940,6 +958,8 @@
                                     <oa:messageStyledText id="Bm1Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address2"/>
                                     <oa:messageStyledText id="Bm1AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic"/>
                                     <oa:messageStyledText id="Bm1EmailAddressBlank" dataType="VARCHAR2" required="no" prompt="BM1送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageStyledText id="Bm1InvoiceTFlagBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTFlagLayout"/>
+                                    <oa:messageStyledText id="Bm1InvoiceTNoBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1InvoiceTNo"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm1DestSpacer021" height="20"/>
@@ -1008,6 +1028,9 @@
                                           <lovMap id="Bm2TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm2TaxKbnForm" useForValidation="no"/>
                                           <lovMap id="BM2TaxKbnNmMap" lovItem="BmTaxKbnNm" resultTo="Bm2TaxKbnNmForm" useForValidation="no"/>
                                           <lovMap id="Bm2EmailAddressMap" lovItem="SIteEmailAddress" resultTo="Bm2EmailAddress"/>
+                                          <lovMap id="Bm2InvoiceTaxDivBmMap" lovItem="InvoiceTaxDivBm" resultTo="Bm2InvoiceTaxDivBm"/>
+                                          <lovMap id="Bm2InvoiceTFlagMap" lovItem="InvoiceTFlag" resultTo="Bm2InvoiceTFlag"/>
+                                          <lovMap id="Bm2InvoiceTNoMap" lovItem="InvoiceTNo" resultTo="Bm2InvoiceTNo"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm2BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout">
@@ -1020,6 +1043,12 @@
                                        <ui:contents>
                                           <oa:messageChoice id="Bm2BellingDetailsDivView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
                                           <oa:messageChoice id="Bm2BellingDetailsDiv" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm2InvoiceTaxDivBmLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTaxDivBmLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm2InvoiceTaxDivBmView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InvoiceTaxDivBm" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTaxDivBm" pickListViewName="XxcsoInvoiceTaxDivBmListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm2InvoiceTaxDivBm" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InvoiceTaxDivBm" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTaxDivBm" pickListViewName="XxcsoInvoiceTaxDivBmListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm2InvoiceReadOnlyFlg}"/>
                                        </ui:contents>
                                     </oa:messageLayout>
                                     <oa:messageLayout id="Bm2InqueryBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryBaseLayout">
@@ -1065,6 +1094,14 @@
                                     <oa:messageTextInput id="Bm2AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                     <oa:messageStyledText id="Bm2EmailAddressView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" prompt="BM2送付先Eメールアドレス(xxx@xxx)"/>
                                     <oa:messageTextInput id="Bm2EmailAddress" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" prompt="BM2送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageLayout id="Bm2InvoiceTFlagLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTFlagLayout">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="Bm2InvoiceTFlagView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTFlag" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InvoiceTFlag" checkedValue="T" unCheckedValue="" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageCheckBox id="Bm2InvoiceTFlag" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTFlag" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InvoiceTFlag" checkedValue="T" unCheckedValue="" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm2InvoiceReadOnlyFlg}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm2InvoiceTNoView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InvoiceTNo" maximumLength="13" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTNo" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm2InvoiceTNo" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="InvoiceTNo" maximumLength="13" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTNo" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm2InvoiceReadOnlyFlg}"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm2DestSpacer02" height="20"/>
@@ -1132,7 +1169,8 @@
                                     <oa:messageStyledText id="Bm2VendorCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2VendorCode"/>
                                     <oa:messageStyledText id="Bm2BankTransferFeeDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout" required="no"/>
                                     <oa:messageStyledText id="Bm2BellingDetailsDivBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BellingDetailsDivLayout" required="uiOnly"/>
-                                    <oa:messageStyledText id="Bm2InqueryBaseBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryBaseLayout"/>
+                                    <oa:messageStyledText id="Bm2InvoiceTaxDivBmBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTaxDivBmLayout" required="uiOnly"/>
+                                    <oa:messageStyledText id="Bm2InqueryBaseBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InqueryBaseLayout" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm2PaymentNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentName" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm2PaymentNameAltBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PaymentNameAlt" required="uiOnly"/>
                                  </ui:contents>
@@ -1147,6 +1185,8 @@
                                     <oa:messageStyledText id="Bm2Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address2"/>
                                     <oa:messageStyledText id="Bm2AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic"/>
                                     <oa:messageStyledText id="Bm2EmailAddressBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="no" prompt="BM2送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageStyledText id="Bm2InvoiceTFlagBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTFlagLayout"/>
+                                    <oa:messageStyledText id="Bm2InvoiceTNoBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2InvoiceTNo"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm2DestSpacer021" height="20"/>
@@ -1211,6 +1251,9 @@
                                           <lovMap id="Bm3TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm3TaxKbnForm" useForValidation="no"/>
                                           <lovMap id="Bm3TaxKbnNmMap" resultTo="Bm3TaxKbnNmForm" lovItem="BmTaxKbnNm" useForValidation="no"/>
                                           <lovMap id="Bm3EmailAddressMap" lovItem="SIteEmailAddress" resultTo="Bm3EmailAddress" useForValidation="no"/>
+                                          <lovMap id="Bm3InvoiceTaxDivBmMap" lovItem="InvoiceTaxDivBm" resultTo="Bm3InvoiceTaxDivBm"/>
+                                          <lovMap id="Bm3InvoiceTFlagMap" lovItem="InvoiceTFlag" resultTo="Bm3InvoiceTFlag"/>
+                                          <lovMap id="Bm3InvoiceTNoMap" lovItem="InvoiceTNo" resultTo="Bm3InvoiceTNo"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm3BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout">
@@ -1223,6 +1266,12 @@
                                        <ui:contents>
                                           <oa:messageChoice id="Bm3BellingDetailsDivView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" readOnly="true" styleClass="OraDataText"/>
                                           <oa:messageChoice id="Bm3BellingDetailsDiv" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BellingDetailsDiv" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDiv" pickListViewName="XxcsoBmPaymentListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="Bm3InvoiceTaxDivBmLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTaxDivBmLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="Bm3InvoiceTaxDivBmView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InvoiceTaxDivBm" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTaxDivBm" pickListViewName="XxcsoInvoiceTaxDivBmListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="Bm3InvoiceTaxDivBm" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InvoiceTaxDivBm" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTaxDivBm" pickListViewName="XxcsoInvoiceTaxDivBmListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm3InvoiceReadOnlyFlg}"/>
                                        </ui:contents>
                                     </oa:messageLayout>
                                     <oa:messageLayout id="Bm3InqueryBaseLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryBaseLayout">
@@ -1268,6 +1317,14 @@
                                     <oa:messageTextInput id="Bm3AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                     <oa:messageStyledText id="Bm3EmailAddressView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" prompt="BM3送付先Eメールアドレス(xxx@xxx)"/>
                                     <oa:messageTextInput id="Bm3EmailAddress" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" prompt="BM3送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageLayout id="Bm3InvoiceTFlagLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTFlagLayout">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="Bm3InvoiceTFlagView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTFlag" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InvoiceTFlag" checkedValue="T" unCheckedValue="" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageCheckBox id="Bm3InvoiceTFlag" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTFlag" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InvoiceTFlag" checkedValue="T" unCheckedValue="" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm3InvoiceReadOnlyFlg}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="Bm3InvoiceTNoView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InvoiceTNo" maximumLength="13" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTNo" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="Bm3InvoiceTNo" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="InvoiceTNo" maximumLength="13" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTNo" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" readOnly="${oa.XxcsoPageRenderVO1.Bm3InvoiceReadOnlyFlg}"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm3DestSpacer02" height="20"/>
@@ -1335,6 +1392,7 @@
                                     <oa:messageStyledText id="Bm3VendorCodeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3VendorCode"/>
                                     <oa:messageStyledText id="Bm3BankTransferFeeDivBlank" required="no" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout"/>
                                     <oa:messageStyledText id="Bm3BellingDetailsDivBlank" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BellingDetailsDivLayout"/>
+                                    <oa:messageStyledText id="Bm3InvoiceTaxDivBmBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTaxDivBmLayout" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm3InqueryBaseBlank" required="uiOnly" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InqueryBaseLayout"/>
                                     <oa:messageStyledText id="Bm3PaymentNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentName" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm3PaymentNameAltBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PaymentNameAlt" required="uiOnly"/>
@@ -1350,6 +1408,8 @@
                                     <oa:messageStyledText id="Bm3Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address2"/>
                                     <oa:messageStyledText id="Bm3AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic"/>
                                     <oa:messageStyledText id="Bm3EmailAddressBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="no" prompt="BM3送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageStyledText id="Bm3InvoiceTFlagBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTFlagLayout"/>
+                                    <oa:messageStyledText id="Bm3InvoiceTNoBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3InvoiceTNo"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm3DestSpacer021" height="20"/>
