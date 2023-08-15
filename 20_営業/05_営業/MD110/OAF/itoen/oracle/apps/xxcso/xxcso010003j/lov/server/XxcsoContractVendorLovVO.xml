@@ -56,6 +56,11 @@ SELECT  pv.segment1                          AS vendor_number
            ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
           )                                                           AS bm_tax_kbn_nm
        ,pvs.attribute7                                                AS site_email_address
+-- [E_–{‰Ò“®_19179]M.Akachi Add Start
+       ,pvs.attribute8                                                AS invoice_t_flag
+       ,pvs.attribute9                                                AS invoice_t_no
+       ,pvs.attribute10                                               AS invoice_tax_div_bm
+-- [E_–{‰Ò“®_19179]M.Akachi Add End
 FROM    po_vendors            pv
        ,po_vendor_sites       pvs
        ,xxcso_bank_accts_v    xbav
@@ -433,5 +438,35 @@ WHERE   pv.vendor_type_lookup_code    = 'VD'
       <DesignTime>
          <Attr Name="_DisplaySize" Value="150" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVOICE_T_FLAG"
+      Expression="INVOICE_T_FLAG"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTNo"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVOICE_T_NO"
+      Expression="INVOICE_T_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTaxDivBm"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVOICE_TAX_DIV_BM"
+      Expression="INVOICE_TAX_DIV_BM"
+      SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>
