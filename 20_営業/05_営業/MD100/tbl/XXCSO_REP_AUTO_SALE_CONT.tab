@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_rep_auto_sale_cont
  * Description     : 自動販売機設置契約書帳票ワークテーブル
  * MD.070          : 
- * Version         : 1.8
+ * Version         : 1.9
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -23,7 +23,8 @@
  *                                    条件内容13～17を追加
  *  2015/02/18    1.7  S.Yamashita  【E_本稼動_12580】
  *                                    税区分名を追加
- *  2020/08/21    1.8  N.Koyama      E_本稼動_15904対応(BM税区分追加)
+ *  2020/08/21    1.8  N.Koyama     【E_本稼動_15904】対応(BM税区分追加)
+ *  2023/06/01    1.9  T.Okuyama    【E_本稼動_19179】インボイス対応（契約書関連）
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
 (
@@ -96,7 +97,12 @@ CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
   request_id                      NUMBER(15),
   program_application_id          NUMBER(15),
   program_id                      NUMBER(15),
-  program_update_date             DATE
+/* Ver1.9 ADD COLUMN START */
+--  program_update_date             DATE
+  program_update_date             DATE,
+  bm1_t_no                        VARCHAR2(14),
+  invoice_t_no                    VARCHAR2(14)
+/* Ver1.9 ADD COLUMN END */
 )
 PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
 ;
@@ -167,3 +173,7 @@ COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.request_id                     
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.program_id                             IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.program_update_date                    IS 'プログラム更新日';
+/* Ver1.9 ADD COLUMN START */
+COMMENT ON COLUMN xxcfr.xxcso_rep_auto_sale_cont.bm1_t_no                               IS '登録番号（送付先）';
+COMMENT ON COLUMN xxcfr.xxcso_rep_auto_sale_cont.invoice_t_no                           IS '登録番号（発行元）';
+/* Ver1.9 ADD COLUMN END */
