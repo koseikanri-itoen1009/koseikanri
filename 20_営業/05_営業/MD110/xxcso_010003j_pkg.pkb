@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
  *  chk_pay_start_date        P    -      支払期間開始日チェック
  *  chk_pay_item              P    -      支払項目チェック
+ *  decode_bm_info2           F    V      BM情報分岐取得
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -77,6 +78,7 @@ AS
  *  2021/03/02    1.21  K.Kanada         E_本稼動_16642対応(T4不具合対応)
  *  2022/04/06    1.22  H.Futamura       E_本稼動_18060対応
  *  2022/07/27    1.23  M.Akachi         E_本稼動_18060対応（実績の月別按分）
+ *  2023/07/12    1.24  M.Akachi         E_本稼動_19179対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -3356,5 +3358,64 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_pay_item;
 -- Ver.1.22 Add End
+-- Ver.1.24 Add Start
+--
+  /**********************************************************************************
+   * Function Name    : decode_bm_info2
+   * Description      : BM情報分岐取得
+   ***********************************************************************************/
+  FUNCTION decode_bm_info2(
+    iv_contract_status          VARCHAR2
+   ,iv_cooperate_flag           VARCHAR2
+   ,iv_batch_proc_status        VARCHAR2
+   ,iv_vendor_code              VARCHAR2
+   ,iv_transaction_value        VARCHAR2
+   ,iv_master_value             VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'decode_bm_info2';
+    cv_contract_status_complete  CONSTANT VARCHAR2(1)     := '1'; -- 1：確定済
+    cv_cooperate_complete        CONSTANT VARCHAR2(1)     := '1'; -- 1：連携済
+    cv_batch_proc_status_normal  CONSTANT VARCHAR2(1)     := '0'; -- 0：正常
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(4000);
+--
+  BEGIN
+--  確定の場合、マスタ値を返却する
+    IF ( (iv_contract_status = cv_contract_status_complete) AND 
+         (iv_cooperate_flag = cv_cooperate_complete) AND 
+         (iv_batch_proc_status = cv_batch_proc_status_normal) ) THEN
+--
+      lv_return_value := iv_master_value;
+--  送付先コードありの場合、マスタ値を返却する
+    ELSIF ( iv_vendor_code IS NOT NULL ) THEN
+--
+      lv_return_value := iv_master_value;
+--  トランザクション（送付先テーブル）の値を返却する
+    ELSE
+--
+      lv_return_value := iv_transaction_value;
+--
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END decode_bm_info2;
+--
+-- Ver.1.24 Add End
 END xxcso_010003j_pkg;
 /

@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
  *  chk_pay_start_date        P    -      支払期間開始日チェック
  *  chk_pay_item              P    -      支払項目チェック
+ *  decode_bm_info2           F    V      検索基準拠点コード取得関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -66,6 +67,7 @@ AS
  *  2020/10/28    1.13  Y.Sasaki         E_本稼動_16410,E_本稼動_16293対応
  *  2020/12/14    1.14  Y.Sasaki         E_本稼動_16642対応
  *  2022/03/30    1.15  H.Futamura       E_本稼動_18060対応
+ *  2023/07/12    1.16  M.Akachi         E_本稼動_19179対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -334,5 +336,16 @@ AS
    ,ov_retcode                    OUT VARCHAR2
   );
 -- Ver.1.15 Add End
+-- Ver.1.16 Add Start
+  -- BM情報分岐取得
+  FUNCTION decode_bm_info2(
+    iv_contract_status          VARCHAR2
+   ,iv_cooperate_flag           VARCHAR2
+   ,iv_batch_proc_status        VARCHAR2
+   ,iv_vendor_code              VARCHAR2
+   ,iv_transaction_value        VARCHAR2
+   ,iv_master_value             VARCHAR2
+  ) RETURN VARCHAR2;
+-- Ver.1.16 Add End
 END xxcso_010003j_pkg;
 /
