@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : 自販機設置契約情報登録表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2012-06-12 1.3  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 * 2015-02-02 1.4  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2023-06-08 1.5  SCSK赤地学     [E_本稼動_19179]インボイス対応（BM関連）
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -336,7 +337,58 @@ public class XxcsoContractRegistPropertyUtils
       pageRdrRow.setOwnerChangeRender(Boolean.FALSE);
     }
   }
-
+// Ver.1.5 Add Start
+  /*****************************************************************************
+   * BM1税計算区分プルダウンReadOnly設定
+   * @param pageRdrVo ページ属性設定ビューインスタンス
+   * @param Boolean ReadOnly
+   *****************************************************************************
+   */
+  public static void setBm1InvoiceReadOnly(
+     XxcsoPageRenderVOImpl pageRdrVo
+    ,Boolean readOnlyFlg
+  )
+  {
+    // 表示属性用VO
+    XxcsoPageRenderVORowImpl pageRdrRow
+      = (XxcsoPageRenderVORowImpl) pageRdrVo.first();
+    pageRdrRow.setBm1InvoiceReadOnlyFlg(readOnlyFlg);
+  }
+  
+  /*****************************************************************************
+   * BM2税計算区分プルダウンReadOnly設定
+   * @param pageRdrVo ページ属性設定ビューインスタンス
+   * @param Boolean ReadOnly
+   *****************************************************************************
+   */
+  public static void setBm2InvoiceReadOnly(
+     XxcsoPageRenderVOImpl pageRdrVo
+    ,Boolean readOnlyFlg
+  )
+  {
+    // 表示属性用VO
+    XxcsoPageRenderVORowImpl pageRdrRow
+      = (XxcsoPageRenderVORowImpl) pageRdrVo.first();
+    pageRdrRow.setBm2InvoiceReadOnlyFlg(readOnlyFlg);
+  }
+  
+  /*****************************************************************************
+   * BM3税計算区分プルダウンReadOnly設定
+   * @param pageRdrVo ページ属性設定ビューインスタンス
+   * @param Boolean ReadOnly
+   *****************************************************************************
+   */
+  public static void setBm3InvoiceReadOnly(
+     XxcsoPageRenderVOImpl pageRdrVo
+    ,Boolean readOnlyFlg
+  )
+  {
+    // 表示属性用VO
+    XxcsoPageRenderVORowImpl pageRdrRow
+      = (XxcsoPageRenderVORowImpl) pageRdrVo.first();
+    pageRdrRow.setBm3InvoiceReadOnlyFlg(readOnlyFlg);
+  }
+// Ver.1.5 Add Start
   /*****************************************************************************
    * ページセキュリティ設定(営業員の利用)
    * @param pageRdrVo ページ属性設定ビューインスタンス

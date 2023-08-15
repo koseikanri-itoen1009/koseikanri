@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : 自販機設置契約情報登録 登録情報反映ユーティリティクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-02-02 1.0  SCS柳平直人  新規作成
 * 2009-05-25 1.1  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
 * 2010-03-01 1.2  SCS阿部大輔  [E_本稼動_01678]現金支払対応
+* 2023-06-08 1.3  SCSK赤地学   [E_本稼動_19179]インボイス対応（BM関連）
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -32,6 +33,10 @@ import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3BankAccountFullVORowI
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVOImpl;
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVORowImpl;
 // 2010-03-01 [E_本稼動_01678] Add End
+// Ver.1.3 Add Start
+import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
+import oracle.apps.fnd.framework.server.OADBTransaction;
+// Ver.1.3 Add End
 
 /*******************************************************************************
  * 自販機設置契約情報登録 登録情報反映ユーティリティクラス。
@@ -302,4 +307,77 @@ public class XxcsoContractRegistReflectUtils
   }
 
 // 2010-03-01 [E_本稼動_01678] Add End
+
+// Ver.1.3 Add Start
+  /*****************************************************************************
+   * 適格請求書発行事業者登録（T区分）がチェックなしの場合、NULLを設定。
+   * @param txn          OADBTransactionインスタンス
+   * @param bm1DestVo    送付先テーブル情報用ビューインスタンス
+   * @param bm2DestVo    送付先テーブル情報用ビューインスタンス
+   * @param bm3DestVo    送付先テーブル情報用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectInvoiceTFlag(
+    OADBTransaction                     txn
+   ,XxcsoBm1DestinationFullVOImpl       bm1DestVo
+   ,XxcsoBm2DestinationFullVOImpl       bm2DestVo
+   ,XxcsoBm3DestinationFullVOImpl       bm3DestVo
+  )
+  {
+
+    XxcsoUtils.debug(txn, "[START]");
+    
+    // データ行を取得
+    XxcsoBm1DestinationFullVORowImpl bm1DestVoRow
+      = (XxcsoBm1DestinationFullVORowImpl) bm1DestVo.first();
+
+    XxcsoBm2DestinationFullVORowImpl bm2DestVoRow
+      = (XxcsoBm2DestinationFullVORowImpl) bm2DestVo.first();
+
+    XxcsoBm3DestinationFullVORowImpl bm3DestVoRow
+      = (XxcsoBm3DestinationFullVORowImpl) bm3DestVo.first();
+
+    // 画面表示のインボイス情報をVOに設定する
+    // 仕入先マスタの値が表示されている場合、送付先テーブルが更新されないため
+    if(bm1DestVoRow != null)
+    {
+      bm1DestVoRow.setInvoiceTFlag(bm1DestVoRow.getInvoiceTFlag());
+      bm1DestVoRow.setInvoiceTNo(bm1DestVoRow.getInvoiceTNo());
+      bm1DestVoRow.setInvoiceTaxDivBm(bm1DestVoRow.getInvoiceTaxDivBm());
+    }
+
+    if(bm2DestVoRow != null)
+    {
+      bm2DestVoRow.setInvoiceTFlag(bm2DestVoRow.getInvoiceTFlag());
+      bm2DestVoRow.setInvoiceTNo(bm2DestVoRow.getInvoiceTNo());
+      bm2DestVoRow.setInvoiceTaxDivBm(bm2DestVoRow.getInvoiceTaxDivBm());
+    }
+
+    if(bm3DestVoRow != null)
+    {
+      bm3DestVoRow.setInvoiceTFlag(bm3DestVoRow.getInvoiceTFlag());
+      bm3DestVoRow.setInvoiceTNo(bm3DestVoRow.getInvoiceTNo());
+      bm3DestVoRow.setInvoiceTaxDivBm(bm3DestVoRow.getInvoiceTaxDivBm());      
+    }
+
+    // 適格請求書発行事業者登録（T区分）がチェックなしの場合、NULLを設定
+    if (bm1DestVoRow != null 
+         && !XxcsoContractRegistConstants.INVOICE_T_FLAG_ON.equals(bm1DestVoRow.getInvoiceTFlag()))
+    {
+      bm1DestVoRow.setInvoiceTFlag(null);
+    }
+    if (bm2DestVoRow != null 
+         && !XxcsoContractRegistConstants.INVOICE_T_FLAG_ON.equals(bm2DestVoRow.getInvoiceTFlag()))
+    {
+      bm2DestVoRow.setInvoiceTFlag(null);
+    }
+    if (bm3DestVoRow != null 
+         && !XxcsoContractRegistConstants.INVOICE_T_FLAG_ON.equals(bm3DestVoRow.getInvoiceTFlag()))
+    {
+      bm3DestVoRow.setInvoiceTFlag(null);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+// Ver.1.3 Add End
 }

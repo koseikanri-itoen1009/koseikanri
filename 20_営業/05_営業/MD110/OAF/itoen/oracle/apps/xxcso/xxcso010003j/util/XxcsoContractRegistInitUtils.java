@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistInitUtils
 * 概要説明   : 自販機設置契約情報登録初期ユーティリティクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者          修正内容
@@ -18,6 +18,7 @@
 * 2020-08-21 1.5  SCSK佐々木大和  [E_本稼動_15904]税抜き自販機ＢＭ計算について
 * 2020-10-22 1.6  SCSK佐々木大和  [E_本稼動_15904]税抜き自販機ＢＭ計算についてT4検証NG対応
 * 2020-12-14 1.7  SCSK佐々木大和  [E_本稼動_16642]送付先コードに紐づくメールアドレスについて
+* 2023-06-08 1.8  SCSK赤地学      [E_本稼動_19179]インボイス対応（BM関連）
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -256,6 +257,12 @@ public class XxcsoContractRegistInitUtils
       dest1Row.setSiteEmailAddress(     initBmRow.getSiteEmailAddress()       );
 // [E_本稼動_16642] Add End
 
+// Ver.1.8 Add Start
+      dest1Row.setInvoiceTFlag(initBmRow.getInvoiceTFlag());
+      dest1Row.setInvoiceTNo(initBmRow.getInvoiceTNo());
+      dest1Row.setInvoiceTaxDivBm(initBmRow.getInvoiceTaxDivBm());
+// Ver.1.8 Add End
+
       bank1Vo.first();
       XxcsoBm1BankAccountFullVORowImpl bank1Row
         = (XxcsoBm1BankAccountFullVORowImpl)bank1Vo.createRow();
@@ -316,6 +323,12 @@ public class XxcsoContractRegistInitUtils
       dest2Row.setSiteEmailAddress(     initBmRow.getSiteEmailAddress()       );
 // [E_本稼動_16642] Add End
 
+// Ver.1.8 Add Start
+      dest2Row.setInvoiceTFlag(initBmRow.getInvoiceTFlag());
+      dest2Row.setInvoiceTNo(initBmRow.getInvoiceTNo());
+      dest2Row.setInvoiceTaxDivBm(initBmRow.getInvoiceTaxDivBm());
+// Ver.1.8 Add End
+
       bank2Vo.first();
       XxcsoBm2BankAccountFullVORowImpl bank2Row
         = (XxcsoBm2BankAccountFullVORowImpl)bank2Vo.createRow();
@@ -374,6 +387,12 @@ public class XxcsoContractRegistInitUtils
 // [E_本稼動_16642] Add Start
       dest3Row.setSiteEmailAddress(     initBmRow.getSiteEmailAddress()       );
 // [E_本稼動_16642] Add End
+
+// Ver.1.8 Add Start
+      dest3Row.setInvoiceTFlag(initBmRow.getInvoiceTFlag());
+      dest3Row.setInvoiceTNo(initBmRow.getInvoiceTNo());
+      dest3Row.setInvoiceTaxDivBm(initBmRow.getInvoiceTaxDivBm());
+// Ver.1.8 Add End
 
       bank3Vo.first();
       XxcsoBm3BankAccountFullVORowImpl bank3Row
@@ -566,7 +585,7 @@ public class XxcsoContractRegistInitUtils
     spCust1Vo.initQuery(mngRow.getSpDecisionHeaderId());
     dest1Vo.first();
     bank1Vo.first();
-
+    
     //////////////////////////////////////
     // 送付先テーブルの初期化(BM2)
     //////////////////////////////////////
@@ -855,6 +874,12 @@ public class XxcsoContractRegistInitUtils
       dest1Row.setBmTaxKbn(             dest1Row2.getBmTaxKbn()               );
       dest1Row.setBmTaxKbnNm(           dest1Row2.getBmTaxKbnNm()             );
       // E_本稼動_15904 Add End
+
+      // Ver.1.8 Add Start
+      dest1Row.setInvoiceTFlag(dest1Row2.getInvoiceTFlag());
+      dest1Row.setInvoiceTNo(dest1Row2.getInvoiceTNo());
+      dest1Row.setInvoiceTaxDivBm(dest1Row2.getInvoiceTaxDivBm());
+      // Ver.1.8 Add End
     }
 
     if ( bank1Row2 != null )
@@ -915,6 +940,12 @@ public class XxcsoContractRegistInitUtils
       dest2Row.setBmTaxKbn(             dest2Row2.getBmTaxKbn()               );
       dest2Row.setBmTaxKbnNm(           dest2Row2.getBmTaxKbnNm()             );
       // E_本稼動_15904 Add End
+
+      // Ver.1.8 Add Start
+      dest2Row.setInvoiceTFlag(dest2Row2.getInvoiceTFlag());
+      dest2Row.setInvoiceTNo(dest2Row2.getInvoiceTNo());
+      dest2Row.setInvoiceTaxDivBm(dest2Row2.getInvoiceTaxDivBm());
+      // Ver.1.8 Add End
     }
 
     if ( bank2Row2 != null )
@@ -976,6 +1007,12 @@ public class XxcsoContractRegistInitUtils
       dest3Row.setBmTaxKbn(             dest3Row2.getBmTaxKbn()               );
       dest3Row.setBmTaxKbnNm(           dest3Row2.getBmTaxKbnNm()             );
       // E_本稼動_15904 Add End
+
+      // Ver.1.8 Add Start
+      dest3Row.setInvoiceTFlag(dest3Row2.getInvoiceTFlag());
+      dest3Row.setInvoiceTNo(dest3Row2.getInvoiceTNo());
+      dest3Row.setInvoiceTaxDivBm(dest3Row2.getInvoiceTaxDivBm());
+      // Ver.1.8 Add End
     }
 
     if ( bank3Row2 != null )

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.19
+* バージョン : 1.20
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者           修正内容
@@ -29,6 +29,7 @@
 *                                  [E_本稼動_16410]契約書画面からの銀行口座変更について
 * 2020-12-14 1.18 SCSK佐々木大和   [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
 * 2022-03-31 1.19 SCSK二村悠香     [E_本稼動_18060]自販機顧客別利益管理
+* 2023-06-08 1.20 SCSK赤地学       [E_本稼動_19179]インボイス対応（BM関連）
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -695,6 +696,24 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 // 2010-03-01 [E_本稼動_01678] Add End
+// Ver.1.20 Add Start
+    // ///////////////////////////////////
+    // BM1消費税計算区分
+    // ///////////////////////////////////
+    token1 = tokenMain
+            + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_TAX_DIV_BM;
+    // 確定ボタン時のみ必須入力チェック
+    if (fixedFrag)
+    {
+      errorList
+        = utils.requiredCheck(
+            errorList
+           ,bm1DestVoRow.getInvoiceTaxDivBm()
+           ,token1
+           ,0
+          );
+    }
+// Ver.1.20 Add End
     // ///////////////////////////////////
     // 問合せ担当拠点
     // ///////////////////////////////////
@@ -1022,6 +1041,44 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 //  [E_本稼動_16642] Add End
+// Ver.1.20 Add Start
+    // ///////////////////////////////////
+    // BM1課税事業者番号
+    // ///////////////////////////////////
+    // 確定ボタン時、BM1適格請求書発行事業者登録(T区分)	チェックありの場合、BM1課税事業者番号必須チェック
+    if (fixedFrag 
+         && XxcsoContractRegistConstants.INVOICE_T_FLAG_ON.equals(bm1DestVoRow.getInvoiceTFlag()) 
+         && (bm1DestVoRow.getInvoiceTNo() == null || "".equals(bm1DestVoRow.getInvoiceTNo())))
+    {
+      String token = XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+                     + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                     + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_FLAG;
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00926
+             ,XxcsoConstants.TOKEN_REGION
+             ,token
+             ,XxcsoConstants.TOKEN_ITEM
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_NO
+            );
+      errorList.add(error);
+    }
+
+    // BM1課税事業者番号フォーマットチェック
+    if(!isInvoiceTNo(bm1DestVoRow.getInvoiceTNo()))
+    {
+      String token = XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+                     + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                     + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_NO;
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00927
+             ,XxcsoConstants.TOKEN_REGION
+             ,token
+            );
+      errorList.add(error);      
+    }
+// Ver.1.20 Add End
 // 2010-03-01 [E_本稼動_01678] Add Start
     // 支払方法、明細書が現金支払以外の場合
     if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm1DestVoRow.getBellingDetailsDiv()))
@@ -1359,7 +1416,24 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 // 2010-03-01 [E_本稼動_01678] Add End
-
+// Ver.1.20 Add Start
+    // ///////////////////////////////////
+    // BM2消費税計算区分
+    // ///////////////////////////////////
+    token1 = tokenMain
+            + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_TAX_DIV_BM;
+    // 確定ボタン時のみ必須入力チェック
+    if (fixedFrag)
+    {
+      errorList
+        = utils.requiredCheck(
+            errorList
+           ,bm2DestVoRow.getInvoiceTaxDivBm()
+           ,token1
+           ,0
+          );
+    }
+// Ver.1.20 Add End
     // ///////////////////////////////////
     // 問合せ担当拠点
     // ///////////////////////////////////
@@ -1688,7 +1762,44 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 //  [E_本稼動_16642] Add End
-// 2010-03-01 [E_本稼動_01678] Add Start
+// Ver.1.20 Add Start
+    // ///////////////////////////////////
+    // BM2課税事業者番号
+    // ///////////////////////////////////
+    // 確定ボタン時、BM2適格請求書発行事業者登録(T区分)	チェックありの場合、BM2課税事業者番号必須チェック
+    if (fixedFrag 
+         && XxcsoContractRegistConstants.INVOICE_T_FLAG_ON.equals(bm2DestVoRow.getInvoiceTFlag()) 
+         && (bm2DestVoRow.getInvoiceTNo() == null || "".equals(bm2DestVoRow.getInvoiceTNo())))
+    {
+      String token = XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+                      + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                      + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_FLAG;
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00926
+             ,XxcsoConstants.TOKEN_REGION
+             ,token
+             ,XxcsoConstants.TOKEN_ITEM
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_NO
+            );
+      errorList.add(error);
+    }
+
+    // BM2課税事業者番号フォーマットチェック
+    if(!isInvoiceTNo(bm2DestVoRow.getInvoiceTNo()))
+    {
+      String token = XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+                     + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                     + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_NO;
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00927
+             ,XxcsoConstants.TOKEN_REGION
+             ,token
+            );
+      errorList.add(error);      
+    }
+// Ver.1.20 Add End
 // 2010-03-01 [E_本稼動_01678] Add Start
     // 支払方法、明細書が現金支払以外の場合
     if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm2DestVoRow.getBellingDetailsDiv()))
@@ -2025,7 +2136,24 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 // 2010-03-01 [E_本稼動_01678] Add End
-
+// Ver.1.20 Add Start
+    // ///////////////////////////////////
+    // BM3消費税計算区分
+    // ///////////////////////////////////
+    token1 = tokenMain
+            + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_TAX_DIV_BM;
+    // 確定ボタン時のみ必須入力チェック
+    if (fixedFrag)
+    {
+      errorList
+        = utils.requiredCheck(
+            errorList
+           ,bm3DestVoRow.getInvoiceTaxDivBm()
+           ,token1
+           ,0
+          );
+    }
+// Ver.1.20 Add End
     // ///////////////////////////////////
     // 問合せ担当拠点
     // ///////////////////////////////////
@@ -2355,7 +2483,44 @@ public class XxcsoContractRegistValidateUtils
       }
     }
 //  [E_本稼動_16642] Add End
-// 2010-03-01 [E_本稼動_01678] Add Start
+// Ver.1.20 Add Start
+    // ///////////////////////////////////
+    // BM3課税事業者番号
+    // ///////////////////////////////////
+    // 確定ボタン時、BM3適格請求書発行事業者登録(T区分)	チェックありの場合、BM3課税事業者番号必須チェック
+    if (fixedFrag 
+         && XxcsoContractRegistConstants.INVOICE_T_FLAG_ON.equals(bm3DestVoRow.getInvoiceTFlag()) 
+         && (bm3DestVoRow.getInvoiceTNo() == null || "".equals(bm3DestVoRow.getInvoiceTNo())))
+    {
+      String token = XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+                     + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                     + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_FLAG;
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00926
+             ,XxcsoConstants.TOKEN_REGION
+             ,token
+             ,XxcsoConstants.TOKEN_ITEM
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_NO
+            );
+      errorList.add(error);
+    }
+
+    // BM3課税事業者番号フォーマットチェック
+    if(!isInvoiceTNo(bm3DestVoRow.getInvoiceTNo()))
+    {
+      String token = XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+                     + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                     + XxcsoContractRegistConstants.TOKEN_VALUE_INVOICE_T_NO;
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00927
+             ,XxcsoConstants.TOKEN_REGION
+             ,token
+            );
+      errorList.add(error);      
+    }
+// Ver.1.20 Add End
 // 2010-03-01 [E_本稼動_01678] Add Start
     // 支払方法、明細書が現金支払以外の場合
     if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm3DestVoRow.getBellingDetailsDiv()))
@@ -6440,4 +6605,40 @@ public class XxcsoContractRegistValidateUtils
     return errorList;
  }
 // Ver.1.19 Add End
+// Ver.1.20 Add Start
+  /*****************************************************************************
+   * 課税事業者番号の検証
+   * @param  invoiceTNo    課税事業者番号
+   * @return boolean       検証結果
+   *****************************************************************************
+   */
+  private static boolean isInvoiceTNo(
+    String invoiceTNo
+  )
+  {
+    boolean returnValue = true;
+    
+    if ( invoiceTNo == null || "".equals(invoiceTNo.trim()) )
+    {
+      // null空文字時はチェック不要
+      return true;
+    }
+
+    // 13桁の半角文字か
+    if ( invoiceTNo.getBytes().length != 13 )
+    {
+      returnValue = false;
+    }
+    else
+    {
+      // 半角数値が指定されているか
+      if ( ! invoiceTNo.matches("^[0-9]+$") )
+      {
+        returnValue = false;
+      }
+    }
+
+    return returnValue;
+  }
+// Ver.1.20 Add End
 }
