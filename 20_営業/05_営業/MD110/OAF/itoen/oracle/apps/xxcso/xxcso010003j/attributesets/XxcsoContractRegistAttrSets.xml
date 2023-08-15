@@ -277,4 +277,19 @@
    <attributeSet docName="ElectricBankTransferFeeDiv" shortDesc="振込手数料負担"/>
    <attributeSet docName="ElectricBankAccountTypeLayout" prompt="口座種別"/>
    <attributeSet docName="ElectricBankAccountTypeBlank" prompt="口座種別"/>
+   <attributeSet docName="Bm1InvoiceTFlagLayout" prompt="インボイス番号登録済（T有）"/>
+   <attributeSet docName="Bm1InvoiceTFlag" shortDesc="インボイス番号登録済（T有）"/>
+   <attributeSet docName="Bm1InvoiceTNo" prompt="法人番号13桁（Tがつけば必須）"/>
+   <attributeSet docName="Bm1InvoiceTaxDivBmLayout" prompt="BM1消費税計算区分"/>
+   <attributeSet docName="Bm1InvoiceTaxDivBm" shortDesc="BM1消費税計算区分"/>
+   <attributeSet docName="Bm2InvoiceTFlagLayout" prompt="インボイス番号登録済（T有）"/>
+   <attributeSet docName="Bm2InvoiceTFlag" shortDesc="インボイス番号登録済（T有）"/>
+   <attributeSet docName="Bm2InvoiceTNo" prompt="法人番号13桁（Tがつけば必須）"/>
+   <attributeSet docName="Bm2InvoiceTaxDivBmLayout" prompt="BM2消費税計算区分"/>
+   <attributeSet docName="Bm2InvoiceTaxDivBm" shortDesc="BM2消費税計算区分"/>
+   <attributeSet docName="Bm3InvoiceTFlagLayout" prompt="インボイス番号登録済（T有）"/>
+   <attributeSet docName="Bm3InvoiceTFlag" shortDesc="インボイス番号登録済（T有）"/>
+   <attributeSet docName="Bm3InvoiceTNo" prompt="法人番号13桁（Tがつけば必須）"/>
+   <attributeSet docName="Bm3InvoiceTaxDivBmLayout" prompt="BM3消費税計算区分"/>
+   <attributeSet docName="Bm3InvoiceTaxDivBm" shortDesc="BM3消費税計算区分"/>
 </package>
