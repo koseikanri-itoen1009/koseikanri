@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.6
+* バージョン : 2.7
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -26,6 +26,7 @@
 *                                [E_本稼動_16410]契約書画面からの銀行口座変更について
 * 2020-12-29 2.5  SCSK小路恭弘   [E_本稼動_16895]送付先コード税区分修正
 * 2022-03-31 2.6  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
+* 2023-06-08 2.7  SCSK赤地学     [E_本稼動_19179]インボイス対応（BM関連）
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -1023,6 +1024,21 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,"lookup_code"
     );
 // [E_本稼動_15904] Add End
+
+// Ver.2.7 Add Start
+    // 税計算区分
+    XxcsoLookupListVOImpl invoiceTaxDivBmListVO = getXxcsoInvoiceTaxDivBmListVO();
+    if (invoiceTaxDivBmListVO == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoInvoiceTaxDivBmListVO");
+    }
+    
+    invoiceTaxDivBmListVO.initQuery(
+      "XXCMM_INVOICE_TAX_DIV_BM"
+     ,"lookup_code"
+    );
+// Ver.2.7 Add End
     
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -1187,6 +1203,11 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createErrorMessage( XxcsoConstants.APP_XXCSO1_00448 );
     }
+    
+// Ver.2.7 Add Start
+    // 適格請求書発行事業者登録（T区分）がチェックなしの場合、NULLを設定
+    XxcsoContractRegistReflectUtils.reflectInvoiceTFlag(txn,dest1Vo,dest2Vo,dest3Vo);
+// Ver.2.7 Add End
 
     // ステータスが作成中の場合は入力チェック実施
     if (XxcsoContractRegistConstants.STS_INPUT.equals( mngRow.getStatus() ) )
@@ -1588,6 +1609,11 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,bank3Vo
     );
 
+// Ver.2.7 Add Start
+    // 適格請求書発行事業者登録（T区分）がチェックなしの場合、NULLを設定
+    XxcsoContractRegistReflectUtils.reflectInvoiceTFlag(txn,dest1Vo,dest2Vo,dest3Vo);
+// Ver.2.7 Add End
+
     this.commit();
 
     // 正常終了メッセージ
@@ -1672,6 +1698,35 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     // ステータスを取消済に変更
     mngRow.setStatus(XxcsoContractRegistConstants.STS_REJECT);
 
+// Ver.2.7 Add Start
+    XxcsoBm1DestinationFullVOImpl dest1Vo
+      = getXxcsoBm1DestinationFullVO1();
+    if (dest1Vo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1DestinationFullVO1");
+    }
+
+    XxcsoBm2DestinationFullVOImpl dest2Vo
+      = getXxcsoBm2DestinationFullVO1();
+    if (dest2Vo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2DestinationFullVO1");
+    }
+
+    XxcsoBm3DestinationFullVOImpl dest3Vo
+      = getXxcsoBm3DestinationFullVO1();
+    if (dest3Vo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3DestinationFullVO1");
+    }
+
+    // 適格請求書発行事業者登録（T区分）がチェックなしの場合、NULLを設定
+    XxcsoContractRegistReflectUtils.reflectInvoiceTFlag(txn,dest1Vo,dest2Vo,dest3Vo);
+// Ver.2.7 Add End    
+
     this.commit();
 
     // 正常終了メッセージ
@@ -1752,7 +1807,10 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
    * 各イベント処理の最後に行われる処理です。
    *****************************************************************************
    */
-  public void afterProcess()
+// Ver.2.7 Mod Start   
+//  public void afterProcess()   
+  public void afterProcess(String event)
+// Ver.2.7 Mod End
   {
     OADBTransaction txn = getOADBTransaction();
     
@@ -1788,6 +1846,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         );
     }
 
+    // Ver.2.7 Add Start
+    XxcsoPageRenderVOImpl pageRenderVo = getXxcsoPageRenderVO1();
+    if (pageRenderVo == null)
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+    // Ver.2.7 Add End
+
     ////////////////////////////////////
     // 仕入先マスタ使用フラグを設定
     ////////////////////////////////////
@@ -1797,17 +1864,58 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       = (XxcsoBm2DestinationFullVORowImpl)dest2Vo.first();
     XxcsoBm3DestinationFullVORowImpl dest3Row
       = (XxcsoBm3DestinationFullVORowImpl)dest3Vo.first();
-
+    
     if ( dest1Row != null )
     {
       if ( dest1Row.getSupplierId() != null )
       {
-        dest1Row.setVendorFlag("Y");
+        dest1Row.setVendorFlag("Y"); 
       }
       else
       {
         dest1Row.setVendorFlag("N");
       }
+
+      // Ver.2.7 Add Start
+      // 初期表示時、送付先コードがブランク、税計算区分がブランクの場合
+      if(dest1Row.getVendorCode() == null && dest1Row.getInvoiceTaxDivBm() == null
+          && !XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event))
+      {
+        // 消費税計算区分をデフォルト（1：案内書単位）、活性に設定
+        dest1Row.setInvoiceTaxDivBm("1");
+        XxcsoContractRegistPropertyUtils.setBm1InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // 初期表示時、送付先コードがブランク、税計算区分がブランクでない場合
+      else if(dest1Row.getVendorCode() == null && dest1Row.getInvoiceTaxDivBm() != null
+          && !XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event))
+      {
+        // 活性に設定
+        XxcsoContractRegistPropertyUtils.setBm1InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // 送付先コードがブランクでない、税計算区分がブランクでない場合
+      else if(dest1Row.getVendorCode() != null && dest1Row.getInvoiceTaxDivBm() != null)
+      {
+        // 非活性に設定
+        XxcsoContractRegistPropertyUtils.setBm1InvoiceReadOnly(pageRenderVo,Boolean.TRUE);
+      }
+      // 送付先コードがブランクでない、税計算区分がブランクの場合
+      else if(dest1Row.getVendorCode() != null && dest1Row.getInvoiceTaxDivBm() == null)
+      {
+        // 消費税計算区分をデフォルト（1：案内書単位）、非活性に設定
+        dest1Row.setInvoiceTaxDivBm("1");
+        XxcsoContractRegistPropertyUtils.setBm1InvoiceReadOnly(pageRenderVo,Boolean.TRUE);
+      }
+      // 送付先コードブランクでのLov検索結果
+      else if(XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event)
+         && isBm1DestinationsBlank(dest1Row))
+      {
+        // 消費税計算区分、適格請求書発行事業者登録(T区分)、課税事業者番号をブランク、活性に設定
+        dest1Row.setInvoiceTaxDivBm(null);
+        dest1Row.setInvoiceTFlag(null);
+        dest1Row.setInvoiceTNo(null);
+        XxcsoContractRegistPropertyUtils.setBm1InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // Ver.2.7 Add End
     }
 
     if ( dest2Row != null )
@@ -1820,6 +1928,47 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       {
         dest2Row.setVendorFlag("N");
       }
+
+      // Ver.2.7 Add Start
+      // 初期表示時、送付先コードがブランク、税計算区分がブランクの場合
+      if(dest2Row.getVendorCode() == null && dest2Row.getInvoiceTaxDivBm() == null
+          && !XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event))
+      {
+        // 消費税計算区分をデフォルト（1：案内書単位）、活性に設定
+        dest2Row.setInvoiceTaxDivBm("1");
+        XxcsoContractRegistPropertyUtils.setBm2InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // 初期表示時、送付先コードがブランク、税計算区分がブランクでない場合
+      else if(dest2Row.getVendorCode() == null && dest2Row.getInvoiceTaxDivBm() != null
+          && !XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event))
+      {
+        // 活性に設定
+        XxcsoContractRegistPropertyUtils.setBm2InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // 送付先コードがブランクでない、税計算区分がブランクでない場合
+      else if(dest2Row.getVendorCode() != null && dest2Row.getInvoiceTaxDivBm() != null)
+      {
+        // 非活性に設定
+        XxcsoContractRegistPropertyUtils.setBm2InvoiceReadOnly(pageRenderVo,Boolean.TRUE);
+      }
+      // 送付先コードがブランクでない、税計算区分がブランクの場合
+      else if(dest2Row.getVendorCode() != null && dest2Row.getInvoiceTaxDivBm() == null)
+      {
+        // 消費税計算区分をデフォルト（1：案内書単位）、非活性に設定
+        dest2Row.setInvoiceTaxDivBm("1");
+        XxcsoContractRegistPropertyUtils.setBm2InvoiceReadOnly(pageRenderVo,Boolean.TRUE);
+      }
+      // 送付先コードブランクでのLov検索結果
+      else if(XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event)
+         && isBm2DestinationsBlank(dest2Row))
+      {
+        // 消費税計算区分、適格請求書発行事業者登録(T区分)、課税事業者番号をブランク、活性に設定
+        dest2Row.setInvoiceTaxDivBm(null);
+        dest2Row.setInvoiceTFlag(null);
+        dest2Row.setInvoiceTNo(null);
+        XxcsoContractRegistPropertyUtils.setBm2InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // Ver.2.7 Add End
     }
 
     if ( dest3Row != null )
@@ -1832,6 +1981,47 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       {
         dest3Row.setVendorFlag("N");
       }
+
+      // Ver.2.7 Add Start
+      // 初期表示時、送付先コードがブランク、税計算区分がブランクの場合
+      if(dest3Row.getVendorCode() == null && dest3Row.getInvoiceTaxDivBm() == null
+          && !XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event))
+      {
+        // 消費税計算区分をデフォルト（1：案内書単位）、活性に設定
+        dest3Row.setInvoiceTaxDivBm("1");
+        XxcsoContractRegistPropertyUtils.setBm3InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // 初期表示時、送付先コードがブランク、税計算区分がブランクでない場合
+      else if(dest3Row.getVendorCode() == null && dest3Row.getInvoiceTaxDivBm() != null
+          && !XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event))
+      {
+        // 活性に設定
+        XxcsoContractRegistPropertyUtils.setBm3InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // 送付先コードがブランクでない、税計算区分がブランクでない場合
+      else if(dest3Row.getVendorCode() != null && dest3Row.getInvoiceTaxDivBm() != null)
+      {
+        // 非活性に設定
+        XxcsoContractRegistPropertyUtils.setBm3InvoiceReadOnly(pageRenderVo,Boolean.TRUE);
+      }
+      // 送付先コードがブランクでない、税計算区分がブランクの場合
+      else if(dest3Row.getVendorCode() != null && dest3Row.getInvoiceTaxDivBm() == null)
+      {
+        // 消費税計算区分をデフォルト（1：案内書単位）、非活性に設定
+        dest3Row.setInvoiceTaxDivBm("1");
+        XxcsoContractRegistPropertyUtils.setBm3InvoiceReadOnly(pageRenderVo,Boolean.TRUE);
+      }
+      // 送付先コードブランクでのLov検索結果
+      else if(XxcsoContractRegistConstants.VENDOR_CODE_LOV_VALIDATE.equals(event)
+         && isBm3DestinationsBlank(dest3Row))
+      {
+        // 消費税計算区分、適格請求書発行事業者登録(T区分)、課税事業者番号をブランク、活性に設定
+        dest3Row.setInvoiceTaxDivBm(null);
+        dest3Row.setInvoiceTFlag(null);
+        dest3Row.setInvoiceTNo(null);
+        XxcsoContractRegistPropertyUtils.setBm3InvoiceReadOnly(pageRenderVo,Boolean.FALSE);
+      }
+      // Ver.2.7 Add End
     }
 
     XxcsoUtils.debug(txn, "[END]");
@@ -4526,6 +4716,109 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     return confirmMsg;
   }
 // Ver.2.6 Add End
+// Ver.2.7 Add Start
+  /*****************************************************************************
+   * BM1指定情報ブランクチェック
+   * @param  XxcsoBm1DestinationFullVORowImpl
+   * @return boolean 
+   *****************************************************************************
+   */
+  private boolean isBm1DestinationsBlank(XxcsoBm1DestinationFullVORowImpl bm1DestVoRow)
+  {
+    OADBTransaction txn = getOADBTransaction();
+    XxcsoUtils.debug(txn, "BM1送付先コード:" + bm1DestVoRow.getVendorCode());
+    XxcsoUtils.debug(txn, "BM1振込手数料負担:" + bm1DestVoRow.getBankTransferFeeChargeDiv());
+    XxcsoUtils.debug(txn, "BM1支払方法、明細書:" + bm1DestVoRow.getBellingDetailsDiv());
+    XxcsoUtils.debug(txn, "BM1問合せ担当拠点:" + bm1DestVoRow.getInqueryChargeHubCd());
+    XxcsoUtils.debug(txn, "BM1送付先名(全角):" + bm1DestVoRow.getPaymentName());
+    XxcsoUtils.debug(txn, "BM1送付先名カナ(半角):" + bm1DestVoRow.getPaymentNameAlt());
+    XxcsoUtils.debug(txn, "BM1送付先住所 郵便番号:" + bm1DestVoRow.getPostCode());
+    XxcsoUtils.debug(txn, "BM1送付先住所 住所１:" + bm1DestVoRow.getAddress1());
+    XxcsoUtils.debug(txn, "BM1送付先住所 住所２:" + bm1DestVoRow.getAddress2());
+    XxcsoUtils.debug(txn, "BM1送付先電話番号:" + bm1DestVoRow.getAddressLinesPhonetic());
+    XxcsoUtils.debug(txn, "BM1送付先Eメールアドレス:" + bm1DestVoRow.getSiteEmailAddress()); 
+
+    boolean result = false;
+    if(bm1DestVoRow.getVendorCode() == null && bm1DestVoRow.getBankTransferFeeChargeDiv() == null
+      && bm1DestVoRow.getBellingDetailsDiv() == null && bm1DestVoRow.getInqueryChargeHubCd() == null
+      && bm1DestVoRow.getPaymentName() == null && bm1DestVoRow.getPaymentNameAlt() == null
+      && bm1DestVoRow.getPostCode() == null && bm1DestVoRow.getAddress1() == null 
+      && bm1DestVoRow.getAddress2() == null && bm1DestVoRow.getAddressLinesPhonetic() == null 
+      && bm1DestVoRow.getSiteEmailAddress() == null)
+    {
+      result = true;
+    }
+    return result;
+  }
+  
+  /*****************************************************************************
+   * BM2指定情報ブランクチェック
+   * @param  XxcsoBm2DestinationFullVORowImpl
+   * @return boolean 
+   *****************************************************************************
+   */
+  private boolean isBm2DestinationsBlank(XxcsoBm2DestinationFullVORowImpl bm2DestVoRow)
+  {
+    OADBTransaction txn = getOADBTransaction();
+    XxcsoUtils.debug(txn, "BM2送付先コード:" + bm2DestVoRow.getVendorCode());
+    XxcsoUtils.debug(txn, "BM2振込手数料負担:" + bm2DestVoRow.getBankTransferFeeChargeDiv());
+    XxcsoUtils.debug(txn, "BM2支払方法、明細書:" + bm2DestVoRow.getBellingDetailsDiv());
+    XxcsoUtils.debug(txn, "BM2問合せ担当拠点:" + bm2DestVoRow.getInqueryChargeHubCd());
+    XxcsoUtils.debug(txn, "BM2送付先名(全角):" + bm2DestVoRow.getPaymentName());
+    XxcsoUtils.debug(txn, "BM2送付先名カナ(半角):" + bm2DestVoRow.getPaymentNameAlt());
+    XxcsoUtils.debug(txn, "BM2送付先住所 郵便番号:" + bm2DestVoRow.getPostCode());
+    XxcsoUtils.debug(txn, "BM2送付先住所 住所１:" + bm2DestVoRow.getAddress1());
+    XxcsoUtils.debug(txn, "BM2送付先住所 住所２:" + bm2DestVoRow.getAddress2());
+    XxcsoUtils.debug(txn, "BM2送付先電話番号:" + bm2DestVoRow.getAddressLinesPhonetic());
+    XxcsoUtils.debug(txn, "BM2送付先Eメールアドレス:" + bm2DestVoRow.getSiteEmailAddress()); 
+
+    boolean result = false;
+    if(bm2DestVoRow.getVendorCode() == null && bm2DestVoRow.getBankTransferFeeChargeDiv() == null
+      && bm2DestVoRow.getBellingDetailsDiv() == null && bm2DestVoRow.getInqueryChargeHubCd() == null
+      && bm2DestVoRow.getPaymentName() == null && bm2DestVoRow.getPaymentNameAlt() == null
+      && bm2DestVoRow.getPostCode() == null && bm2DestVoRow.getAddress1() == null 
+      && bm2DestVoRow.getAddress2() == null && bm2DestVoRow.getAddressLinesPhonetic() == null 
+      && bm2DestVoRow.getSiteEmailAddress() == null)
+    {
+      result = true;
+    }
+    return result;
+  }
+  
+  /*****************************************************************************
+   * BM3指定情報ブランクチェック
+   * @param  XxcsoBm3DestinationFullVORowImpl
+   * @return boolean 
+   *****************************************************************************
+   */
+  private boolean isBm3DestinationsBlank(XxcsoBm3DestinationFullVORowImpl bm3DestVoRow)
+  {
+    OADBTransaction txn = getOADBTransaction();
+    XxcsoUtils.debug(txn, "BM3送付先コード:" + bm3DestVoRow.getVendorCode());
+    XxcsoUtils.debug(txn, "BM3振込手数料負担:" + bm3DestVoRow.getBankTransferFeeChargeDiv());
+    XxcsoUtils.debug(txn, "BM3支払方法、明細書:" + bm3DestVoRow.getBellingDetailsDiv());
+    XxcsoUtils.debug(txn, "BM3問合せ担当拠点:" + bm3DestVoRow.getInqueryChargeHubCd());
+    XxcsoUtils.debug(txn, "BM3送付先名(全角):" + bm3DestVoRow.getPaymentName());
+    XxcsoUtils.debug(txn, "BM3送付先名カナ(半角):" + bm3DestVoRow.getPaymentNameAlt());
+    XxcsoUtils.debug(txn, "BM3送付先住所 郵便番号:" + bm3DestVoRow.getPostCode());
+    XxcsoUtils.debug(txn, "BM3送付先住所 住所１:" + bm3DestVoRow.getAddress1());
+    XxcsoUtils.debug(txn, "BM3送付先住所 住所２:" + bm3DestVoRow.getAddress2());
+    XxcsoUtils.debug(txn, "BM3送付先電話番号:" + bm3DestVoRow.getAddressLinesPhonetic());
+    XxcsoUtils.debug(txn, "BM3送付先Eメールアドレス:" + bm3DestVoRow.getSiteEmailAddress()); 
+
+    boolean result = false;
+    if(bm3DestVoRow.getVendorCode() == null && bm3DestVoRow.getBankTransferFeeChargeDiv() == null
+      && bm3DestVoRow.getBellingDetailsDiv() == null && bm3DestVoRow.getInqueryChargeHubCd() == null
+      && bm3DestVoRow.getPaymentName() == null && bm3DestVoRow.getPaymentNameAlt() == null
+      && bm3DestVoRow.getPostCode() == null && bm3DestVoRow.getAddress1() == null 
+      && bm3DestVoRow.getAddress2() == null && bm3DestVoRow.getAddressLinesPhonetic() == null 
+      && bm3DestVoRow.getSiteEmailAddress() == null)
+    {
+      result = true;
+    }
+    return result;
+  }
+// Ver.2.7 Add Start
   /**
    * 
    * Container's getter for XxcsoBm1DestinationFullVO1
@@ -5031,6 +5324,18 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM3TaxKbnListVO1");
   }
+
+// Ver.2.7 Add Start
+  /**
+   * 
+   * Container's getter for XxcsoInvoiceTaxDivBmListVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoInvoiceTaxDivBmListVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoInvoiceTaxDivBmListVO");
+  }
+// Ver.2.7 Add End
+
 
 
 

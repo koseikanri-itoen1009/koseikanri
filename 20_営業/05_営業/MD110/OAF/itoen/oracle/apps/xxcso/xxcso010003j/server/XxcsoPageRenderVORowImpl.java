@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoPageRenderVORowImpl
 * 概要説明   : ページ属性設定用ビュー行オブジェクトクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-28 1.0  SCS柳平直人  新規作成
 * 2012-06-12 1.1  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 * 2015-02-02 1.2  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2023-06-08 1.3  SCSK赤地学   [E_本稼動_19179]インボイス対応（BM関連）
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -57,6 +58,9 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
   protected static final int INSTSUPPDISABLED = 28;
   protected static final int INTROCHGDISABLED = 29;
   protected static final int ELECTRICDISABLED = 30;
+  protected static final int BM1INVOICEREADONLYFLG = 31;
+  protected static final int BM2INVOICEREADONLYFLG = 32;
+  protected static final int BM3INVOICEREADONLYFLG = 33;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -150,6 +154,12 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
         return getIntroChgDisabled();
       case ELECTRICDISABLED:
         return getElectricDisabled();
+      case BM1INVOICEREADONLYFLG:
+        return getBm1InvoiceReadOnlyFlg();
+      case BM2INVOICEREADONLYFLG:
+        return getBm2InvoiceReadOnlyFlg();
+      case BM3INVOICEREADONLYFLG:
+        return getBm3InvoiceReadOnlyFlg();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -252,6 +262,15 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
         return;
       case ELECTRICDISABLED:
         setElectricDisabled((Boolean)value);
+        return;
+      case BM1INVOICEREADONLYFLG:
+        setBm1InvoiceReadOnlyFlg((Boolean)value);
+        return;
+      case BM2INVOICEREADONLYFLG:
+        setBm2InvoiceReadOnlyFlg((Boolean)value);
+        return;
+      case BM3INVOICEREADONLYFLG:
+        setBm3InvoiceReadOnlyFlg((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -810,6 +829,68 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(ELECTRICEXISTFLAG, value);
   }
+
+
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm1InvoiceReadOnlyFlg
+   */
+  public Boolean getBm1InvoiceReadOnlyFlg()
+  {
+    return (Boolean)getAttributeInternal(BM1INVOICEREADONLYFLG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm1InvoiceReadOnlyFlg
+   */
+  public void setBm1InvoiceReadOnlyFlg(Boolean value)
+  {
+    setAttributeInternal(BM1INVOICEREADONLYFLG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm2InvoiceReadOnlyFlg
+   */
+  public Boolean getBm2InvoiceReadOnlyFlg()
+  {
+    return (Boolean)getAttributeInternal(BM2INVOICEREADONLYFLG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm2InvoiceReadOnlyFlg
+   */
+  public void setBm2InvoiceReadOnlyFlg(Boolean value)
+  {
+    setAttributeInternal(BM2INVOICEREADONLYFLG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm3InvoiceReadOnlyFlg
+   */
+  public Boolean getBm3InvoiceReadOnlyFlg()
+  {
+    return (Boolean)getAttributeInternal(BM3INVOICEREADONLYFLG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm3InvoiceReadOnlyFlg
+   */
+  public void setBm3InvoiceReadOnlyFlg(Boolean value)
+  {
+    setAttributeInternal(BM3INVOICEREADONLYFLG, value);
+  }
+
+
 
 
 

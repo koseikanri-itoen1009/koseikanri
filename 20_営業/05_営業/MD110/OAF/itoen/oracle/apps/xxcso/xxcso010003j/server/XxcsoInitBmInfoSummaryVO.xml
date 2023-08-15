@@ -242,6 +242,9 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
         )                                    AS bm_tax_kbn_nm
        ,xsdc.customer_id                     AS customer_id
        ,pvs.attribute7                       AS site_email_address
+       ,pvs.attribute8                       AS invoice_t_flag
+       ,pvs.attribute9                       AS invoice_t_no
+       ,pvs.attribute10                      AS invoice_tax_div_bm
 FROM    xxcso_sp_decision_custs   xsdc
        ,po_vendors                pv
        ,po_vendor_sites           pvs
@@ -577,6 +580,45 @@ AND     xsdc.sp_decision_header_id    = xsdh.sp_decision_header_id
       ColumnType="VARCHAR2"
       AliasName="SITE_EMAIL_ADDRESS"
       Expression="SITE_EMAIL_ADDRESS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTFlag"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVOICE_T_FLAG"
+      Expression="INVOICE_T_FLAG"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTNo"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVOICE_T_NO"
+      Expression="INVOICE_T_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTaxDivBm"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INVOICE_TAX_DIV_BM"
+      Expression="INVOICE_TAX_DIV_BM"
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="150" />

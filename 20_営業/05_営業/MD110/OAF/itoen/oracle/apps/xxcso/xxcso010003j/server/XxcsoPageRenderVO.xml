@@ -303,4 +303,28 @@ FROM   DUAL
       AliasName="ELECTRIC_DISABLED"
       SQLType="BIT" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1InvoiceReadOnlyFlg"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="BM1_INVOICE_READ_ONLY_FLG"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2InvoiceReadOnlyFlg"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="BM2_INVOICE_READ_ONLY_FLG"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3InvoiceReadOnlyFlg"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="BM3_INVOICE_READ_ONLY_FLG"
+      SQLType="BIT" >
+   </ViewAttribute>
 </ViewObject>

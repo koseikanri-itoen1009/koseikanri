@@ -175,6 +175,30 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
           )
         , TRUNC(xxcso_util_common_pkg.get_online_sysdate)
       )                                                AS bm_tax_kbn_nm
+      ,xxcso_010003j_pkg.decode_bm_info2(
+         xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,pv.segment1
+        ,XxcsoDestinationsEO.invoice_t_flag
+        ,pvs.attribute8
+      )                                               AS invoice_t_flag
+      ,xxcso_010003j_pkg.decode_bm_info2(
+         xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,pv.segment1
+        ,XxcsoDestinationsEO.invoice_t_no
+        ,pvs.attribute9
+      )                                               AS invoice_t_no
+      ,xxcso_010003j_pkg.decode_bm_info2(
+         xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,pv.segment1
+        ,XxcsoDestinationsEO.invoice_tax_div_bm
+        ,pvs.attribute10
+      )                                               AS invoice_tax_div_bm
 FROM XXCSO_DESTINATIONS          XxcsoDestinationsEO
     ,xxcso_contract_managements  xcm
     ,po_vendors                  pv
@@ -427,6 +451,27 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       AliasName="BmTaxKbnNm"
       Expression="BmTaxKbnNm"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTFlag"
+      Precision="1"
+      EntityAttrName="InvoiceTFlag"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="INVOICE_T_FLAG" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTNo"
+      Precision="13"
+      EntityAttrName="InvoiceTNo"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="INVOICE_T_NO" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InvoiceTaxDivBm"
+      Precision="1"
+      EntityAttrName="InvoiceTaxDivBm"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="INVOICE_TAX_DIV_BM" >
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoBm2BankAccountFullVO"

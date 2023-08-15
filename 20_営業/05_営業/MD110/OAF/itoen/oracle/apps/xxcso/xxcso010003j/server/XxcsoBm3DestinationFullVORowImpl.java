@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoBm3DestinationFullVORowImpl
 * 概要説明   : BM3送付先テーブル情報ビュー行オブジェクトクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-27 1.0  SCS小川浩    新規作成
 * 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 * 2020-12-14 1.2  SCSK佐々木大和[E_本稼動_16642]送付先コードに紐付くメールアドレスについて
+* 2023-06-08 1.3  SCSK赤地学    [E_本稼動_19179]インボイス対応（BM関連）
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -58,7 +59,10 @@ public class XxcsoBm3DestinationFullVORowImpl extends OAViewRowImpl
   protected static final int VENDORCODE = 27;
   protected static final int BMTAXKBN = 28;
   protected static final int BMTAXKBNNM = 29;
-  protected static final int XXCSOBM3BANKACCOUNTFULLVO = 30;
+  protected static final int INVOICETFLAG = 30;
+  protected static final int INVOICETNO = 31;
+  protected static final int INVOICETAXDIVBM = 32;
+  protected static final int XXCSOBM3BANKACCOUNTFULLVO = 33;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -573,6 +577,12 @@ public class XxcsoBm3DestinationFullVORowImpl extends OAViewRowImpl
         return getBmTaxKbn();
       case BMTAXKBNNM:
         return getBmTaxKbnNm();
+      case INVOICETFLAG:
+        return getInvoiceTFlag();
+      case INVOICETNO:
+        return getInvoiceTNo();
+      case INVOICETAXDIVBM:
+        return getInvoiceTaxDivBm();
       case XXCSOBM3BANKACCOUNTFULLVO:
         return getXxcsoBm3BankAccountFullVO();
       default:
@@ -674,6 +684,15 @@ public class XxcsoBm3DestinationFullVORowImpl extends OAViewRowImpl
         return;
       case BMTAXKBNNM:
         setBmTaxKbnNm((String)value);
+        return;
+      case INVOICETFLAG:
+        setInvoiceTFlag((String)value);
+        return;
+      case INVOICETNO:
+        setInvoiceTNo((String)value);
+        return;
+      case INVOICETAXDIVBM:
+        setInvoiceTaxDivBm((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -800,6 +819,60 @@ public class XxcsoBm3DestinationFullVORowImpl extends OAViewRowImpl
   public void setSiteEmailAddress(String value)
   {
     setAttributeInternal(SITEEMAILADDRESS, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InvoiceTNo
+   */
+  public String getInvoiceTNo()
+  {
+    return (String)getAttributeInternal(INVOICETNO);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InvoiceTNo
+   */
+  public void setInvoiceTNo(String value)
+  {
+    setAttributeInternal(INVOICETNO, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InvoiceTaxDivBm
+   */
+  public String getInvoiceTaxDivBm()
+  {
+    return (String)getAttributeInternal(INVOICETAXDIVBM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InvoiceTaxDivBm
+   */
+  public void setInvoiceTaxDivBm(String value)
+  {
+    setAttributeInternal(INVOICETAXDIVBM, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for INVOICE_T_FLAG using the alias name InvoiceTFlag
+   */
+  public String getInvoiceTFlag()
+  {
+    return (String)getAttributeInternal(INVOICETFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for INVOICE_T_FLAG using the alias name InvoiceTFlag
+   */
+  public void setInvoiceTFlag(String value)
+  {
+    setAttributeInternal(INVOICETFLAG, value);
   }
 
 
