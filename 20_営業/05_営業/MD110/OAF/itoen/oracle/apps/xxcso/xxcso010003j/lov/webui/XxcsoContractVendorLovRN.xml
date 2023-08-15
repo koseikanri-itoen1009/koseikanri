@@ -43,6 +43,9 @@ HISTORY
             <oa:formValue id="BmTaxKbn" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTaxKbn"/>
             <oa:formValue id="BmTaxKbnNm" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTaxKbnNm"/>
             <oa:formValue id="SIteEmailAddress" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="SiteEmailAddress"/>
+            <oa:formValue id="InvoiceTaxDivBm" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InvoiceTaxDivBm"/>
+            <oa:formValue id="InvoiceTFlag" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InvoiceTFlag"/>
+            <oa:formValue id="InvoiceTNo" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InvoiceTNo"/>
          </ui:contents>
       </oa:table>
    </ui:contents>
