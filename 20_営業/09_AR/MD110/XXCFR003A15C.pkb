@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税込
  * MD.050           : MD050_CFR_003_A15_標準請求書税込
  * MD.070           : MD050_CFR_003_A15_標準請求書税込
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,7 +46,7 @@ AS
  *  2014/03/27    1.11 SCSK 山下 翔太   [E_本稼動_11617] 請求書出力形式が業者委託の顧客対応
  *  2019/07/25    1.12 SCSK 郭 有司     [E_本稼動_15472] 対応
  *  2022/04/12    1.13 SCSK 冨江 広大   [E_本稼動_18096] 対応
- *
+ *  2023/05/08    1.14 SCSK 奥山 徹     [E_本稼動_19082] インボイス対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -178,6 +178,9 @@ AS
   --プロファイル
   cv_set_of_bks_id   CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID'; -- 会計帳簿ID
   cv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
+-- Add 2023.05.08 Ver1.14 Start
+  cv_t_number        CONSTANT VARCHAR2(30) := 'XXCMM1_INVOICE_T_NO'; -- XXCMM:適格請求書発行事業者登録番号
+-- Add 2023.05.08 Ver1.14 End
 --
   -- 使用DB名
   cv_table           CONSTANT VARCHAR2(100) := 'XXCFR_REP_ST_INVOICE_INC_TAX';  -- ワークテーブル名
@@ -185,6 +188,10 @@ AS
   -- 請求書タイプ
   cv_invoice_type    CONSTANT VARCHAR2(1)   := 'S';                        -- ‘S’(標準請求書)
 --
+-- Add 2023.05.08 Ver1.14 Start
+  -- 請求書消費税積上げ計算方式
+  cn_invoice_tax_div CONSTANT VARCHAR2(1)   := 'N';                        -- 税込請求金額サマリに消費税率を乗じた値を摘要
+-- Add 2023.05.08 Ver1.14 End
   -- ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10)  := 'OUTPUT';    -- メッセージ出力
   cv_file_type_log   CONSTANT VARCHAR2(10)  := 'LOG';       -- ログ出力
@@ -267,6 +274,9 @@ AS
   gd_target_date        DATE;                                      -- パラメータ．締日（データ型変換用）
   gn_org_id             NUMBER;                                    -- 組織ID
   gn_set_of_bks_id      NUMBER;                                    -- 会計帳簿ID
+-- Add 2023.05.08 Ver1.14 Start
+  gv_t_number           VARCHAR2(14);                              -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
   gt_user_dept          per_all_people_f.attribute28%TYPE := NULL; -- ログインユーザ所属部門
   gv_inv_all_flag       VARCHAR2(1) := '0';                        -- 全社出力権限所持部門フラグ
 -- Modify 2009.09.10 Ver1.3 Start
@@ -491,6 +501,23 @@ AS
                           ,5000);
       RAISE global_api_expt;
     END IF;
+--
+-- Add 2023.05.08 Ver1.14 Start
+    -- プロファイルから登録番号取得
+    gv_t_number := FND_PROFILE.VALUE(cv_t_number);
+--
+    -- 取得エラー時
+    IF (gv_t_number IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_003a15_010 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_t_number))
+                                                     -- 登録番号
+                          ,1
+                          ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- Add 2023.05.08 Ver1.14 End
 --
   EXCEPTION
 --
@@ -848,7 +875,24 @@ AS
 --             xrsi.tax_rate            tax_rate            ,  --税率
              xrsi.category            category            ,  --内訳分類(編集用)
 -- 2019/07/25 Ver1.12 MOD End
-             SUM( xrsi.slip_sum )     tax_rate_by_sum        --税率別お買上げ金額
+-- Modify 2023.05.08 Ver1.14 Start
+--             SUM( xrsi.slip_sum )     tax_rate_by_sum        --税率別お買上げ金額
+             SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                xrsi.slip_sum - xrsi.slip_tax_sum            --伝票金額 - 伝票税額
+             WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                xrsi.inv_amount_sum                          --税抜合計１（税込請求金額サマリに消費税率を除した値）
+             ELSE
+                xrsi.inv_amount_sum2                         --税抜合計２（明細毎の税抜額）
+             END )                    tax_rate_by_sum,       --税抜お買上げ金額
+             --
+             SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                xrsi.slip_tax_sum                            --伝票税額
+             WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                xrsi.tax_amount_sum                          --税額合計１（税込請求金額 - 税込請求金額サマリに消費税率を除した値）
+             ELSE
+                xrsi.tax_amount_sum2                         --税額合計２（明細毎の積上税額）
+             END )                    tax_rate_by_tax_sum    --消費税額
+-- Modify 2023.05.08 Ver1.14 End
       FROM   xxcfr_rep_st_invoice_inc_tax  xrsi
       WHERE  xrsi.request_id  = cn_request_id
 -- 2019/07/25 Ver1.12 MOD Start
@@ -869,8 +913,39 @@ AS
 -- 2019/07/25 Ver1.12 MOD End
       ;
 --
+-- Add 2023.05.08 Ver1.14 Start
+    --ヘッダー用の当月お買上げ額、及び消費税額を取得
+    CURSOR update2_work_cur
+    IS
+      SELECT xrsi.bill_cust_code      bill_cust_code      ,  --顧客コード
+             SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                    xrsi.slip_sum - xrsi.slip_tax_sum        --伝票金額
+                  WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                    xrsi.inv_amount_sum                      --税抜合計１（税込請求金額サマリに消費税率を除した値）
+                  ELSE
+                    xrsi.inv_amount_sum2                     --税抜合計２（明細毎の税抜額）
+             END )                    slip_sum,              --ヘッダー用当月お買上げ額
+             SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                    xrsi.slip_tax_sum                        --伝票税額
+                  WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                    xrsi.tax_amount_sum                      --税額合計１（税込請求金額 - 税込請求金額サマリに消費税率を除した値）
+                  ELSE
+                    xrsi.tax_amount_sum2                     --税額合計２（明細毎の積上税額）
+             END )                    tax_sum                --ヘッダー用当月消費税額
+      FROM   xxcfr_rep_st_invoice_inc_tax  xrsi
+      WHERE  xrsi.request_id  = cn_request_id
+      GROUP BY
+             xrsi.bill_cust_code                             -- 顧客コード
+      ORDER BY
+             xrsi.bill_cust_code                             -- 顧客コード
+      ;
+-- Add 2023.05.08 Ver1.14 End
+--
     -- *** ローカル・レコード ***
     update_work_rec  update_work_cur%ROWTYPE;
+-- Add 2023.05.08 Ver1.14 Start
+    update2_work_rec update2_work_cur%ROWTYPE;
+-- Add 2023.05.08 Ver1.14 End
 --
     -- *** ローカル・タイプ ***
     TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_st_invoice_inc_tax.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
@@ -879,6 +954,9 @@ AS
     TYPE l_category_ttype       IS TABLE OF xxcfr_rep_st_invoice_inc_tax.category1%TYPE       INDEX BY PLS_INTEGER;
 -- 2019/07/25 Ver1.12 MOD End
     TYPE l_inc_tax_charge_ttype IS TABLE OF xxcfr_rep_st_invoice_inc_tax.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
+-- Add 2023.05.08 Ver1.14 Start
+    TYPE l_tax_sum_ttype        IS TABLE OF xxcfr_rep_st_invoice_inc_tax.tax_sum1%TYPE        INDEX BY PLS_INTEGER;
+-- Add 2023.05.08 Ver1.14 End
 --
     l_bill_cust_code_tab     l_bill_cust_code_ttype;  --顧客コード
 -- 2019/07/25 Ver1.12 MOD Start
@@ -896,6 +974,11 @@ AS
     l_inc_tax_charge3_tab    l_inc_tax_charge_ttype;  --当月お買上げ額３
 -- 2019/07/25 Ver1.12 ADD End
 --
+-- 2019/07/25 Ver1.12 ADD Start
+    l_tax_sum1_tab           l_tax_sum_ttype;         --消費税額１
+    l_tax_sum2_tab           l_tax_sum_ttype;         --消費税額２
+    l_tax_sum3_tab           l_tax_sum_ttype;         --消費税額３
+-- 2019/07/25 Ver1.12 ADD End
 --
   BEGIN
 --
@@ -924,14 +1007,23 @@ AS
         l_category1_tab(ln_int)       := update_work_rec.category;            --内訳分類１
 -- 2019/07/25 Ver1.12 MOD End
         l_inc_tax_charge1_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額１
+-- Add 2023.05.08 Ver1.14 Start
+        l_tax_sum1_tab(ln_int)        := update_work_rec.tax_rate_by_tax_sum; --消費税額１
+-- Add 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 MOD Start
 --        l_tax_rate2_tab(ln_int)       := NULL;                                --消費税率２
         l_category2_tab(ln_int)       := NULL;                                --内訳分類２
 -- 2019/07/25 Ver1.12 MOD End
         l_inc_tax_charge2_tab(ln_int) := NULL;                                --当月お買上げ額２
+-- Add 2023.05.08 Ver1.14 Start
+        l_tax_sum2_tab(ln_int)        := NULL;                                --消費税額２
+-- Add 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 ADD Start
         l_category3_tab(ln_int)       := NULL;                                --内訳分類３
         l_inc_tax_charge3_tab(ln_int) := NULL;                                --当月お買上げ額３
+-- Add 2023.05.08 Ver1.14 Start
+        l_tax_sum3_tab(ln_int)        := NULL;                                --消費税額３
+-- Add 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 ADD End
         lt_bill_cust_code             := update_work_rec.bill_cust_code;      --ブレークコード設定
       ELSE
@@ -944,12 +1036,18 @@ AS
           l_category2_tab(ln_int)       := update_work_rec.category;            --内訳分類２
 -- 2019/07/25 Ver1.12 MOD End
           l_inc_tax_charge2_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額２
+-- Add 2023.05.08 Ver1.14 Start
+          l_tax_sum2_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額２
+-- Add 2023.05.08 Ver1.14 End
         END IF;
 -- 2019/07/25 Ver1.12 ADD Start
         IF ( ln_cust_cnt = 3 ) THEN
           --3レコード目
           l_category3_tab(ln_int)       := update_work_rec.category;            --内訳分類３
           l_inc_tax_charge3_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2023.05.08 Ver1.14 Start
+          l_tax_sum3_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額３
+-- Add 2023.05.08 Ver1.14 End
         END IF;
 -- 2019/07/25 Ver1.12 ADD End
       END IF;
@@ -966,15 +1064,24 @@ AS
         SET     xrsi.category1        = l_category1_tab(i)          --内訳分類１
 -- 2019/07/25 Ver1.12 MOD End
                ,xrsi.inc_tax_charge1  = l_inc_tax_charge1_tab(i)    --当月お買上げ額１
+-- Add 2023.05.08 Ver1.14 Start
+               ,xrsi.tax_sum1         = l_tax_sum1_tab(i)           --消費税額１
+-- Add 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 MOD Start
 --               ,xrsi.tax_rate2        = l_tax_rate2_tab(i)          --消費税率２
                ,xrsi.category2        = l_category2_tab(i)          --内訳分類２
 -- 2019/07/25 Ver1.12 MOD End
                ,xrsi.inc_tax_charge2  = l_inc_tax_charge2_tab(i)    --当月お買上げ額２
+-- Add 2023.05.08 Ver1.14 Start
+               ,xrsi.tax_sum2         = l_tax_sum2_tab(i)           --消費税額２
+-- Add 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 ADD Start
                ,xrsi.category3        = l_category3_tab(i)          --内訳分類３
                ,xrsi.inc_tax_charge3  = l_inc_tax_charge3_tab(i)    --当月お買上げ額３
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+               ,xrsi.tax_sum3         = l_tax_sum3_tab(i)           --消費税額３
+-- Add 2023.05.08 Ver1.14 End
         WHERE   xrsi.bill_cust_code   = l_bill_cust_code_tab(i)
         AND     xrsi.request_id       = cn_request_id
         ;
@@ -984,12 +1091,38 @@ AS
                                                        ,cv_msg_003a15_025    -- テーブル更新エラー
                                                        ,cv_tkn_table         -- トークン'TABLE'
                                                        ,xxcfr_common_pkg.get_table_comment(cv_table))
-                                                      -- 標準請求書税抜帳票ワークテーブル
+                                                      -- 標準請求書税込帳票ワークテーブル
                              ,1
                              ,5000);
         lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
         RAISE global_api_expt;
     END;
+--
+-- Add 2023.05.08 Ver1.14 Start
+    <<update2_loop>>
+    FOR update2_work_rec IN update2_work_cur LOOP
+    --ヘッダー用の当月お買上げ額、及び消費税額の一括更新
+      BEGIN
+        UPDATE  xxcfr_rep_st_invoice_inc_tax  xrsi
+        SET     xrsi.ex_tax_charge_header = update2_work_rec.slip_sum        --ヘッダー用当月お買上げ額
+               ,xrsi.tax_sum_header       = update2_work_rec.tax_sum         --ヘッダー用当月消費税額
+        WHERE   xrsi.bill_cust_code = update2_work_rec.bill_cust_code        --顧客コード
+        AND     xrsi.request_id     = cn_request_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                         ,cv_msg_003a15_025    -- テーブル更新エラー
+                                                         ,cv_tkn_table         -- トークン'TABLE'
+                                                         ,xxcfr_common_pkg.get_table_comment(cv_table))
+                                                        -- 標準請求書税込帳票ワークテーブル
+                               ,1
+                               ,5000);
+          lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+    END LOOP update2_loop;
+-- Add 2023.05.08 Ver1.14 End
 --
   EXCEPTION
 --
@@ -1588,6 +1721,9 @@ AS
             slip_date               , -- 伝票日付(ソート順３)
             slip_num                , -- 伝票No(ソート順４)
             slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
+-- Add 2023.05.08 Ver1.14 Start
+            slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Add 2023.05.08 Ver1.14 End
 -- Add 2013.12.11 Ver1.10 Start
 -- 2019/07/25 Ver1.12 DEL Start
 --            tax_rate                , -- 消費税率(編集用)
@@ -1601,6 +1737,14 @@ AS
             description             , -- 摘要
             category                , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+            invoice_tax_div         , -- 請求書消費税積上げ計算方式
+            tax_amount_sum          , -- 税額合計１
+            tax_amount_sum2         , -- 税額合計２
+            inv_amount_sum          , -- 税抜合計１
+            inv_amount_sum2         , -- 税抜合計２
+            invoice_t_no            , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
             created_by              , -- 作成者
             creation_date           , -- 作成日
             last_updated_by         , -- 最終更新者
@@ -1674,7 +1818,10 @@ AS
                                 xil.acceptance_date),
                          cv_format_date_ymds2)                                      slip_date        , -- 伝票日付(ソート順３)
                  xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
-                 SUM(xil.tax_amount) + SUM(xil.ship_amount)                         slip_sum         , -- 伝票金額(税抜額)
+                 SUM(xil.tax_amount) + SUM(xil.ship_amount)                         slip_sum         , -- 伝票金額(税込額)
+-- Add 2023.05.08 Ver1.14 Start
+                 SUM(xil.tax_amount)                                                slip_tax_sum     , -- 税金額
+-- Add 2023.05.08 Ver1.14 End
 -- Add 2013.12.11 Ver1.10 Start
 -- 2019/07/25 Ver1.12 DEL Start
 --                 xil.tax_rate                                                       tax_rate         , -- 税率
@@ -1692,6 +1839,14 @@ AS
                  NVL(flv.attribute1,' ')                                            description      , -- 摘要
                  flv.attribute2                                                     category         , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+                 xih.invoice_tax_div                                                invoice_tax_div  , -- 請求書消費税積上げ計算方式
+                 SUM(xil.tax_amount_sum)                                            tax_amount_sum   , -- 税額合計１
+                 SUM(xil.tax_amount_sum2)                                           tax_amount_sum2  , -- 税額合計２
+                 SUM(xil.inv_amount_sum)                                            inv_amount_sum   , -- 税抜合計１
+                 SUM(xil.inv_amount_sum2)                                           inv_amount_sum2  , -- 税抜合計２
+                 gv_t_number                                                        invoice_t_no     , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
                  cn_created_by                                                      created_by,             -- 作成者
                  cd_creation_date                                                   creation_date,          -- 作成日
                  cn_last_updated_by                                                 last_updated_by,        -- 最終更新者
@@ -1831,7 +1986,11 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
                    END,
                    flv.attribute1,                                                    -- 摘要
-                   flv.attribute2                                                     -- 内訳分類(編集用)
+-- Modify 2023.05.08 Ver1.14 Start
+--                   flv.attribute2                                                     -- 内訳分類(編集用)
+                   flv.attribute2,                                                    -- 内訳分類(編集用)
+                   xih.invoice_tax_div                                                -- 請求書消費税積上げ計算方式
+-- Modify 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 ADD End
                    ;
 -- Modify 2013.12.11 Ver1.10 End
@@ -1878,6 +2037,9 @@ AS
               slip_date               , -- 伝票日付(ソート順３)
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
+-- Add 2023.05.08 Ver1.14 Start
+              slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Add 2023.05.08 Ver1.14 End
 -- Add 2013.12.11 Ver1.10 Start
 -- 2019/07/25 Ver1.12 DEL Start
 --              tax_rate                , -- 消費税率(編集用)
@@ -1891,6 +2053,14 @@ AS
               description             , -- 摘要
               category                , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+              invoice_tax_div         , -- 請求書消費税積上げ計算方式
+              tax_amount_sum          , -- 税額合計１
+              tax_amount_sum2         , -- 税額合計２
+              inv_amount_sum          , -- 税抜合計１
+              inv_amount_sum2         , -- 税抜合計２
+              invoice_t_no            , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
               created_by              , -- 作成者
               creation_date           , -- 作成日
               last_updated_by         , -- 最終更新者
@@ -1977,7 +2147,10 @@ AS
                                   xil.acceptance_date),
                            cv_format_date_ymds2)                                      slip_date        , -- 伝票日付(ソート順３)
                    xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
-                   SUM(xil.tax_amount) + SUM(xil.ship_amount)                         slip_sum         , -- 伝票金額(税抜額)
+                   SUM(xil.tax_amount) + SUM(xil.ship_amount)                         slip_sum         , -- 伝票金額(税込額)
+-- Add 2023.05.08 Ver1.14 Start
+                   SUM(xil.tax_amount)                                                slip_tax_sum     , -- 税金額
+-- Add 2023.05.08 Ver1.14 End
 -- Add 2013.12.11 Ver1.10 Start
 -- 2019/07/25 Ver1.12 DEL Start
 --                   xil.tax_rate                                                       tax_rate         , -- 税率
@@ -1995,6 +2168,14 @@ AS
                    NVL(flv.attribute1,' ')                                            description      , -- 摘要
                    flv.attribute2                                                     category         , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+                   xih.invoice_tax_div                                                invoice_tax_div  , -- 請求書消費税積上げ計算方式
+                   SUM(xil.tax_amount_sum)                                            tax_amount_sum   , -- 税額合計１
+                   SUM(xil.tax_amount_sum2)                                           tax_amount_sum2  , -- 税額合計２
+                   SUM(xil.inv_amount_sum)                                            inv_amount_sum   , -- 税抜合計１
+                   SUM(xil.inv_amount_sum2)                                           inv_amount_sum2  , -- 税抜合計２
+                   gv_t_number                                                        invoice_t_no     , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
                    cn_last_updated_by                                                 last_updated_by,        -- 最終更新者
@@ -2127,7 +2308,11 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
                      END,
                      flv.attribute1,                                                    -- 摘要
-                     flv.attribute2                                                     -- 内訳分類(編集用)
+-- Modify 2023.05.08 Ver1.14 Start
+--                   flv.attribute2                                                     -- 内訳分類(編集用)
+                   flv.attribute2,                                                    -- 内訳分類(編集用)
+                   xih.invoice_tax_div                                                -- 請求書消費税積上げ計算方式
+-- Modify 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 ADD End
                      ;
 -- Modify 2013.12.11 Ver1.10 End
@@ -2197,6 +2382,9 @@ AS
               slip_date               , -- 伝票日付(ソート順３)
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
+-- Add 2023.05.08 Ver1.14 Start
+              slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Add 2023.05.08 Ver1.14 End
 -- Add 2013.12.11 Ver1.10 Start
 -- 2019/07/25 Ver1.12 DEL Start
 --              tax_rate                , -- 消費税率(編集用)
@@ -2210,6 +2398,14 @@ AS
               description             , -- 摘要
               category                , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+              invoice_tax_div         , -- 請求書消費税積上げ計算方式
+              tax_amount_sum          , -- 税額合計１
+              tax_amount_sum2         , -- 税額合計２
+              inv_amount_sum          , -- 税抜合計１
+              inv_amount_sum2         , -- 税抜合計２
+              invoice_t_no            , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
               created_by              , -- 作成者
               creation_date           , -- 作成日
               last_updated_by         , -- 最終更新者
@@ -2284,7 +2480,10 @@ AS
                                   xil.acceptance_date),
                            cv_format_date_ymds2)                                      slip_date        , -- 伝票日付(ソート順３)
                    xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
-                   SUM(xil.tax_amount) + SUM(xil.ship_amount)                         slip_sum         , -- 伝票金額(税抜額)
+                   SUM(xil.tax_amount) + SUM(xil.ship_amount)                         slip_sum         , -- 伝票金額(税込額)
+-- Add 2023.05.08 Ver1.14 Start
+                   SUM(xil.tax_amount)                                                slip_tax_sum     , -- 税金額
+-- Add 2023.05.08 Ver1.14 End
 -- Add 2013.12.11 Ver1.10 Start
 -- 2019/07/25 Ver1.12 DEL Start
 --                   xil.tax_rate                                                       tax_rate         , -- 税率
@@ -2302,6 +2501,14 @@ AS
                    NVL(flv.attribute1,' ')                                            description      , -- 摘要
                    flv.attribute2                                                     category         , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+                   xih.invoice_tax_div                                                invoice_tax_div  , -- 請求書消費税積上げ計算方式
+                   SUM(xil.tax_amount_sum)                                            tax_amount_sum   , -- 税額合計１
+                   SUM(xil.tax_amount_sum2)                                           tax_amount_sum2  , -- 税額合計２
+                   SUM(xil.inv_amount_sum)                                            inv_amount_sum   , -- 税抜合計１
+                   SUM(xil.inv_amount_sum2)                                           inv_amount_sum2  , -- 税抜合計２
+                   gv_t_number                                                        invoice_t_no     , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
                    cn_last_updated_by                                                 last_updated_by,        -- 最終更新者
@@ -2436,7 +2643,11 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
                      END,
                      flv.attribute1,                                                    -- 摘要
-                     flv.attribute2                                                     -- 内訳分類(編集用)
+-- Modify 2023.05.08 Ver1.14 Start
+--                   flv.attribute2                                                     -- 内訳分類(編集用)
+                   flv.attribute2,                                                    -- 内訳分類(編集用)
+                   xih.invoice_tax_div                                                -- 請求書消費税積上げ計算方式
+-- Modify 2023.05.08 Ver1.14 End
 -- 2019/07/25 Ver1.12 ADD End
                      ;
 -- Modify 2013.12.11 Ver1.10 End

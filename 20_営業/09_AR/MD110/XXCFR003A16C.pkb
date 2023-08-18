@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜
  * MD.050           : MD050_CFR_003_A16_標準請求書税抜
  * MD.070           : MD050_CFR_003_A16_標準請求書税抜
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,7 +48,7 @@ AS
  *  2014/03/27    1.11 SCSK 山下 翔太   [E_本稼動_11617] 請求書出力形式が業者委託の顧客対応
  *  2019/07/25    1.12 SCSK 郭 有司     [E_本稼動_15472] 対応
  *  2022/04/12    1.13 SCSK 冨江 広大   [E_本稼動_18096] 対応
- *
+ *  2023/05/08    1.14 SCSK 奥山 徹     [E_本稼動_19082] インボイス対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -180,12 +180,20 @@ AS
   --プロファイル
   cv_set_of_bks_id   CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID'; -- 会計帳簿ID
   cv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
+-- Add 2023.05.08 Ver1.14 Start
+  cv_t_number        CONSTANT VARCHAR2(30) := 'XXCMM1_INVOICE_T_NO'; -- XXCMM:適格請求書発行事業者登録番号
+-- Add 2023.05.08 Ver1.14 End
 --
   -- 使用DB名
   cv_table           CONSTANT VARCHAR2(100) := 'XXCFR_REP_ST_INVOICE_EX_TAX';  -- ワークテーブル名
 --
   -- 請求書タイプ
   cv_invoice_type    CONSTANT VARCHAR2(1)   := 'S';                        -- ‘S’(標準請求書)
+--
+-- Add 2023.05.08 Ver1.14 Start
+  -- 請求書消費税積上げ計算方式
+  cn_invoice_tax_div CONSTANT VARCHAR2(1)   := 'N';                        -- 税抜請求金額サマリに消費税率を乗じた値を摘要
+-- Add 2023.05.08 Ver1.14 End
 --
   -- ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10)  := 'OUTPUT';    -- メッセージ出力
@@ -269,6 +277,9 @@ AS
   gd_target_date        DATE;                                      -- パラメータ．締日（データ型変換用）
   gn_org_id             NUMBER;                                    -- 組織ID
   gn_set_of_bks_id      NUMBER;                                    -- 会計帳簿ID
+-- Add 2023.05.08 Ver1.14 Start
+  gv_t_number           VARCHAR2(14);                              -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
   gt_user_dept          per_all_people_f.attribute28%TYPE := NULL; -- ログインユーザ所属部門
   gv_inv_all_flag       VARCHAR2(1) := '0';                        -- 全社出力権限所持部門フラグ
 -- Modify 2009.09.10 Ver1.3 Start
@@ -494,6 +505,23 @@ AS
                           ,5000);
       RAISE global_api_expt;
     END IF;
+--
+-- Add 2023.05.08 Ver1.14 Start
+    -- プロファイルから登録番号取得
+    gv_t_number := FND_PROFILE.VALUE(cv_t_number);
+--
+    -- 取得エラー時
+    IF (gv_t_number IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_003a16_010 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_t_number))
+                                                     -- 登録番号
+                          ,1
+                          ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- Add 2023.05.08 Ver1.14 End
 --
   EXCEPTION
 --
@@ -854,7 +882,16 @@ AS
              xrsi.category            category            ,  --内訳分類(編集用)
 -- 2019/07/25 Ver1.12 MOD End
              SUM( xrsi.slip_sum )     tax_rate_by_sum     ,  --税別お買上げ額
-             SUM( xrsi.ship_tax_sum ) tax_rate_by_tax_sum    --税別消費税額
+-- Modify 2023.05.08 Ver1.14 Start
+--             SUM( xrsi.ship_tax_sum ) tax_rate_by_tax_sum    --税別消費税額
+             SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                xrsi.ship_tax_sum                             --伝票税額
+             WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                xrsi.tax_amount_sum                           --税額合計１（税抜請求金額サマリに消費税率を乗じた値）
+             ELSE
+                xrsi.tax_amount_sum2                         --税額合計２（明細毎の積上税額）
+             END )                    tax_rate_by_tax_sum    --税別消費税額
+-- Modify 2023.05.08 Ver1.14 End
       FROM   xxcfr_rep_st_invoice_ex_tax  xrsi
       WHERE  xrsi.request_id  = cn_request_id
 -- 2019/07/25 Ver1.12 MOD Start
@@ -875,8 +912,33 @@ AS
 -- 2019/07/25 Ver1.12 MOD End
       ;
 --
+-- Add 2023.05.08 Ver1.14 Start
+    --ヘッダー用の当月お買上げ額、及び消費税額を取得
+    CURSOR update2_work_cur
+    IS
+      SELECT xrsi.bill_cust_code      bill_cust_code      ,  --顧客コード
+             SUM( xrsi.slip_sum )     slip_sum            ,  --ヘッダー用当月お買上げ額
+             SUM( CASE WHEN xrsi.invoice_tax_div IS NULL THEN
+                    xrsi.ship_tax_sum                        --伝票税額
+                  WHEN xrsi.invoice_tax_div = cn_invoice_tax_div THEN
+                    xrsi.tax_amount_sum                      --税額合計１（税抜請求金額サマリに消費税率を乗じた値）
+                  ELSE
+                    xrsi.tax_amount_sum2                     --税額合計２（明細毎の積上税額）
+             END )                    tax_sum                --ヘッダー用当月消費税額
+      FROM   xxcfr_rep_st_invoice_ex_tax  xrsi
+      WHERE  xrsi.request_id  = cn_request_id
+      GROUP BY
+             xrsi.bill_cust_code                             -- 顧客コード
+      ORDER BY
+             xrsi.bill_cust_code                             -- 顧客コード
+      ;
+-- Add 2023.05.08 Ver1.14 End
+--
     -- *** ローカル・レコード ***
     update_work_rec  update_work_cur%ROWTYPE;
+-- Add 2023.05.08 Ver1.14 Start
+    update2_work_rec update2_work_cur%ROWTYPE;
+-- Add 2023.05.08 Ver1.14 End
 --
     -- *** ローカル・タイプ ***
     TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_st_invoice_ex_tax.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
@@ -1008,6 +1070,32 @@ AS
         lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
         RAISE global_api_expt;
     END;
+--
+-- Add 2023.05.08 Ver1.14 Start
+    <<update2_loop>>
+    FOR update2_work_rec IN update2_work_cur LOOP
+    --ヘッダー用の当月お買上げ額、及び消費税額の一括更新
+      BEGIN
+        UPDATE  xxcfr_rep_st_invoice_ex_tax  xrsi
+        SET     xrsi.ex_tax_charge_header = update2_work_rec.slip_sum        --ヘッダー用当月お買上げ額
+               ,xrsi.tax_sum_header       = update2_work_rec.tax_sum         --ヘッダー用当月消費税額
+        WHERE   xrsi.bill_cust_code = update2_work_rec.bill_cust_code        --顧客コード
+        AND     xrsi.request_id     = cn_request_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                         ,cv_msg_003a16_025    -- テーブル更新エラー
+                                                         ,cv_tkn_table         -- トークン'TABLE'
+                                                         ,xxcfr_common_pkg.get_table_comment(cv_table))
+                                                        -- 標準請求書税抜帳票ワークテーブル
+                               ,1
+                               ,5000);
+          lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+    END LOOP update2_loop;
+-- Add 2023.05.08 Ver1.14 End
 --
   EXCEPTION
 --
@@ -1619,6 +1707,12 @@ AS
             description             , -- 摘要
             category                , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+            invoice_tax_div         , -- 請求書消費税積上げ計算方式
+            tax_amount_sum          , -- 税額合計１
+            tax_amount_sum2         , -- 税額合計２
+            invoice_t_no            , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
             created_by              , -- 作成者
             creation_date           , -- 作成日
             last_updated_by         , -- 最終更新者
@@ -1711,6 +1805,12 @@ AS
                  NVL(flv.attribute1,' ')                                            description      , -- 摘要
                  flv.attribute2                                                     category         , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+                 xih.invoice_tax_div                                                invoice_tax_div  , -- 請求書消費税積上げ計算方式
+                 SUM(xil.tax_amount_sum)                                            tax_amount_sum   , -- 税額合計１
+                 SUM(xil.tax_amount_sum2)                                           tax_amount_sum2  , -- 税額合計２
+                 gv_t_number                                                        invoice_t_no     , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
                  cn_created_by                                                      created_by,             -- 作成者
                  cd_creation_date                                                   creation_date,          -- 作成日
                  cn_last_updated_by                                                 last_updated_by,        -- 最終更新者
@@ -1850,8 +1950,12 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
                    END,
                    flv.attribute1,                                                    -- 摘要
-                   flv.attribute2                                                     -- 内訳分類(編集用)
+-- Modify 2023.05.08 Ver1.14 Start
+--                   flv.attribute2                                                     -- 内訳分類(編集用)
+                   flv.attribute2,                                                    -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+                   xih.invoice_tax_div                                                -- 請求書消費税積上げ計算方式
+-- Modify 2023.05.08 Ver1.14 End
                    ;
 -- Modify 2013.11.25 Ver1.10 End
 --
@@ -1911,6 +2015,12 @@ AS
               description             , -- 摘要
               category                , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+              invoice_tax_div         , -- 請求書消費税積上げ計算方式
+              tax_amount_sum          , -- 税額合計１
+              tax_amount_sum2         , -- 税額合計２
+              invoice_t_no            , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
               created_by              , -- 作成者
               creation_date           , -- 作成日
               last_updated_by         , -- 最終更新者
@@ -2016,6 +2126,12 @@ AS
                    NVL(flv.attribute1,' ')                                            description      , -- 摘要
                    flv.attribute2                                                     category         , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+                   xih.invoice_tax_div                                                invoice_tax_div  , -- 請求書消費税積上げ計算方式
+                   SUM(xil.tax_amount_sum)                                            tax_amount_sum   , -- 税額合計１
+                   SUM(xil.tax_amount_sum2)                                           tax_amount_sum2  , -- 税額合計２
+                   gv_t_number                                                        invoice_t_no     , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
                    cn_last_updated_by                                                 last_updated_by,        -- 最終更新者
@@ -2148,8 +2264,12 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
                      END,
                      flv.attribute1,                                                    -- 摘要
-                     flv.attribute2                                                     -- 内訳分類(編集用)
+-- Modify 2023.05.08 Ver1.14 Start
+--                     flv.attribute2                                                     -- 内訳分類(編集用)
+                     flv.attribute2,                                                    -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+                     xih.invoice_tax_div                                                -- 請求書消費税積上げ計算方式
+-- Modify 2023.05.08 Ver1.14 End
                      ;
 -- Modify 2013.11.25 Ver1.10 End
 --
@@ -2232,6 +2352,12 @@ AS
               description             , -- 摘要
               category                , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+              invoice_tax_div         , -- 請求書消費税積上げ計算方式
+              tax_amount_sum          , -- 税額合計１
+              tax_amount_sum2         , -- 税額合計２
+              invoice_t_no            , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
               created_by              , -- 作成者
               creation_date           , -- 作成日
               last_updated_by         , -- 最終更新者
@@ -2325,6 +2451,12 @@ AS
                    NVL(flv.attribute1,' ')                                            description      , -- 摘要
                    flv.attribute2                                                     category         , -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+-- Add 2023.05.08 Ver1.14 Start
+                   xih.invoice_tax_div                                                invoice_tax_div  , -- 請求書消費税積上げ計算方式
+                   SUM(xil.tax_amount_sum)                                            tax_amount_sum   , -- 税額合計１
+                   SUM(xil.tax_amount_sum2)                                           tax_amount_sum2  , -- 税額合計２
+                   gv_t_number                                                        invoice_t_no     , -- 登録番号
+-- Add 2023.05.08 Ver1.14 End
                    cn_created_by                                                      created_by,             -- 作成者
                    cd_creation_date                                                   creation_date,          -- 作成日
                    cn_last_updated_by                                                 last_updated_by,        -- 最終更新者
@@ -2459,8 +2591,12 @@ AS
 -- 2019/07/25 Ver1.12 ADD Start
                      END,
                      flv.attribute1,                                                    -- 摘要
-                     flv.attribute2                                                     -- 内訳分類(編集用)
+-- Modify 2023.05.08 Ver1.14 Start
+--                     flv.attribute2                                                     -- 内訳分類(編集用)
+                     flv.attribute2,                                                    -- 内訳分類(編集用)
 -- 2019/07/25 Ver1.12 ADD End
+                     xih.invoice_tax_div                                               -- 請求書消費税積上げ計算方式
+-- Modify 2023.05.08 Ver1.14 End
                      ;
 -- Modify 2013.11.25 Ver1.10 End
 --
