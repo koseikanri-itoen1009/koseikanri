@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
  * Package Name     : XXCFO019A13C(body)
  * Description      : 電子帳簿請求の情報系システム連携
  * MD.050           : MD050_CFO_019_A13_電子帳簿請求の情報系システム連携
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
  *  2021-12-23    1.0   K.Tomie         新規作成 (E_本稼動_17770対応)
  *  2022-01-20    1.1   K.Tomie         日付書式変更対応 (E_本稼動_17770再対応)
  *  2022-01-24    1.2   K.Tomie         日付書式変更および項目順序変更 (E_本稼動_17770再々対応) 
+ *  2023-06-26    1.3   R.Oikawa        E_本稼動_19157【AR】インボイス対応_電子帳簿連携
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -90,6 +91,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
   cv_filename                 CONSTANT VARCHAR2(50)  := 'XXCFO1_ELECTRIC_BOOK_INV_DATA_FILENAME'; -- 電子帳簿請求データファイル名
   cv_prf_org_id               CONSTANT VARCHAR2(50)  := 'ORG_ID';                                 -- MO:営業単位
   cv_set_of_bks_id            CONSTANT VARCHAR2(100) := 'GL_SET_OF_BKS_ID';                       -- GL会計帳簿ID
+-- Ver1.3 add start
+  cv_invoice_t_no             CONSTANT VARCHAR2(20)  := 'XXCMM1_INVOICE_T_NO';                    -- 適格請求書発行事業者登録番号
+-- Ver1.3 add end
   --メッセージ
   cv_msg_ccp_00001            CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-00001';   --警告件数メッセージ
   cv_msg_cff_00189            CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00189';   --参照タイプ取得エラー
@@ -196,6 +200,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
   gn_set_of_bks_id            NUMBER;                       --GL会計帳簿ID
   gn_item_cnt                 NUMBER;             --チェック項目件数
   gv_0file_flg                VARCHAR2(1) DEFAULT cv_flag_n; --0Byteファイル上書きフラグ
+-- Ver1.3 add start
+  gv_invoice_t_no             VARCHAR2(14);                              --適格請求書発行事業者登録番号
+-- Ver1.3 add end
 --
   --===============================================================
   -- グローバルカーソル
@@ -455,6 +462,22 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- Ver1.3 add start
+    -- プロファイルの取得(適格請求書発行事業者登録番号)
+    gv_invoice_t_no := apps.FND_PROFILE.VALUE( cv_invoice_t_no );
+    -- プロファイル取得エラーの場合
+    IF ( gv_invoice_t_no IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfo    -- 'XXCFO'
+                                                    ,cv_msg_cfo_00001  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof_name  -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name( cv_invoice_t_no )  -- 適格請求書発行事業者登録番号
+                                                    )
+                           ,1
+                           ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.3 add end
 --
     --==================================
     -- ディレクトリパス取得
@@ -776,7 +799,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
                           REPLACE(REPLACE(REPLACE(gt_data_tab(ln_cnt),CHR(10),' '), cv_quot, ' '), cv_delimit, ' ') || cv_quot;
       ELSIF ( gt_item_attr(ln_cnt) = cv_attr_num ) THEN
         --NUMBER
-        lv_file_data  :=  lv_file_data || lv_delimit  || gt_data_tab(ln_cnt);
+-- Ver1.3 mod start
+--        lv_file_data  :=  lv_file_data || lv_delimit  || gt_data_tab(ln_cnt);
+        -- 税差額の後に本体差額を出力する対応
+        IF ( ln_cnt = 12 ) THEN
+          lv_file_data  :=  lv_file_data || lv_delimit  || gt_data_tab(ln_cnt);
+          lv_file_data  :=  lv_file_data || lv_delimit  || gt_data_tab(90);
+        ELSIF ( ln_cnt = 90 ) THEN
+          -- 何も出力しない
+          NULL;
+        ELSE
+          lv_file_data  :=  lv_file_data || lv_delimit  || gt_data_tab(ln_cnt);
+        END IF;
+-- Ver1.3 mod end
       ELSIF ( gt_item_attr(ln_cnt) = cv_attr_dat ) THEN
         --DATE
 -- Ver1.1 mod start
@@ -792,7 +827,13 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
       lv_delimit  :=  cv_delimit;
     END LOOP;
     --連携日時
-    lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(90);
+-- Ver1.3 mod start
+--    lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(90);
+    lv_file_data  :=  lv_file_data || lv_delimit || gt_data_tab(100);
+    --適格請求書発行事業者登録番号
+    lv_file_data  :=  lv_file_data || lv_delimit  || cv_quot ||
+                          REPLACE(REPLACE(REPLACE(gt_data_tab(101),CHR(10),' '), cv_quot, ' '), cv_delimit, ' ') || cv_quot;
+-- Ver1.3 mod end
     --
     -- ====================================================
     -- ファイル書き込み
@@ -978,7 +1019,13 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
           ,flv5.description                    AS  delivery_chain_name                  --納品先チェーン名
           ,xil.tax_code                        AS  tax_code                             --税金コード
           ,avtab.description                   AS  description                          --税金名
+-- Ver1.3 add start
+          ,NVL(xih.inv_gap_amount,0)           AS  inv_gap_amount                       --本体差額
+-- Ver1.3 add end
           ,gv_coop_date                        AS  cool_date                            --連携日時
+-- Ver1.3 add start
+          ,gv_invoice_t_no                     AS  invoice_t_no                         --適格請求書発行事業者登録番号
+-- Ver1.3 add end
     FROM   apps.xxcfr_invoice_headers      xih    --請求ヘッダ情報テーブル
           ,apps.xxcfr_invoice_lines        xil    --請求明細情報テーブル
           ,apps.fnd_lookup_values          flv1   --消費税区分名取得用
@@ -1188,7 +1235,12 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A13C AS
           , gt_data_tab(87) --納品先チェーン名
           , gt_data_tab(88) --税金コード
           , gt_data_tab(89) --税金名
-          , gt_data_tab(90) --連携日時
+-- Ver1.3 mod start
+--          , gt_data_tab(90) --連携日時
+          , gt_data_tab(90) --本体差額
+          , gt_data_tab(100) --連携日時
+          , gt_data_tab(101) --適格請求書発行事業者登録番号
+-- Ver1.3 mod end
           ;
         EXIT WHEN get_invoice_fixed_cur%NOTFOUND;
 --
