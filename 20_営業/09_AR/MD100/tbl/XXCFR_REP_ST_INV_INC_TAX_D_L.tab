@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_d_l
  * Description     : 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_d_l
  * ------------- ----- ------------ -------------------------------------
  *  2018/9/27     1.0  SCSK 奈良和宏  初回作成
  *  2019/9/3      1.1  SCSK 桑子駿介  [E_本稼動_15472]対応
+ *  2023/08/17    1.2  SCSK Y.Koh     E_本稼動_19082【AR】インボイス対応_標準請求書
  ************************************************************************/
 ( 
   report_id               VARCHAR2(20)          , -- 帳票ID
@@ -36,7 +37,13 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_d_l
   ship_cust_name          VARCHAR2(360)         , -- 納品先顧客名
   store_code              VARCHAR2(10)          , -- 店舗コード
   store_code_sort         VARCHAR2(10)          , -- 店舗コード(ソート用)
-  store_sum               NUMBER                , -- 当月ご請求額（税込）
+-- 2023/08/17 Ver1.2 MOD Start
+  store_sum               NUMBER                , -- 当月お買上げ額
+--  store_sum               NUMBER                , -- 当月ご請求額（税込）
+-- 2023/08/17 Ver1.2 MOD End
+-- 2023/08/17 Ver1.2 ADD Start
+  store_tax_sum            NUMBER               , -- 消費税等
+-- 2023/08/17 Ver1.2 ADD End
   ship_account_number     VARCHAR2(30)          , -- 納品先顧客コード(ソート用)
   slip_date               VARCHAR2(12)          , -- 伝票日付
   slip_num                VARCHAR2(30)          , -- 伝票No
@@ -45,8 +52,14 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_d_l
   tax_rate                NUMBER                , -- 消費税率(編集用)
   tax_rate1               NUMBER                , -- 消費税率１
   inc_tax_charge1         NUMBER                , -- 当月お買上げ額１
+-- 2023/08/17 Ver1.2 ADD Start
+  tax_sum1                 NUMBER               , -- 消費税額１
+-- 2023/08/17 Ver1.2 ADD End
   tax_rate2               NUMBER                , -- 消費税率２
   inc_tax_charge2         NUMBER                , -- 当月お買上げ額２
+-- 2023/08/17 Ver1.2 ADD Start
+  tax_sum2                 NUMBER               , -- 消費税額２
+-- 2023/08/17 Ver1.2 ADD End
 -- 2019/09/03 Ver1.1 ADD Start
   description             VARCHAR2(10)          , -- 摘要
   category                VARCHAR2(30)          , -- 内訳分類(編集用)
@@ -55,7 +68,18 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_d_l
   category3               VARCHAR2(30)          , -- 内訳分類３
   inc_tax_charge3         NUMBER                , -- 当月お買上げ額３
 -- 2019/09/03 Ver1.1 ADD End
+-- 2023/08/17 Ver1.2 ADD Start
+  tax_sum3                 NUMBER               , -- 消費税額３
+-- 2023/08/17 Ver1.2 ADD End
   outsourcing_flag        VARCHAR2(1)           , -- 業者委託フラグ
+-- 2023/08/17 Ver1.2 ADD Start
+  invoice_tax_div         VARCHAR2(1)           , -- 請求書消費税積上げ計算方式
+  tax_amount_sum          NUMBER                , -- 税額合計１
+  tax_amount_sum2         NUMBER                , -- 税額合計２
+  inv_amount_sum          NUMBER                , -- 税抜合計１
+  inv_amount_sum2         NUMBER                , -- 税抜合計２
+  invoice_t_no            VARCHAR2(14)          , -- 適格請求書発行事業者登録番号
+-- 2023/08/17 Ver1.2 ADD End
   created_by              NUMBER(15)   NOT NULL , -- 作成者
   creation_date           DATE         NOT NULL , -- 作成日
   last_updated_by         NUMBER(15)   NOT NULL , -- 最終更新者
@@ -89,7 +113,13 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.ship_cust_code             
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.ship_cust_name             IS '納品先顧客名';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.store_code                 IS '店舗コード';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.store_code_sort            IS '店舗コード(ソート用)';
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.store_sum                  IS '当月ご請求額（税込）';
+-- 2023/08/17 Ver1.2 MOD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.store_sum                  IS '当月お買上げ額';
+--COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.store_sum                  IS '当月ご請求額（税込）';
+-- 2023/08/17 Ver1.2 MOD End
+-- 2023/08/17 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.store_tax_sum               IS '消費税等';
+-- 2023/08/17 Ver1.2 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.ship_account_number        IS '納品先顧客コード(ソート用)';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.slip_date                  IS '伝票日付';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.slip_num                   IS '伝票No';
@@ -98,17 +128,34 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.slip_tax_sum               
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_rate                   IS '消費税率(編集用)';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_rate1                  IS '消費税率１';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.inc_tax_charge1            IS '当月お買上げ額１';
+-- 2023/08/17 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_sum1                   IS '消費税額１';
+-- 2023/08/17 Ver1.2 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_rate2                  IS '消費税率２';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.inc_tax_charge2            IS '当月お買上げ額２';
+-- 2023/08/17 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_sum2                   IS '消費税額２';
+-- 2023/08/17 Ver1.2 ADD End
 -- 2019/09/03 Ver1.1 ADD Start
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.description                IS '摘要';
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.category                   IS '内訳分類(編集用)';
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.category1                  IS '内訳分類１';
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.category2                  IS '内訳分類２';
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.category3                  IS '内訳分類３';
-COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.inc_tax_charge3            IS '当月お買上げ額３';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.description                IS '摘要';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.category                   IS '内訳分類(編集用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.category1                  IS '内訳分類１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.category2                  IS '内訳分類２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.category3                  IS '内訳分類３';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.inc_tax_charge3            IS '当月お買上げ額３';
 -- 2019/09/03 Ver1.1 ADD End
+-- 2023/08/17 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_sum3                   IS '消費税額３';
+-- 2023/08/17 Ver1.2 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.outsourcing_flag           IS '業者委託フラグ';
+-- 2023/08/17 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.invoice_tax_div            IS '請求書消費税積上げ計算方式';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_amount_sum             IS '税額合計１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.tax_amount_sum2            IS '税額合計２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.inv_amount_sum             IS '税抜合計１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.inv_amount_sum2            IS '税抜合計２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.invoice_t_no               IS '適格請求書発行事業者登録番号';
+-- 2023/08/17 Ver1.2 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.created_by                 IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.creation_date              IS '作成日';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_d_l.last_updated_by            IS '最終更新者';

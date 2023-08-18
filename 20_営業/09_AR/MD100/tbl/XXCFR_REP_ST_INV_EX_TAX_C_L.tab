@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_ex_tax_c_l
  * Description     : 標準請求書税抜帳票内訳印刷単位Cワークテーブル明細
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_ex_tax_c_l
  * ------------- ----- ------------ -------------------------------------
  *  2016/3/10     1.0  SCSK 小路恭弘  初回作成
  *  2019/08/09    1.1  SCSK 郭 有司   E_本稼動_15472対応
+ *  2023/08/17    1.2  SCSK 及川 領   E_本稼動_19082対応
  ************************************************************************/
 ( 
   report_id                VARCHAR2(20)                  ,     -- 帳票ID
@@ -53,6 +54,12 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_ex_tax_c_l
   description              VARCHAR2(10)                  ,     -- 摘要
   category                 VARCHAR2(30)                  ,     -- 内訳分類(編集用)
 -- 2019/08/09 Ver1.1 ADD End
+-- 2023/08/17 Ver1.2 ADD Start
+  invoice_tax_div          VARCHAR2(1)                   ,     -- 請求書消費税積上げ計算方式
+  tax_amount_sum           NUMBER                        ,     -- 税額合計１
+  tax_amount_sum2          NUMBER                        ,     -- 税額合計２
+  invoice_t_no             VARCHAR2(14)                  ,     -- 適格請求書発行事業者登録番号
+-- 2023/08/17 Ver1.2 ADD End
   created_by               NUMBER(15)     NOT NULL       ,     -- 作成者
   creation_date            DATE           NOT NULL       ,     -- 作成日
   last_updated_by          NUMBER(15)     NOT NULL       ,     -- 最終更新者
@@ -103,6 +110,12 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.outsourcing_flag            
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.description                    IS '摘要';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.category                       IS '内訳分類(編集用)';
 -- 2019/08/09 Ver1.1 ADD End
+-- 2023/08/17 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.invoice_tax_div                IS '請求書消費税積上げ計算方式';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_amount_sum                 IS '税額合計１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_amount_sum2                IS '税額合計２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.invoice_t_no                   IS '適格請求書発行事業者登録番号';
+-- 2023/08/17 Ver1.2 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.created_by                     IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.creation_date                  IS '作成日';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.last_updated_by                IS '最終更新者';
