@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_INFO_WORK_HEADER
  * Description : インフォマート用ワーク（ヘッダー）
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2020/11/10    1.0   SCSK N.Abe       新規作成
  *  2021/05/28    1.1   SCSK K.Yoshikawa E_本稼動_17220
+ *  2023/06/15    1.2   Y.Ooyama         E_本稼動_19179対応
  *
  ****************************************************************************************/
 CREATE TABLE xxcok.xxcok_info_work_header (
@@ -66,6 +67,25 @@ CREATE TABLE xxcok.xxcok_info_work_header (
 --2021/05/28 add start
     ,closing_date_min               DATE
 --2021/05/28 add end
+-- Ver.1.2 ADD START
+    ,bm_payment_kbn                 VARCHAR2(1)
+    ,tax_calc_kbn                   VARCHAR2(1)
+    ,bm_tax_kbn                     VARCHAR2(1)
+    ,bank_charge_bearer             VARCHAR2(1)
+    ,sales_fee_no_tax               NUMBER(13)
+    ,sales_fee_tax                  NUMBER(13)
+    ,sales_fee_with_tax             NUMBER(13)
+    ,electric_amt_no_tax            NUMBER(13)
+    ,electric_amt_tax               NUMBER(13)
+    ,electric_amt_with_tax          NUMBER(13)
+    ,recalc_total_fee_no_tax        NUMBER(13)
+    ,recalc_total_fee_tax           NUMBER(13)
+    ,recalc_total_fee_with_tax      NUMBER(13)
+    ,bank_trans_fee_no_tax          NUMBER(13)
+    ,bank_trans_fee_tax             NUMBER(13)
+    ,bank_trans_fee_with_tax        NUMBER(13)
+    ,vendor_invoice_regnum          VARCHAR2(30)
+-- Ver.1.2 ADD END
     )
 /
 COMMENT ON TABLE xxcok.xxcok_info_work_header IS 'インフォマート用ワーク（ヘッダー）'
@@ -172,3 +192,39 @@ COMMENT ON COLUMN xxcok.xxcok_info_work_header.program_update_date              
 COMMENT ON COLUMN xxcok.xxcok_info_work_header.closing_date_min                        IS '最小締め日'
 /
 --2021/05/28 add end
+-- Ver.1.2 ADD START
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.bm_payment_kbn                          IS 'BM支払区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.tax_calc_kbn                            IS '税計算区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.bm_tax_kbn                              IS 'BM税区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.bank_charge_bearer                      IS '振込手数料負担者'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.sales_fee_no_tax                        IS '販売手数料（税抜）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.sales_fee_tax                           IS '販売手数料（消費税）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.sales_fee_with_tax                      IS '販売手数料（税込）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.electric_amt_no_tax                     IS '電気代等（税抜）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.electric_amt_tax                        IS '電気代等（消費税）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.electric_amt_with_tax                   IS '電気代等（税込）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.recalc_total_fee_no_tax                 IS '再計算済手数料計（税抜）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.recalc_total_fee_tax                    IS '再計算済手数料計（消費税）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.recalc_total_fee_with_tax               IS '再計算済手数料計（税込）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.bank_trans_fee_no_tax                   IS '振込手数料（税抜）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.bank_trans_fee_tax                      IS '振込手数料（消費税）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.bank_trans_fee_with_tax                 IS '振込手数料（税込）'
+/
+COMMENT ON COLUMN xxcok.xxcok_info_work_header.vendor_invoice_regnum                   IS '送付先インボイス登録番号'
+/
+-- Ver.1.2 ADD END

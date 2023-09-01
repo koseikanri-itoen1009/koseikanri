@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOK_INFO_REV_HEADER
  * Description : インフォマート用赤黒（ヘッダー）
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2021/11/30    1.0   K.Yoshikawa     新規作成
+ *  2023/06/15    1.1   Y.Ooyama        E_本稼動_19179対応
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_INFO_REV_HEADER (
@@ -68,7 +69,27 @@ CREATE TABLE XXCOK.XXCOK_INFO_REV_HEADER (
     ,PROGRAM_APPLICATION_ID         NUMBER(15)
     ,PROGRAM_ID                     NUMBER(15)
     ,PROGRAM_UPDATE_DATE            DATE
-    ,CLOSING_DATE_MIN               DATE)
+    ,CLOSING_DATE_MIN               DATE
+-- Ver.1.1 ADD START
+    ,BM_PAYMENT_KBN                 VARCHAR2(1)
+    ,TAX_CALC_KBN                   VARCHAR2(1)
+    ,BM_TAX_KBN                     VARCHAR2(1)
+    ,BANK_CHARGE_BEARER             VARCHAR2(1)
+    ,SALES_FEE_NO_TAX               NUMBER(13)
+    ,SALES_FEE_TAX                  NUMBER(13)
+    ,SALES_FEE_WITH_TAX             NUMBER(13)
+    ,ELECTRIC_AMT_NO_TAX            NUMBER(13)
+    ,ELECTRIC_AMT_TAX               NUMBER(13)
+    ,ELECTRIC_AMT_WITH_TAX          NUMBER(13)
+    ,RECALC_TOTAL_FEE_NO_TAX        NUMBER(13)
+    ,RECALC_TOTAL_FEE_TAX           NUMBER(13)
+    ,RECALC_TOTAL_FEE_WITH_TAX      NUMBER(13)
+    ,BANK_TRANS_FEE_NO_TAX          NUMBER(13)
+    ,BANK_TRANS_FEE_TAX             NUMBER(13)
+    ,BANK_TRANS_FEE_WITH_TAX        NUMBER(13)
+    ,VENDOR_INVOICE_REGNUM          VARCHAR2(30)
+-- Ver.1.1 ADD END
+    )
 /
 COMMENT ON TABLE XXCOK.XXCOK_INFO_REV_HEADER IS 'インフォマート用赤黒（ヘッダー）'
 /
@@ -184,3 +205,39 @@ COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.PROGRAM_UPDATE_DATE               
 /
 COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.CLOSING_DATE_MIN                         IS '最小締め日'
 /
+-- Ver.1.1 ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BM_PAYMENT_KBN                           IS 'BM支払区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.TAX_CALC_KBN                             IS '税計算区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BM_TAX_KBN                               IS 'BM税区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_CHARGE_BEARER                       IS '振込手数料負担者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SALES_FEE_NO_TAX                         IS '販売手数料（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SALES_FEE_TAX                            IS '販売手数料（消費税）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.SALES_FEE_WITH_TAX                       IS '販売手数料（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.ELECTRIC_AMT_NO_TAX                      IS '電気代等（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.ELECTRIC_AMT_TAX                         IS '電気代等（消費税）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.ELECTRIC_AMT_WITH_TAX                    IS '電気代等（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.RECALC_TOTAL_FEE_NO_TAX                  IS '再計算済手数料計（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.RECALC_TOTAL_FEE_TAX                     IS '再計算済手数料計（消費税）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.RECALC_TOTAL_FEE_WITH_TAX                IS '再計算済手数料計（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_TRANS_FEE_NO_TAX                    IS '振込手数料（税抜）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_TRANS_FEE_TAX                       IS '振込手数料（消費税）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.BANK_TRANS_FEE_WITH_TAX                  IS '振込手数料（税込）'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_INFO_REV_HEADER.VENDOR_INVOICE_REGNUM                    IS '送付先インボイス登録番号'
+/
+-- Ver.1.1 ADD END
