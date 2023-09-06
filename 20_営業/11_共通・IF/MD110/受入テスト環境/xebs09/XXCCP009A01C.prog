@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 3.3                                                       ##
+## Version          : 3.5                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -110,6 +110,8 @@
 ##                                       バックアップエラー無視対応             ##
 ##  2023/02/28    3.4   Nobuo.Koyama     [E_本稼動_19079]                       ##
 ##                                       リトライ時間60秒→1秒                  ##
+##  2023/08/01    3.5   Hirokazu.Iitsuka [E_本稼動_19079]                       ##
+##                                       シンボリックリンク対応                 ##
 ##                                                                              ##
 ##################################################################################
 
@@ -1952,7 +1954,11 @@ do
 # 2022/08/05 Ver3.1 Nobuo.Koyama Add Start
 #  echo "${L_cm_file_dir}" >>`echo ${C_ofil}` 
 #  echo "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`
-  ls -l "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`     #lsコマンド結果出力
+# Ver3.5 Hirokazu.Iitsuka Add Start
+#  ls -l "$(dirname ${L_cm_file_dir})" >>`echo ${C_ofil}`     #lsコマンド結果出力
+  ls -l "$(dirname ${L_cm_file_dir})/" >>`echo ${C_ofil}`     #lsコマンド結果出力
+  stat "${L_cm_file_dir}" >>`echo ${C_ofil}`   #ファイルの詳細タイムスタンプ情報出力
+# Ver3.5 Hirokazu.Iitsuka Add End
 # 2022/09/01 Ver3.2 Nobuo.Koyama Add Start
   if [ -f "${L_cm_file_dir}" ]
   then
