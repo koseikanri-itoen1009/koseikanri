@@ -1,0 +1,45 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2023. All rights reserved.
+ *
+ * Table Name  : XXCCD_API_PARAMETERS
+ * Description : APIパラメータ情報
+ * Version     : 1.2
+ *
+ * Change Record
+ * ------------- ----- ----------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ----------------- ---------------------------------
+ *  2023/02/28    1.0   SCSK A.Hamamoto  新規作成
+ *  2023/03/23    1.1   SCSK Y.Kubota    ユーザー名,ロール共通名をNULL可に変更
+ *  2023/05/28    1.2   SCSK S.Hosonuma  個人番号（person_id）列を追加
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_api_parameters (
+   assignment_id            NUMBER(18)
+  ,user_name                VARCHAR2(100)
+  ,role_common_name         VARCHAR2(4000)
+  ,agent_email              VARCHAR2(150)
+  ,value                    VARCHAR2(150)
+  ,security_context         VARCHAR2(100)
+  ,security_context_value   VARCHAR2(100)
+  ,person_id                NUMBER(18)
+  )
+/
+COMMENT ON TABLE xxccd_api_parameters  IS 'APIパラメータ情報'
+/
+COMMENT ON COLUMN xxccd_api_parameters.assignment_id           IS 'アサイメントID'
+/
+COMMENT ON COLUMN xxccd_api_parameters.user_name               IS 'ユーザー名'
+/
+COMMENT ON COLUMN xxccd_api_parameters.role_common_name        IS 'ロール共通名'
+/
+COMMENT ON COLUMN xxccd_api_parameters.agent_email             IS 'エージェントEメール'
+/
+COMMENT ON COLUMN xxccd_api_parameters.value                   IS 'データアクセス設定値'
+/
+COMMENT ON COLUMN xxccd_api_parameters.security_context        IS 'セキュリティコンテキスト'
+/
+COMMENT ON COLUMN xxccd_api_parameters.security_context_value  IS 'セキュリティコンテキスト値'
+/
+COMMENT ON COLUMN xxccd_api_parameters.person_id               IS '個人ID'
+/
