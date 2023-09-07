@@ -1,0 +1,113 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Table Name  : XXCCD_PEOPLE_EXPENSE_ACCOUNTS
+ * Description : 従業員経費口座
+ * Version     : 1.2
+ *
+ * Change Record
+ * ------------- ----- ----------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ----------------- ---------------------------------
+ *  2022/12/07    1.0   SCSK H.Shimizu    新規作成
+ *  2023/02/01    1.1   SCSK A.Hamamoto   外部結合テスト時修正
+ *  2023/02/27    1.2   SCSK S.Hosonuma   シナリオテスト時修正
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_people_expense_accounts (
+   erp_ext_bank_account_id    NUMBER(18)
+  ,erp_bank_number            VARCHAR2(30)   NOT NULL
+  ,erp_branch_number          VARCHAR2(30)   NOT NULL
+  ,erp_bank_name              VARCHAR2(360)  NOT NULL
+  ,erp_bank_branch_name       VARCHAR2(360)
+  ,erp_bank_account_type      VARCHAR2(25)   NOT NULL
+  ,erp_bank_account_num       VARCHAR2(100)  NOT NULL
+  ,erp_country_code           VARCHAR2(2)    NOT NULL
+  ,erp_currency_code          VARCHAR2(15)   NOT NULL
+  ,erp_bank_account_name      VARCHAR2(80)
+  ,erp_bank_account_name_alt  VARCHAR2(320)
+  ,erp_inactive_flag          VARCHAR2(1)
+  ,person_number              VARCHAR2(30)   NOT NULL
+  ,bank_number                VARCHAR2(30)   NOT NULL
+  ,branch_number              VARCHAR2(30)   NOT NULL
+  ,bank_name                  VARCHAR2(360)  NOT NULL
+  ,bank_branch_name           VARCHAR2(360)
+  ,bank_account_type          VARCHAR2(25)   NOT NULL
+  ,bank_account_num           VARCHAR2(100)  NOT NULL
+  ,country_code               VARCHAR2(2)    NOT NULL
+  ,currency_code              VARCHAR2(15)   NOT NULL
+  ,bank_account_name          VARCHAR2(80)
+  ,bank_account_name_alt      VARCHAR2(320)
+  ,inactive_flag              VARCHAR2(1)
+  ,primary_flag               VARCHAR2(1)
+  ,expense_primary_flag       VARCHAR2(1)
+  ,update_id                  NUMBER(18)
+  ,CONSTRAINT xxccd_people_expense_acc_pk PRIMARY KEY (PERSON_NUMBER
+                                                 ,BANK_NUMBER
+                                                 ,BRANCH_NUMBER
+                                                 ,BANK_ACCOUNT_TYPE
+                                                 ,BANK_ACCOUNT_NUM
+                                                 ,COUNTRY_CODE
+-- Ver1.2 Mod Start
+                                                 ,CURRENCY_CODE
+                                                 ,BANK_NAME
+                                                 ,BANK_BRANCH_NAME)
+-- Ver1.2 Mod End
+)
+/
+COMMENT ON TABLE xxccd_people_expense_accounts IS '従業員経費口座'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_ext_bank_account_id    IS 'ERP外部銀行口座ID'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_number            IS 'ERP銀行番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_branch_number          IS 'ERP銀行支店番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_name              IS 'ERP銀行名'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_branch_name       IS 'ERP銀行支店名'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_account_type      IS 'ERP口座種別'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_account_num       IS 'ERP口座番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_country_code           IS 'ERP国コード'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_currency_code          IS 'ERP通貨コード'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_account_name      IS 'ERP口座名義人'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_bank_account_name_alt  IS 'ERPカナ口座名義'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.erp_inactive_flag          IS 'ERP非アクティブ'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.person_number              IS '従業員番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_number                IS '銀行番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.branch_number              IS '銀行支店番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_name                  IS '銀行名'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_branch_name           IS '銀行支店名'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_account_type          IS '口座種別'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_account_num           IS '口座番号'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.country_code               IS '国コード'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.currency_code              IS '通貨コード'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_account_name          IS '口座名義人'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.bank_account_name_alt      IS 'カナ口座名義'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.inactive_flag              IS '非アクティブ'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.primary_flag               IS 'プライマリフラグ'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.expense_primary_flag       IS '経費プライマリフラグ'
+/
+COMMENT ON COLUMN xxccd_people_expense_accounts.update_id                  IS '更新ID'
+/
