@@ -1,0 +1,86 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Table Name  : XXCCD_ROLE_ASSIGNMENTS
+ * Description : ロール割当マスタ
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/10/21    1.0   SCSK H.Shimizu   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_role_assignments (
+     lookup_code                    VARCHAR2(30)  NOT NULL
+    ,meaning                        VARCHAR2(80)  NOT NULL
+    ,role_name                      VARCHAR2(240)
+    ,role_common_name               VARCHAR2(4000)
+    ,start_date_active              DATE
+    ,end_date_active                DATE
+    ,enabled_flag                   VARCHAR2(1)   NOT NULL
+    ,hierarchy_level                VARCHAR2(150)
+    ,location_code                  VARCHAR2(150)
+    ,license_code                   VARCHAR2(150)
+    ,job_post                       VARCHAR2(150)
+    ,job_duty                       VARCHAR2(150)
+    ,job_type                       VARCHAR2(150)
+    ,supply_agent                   VARCHAR2(150)
+    ,ledger                         VARCHAR2(150)
+    ,data_access_set                VARCHAR2(150)
+    ,bu                             VARCHAR2(150)
+    ,preliminaries1                 VARCHAR2(150)
+    ,preliminaries2                 VARCHAR2(150)
+    ,preliminaries3                 VARCHAR2(150)
+    ,preliminaries4                 VARCHAR2(150)
+    ,preliminaries5                 VARCHAR2(150)
+  ,CONSTRAINT xxccd_role_assignments_pk PRIMARY KEY (lookup_code)
+)
+/
+COMMENT ON TABLE xxccd_role_assignments IS 'ロール割当マスタ'
+/
+COMMENT ON COLUMN xxccd_role_assignments.lookup_code                              IS 'コード'
+/
+COMMENT ON COLUMN xxccd_role_assignments.meaning                                  IS '内容'
+/
+COMMENT ON COLUMN xxccd_role_assignments.role_name                                IS 'ロール名'
+/
+COMMENT ON COLUMN xxccd_role_assignments.role_common_name                         IS 'ロール共通名'
+/
+COMMENT ON COLUMN xxccd_role_assignments.start_date_active                        IS '有効日自'
+/
+COMMENT ON COLUMN xxccd_role_assignments.end_date_active                          IS '有効日至'
+/
+COMMENT ON COLUMN xxccd_role_assignments.enabled_flag                             IS '使用可能'
+/
+COMMENT ON COLUMN xxccd_role_assignments.hierarchy_level                          IS '階層レベル'
+/
+COMMENT ON COLUMN xxccd_role_assignments.location_code                            IS '拠点コード'
+/
+COMMENT ON COLUMN xxccd_role_assignments.license_code                             IS '資格コード'
+/
+COMMENT ON COLUMN xxccd_role_assignments.job_post                                 IS '職位コード'
+/
+COMMENT ON COLUMN xxccd_role_assignments.job_duty                                 IS '職務コード'
+/
+COMMENT ON COLUMN xxccd_role_assignments.job_type                                 IS '職種コード'
+/
+COMMENT ON COLUMN xxccd_role_assignments.supply_agent                             IS '調達エージェント'
+/
+COMMENT ON COLUMN xxccd_role_assignments.ledger                                   IS '元帳'
+/
+COMMENT ON COLUMN xxccd_role_assignments.data_access_set                          IS 'データアクセスセット'
+/
+COMMENT ON COLUMN xxccd_role_assignments.bu                                       IS 'BU'
+/
+COMMENT ON COLUMN xxccd_role_assignments.preliminaries1                           IS '予備1'
+/
+COMMENT ON COLUMN xxccd_role_assignments.preliminaries2                           IS '予備2'
+/
+COMMENT ON COLUMN xxccd_role_assignments.preliminaries3                           IS '予備3'
+/
+COMMENT ON COLUMN xxccd_role_assignments.preliminaries4                           IS '予備4'
+/
+COMMENT ON COLUMN xxccd_role_assignments.preliminaries5                           IS '予備5'
+/
