@@ -1,0 +1,54 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Table Name  : XXCCD_USER_ROLE_BK
+ * Description : ユーザロールバックアップ用テーブル
+ * Version     : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ----------------  ---------------------------------
+ *  2023/01/23    1.0   SCSK A.Hamamoto  新規作成
+ *  2023/02/28    1.1   SCSK A.Hamamoto   割当ロールをVARCHAR2(4000)に修正 
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_user_role_bk (
+     id                             NUMBER(18)     NOT NULL
+    ,user_name                      VARCHAR2(100)  NOT NULL
+    ,person_number                  VARCHAR2(30)   NOT NULL
+    ,last_name                      VARCHAR2(150)
+    ,first_name                     VARCHAR2(150)
+    ,role_assignment                VARCHAR2(4000) NOT NULL
+    ,supply_agent                   VARCHAR2(150)
+    ,ledger                         VARCHAR2(150)
+    ,data_access                    VARCHAR2(150)
+    ,bu                             VARCHAR2(150)
+    ,update_id                      NUMBER(18)
+  ,CONSTRAINT xxccd_user_role_bk_pk PRIMARY KEY (id)
+)
+/
+COMMENT ON TABLE xxccd_user_role IS 'ユーザロール'
+/
+COMMENT ON COLUMN xxccd_user_role.id                                             IS 'ユーザロールID'
+/
+COMMENT ON COLUMN xxccd_user_role.user_name                                      IS 'ユーザ名'
+/
+COMMENT ON COLUMN xxccd_user_role.person_number                                  IS '個人番号'
+/
+COMMENT ON COLUMN xxccd_user_role.last_name                                      IS '姓'
+/
+COMMENT ON COLUMN xxccd_user_role.first_name                                     IS '名'
+/
+COMMENT ON COLUMN xxccd_user_role.role_assignment                                IS '割当ロール'
+/
+COMMENT ON COLUMN xxccd_user_role.supply_agent                                   IS '調達エージェント'
+/
+COMMENT ON COLUMN xxccd_user_role.ledger                                         IS '元帳'
+/
+COMMENT ON COLUMN xxccd_user_role.data_access                                    IS 'データアクセス'
+/
+COMMENT ON COLUMN xxccd_user_role.bu                                             IS 'BU'
+/
+COMMENT ON COLUMN xxccd_user_role.update_id                                      IS '更新ID'
+/
