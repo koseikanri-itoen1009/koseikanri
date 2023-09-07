@@ -1,0 +1,69 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Table Name  : XXCCD_EMPLOYEE_DIFFERENCE_INFO
+ * Description : 従業員異動情報
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/10/21    1.0   SCSK H.Shimizu   新規作成
+ *  2023/01/23    1.1   SCSK A.Hamamoto  instance_idをNUMBER(18)に変更
+ *  2023/03/14    1.2   SCSK Y.Kubota    last_name,first_nameのNOT NULLを削除
+ ****************************************************************************************/
+CREATE TABLE xxccd_employee_difference_info (
+     user_name          VARCHAR2(100)  NOT NULL
+    ,person_number      VARCHAR2(30)   NOT NULL
+    ,last_name          VARCHAR2(150)
+    ,first_name         VARCHAR2(150)
+    ,location_code      VARCHAR2(150)
+    ,license_code       VARCHAR2(150)
+    ,job_post           VARCHAR2(150)
+    ,job_duty           VARCHAR2(150)
+    ,job_type           VARCHAR2(150)
+    ,department_code1   VARCHAR2(150)
+    ,department_code2   VARCHAR2(150)
+    ,department_code3   VARCHAR2(150)
+    ,department_code4   VARCHAR2(150)
+    ,department_code5   VARCHAR2(150)
+    ,department_code6   VARCHAR2(150)
+    ,instance_id        NUMBER(18)
+  ,CONSTRAINT xxccd_emp_diff_info_pk PRIMARY KEY (user_name)
+)
+/
+COMMENT ON TABLE xxccd_employee_difference_info IS '従業員異動情報'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.user_name                       IS 'ユーザ名'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.person_number                   IS '個人番号'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.last_name                       IS '姓'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.first_name                      IS '名'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.location_code                   IS '拠点コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.license_code                    IS '資格コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.job_post                        IS '職位コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.job_duty                        IS '職務コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.job_type                        IS '職種コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.department_code1                IS '１階層目部門コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.department_code2                IS '２階層目部門コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.department_code3                IS '３階層目部門コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.department_code4                IS '４階層目部門コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.department_code5                IS '５階層目部門コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.department_code6                IS '６階層目部門コード'
+/
+COMMENT ON COLUMN xxccd_employee_difference_info.instance_id                     IS 'インスタンスID'
+/
