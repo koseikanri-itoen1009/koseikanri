@@ -1,0 +1,16 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Sequence Name : XXCCD_USER_ROLE_SEQ
+ * Description   : ユーザロール用シーケンス
+ * Version       : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/12/08    1.0   SCSK H.Shimizu   新規作成
+ *
+ ****************************************************************************************/
+CREATE SEQUENCE xxccd_user_role_seq START WITH 1 INCREMENT BY 1 MAXVALUE 99999999999 MINVALUE 1 NOCYCLE CACHE 20
+/
