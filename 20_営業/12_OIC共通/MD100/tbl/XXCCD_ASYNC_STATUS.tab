@@ -1,0 +1,57 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2023. All rights reserved.
+ *
+ * Table Name  : XXCCD_ASYNC_STATUS
+ * Description : 非同期処理ステータス
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2023/04/19    1.0   SCSK H.Shimizu   新規作成
+ *  2023/07/21    1.1   SCSK Y.Ryu       E_本稼動_19390【マスタ】従業員IF性能検証
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_async_status (
+     process_id         NUMBER(18,0)
+-- Ver1.1 Add Start
+    ,id_type            VARCHAR2(11)    DEFAULT 'P' NOT NULL
+-- Ver1.1 Add End
+    ,status             VARCHAR2(11)                NOT NULL
+    ,instance_id        NUMBER                      NOT NULL
+    ,instance_name      VARCHAR2(50)                NOT NULL
+    ,error_detail       VARCHAR2(250)
+    ,created_by         VARCHAR2(65)                NOT NULL
+    ,creation_date      TIMESTAMP WITH TIME ZONE    NOT NULL
+    ,last_updated_by    VARCHAR2(65)                NOT NULL
+    ,last_update_date   TIMESTAMP WITH TIME ZONE    NOT NULL
+-- Ver1.1 Mod Start
+--    ,CONSTRAINT xxccd_async_status_pk PRIMARY KEY (process_id))
+    ,CONSTRAINT xxccd_async_status_pk PRIMARY KEY (process_id,id_type))
+-- Ver1.1 Mod End
+/
+COMMENT ON TABLE xxccd_async_status                     IS '非同期処理ステータス'
+/
+COMMENT ON COLUMN xxccd_async_status.process_id         IS 'プロセスID'
+/
+-- Ver1.1 Add Start
+COMMENT ON COLUMN xxccd_async_status.id_type            IS 'IDタイプ'
+/
+-- Ver1.1 Add End
+COMMENT ON COLUMN xxccd_async_status.status             IS 'ステータス'
+/
+COMMENT ON COLUMN xxccd_async_status.instance_id        IS 'インスタンスID'
+/
+COMMENT ON COLUMN xxccd_async_status.instance_name      IS 'インスタンス名'
+/
+COMMENT ON COLUMN xxccd_async_status.error_detail       IS 'エラー詳細'
+/
+COMMENT ON COLUMN xxccd_async_status.created_by         IS '登録者'
+/
+COMMENT ON COLUMN xxccd_async_status.creation_date      IS '登録日時'
+/
+COMMENT ON COLUMN xxccd_async_status.last_updated_by    IS '更新者'
+/
+COMMENT ON COLUMN xxccd_async_status.last_update_date   IS '更新日時'
+/
