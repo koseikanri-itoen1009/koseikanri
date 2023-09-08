@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/financials/generalLedger/programs/common/',
+  'jobName' : 'SyncAccountHierarchies',
+  'singleJobParam' : '-1,,,BOTH,Y,,,,,,'
+}
+]
