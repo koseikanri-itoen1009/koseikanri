@@ -1,0 +1,43 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Table Name  : XXCCD_PROFILE_OPTION_VALUES
+ * Description : プロファイルオプション値
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/11/28    1.0   SCSK Y.Kubota   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_profile_option_values (
+    profile_option_id       NUMBER(18)
+    ,level_name             VARCHAR2(30)
+    ,level_value            VARCHAR2(1000)
+    ,profile_option_value   VARCHAR2(1000)
+    ,created_by             VARCHAR2(65)                NOT NULL
+    ,creation_date          TIMESTAMP WITH TIME ZONE    NOT NULL
+    ,last_updated_by        VARCHAR2(65)                NOT NULL
+    ,last_update_date       TIMESTAMP WITH TIME ZONE    NOT NULL
+    ,CONSTRAINT xxccd_profile_option_values_pk PRIMARY KEY (profile_option_id, level_name, level_value))
+/
+COMMENT ON TABLE xxccd_profile_option_values                        IS 'プロファイルオプション値'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.profile_option_id     IS 'プロファイルオプションID'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.level_name            IS 'レベル名'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.level_value           IS 'レベル値'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.profile_option_value  IS 'プロファイル値'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.created_by            IS '登録者'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.creation_date         IS '登録日時'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.last_updated_by       IS '更新者'
+/
+COMMENT ON COLUMN xxccd_profile_option_values.last_update_date      IS '更新日時'
+/
