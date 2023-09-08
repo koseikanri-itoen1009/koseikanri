@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/users/',
+  'jobName' : 'ProcessLdapRequests',
+  'singleJobParam' : 'ALL,ALL,A'
+}
+]
