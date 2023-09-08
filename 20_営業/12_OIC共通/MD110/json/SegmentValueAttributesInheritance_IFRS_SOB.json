@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/financials/generalLedger/programs/common/',
+  'jobName' : 'SegmentValueAttributesInheritance',
+  'singleJobParam' : '${10002},Y,,'
+}
+]
