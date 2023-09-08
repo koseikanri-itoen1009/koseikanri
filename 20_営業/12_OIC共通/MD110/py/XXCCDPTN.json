@@ -1,0 +1,17 @@
+[
+  {'PTNGP001' : r'^転記プロセス([0-9]+)が優先度10のバッチのために発行されました。$'},
+  {'PTNGP001' : r'Submitted unit processor request = ([0-9]+)'},
+  {'PTNGP001' : r'Submitted GL Transfer parent request = ([0-9]+)'},
+  {'PTNGP001' : r'Submitted transfer worker request = ([0-9]+)'},
+  {'PTNGP001' : r'GLLEZL Request Id = ([0-9]+)'},
+  {'PTNGP001' : r'l_req_id = ([0-9]+)'},
+  {'PTNGP001' : r'AP Trial Balance request_id: ([0-9]+)'},
+  {'PTNGP001' : r'受入時支払インポートのスケジュール済プロセス番号([0-9]+)で、請求書作成ステータスをチェックしてください。'},
+  {'PTNGP001' : r'Maintain Value Sets - ([0-9]+)'},
+  {'PTNGP001' : r'Financial Tree Audit and Tree Flatten Process - ([0-9]+)'},
+  {'PTNGP001' : r'Tree Audit Process - ([0-9]+)'},
+  {'PTNGP001' : r'Tree Flatten Process - ([0-9]+)'},
+  {'PTNGP001' : r'Publish Chart of Account Hierarchies - ([0-9]+)'},
+  {'PTNGP001' : r'Publish Chart of Account Dimension Members and Hierarchies to Balances Cubes - ([0-9]+)'},
+  {'PTNGP001' : r'Publish Chart of Account Dimension Members and Hierarchies to Balances Cubes in Parallel - ([0-9]+)'},
+]
