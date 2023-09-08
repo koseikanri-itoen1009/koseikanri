@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/fnd/applcore/',
+  'jobName' : 'FndApplCoreUploadServiceJob',
+  'singleJobParam' : 'Related_values.csv,fin/generalLedger/import,RELATEDVALUESETVALUES'
+}
+]
