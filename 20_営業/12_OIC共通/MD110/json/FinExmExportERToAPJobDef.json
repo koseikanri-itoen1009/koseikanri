@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/financials/expenses/shared/scheduler/',
+  'jobName' : 'FinExmExportERToAPJobDef',
+  'singleJobParam' : '${10004},EXPENSE_REIMBURSEMENTS,,,Y,,,'
+}
+]
