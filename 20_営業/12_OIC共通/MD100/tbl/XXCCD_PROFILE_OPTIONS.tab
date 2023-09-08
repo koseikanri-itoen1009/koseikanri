@@ -1,0 +1,46 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2022. All rights reserved.
+ *
+ * Table Name  : XXCCD_PROFILE_OPTIONS
+ * Description : プロファイルオプション
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2022/11/28    1.0   SCSK Y.Kubota   新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxccd_profile_options (
+    prolile_option_id       NUMBER(18)                  NOT NULL
+    ,prolile_option_name    VARCHAR2(80)                NOT NULL
+    ,user_enabled_flag      VARCHAR2(1)                 NOT NULL
+    ,start_date_active      TIMESTAMP WITH TIME ZONE    NOT NULL
+    ,end_date_active        TIMESTAMP WITH TIME ZONE
+    ,created_by             VARCHAR2(65)                NOT NULL
+    ,creation_date          TIMESTAMP WITH TIME ZONE    NOT NULL
+    ,last_updated_by        VARCHAR2(65)                NOT NULL
+    ,last_update_date       TIMESTAMP WITH TIME ZONE    NOT NULL
+    ,CONSTRAINT xxccd_profile_options_pk PRIMARY KEY (prolile_option_id))
+/
+COMMENT ON TABLE xxccd_profile_options                      IS 'プロファイルオプション'
+/
+COMMENT ON COLUMN xxccd_profile_options.prolile_option_id   IS 'プロファイルオプションID'
+/
+COMMENT ON COLUMN xxccd_profile_options.prolile_option_name IS 'プロファイルオプション名'
+/
+COMMENT ON COLUMN xxccd_profile_options.user_enabled_flag   IS '有効化フラグ'
+/
+COMMENT ON COLUMN xxccd_profile_options.start_date_active   IS '開始日'
+/
+COMMENT ON COLUMN xxccd_profile_options.end_date_active     IS '終了日'
+/
+COMMENT ON COLUMN xxccd_profile_options.created_by          IS '登録者'
+/
+COMMENT ON COLUMN xxccd_profile_options.creation_date       IS '登録日時'
+/
+COMMENT ON COLUMN xxccd_profile_options.last_updated_by     IS '更新者'
+/
+COMMENT ON COLUMN xxccd_profile_options.last_update_date    IS '更新日時'
+/
