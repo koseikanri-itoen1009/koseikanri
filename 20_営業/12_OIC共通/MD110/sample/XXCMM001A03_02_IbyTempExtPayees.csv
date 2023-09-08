@@ -1,0 +1,20 @@
+Import Batch Identifier,Payee Identifier,Business Unit Name,Supplier Numbe,Supplier Site,Pay Each Document Alone,Payment Method Code,Delivery Channel Code,Settlement Priority,Remit Delivery Method,Remit Advice Email,Remit Advice Fax,Bank Instructions 1,Bank Instructions 2 ,Bank Instruction Details,Payment Reason Code,Payment Reason Comments,Payment Message1,Payment Message2,Payment Message3,Bank Charge Bearer Code
+998199,1000,Vision Operations,1013,FRESNO,N,CHECK,CARD,NORMAL,,abc@gmail.com,91009991,INSTRUCTION1,INSTRUCTION2,INSTRUCTION DETAILS,BAD,Comments,Payee Exists,Message2,Success,BEN
+8000,1000,Vision Operations,1013,FRESNO,N,CHECK,CPP,NORMAL,,,,INSTRUCTION,,INSTRUCTION DETAILS,SE_900,Comments,Payee Exists,Message2,Success,BEN
+8000,2000,Vision Services,1010,ADVANTAGE - US,Y,CHECK,ACCEPT,NORMAL,EMAIL,y@gmail.com,,,,Allow ONLY WIRE Transfer,SE_900,Comments,Payee Exists,Message2,Success,BEN
+8000,3000,Vision Operations,7086,POZ12259,Y,EFT,ACCEPT,EXPRESS,EMAIL,y@gmail.com,,Wire,US,Allow ONLY WIRE Transfer,,Comments,Payee Does Not Exist,Message2,Success,BEN
+8000,4000,Vision Operations,7086,POZ12259,Y,CHECK,ACCEPT,NORMAL,,,,,DE,,,Comments,Payee Does Not Exist,Message2,Success,BEN
+8000,5000,Vision Operations,7104,POZ12302,N,CASH,ACCEPT,NORMAL,,,,,US,INSTRUCTION1,BE_090,Comments,Payee Does Not Exist,,Success,BEN
+8000,6000,Vision Operations,7124,POZ12328,N,CHECK,ACCEPT,NORMAL,,,,,FR,,,Comments,Payee Does Not Exist,,Success,
+8000,7000,Vision Operations,7141,POZ12341,N,CHECK,ACCEPT,NORMAL,,,,,US,,,Comments,Payee Does Not Exist,,Success,
+8000,8000,Vision Operations,7341,POZ12602,N,EFT,CPP,NORMAL,FAX,,12344444,,IT,,,Comments,Payee Does Not Exist,,Success,
+8000,9000,Vision Operations,6503,POZ11798,Y,EFT,,EXPRESS,PRINTED,,,,US,,,Comments,Payee Does Not Exist,,Success,
+8000,10000,Vision Operations,6603,POZ11860,Y,EFT,,EXPRESS,PRINTED,,,,US,,,Comments,Payee Does Not Exist,,Success,
+8000,11000,Vision Operations,6603,POZ11861,Y,CHECK,,EXPRESS,EMAIL,22@gmail.com,,,US,,,Comments,Payee Does Not Exist,,Success,
+8000,12000,Vision Operations,6603,POZ11862,N,CHECK,,NORMAL,,,,,US,,,Comments,Payee Does Not Exist,,Success,
+8000,13000,Vision Operations,6603,POZ11860,Y,CHECK,,NORMAL,,,,,US,,,Comments,Payee Does Not Exist,Duplcate Record,Success,
+10000,1000,Vision ADB,1010,ADVANTAGE - UK,Y,CHECK,,NORMAL,,,,,GB,,,Comments,Payee Exists,,Success,
+10000,2000,,1010,,N,EFT,,NORMAL,EMAIL,,,,,,,Comments,Payee Exists,Supplier Level,Success,
+10000,3000,,1010,SEATTLE_HQ,Y,EFT,,EXPRESS,PRINTED,,,,US,,,Comments,Payee Exists,,Fail ORG missing,
+10000,4000,Vision Operations,1010,SEATTLE_HQ,Y,CHECK,,EXPRESS,,,,,US,,BE_090,Comments,Payee Exists,,Success,
+10000,5000,Vision Operations,7104,POZ12278,Y,CASH,,EXPRESS,,,,,JP,,BAD,Comments,Payee Does Not Exist,,Fail Wrong Payment Reason,
