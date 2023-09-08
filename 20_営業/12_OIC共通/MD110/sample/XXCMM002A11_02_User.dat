@@ -1,0 +1,3 @@
+METADATA|UserRole|RoleCommonName|PersonNumber|AddRemoveRole
+MERGE|UserRole|ロール1|1001|REMOVE
+MERGE|UserRole|ロール1|1001|REMOVE
