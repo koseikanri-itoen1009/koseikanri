@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/scm/receiving/receiptsInterface/payOnReceipt/',
+  'jobName' : 'PayOnReceiptJob',
+  'singleJobParam' : ',1,,0,,'
+}
+]
