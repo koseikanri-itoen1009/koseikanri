@@ -1,0 +1,12 @@
+﻿DVM,Constant,定数を定義する
+No,ConstantValue
+001,_outputFiles.zip
+002,NEW
+003,SUCCEEDED
+004,WARNING
+005,ERROR
+006,EnableEvent=Y
+007,HDL実行
+008,submitRequest
+009,JOB_SET
+010,IN_PROGRESS
