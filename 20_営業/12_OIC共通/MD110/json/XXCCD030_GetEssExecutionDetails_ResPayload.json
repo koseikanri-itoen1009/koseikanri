@@ -1,0 +1,22 @@
+{
+  "JOBS":{
+    "JOBNAME":"ビジネス・オブジェクトのインポートおよびロード: ビジネス・オブジェクトのインポート"
+    ,"JOBPATH":"/oracle/apps/ess/hcm/common/dataLoader"
+    ,"REQUESTID":"1445125"
+    ,"STATUS":"SUCCEEDED"
+    ,"CHILD":[
+      {
+        "JOBNAME":"ビジネス・オブジェクトのインポート: サブプロセス"
+        ,"JOBPATH":"/oracle/apps/ess/hcm/common/dataLoader"
+        ,"REQUESTID":"1445133"
+        ,"STATUS":"SUCCEEDED"
+      }
+      ,{
+        "JOBNAME":"ビジネス・オブジェクトのインポート: サブプロセス"
+        ,"JOBPATH":"/oracle/apps/ess/hcm/common/dataLoader"
+        ,"REQUESTID":"1445134"
+        ,"STATUS":"SUCCEEDED"
+      }
+    ]
+  }
+}
