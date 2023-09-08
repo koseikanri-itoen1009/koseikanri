@@ -1,0 +1,52 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/person/search/',
+  'jobName' : 'PersonSynchronization',
+  'singleJobParam' : '${sysdate},${sysdate+1},Y'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/employment/flattenedManagerHierarchy/',
+  'jobName' : 'FlattenedManagerHierachyProcess',
+  'singleJobParam' : '2,N,N'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/person/search/',
+  'jobName' : 'PersonKeywordSearch',
+  'singleJobParam' : ',,Y'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/person/search/',
+  'jobName' : 'OptimizePersonKeywordIndex',
+  'singleJobParam' : ','
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/users/',
+  'jobName' : 'ProcessAutoProvisionAllUsers',
+  'singleJobParam' : 'Y,'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/person/nameFormat/',
+  'jobName' : 'ApplyNameFormatOnPersonNames',
+  'singleJobParam' : 'DISPLAY_NAME,JP'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/users/',
+  'jobName' : 'ProcessLdapRequests',
+  'singleJobParam' : 'ALL,ALL,A'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/hcm/users/',
+  'jobName' : 'CopyPersonalData',
+  'singleJobParam' : 'CHANGED_USERS_ONLY'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/cdm/foundation/parties/',
+  'jobName' : 'CurrentDateRecordSync',
+  'singleJobParam' : 'ORA_PERSON_SYNC,EMP,${sysdate},${sysdate+1},'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/cdm/foundation/parties/',
+  'jobName' : 'HzPartyUserGuidSyncJob',
+  'singleJobParam' : ''
+}
+]
