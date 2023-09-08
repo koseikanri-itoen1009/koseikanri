@@ -1,0 +1,38 @@
+{
+    "items": [
+        {
+            "LineNumber": 1,
+            "LineType": "Item",
+            "TaxRateCode": null,
+            "TaxClassification": "1110",
+            "invoiceLineDff": [
+                {
+                    "InvoiceId": 300000007111916,
+                    "LineNumber": 1,
+                    "__FLEX_Context": null,
+                    "__FLEX_Context_DisplayValue": null,
+                    "links": [
+                        {
+                            "rel": "canonical",
+                            "href": "https://fa-esgk-dev1-saasfaprod1.fa.ocs.oraclecloud.com:443/fscmRestApi/resources/11.13.18.05/invoices/300000007111916/child/invoiceLines/00020000000EACED00057708000110D931DB44EC0000000AACED0005770400000001/child/invoiceLineDff/00020000000EACED00057708000110D931DB44EC0000000AACED0005770400000001",
+                            "name": "invoiceLineDff",
+                            "kind": "item"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "count": 2,
+    "hasMore": false,
+    "limit": 25,
+    "offset": 0,
+    "links": [
+        {
+            "rel": "self",
+            "href": "https://fa-esgk-dev1-saasfaprod1.fa.ocs.oraclecloud.com:443/fscmRestApi/resources/11.13.18.05/invoices/300000007111916/child/invoiceLines",
+            "name": "invoiceLines",
+            "kind": "collection"
+        }
+    ]
+}
