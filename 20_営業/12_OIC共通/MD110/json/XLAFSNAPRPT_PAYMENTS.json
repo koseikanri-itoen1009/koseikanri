@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/financials/subledgerAccounting/shared/',
+  'jobName' : 'XLAFSNAPRPT',
+  'singleJobParam' : ',,${10005},${10003},PAYMENTS,${10006},Y,F,N,S,Y,Y,,,N'
+}
+]
