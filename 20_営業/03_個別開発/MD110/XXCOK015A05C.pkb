@@ -38,7 +38,7 @@ AS
  *  2021/05/28    1.4   K.Yoshikawa      E_本稼動_17220
  *  2021/10/20    1.5   K.Tomie          E_本稼動_17220(追加項目の書式変更)
  *  2021/11/20    1.6   K.Yoshikawa      E_本稼動_17680
- *  2023/06/15    1.7   Y.Ooyama         E_本稼動_19179（インボイス対応（BM関連））
+ *  2023/09/08    1.7   Y.Ooyama         E_本稼動_19179（インボイス対応（BM関連））
  *****************************************************************************************/
 --
   -- ===============================================
@@ -127,6 +127,7 @@ AS
 -- Ver.1.7 ADD START
   cv_prof_i_regnum_prompt    CONSTANT VARCHAR2(30)    := 'XXCOK1_INFOMART_REGNUM_PROMPT';    -- インフォマート_登録番号プロンプト
   cv_prof_invoice_t_no       CONSTANT VARCHAR2(30)    := 'XXCMM1_INVOICE_T_NO';              -- 適格請求書発行事業者登録番号
+  cv_prof_bus_div_tax        CONSTANT VARCHAR2(30)    := 'XXCOK1_BUS_DIV_TAX';               -- 事業者区分（課税）
 -- Ver.1.7 ADD END
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)     := ' : ';
@@ -170,6 +171,7 @@ AS
 -- Ver.1.7 ADD START
   gv_i_regnum_prompt         fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- インフォマート_登録番号プロンプト（末尾に半角スペース付加）
   gv_invoice_t_no            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 適格請求書発行事業者登録番号
+  gv_bus_div_tax             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 事業者区分（課税）
 -- Ver.1.7 ADD END
   gn_bm_tax                  NUMBER;                                            -- 販売手数料_消費税率
   gn_tax_include_less        NUMBER;                                            -- 税込銀行手数料_基準額未満
@@ -286,6 +288,13 @@ AS
            ,xiwh.rowid                  AS  row_id
 -- Ver1.6 K.Yoshikawa ADD END
 -- Ver.1.7 ADD START
+           ,NVL(xiwh.tax_calc_kbn, '2') AS  tax_calc_kbn              -- 税計算区分
+           ,xiwh.bm_tax_kbn             AS  bm_tax_kbn                -- BM税区分
+           ,NVL2(
+              xiwh.vendor_invoice_regnum
+             ,gv_bus_div_tax
+             ,NULL
+            )                           AS  bus_div                    -- 事業者区分
            ,NVL2(
               xiwh.vendor_invoice_regnum
              ,gv_i_regnum_prompt || xiwh.vendor_invoice_regnum
@@ -417,6 +426,13 @@ AS
            ,xiwh.rowid                  AS  row_id
 -- Ver1.6 K.Yoshikawa ADD END
 -- Ver.1.7 ADD START
+           ,NVL(xiwh.tax_calc_kbn, '2') AS  tax_calc_kbn              -- 税計算区分
+           ,xiwh.bm_tax_kbn             AS  bm_tax_kbn                -- BM税区分
+           ,NVL2(
+              xiwh.vendor_invoice_regnum
+             ,gv_bus_div_tax
+             ,NULL
+            )                           AS  bus_div                    -- 事業者区分
            ,NVL2(
               xiwh.vendor_invoice_regnum
              ,gv_i_regnum_prompt || xiwh.vendor_invoice_regnum
@@ -463,6 +479,10 @@ AS
   CURSOR g_custom_cur(
       it_supplier_code  IN  xxcok_backmargin_balance.supplier_code%TYPE
      ,it_tax_div        IN  VARCHAR2
+-- Ver.1.7 ADD START
+     ,it_tax_calc_kbn   IN  xxcok_info_work_header.tax_calc_kbn%TYPE  -- 税計算区分
+     ,it_bm_tax_kbn     IN  xxcok_info_work_header.bm_tax_kbn%TYPE    -- BM税区分
+-- Ver.1.7 ADD END
   )
   IS
     SELECT  CASE
@@ -479,9 +499,29 @@ AS
               ELSE xiwc.sales_amt
             END                         AS  custom5
            ,xiwc.contract               AS  custom6
-           ,xiwc.sales_fee              AS  custom7
-           ,xiwc.tax_amt                AS  custom8
-           ,xiwc.sales_tax_fee          AS  custom9
+-- Ver.1.7 MOD START
+--           ,xiwc.sales_fee              AS  custom7
+--           ,xiwc.tax_amt                AS  custom8
+--           ,xiwc.sales_tax_fee          AS  custom9
+           ,CASE
+              WHEN it_tax_calc_kbn = '1' AND it_bm_tax_kbn = '1' THEN  --税計算区分が案内書単位かつ、BM税区分が税込の場合、販売手数料（税抜）は出力しない
+                NULL
+              ELSE
+                xiwc.sales_fee
+            END                         AS  custom7
+           ,CASE
+              WHEN it_tax_calc_kbn = '1' THEN                         --税計算区分が案内書単位の場合、消費税は出力しない
+                NULL
+              ELSE
+                xiwc.tax_amt
+            END                         AS  custom8
+           ,CASE
+              WHEN it_tax_calc_kbn = '1' AND it_bm_tax_kbn IN ('2','3') THEN  --税計算区分が案内書単位かつ、BM税区分が税抜または非課税の場合、販売手数料（税込）は出力しない
+                NULL
+              ELSE
+                xiwc.sales_tax_fee
+            END                         AS  custom9
+-- Ver.1.7 MOD END
            ,xiwc.inst_dest              AS  cust_name
            ,xiwc.calc_type              AS  calc_type
            ,xiwc.cust_code              AS  cust_code
@@ -682,7 +722,7 @@ AS
         ,xbb.program_id                  AS program_id                                                 -- コンカレント・プログラムID
         ,xbb.program_update_date         AS program_update_date                                        -- プログラム更新日
 -- Ver.1.7 ADD START
-        ,pvsa.attribute10                AS tax_calc_kbn                                               -- 税計算区分
+        ,NVL(pvsa.attribute10,2)         AS tax_calc_kbn                                               -- 税計算区分
 -- Ver.1.7 ADD END
       FROM    xxcok_backmargin_balance  xbb
              ,po_vendors                pv
@@ -1569,6 +1609,10 @@ AS
 --
     lv_pre_vendor_code    xxcok_info_work_header.vendor_code%TYPE;
     lv_pre_cust_code      xxcok_info_work_custom.cust_code%TYPE;
+-- Ver.1.7 ADD START
+    lt_pre_tax_calc_kbn   xxcok_info_work_header.tax_calc_kbn%TYPE;  -- 税計算区分
+    lt_pre_bm_tax_kbn     xxcok_info_work_header.bm_tax_kbn%TYPE;    -- BM税区分
+-- Ver.1.7 ADD END
     ln_l_loop_cnt         NUMBER DEFAULT 0;
     ln_h_loop_cnt         NUMBER DEFAULT 0;
     ln_out_cnt            PLS_INTEGER;
@@ -1634,6 +1678,10 @@ AS
         OPEN g_custom_cur(
                 lv_pre_vendor_code
                ,iv_tax_div
+-- Ver.1.7 ADD START
+               ,lt_pre_tax_calc_kbn
+               ,lt_pre_bm_tax_kbn
+-- Ver.1.7 ADD END
               );
 --
         << custom_loop >>
@@ -1930,6 +1978,10 @@ AS
       EXIT WHEN g_head_cur%NOTFOUND;
       -- 次回ループ用に送付先を保持
       lv_pre_vendor_code := g_head_rec.vendor_code;
+      -- Ver.1.7 ADD START
+      lt_pre_tax_calc_kbn := g_head_rec.tax_calc_kbn;
+      lt_pre_bm_tax_kbn   := g_head_rec.bm_tax_kbn;
+      -- Ver.1.7 ADD END
       --
       -- ===============================================
       -- 連携データファイル作成(A-10)
@@ -1989,12 +2041,13 @@ AS
             || cv_msg_canm || gt_head_item(47)          -- 対象期間終了日
 --2021/5/28 add end
 -- Ver.1.7 ADD START
-            || cv_msg_canm || gt_head_item(48)          -- 送付先登録番号
-            || cv_msg_canm || gt_head_item(49)          -- 送付元登録番号
-            || cv_msg_canm || gt_head_item(50)          -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
-            || cv_msg_canm || gt_head_item(51)          -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
-            || cv_msg_canm || gt_head_item(52)          -- 振込手数料　消費税
-            || cv_msg_canm || gt_head_item(53)          -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
+            || cv_msg_canm || gt_head_item(48)          -- 事業者区分
+            || cv_msg_canm || gt_head_item(49)          -- 送付先登録番号
+            || cv_msg_canm || gt_head_item(50)          -- 送付元登録番号
+            || cv_msg_canm || gt_head_item(51)          -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
+            || cv_msg_canm || gt_head_item(52)          -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
+            || cv_msg_canm || gt_head_item(53)          -- 振込手数料　消費税
+            || cv_msg_canm || gt_head_item(54)          -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.7 ADD END
             ;
 --
@@ -2081,6 +2134,7 @@ AS
 --Ver1.5 mod end
 --2021/5/28 add end
 -- Ver.1.7 ADD START
+          || cv_msg_canm || g_head_rec.bus_div                              -- 事業者区分
           || cv_msg_canm || g_head_rec.to_regnum                            -- 送付先登録番号
           || cv_msg_canm || g_head_rec.from_regnum                          -- 送付元登録番号
           || cv_msg_canm || g_head_rec.recalc_total_fee                     -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
@@ -2832,7 +2886,7 @@ AS
            ,SYSDATE                               AS  program_update_date     -- プログラム更新日
 -- Ver.1.7 ADD START
            ,MAX(pvsa.attribute4)                  AS  bm_payment_kbn            -- BM支払区分
-           ,MAX(pvsa.attribute10)                 AS  tax_calc_kbn              -- 税計算区分
+           ,MAX(NVL(pvsa.attribute10,2))          AS  tax_calc_kbn              -- 税計算区分
            ,MAX(pvsa.attribute6)                  AS  bm_tax_kbn                -- BM税区分
            ,pvsa.bank_charge_bearer               AS  bank_charge_bearer        -- 振込手数料負担者
            ,NVL(sum_ne.sales_fee_no_tax,0)        AS  sales_fee_no_tax          -- 販売手数料（税抜）
@@ -4453,6 +4507,25 @@ AS
                           ,iv_name          => cv_msg_xxcok1_00003
                           ,iv_token_name1   => cv_tkn_profile
                           ,iv_token_value1  => cv_prof_invoice_t_no
+                         );
+        lb_msg_return := xxcok_common_pkg.put_message_f(
+                           in_which         => FND_FILE.LOG
+                          ,iv_message       => lv_outmsg
+                          ,in_new_line      => 0
+                         );
+        RAISE init_fail_expt;
+      END IF;
+--
+      -- ===============================================
+      -- 2.プロファイル取得(事業者区分（課税）)
+      -- ===============================================
+      gv_bus_div_tax  := FND_PROFILE.VALUE( cv_prof_bus_div_tax );
+      IF ( gv_bus_div_tax IS NULL ) THEN
+        lv_outmsg     := xxccp_common_pkg.get_msg(
+                           iv_application   => cv_appli_short_name_xxcok
+                          ,iv_name          => cv_msg_xxcok1_00003
+                          ,iv_token_name1   => cv_tkn_profile
+                          ,iv_token_value1  => cv_prof_bus_div_tax
                          );
         lb_msg_return := xxcok_common_pkg.put_message_f(
                            in_which         => FND_FILE.LOG
