@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.18
+ * Version          : 1.20
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2018/08/07    1.17  K.Nara           [障害E_本稼動_15202] 出力対象無し警告終了対応
  *  2018/11/15    1.18  E.Yazaki         [障害E_本稼動_15367]年号変更対応（営業・個別・販売）
  *  2019/08/08    1.19  Y.Koh            [障害E_本稼動_15784]
+ *  2023/09/11    1.20  R.Oikawa         [障害E_本稼動_19179]【個別開発】インボイス対応（BM関連）
  *
  *****************************************************************************************/
   --==================================================
@@ -173,6 +174,31 @@ AS
   ct_output_num_init               CONSTANT xxcok_bm_sales_rep_work.output_num%TYPE := -1;  -- カレント出力番号初期値
   cv_slash                         CONSTANT VARCHAR2(1)     := '/';
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+  cv_t_number                      CONSTANT VARCHAR2(30)    := 'XXCMM1_INVOICE_T_NO';              -- XXCMM:適格請求書発行事業者登録番号
+  cv_profile_name_15               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_PROMPT_BM_SUM';   -- XXCOK:支払案内書_販売手数料計見出し
+  cv_profile_name_16               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_TAX_FREE';        -- XXCOK:支払案内書_不課税
+  cv_profile_name_17               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_TAX_RATE';        -- XXCOK:支払案内書_対象税率
+  cv_profile_name_18               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_INC_TAX';         -- XXCOK:支払案内書_税込
+  cv_profile_name_19               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_EX_TAX';          -- XXCOK:支払案内書_税抜
+  cv_profile_name_20               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_TAX';             -- XXCOK:支払案内書_消費税
+  cv_profile_name_21               CONSTANT VARCHAR2(50)    := 'XXCOK1_PAY_GUIDE_SALES_MFT';       -- XXCOK:支払案内書_販売手数料
+  -- BM税区分
+  cv_tax_type_1                    CONSTANT VARCHAR2(1)     := '1';                  -- 税込み
+  cv_tax_type_2                    CONSTANT VARCHAR2(1)     := '2';                  -- 税抜き
+  cv_tax_type_3                    CONSTANT VARCHAR2(1)     := '3';                  -- 非課税
+  -- 税計算区分
+  cv_tax_calc_type_1               CONSTANT VARCHAR2(1)     := '1';                  -- 案内書単位
+  cv_tax_calc_type_2               CONSTANT VARCHAR2(1)     := '2';                  -- 明細単位
+  cv_space                         CONSTANT VARCHAR2(1)     := ' ';                  -- スペース
+  cv_msg_cok_10860                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-10860';
+  cv_tkn_print_type                CONSTANT VARCHAR2(30)    := 'PRINT_TYPE';
+  -- スナップタイミング
+  cv_snapshot_timing_1             CONSTANT VARCHAR2(1)     := '1';                  -- 2営
+  cv_snapshot_timing_2             CONSTANT VARCHAR2(1)     := '2';                  -- FB後
+  -- 税率
+  cv_ten                           CONSTANT VARCHAR2(2)     := '10';
+-- Ver.1.20 ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -212,6 +238,17 @@ AS
   gv_dept_jimu                     VARCHAR2(4);                                 -- 部門コード_事務センター
   gv_belong_base_cd                VARCHAR2(4);                                 -- 実行ユーザ所属拠点
 -- 2017/12/29 Ver.1.12 [障害E_本稼動_14789] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+  gv_t_number                      VARCHAR2(14)  DEFAULT NULL;                  -- 登録番号
+  gv_prompt_bm_sum                 VARCHAR2(50)  DEFAULT NULL;                  -- 支払案内書_販売手数料計見出し
+  gv_tax_free                      VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_不課税
+  gv_tax_rate                      VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_対象税率
+  gv_inc_tax                       VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_税込
+  gv_ex_tax                        VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_税抜
+  gv_tax                           VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_消費税
+  gv_sales_mft                     VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_販売手数料
+  gv_param_target_yyyymm           VARCHAR2(6)   DEFAULT NULL;                  -- 案内書発行年月
+-- Ver.1.20 ADD END
   --==================================================
   -- グローバルカーソル
   --==================================================
@@ -240,60 +277,63 @@ AS
          , MAX( xrbpd.payment_date_wk )           AS payment_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
          , gv_prompt_fe                           AS bm_index_3
-         , CASE WHEN xrbpd.org_slip_number IS NOT NULL THEN
--- Ver1.14 Mod Start
---               (SELECT SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
-               (SELECT /*+ INDEX( gjl GL_JE_LINES_N1 ) */
-                       SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
--- Ver1.14 Mod End
-                  FROM gl_sets_of_books     gsob
-                      ,gl_je_sources        gjs
-                      ,gl_je_categories     gjc
-                      ,gl_je_headers        gjh
-                      ,gl_je_lines          gjl
-                      ,gl_code_combinations gcc
-                      ,gl_period_statuses   gps
-                      ,fnd_application      fa
-                 WHERE gsob.set_of_books_id      = gt_set_of_books_id
-                   AND gjs.user_je_source_name   = gt_source_cok
-                   AND gjc.user_je_category_name = gt_category_bm
-                   AND gjs.language              = userenv('LANG')
-                   AND gjs.source_lang           = gjs.language
-                   AND gjs.source_lang           = gjc.language
-                   AND gjs.source_lang           = gjc.source_lang
-                   AND gsob.set_of_books_id      = gjh.set_of_books_id
-                   AND gjs.je_source_name        = gjh.je_source
-                   AND gjh.je_header_id          = gjl.je_header_id
-                   AND gjl.code_combination_id   = gcc.code_combination_id
-                   AND gcc.segment3              = gt_aff3_fee
-                   AND gcc.segment4              = gt_aff4_transfer_fee
-                   AND gjl.attribute7            = xrbpd.payment_code
-                   AND gjl.attribute3            = xrbpd.org_slip_number
-                   AND xrbpd.payment_date_wk     BETWEEN gps.start_date AND gps.end_date
-                   AND gps.set_of_books_id       = gsob.set_of_books_id
-                   AND gps.period_name           = gjh.period_name
--- Ver1.14 Add Start
-                   AND gps.period_name           = gjl.period_name
--- Ver1.14 Add End
-                   AND fa.application_short_name = cv_appl_short_name_gl
-                   AND fa.application_id         = gps.application_id
-               )
-           ELSE CASE WHEN xrbpd.bank_charge_bearer = cv_bank_charge_bearer THEN 0
-                     WHEN xrbpd.balance_cancel_date IS NOT NULL THEN 0
-                ELSE(SELECT CASE WHEN SUM( CASE WHEN xrbpd2.calc_type <> 50
-                                                 AND xrbpd2.balance_cancel_date IS NULL THEN xrbpd2.backmargin
-                                           ELSE 0 END
-                                         + CASE WHEN xrbpd2.calc_type =  50
-                                                 AND xrbpd2.balance_cancel_date IS NULL THEN xrbpd2.backmargin
-                                           ELSE 0 END
-                                         ) < gn_bank_fee_trans THEN gn_bank_fee_less
-                            ELSE gn_bank_fee_more END
-                       FROM xxcok_rep_bm_pg_detail xrbpd2
-                      WHERE xrbpd2.payment_code    = xrbpd.payment_code
-                        AND xrbpd2.payment_date_wk = xrbpd.payment_date_wk
-                    )
-                END
-           END * ( 1 + gn_bm_tax / 100 )          AS bm_amt_3
+-- Ver.1.20 MOD START
+--         , CASE WHEN xrbpd.org_slip_number IS NOT NULL THEN
+---- Ver1.14 Mod Start
+----               (SELECT SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
+--               (SELECT /*+ INDEX( gjl GL_JE_LINES_N1 ) */
+--                       SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
+---- Ver1.14 Mod End
+--                  FROM gl_sets_of_books     gsob
+--                      ,gl_je_sources        gjs
+--                      ,gl_je_categories     gjc
+--                      ,gl_je_headers        gjh
+--                      ,gl_je_lines          gjl
+--                      ,gl_code_combinations gcc
+--                      ,gl_period_statuses   gps
+--                      ,fnd_application      fa
+--                 WHERE gsob.set_of_books_id      = gt_set_of_books_id
+--                   AND gjs.user_je_source_name   = gt_source_cok
+--                   AND gjc.user_je_category_name = gt_category_bm
+--                   AND gjs.language              = userenv('LANG')
+--                   AND gjs.source_lang           = gjs.language
+--                   AND gjs.source_lang           = gjc.language
+--                   AND gjs.source_lang           = gjc.source_lang
+--                   AND gsob.set_of_books_id      = gjh.set_of_books_id
+--                   AND gjs.je_source_name        = gjh.je_source
+--                   AND gjh.je_header_id          = gjl.je_header_id
+--                   AND gjl.code_combination_id   = gcc.code_combination_id
+--                   AND gcc.segment3              = gt_aff3_fee
+--                   AND gcc.segment4              = gt_aff4_transfer_fee
+--                   AND gjl.attribute7            = xrbpd.payment_code
+--                   AND gjl.attribute3            = xrbpd.org_slip_number
+--                   AND xrbpd.payment_date_wk     BETWEEN gps.start_date AND gps.end_date
+--                   AND gps.set_of_books_id       = gsob.set_of_books_id
+--                   AND gps.period_name           = gjh.period_name
+---- Ver1.14 Add Start
+--                   AND gps.period_name           = gjl.period_name
+---- Ver1.14 Add End
+--                   AND fa.application_short_name = cv_appl_short_name_gl
+--                   AND fa.application_id         = gps.application_id
+--               )
+--           ELSE CASE WHEN xrbpd.bank_charge_bearer = cv_bank_charge_bearer THEN 0
+--                     WHEN xrbpd.balance_cancel_date IS NOT NULL THEN 0
+--                ELSE(SELECT CASE WHEN SUM( CASE WHEN xrbpd2.calc_type <> 50
+--                                                 AND xrbpd2.balance_cancel_date IS NULL THEN xrbpd2.backmargin
+--                                           ELSE 0 END
+--                                         + CASE WHEN xrbpd2.calc_type =  50
+--                                                 AND xrbpd2.balance_cancel_date IS NULL THEN xrbpd2.backmargin
+--                                           ELSE 0 END
+--                                         ) < gn_bank_fee_trans THEN gn_bank_fee_less
+--                            ELSE gn_bank_fee_more END
+--                       FROM xxcok_rep_bm_pg_detail xrbpd2
+--                      WHERE xrbpd2.payment_code    = xrbpd.payment_code
+--                        AND xrbpd2.payment_date_wk = xrbpd.payment_date_wk
+--                    )
+--                END
+--           END * ( 1 + gn_bm_tax / 100 )          AS bm_amt_3
+         , 0       AS bm_amt_3
+-- Ver.1.20 MOD END
          , xrbpd.org_slip_number
          , xrbpd.payment_date_wk
          , xrbpd.bank_charge_bearer
@@ -301,11 +341,84 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , xrbpd.output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , CASE
+           WHEN pvsa.attribute8 IS NOT NULL AND pvsa.attribute9 IS NOT NULL THEN
+             pvsa.attribute8 || pvsa.attribute9
+           END                                    AS payment_t_no
+         , SUM( xrbpd.selling_amt )               AS sales_amt_sum
+         , gv_prompt_bm                           AS bm_index_name1
+         , gv_prompt_ep                           AS bm_index_name2
+         , gv_prompt_bm_sum                       AS bm_index_name3
+         , gv_prompt_fe                           AS bm_index_name4
+         , CASE xrbpd.tax_type
+           WHEN cv_tax_type_3 THEN
+             gv_tax_free
+           ELSE
+             gn_bm_tax || gv_tax_rate
+           END                                    AS tax_type1
+         , CASE xrbpd.tax_type
+           WHEN cv_tax_type_3 THEN
+             gv_tax_free
+           ELSE
+             gn_bm_tax || gv_tax_rate
+           END                                    AS tax_type2
+         , CASE xrbpd.tax_type
+           WHEN cv_tax_type_3 THEN
+             gv_tax_free
+           ELSE
+             gn_bm_tax || gv_tax_rate
+           END                                    AS tax_type3
+         , gn_bm_tax || gv_tax_rate               AS tax_type4       -- 振込手数料
+         , NULL                                   AS tax_type5       -- お支払金額
+         , SUM( CASE
+                  WHEN xrbpd.calc_type <> 50 THEN
+                    xrbpd.bm_amt1
+                  END
+              )                                   AS bm_sum_amt1_1   -- 1列1行目
+         , SUM( CASE
+                   WHEN xrbpd.calc_type = 50 THEN
+                     xrbpd.bm_amt1
+                   END
+               )                                  AS bm_sum_amt1_2   -- 1列2行目
+         , SUM( CASE
+                  WHEN xrbpd.calc_type <> 50 THEN
+                    xrbpd.bm_amt2
+                  END
+             )                                    AS bm_sum_amt2_1   -- 2列1行目
+         , SUM( CASE
+                  WHEN xrbpd.calc_type = 50 THEN
+                    xrbpd.bm_amt2
+                  END
+             )                                    AS bm_sum_amt2_2   -- 2列2行目
+         , SUM( CASE
+                  WHEN xrbpd.calc_type <> 50 THEN
+                    xrbpd.bm_amt3
+                  END
+             )                                    AS bm_sum_amt3_1   -- 3列1行目
+         , SUM( CASE
+                  WHEN xrbpd.calc_type = 50 THEN
+                    xrbpd.bm_amt3
+                  END
+             )                                    AS bm_sum_amt3_2   -- 3列2行目
+         , xrbpd.payment_type                     AS payment_type
+         , xrbpd.tax_type                         AS tax_type
+         , xrbpd.tax_calc_type                    AS tax_calc_type
+-- Ver.1.20 ADD END
     FROM xxcok_rep_bm_pg_detail    xrbpd
+-- Ver.1.20 ADD START
+       , po_vendors               pv   -- 仕入先マスタ
+       , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
+-- Ver.1.20 ADD END
     WHERE xrbpd.request_id = cn_request_id
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
       AND xrbpd.output_num = gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+      AND xrbpd.payment_code   = pv.segment1
+      AND pv.vendor_id         = pvsa.vendor_id
+      AND pvsa.org_id          = gn_org_id
+-- Ver.1.20 ADD END
     GROUP BY xrbpd.payment_code
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
             ,xrbpd.contact_base_code
@@ -319,6 +432,15 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
             ,xrbpd.output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+            , CASE
+              WHEN pvsa.attribute8 IS NOT NULL AND pvsa.attribute9 IS NOT NULL THEN
+                pvsa.attribute8 || pvsa.attribute9
+              END
+            ,xrbpd.payment_type
+            ,xrbpd.tax_type
+            ,xrbpd.tax_calc_type
+-- Ver.1.20 ADD END
     ;
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
   --アップロード出力対象取得
@@ -620,6 +742,12 @@ AS
     -- ローカル定数
     --==================================================
     cv_prg_name                    CONSTANT VARCHAR2(30) := 'update_xrbpd';     -- プログラム名
+-- Ver.1.20 ADD START
+    cv_down                        CONSTANT VARCHAR2(4)  := 'DOWN';
+    --セパレータ
+    cv_sepa_period   CONSTANT VARCHAR2(1)  := '.';  -- ピリオド
+    cv_sepa_colon    CONSTANT VARCHAR2(1)  := ':';  -- コロン
+-- Ver.1.20 ADD END
     --==================================================
     -- ローカル変数
     --==================================================
@@ -629,11 +757,45 @@ AS
     lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+-- Ver.1.20 ADD START
+    ln_bm_sum_amt1_3               xxcok_rep_bm_pg_detail.bm_sum_amt1_3%TYPE;         -- 編集用合計手数料1_3
+    ln_bm_sum_amt1_4               xxcok_rep_bm_pg_detail.bm_sum_amt1_4%TYPE;         -- 編集用合計手数料1_4
+    ln_bm_sum_amt1_subtotal        xxcok_rep_bm_pg_detail.bm_sum_amt1_subtotal%TYPE;  -- 編集用合計手数料1小計
+    ln_bm_sum_amt2_3               xxcok_rep_bm_pg_detail.bm_sum_amt2_3%TYPE;         -- 編集用合計手数料2_3
+    ln_bm_sum_amt2_4               xxcok_rep_bm_pg_detail.bm_sum_amt2_4%TYPE;         -- 編集用合計手数料2_4
+    ln_bm_sum_amt2_subtotal        xxcok_rep_bm_pg_detail.bm_sum_amt2_subtotal%TYPE;  -- 編集用合計手数料2小計
+    ln_bm_sum_amt3_3               xxcok_rep_bm_pg_detail.bm_sum_amt3_3%TYPE;         -- 編集用合計手数料3_3
+    ln_bm_sum_amt3_4               xxcok_rep_bm_pg_detail.bm_sum_amt3_4%TYPE;         -- 編集用合計手数料3_4
+    ln_bm_sum_amt3_subtotal        xxcok_rep_bm_pg_detail.bm_sum_amt3_subtotal%TYPE;  -- 編集用合計手数料3小計
+    ln_payment_amt_sum             xxcok_rep_bm_pg_detail.payment_amt_sum%TYPE;       -- お支払金額
+    lv_total_title_name1           xxcok_rep_bm_pg_detail.total_title_name1%TYPE;     -- 合計欄タイトル(左)
+    lv_total_title_name2           xxcok_rep_bm_pg_detail.total_title_name2%TYPE;     -- 合計欄タイトル(中)
+    lv_total_title_name3           xxcok_rep_bm_pg_detail.total_title_name3%TYPE;     -- 合計欄タイトル(右)
+    lv_bm_title1                   xxcok_rep_bm_pg_detail.bm_title1%TYPE;             -- 明細欄タイトル(左)
+    lv_bm_title2                   xxcok_rep_bm_pg_detail.bm_title2%TYPE;             -- 明細欄タイトル(中)
+    lv_bm_title3                   xxcok_rep_bm_pg_detail.bm_title3%TYPE;             -- 明細欄タイトル(右)
+    ln_sales_amt_left              xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 販売手数料の合計額(左)
+    ln_sales_amt_center            xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 販売手数料の合計額(中)
+    ln_sales_amt_right             xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 販売手数料の合計額(右)
+    ln_electric_amt_left           xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 電気料の合計額(左)
+    ln_electric_amt_center         xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 電気料の合計額(中)
+    ln_electric_amt_right          xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 電気料の合計額(右)
+    ln_sales_amt_sum_left          xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 販売手数料計(左)
+    ln_sales_amt_sum_center        xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 販売手数料計(中)
+    ln_sales_amt_sum_right         xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 販売手数料計(右)
+    ln_mft_left                    xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 振込手数料(左)
+    ln_mft_center                  xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 振込手数料(中)
+    ln_mft_right                   xxcok_rep_bm_pg_detail.bm_sum_amt1_1%TYPE;         -- 振込手数料(右)
+-- Ver.1.20 ADD END
     --==================================================
     -- ローカル例外
     --==================================================
     --*** エラー終了 ***
     error_proc_expt                EXCEPTION;
+-- Ver.1.20 ADD START
+    recalc_pay_amt_err_expt        EXCEPTION;          -- 支払金額再計算エラー例外
+    calc_bank_trans_fee_err_expt   EXCEPTION;          -- 振込手数料算出エラー例外
+-- Ver.1.20 ADD END
 --
   BEGIN
     --==================================================
@@ -645,6 +807,149 @@ AS
     --==================================================
     << g_summary_tab_loop >>
     FOR i IN 1 .. g_summary_tab.COUNT LOOP
+-- Ver.1.20 ADD START
+      --==================================================
+      -- 販売手数料計、振込手数料、お支払金額算出
+      --==================================================
+      -- 変数クリア
+      ln_bm_sum_amt1_3        := NULL;
+      ln_bm_sum_amt1_4        := NULL;
+      ln_bm_sum_amt1_subtotal := NULL;
+      ln_bm_sum_amt2_3        := NULL;
+      ln_bm_sum_amt2_4        := NULL;
+      ln_bm_sum_amt2_subtotal := NULL;
+      ln_bm_sum_amt3_3        := NULL;
+      ln_bm_sum_amt3_4        := NULL;
+      ln_bm_sum_amt3_subtotal := NULL;
+      ln_payment_amt_sum      := NULL;
+      lv_total_title_name1    := NULL;
+      lv_total_title_name2    := NULL;
+      lv_total_title_name3    := NULL;
+      lv_bm_title1            := NULL;
+      lv_bm_title2            := NULL;
+      lv_bm_title3            := NULL;
+      ln_sales_amt_left       := NULL;
+      ln_sales_amt_center     := NULL;
+      ln_sales_amt_right      := NULL;
+      ln_electric_amt_left    := NULL;
+      ln_electric_amt_center  := NULL;
+      ln_electric_amt_right   := NULL;
+      ln_sales_amt_sum_left   := NULL;
+      ln_sales_amt_sum_center := NULL;
+      ln_sales_amt_sum_right  := NULL;
+      ln_mft_left             := NULL;
+      ln_mft_center           := NULL;
+      ln_mft_right            := NULL;
+--
+      --==================================================
+      -- 支払金額再計算
+      --==================================================
+      xxcok_common_pkg.recalc_pay_amt_p(
+        ov_errbuf               => lv_errbuf                                 -- エラー・バッファ
+      , ov_retcode              => lv_retcode                                -- リターンコード
+      , ov_errmsg               => lv_errmsg                                 -- エラー・メッセージ
+      , iv_pay_kbn              => g_summary_tab(i).payment_type             -- 支払区分（1:本振－WEB・ハガキ／2:本振－案内書なし／その他）
+      , iv_tax_calc_kbn         => g_summary_tab(i).tax_calc_type            -- 税計算区分（1:案内書単位／2:明細単位）
+      , iv_tax_kbn              => g_summary_tab(i).tax_type                 -- 税区分（1:税込み／2:税抜き／3:非課税）
+      , iv_tax_rounding_rule    => cv_down                                   -- 端数処理区分（NEAREST:四捨五入／UP:切上げ／DOWN:切捨て）
+      , in_tax_rate             => gn_bm_tax                                 -- 税率
+      , in_pay_amt_no_tax       => ( NVL( g_summary_tab(i).bm_sum_amt2_1, 0) + NVL( g_summary_tab(i).bm_sum_amt2_2, 0) )   -- 支払金額（税抜）
+      , in_pay_amt_tax          => ( NVL( g_summary_tab(i).bm_sum_amt3_1, 0) + NVL( g_summary_tab(i).bm_sum_amt3_2, 0) )   -- 支払金額（消費税）
+      , in_pay_amt_with_tax     => ( NVL( g_summary_tab(i).bm_sum_amt1_1, 0) + NVL( g_summary_tab(i).bm_sum_amt1_2, 0) )   -- 支払金額（税込）
+      , on_pay_amt_no_tax       => ln_bm_sum_amt2_3                          -- 算出後支払金額（税抜）
+      , on_pay_amt_tax          => ln_bm_sum_amt3_3                          -- 算出後支払金額（消費税）
+      , on_pay_amt_with_tax     => ln_bm_sum_amt1_3                          -- 算出後支払金額（税込）
+      );
+      --
+      -- リターンコード判定
+      IF ( lv_retcode = cv_status_normal ) THEN
+        --==================================================
+        -- 振込手数料算出
+        --==================================================
+        xxcok_common_pkg.calc_bank_trans_fee_p(
+          ov_errbuf                   => lv_errbuf                           -- エラー・バッファ
+        , ov_retcode                  => lv_retcode                          -- リターンコード
+        , ov_errmsg                   => lv_errmsg                           -- エラー・メッセージ
+        , in_bank_trans_amt           => ln_bm_sum_amt1_3                    -- 振込額
+        , in_base_amt                 => gn_bank_fee_trans                   -- 基準額
+        , in_fee_less_base_amt        => gn_bank_fee_less                    -- 基準額未満手数料
+        , in_fee_more_base_amt        => gn_bank_fee_more                    -- 基準額以上手数料
+        , in_fee_tax_rate             => gn_bm_tax                           -- 手数料税率
+        , iv_bank_charge_bearer       => g_summary_tab(i).bank_charge_bearer -- 振込手数料負担者
+        , on_bank_trans_fee_no_tax    => ln_bm_sum_amt2_4                    -- 振込手数料（税抜）
+        , on_bank_trans_fee_tax       => ln_bm_sum_amt3_4                    -- 振込手数料（消費税）
+        , on_bank_trans_fee_with_tax  => ln_bm_sum_amt1_4                    -- 振込手数料（税込）
+        );
+        -- リターンコード判定
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          -- 「正常」以外の場合
+          RAISE calc_bank_trans_fee_err_expt;
+        END IF;
+      ELSE
+        -- 「正常」以外の場合
+        RAISE recalc_pay_amt_err_expt;
+      END IF;
+--
+      -- 更新項目編集(税込み/税抜き/非課税)
+      IF g_summary_tab(i).tax_type = cv_tax_type_1 THEN                      -- 税込み
+        lv_total_title_name1     := gv_inc_tax;                              -- 合計欄タイトル(左)
+        lv_total_title_name2     := gv_ex_tax;                               -- 合計欄タイトル(中)
+        lv_total_title_name3     := gv_tax;                                  -- 合計欄タイトル(右)
+        lv_bm_title1             := gv_sales_mft || cv_space || gv_ex_tax;   -- 明細欄タイトル(左)
+        lv_bm_title2             := gv_tax;                                  -- 明細欄タイトル(中)
+        lv_bm_title3             := gv_inc_tax;                              -- 明細欄タイトル(右)
+        ln_sales_amt_left        := g_summary_tab(i).bm_sum_amt1_1;          -- 販売手数料の合計額(左)
+        ln_sales_amt_center      := g_summary_tab(i).bm_sum_amt2_1;          -- 販売手数料の合計額(中)
+        ln_sales_amt_right       := g_summary_tab(i).bm_sum_amt3_1;          -- 販売手数料の合計額(右)
+        ln_electric_amt_left     := g_summary_tab(i).bm_sum_amt1_2;          -- 電気料の合計額(左)
+        ln_electric_amt_center   := g_summary_tab(i).bm_sum_amt2_2;          -- 電気料の合計額(中)
+        ln_electric_amt_right    := g_summary_tab(i).bm_sum_amt3_2;          -- 電気料の合計額(右)
+        ln_sales_amt_sum_left    := ln_bm_sum_amt1_3;                        -- 販売手数料計(左)
+        ln_sales_amt_sum_center  := ln_bm_sum_amt2_3;                        -- 販売手数料計(中)
+        ln_sales_amt_sum_right   := ln_bm_sum_amt3_3;                        -- 販売手数料計(右)
+        ln_mft_left              := ln_bm_sum_amt1_4;                        -- 振込手数料(左)
+        ln_mft_center            := ln_bm_sum_amt2_4;                        -- 振込手数料(中)
+        ln_mft_right             := ln_bm_sum_amt3_4;                        -- 振込手数料(右)
+        ln_bm_sum_amt1_subtotal  := ln_bm_sum_amt1_3 - ln_bm_sum_amt1_4;     -- お支払金額(左)
+        ln_bm_sum_amt2_subtotal  := ln_bm_sum_amt2_3 - ln_bm_sum_amt2_4;     -- お支払金額(中)
+        ln_bm_sum_amt3_subtotal  := ln_bm_sum_amt3_3 - ln_bm_sum_amt3_4;     -- お支払金額(右)
+        ln_payment_amt_sum       := ln_bm_sum_amt1_subtotal;                 -- お支払金額
+      ELSIF g_summary_tab(i).tax_type IN (cv_tax_type_2,cv_tax_type_3) THEN  -- 税抜き/非課税
+        lv_total_title_name1     := gv_ex_tax;                               -- 合計欄タイトル(左)
+        lv_total_title_name2     := gv_tax;                                  -- 合計欄タイトル(中)
+        lv_total_title_name3     := gv_inc_tax;                              -- 合計欄タイトル(右)
+        lv_bm_title1             := gv_sales_mft || cv_space || gv_ex_tax;   -- 明細欄タイトル(左)
+        lv_bm_title2             := gv_tax;                                  -- 明細欄タイトル(中)
+        lv_bm_title3             := gv_inc_tax;                              -- 明細欄タイトル(右)
+        ln_sales_amt_left        := g_summary_tab(i).bm_sum_amt2_1;          -- 販売手数料の合計額(左)
+        ln_sales_amt_center      := g_summary_tab(i).bm_sum_amt3_1;          -- 販売手数料の合計額(中)
+        ln_sales_amt_right       := g_summary_tab(i).bm_sum_amt1_1;          -- 販売手数料の合計額(右)
+        ln_electric_amt_left     := g_summary_tab(i).bm_sum_amt2_2;          -- 電気料の合計額(左)
+        ln_electric_amt_center   := g_summary_tab(i).bm_sum_amt3_2;          -- 電気料の合計額(中)
+        ln_electric_amt_right    := g_summary_tab(i).bm_sum_amt1_2;          -- 電気料の合計額(右)
+        ln_sales_amt_sum_left    := ln_bm_sum_amt2_3;                        -- 販売手数料計(左)
+        ln_sales_amt_sum_center  := ln_bm_sum_amt3_3;                        -- 販売手数料計(中)
+        ln_sales_amt_sum_right   := ln_bm_sum_amt1_3;                        -- 販売手数料計(右)
+        ln_mft_left              := ln_bm_sum_amt2_4;                        -- 振込手数料(左)
+        ln_mft_center            := ln_bm_sum_amt3_4;                        -- 振込手数料(中)
+        ln_mft_right             := ln_bm_sum_amt1_4;                        -- 振込手数料(右)
+        ln_bm_sum_amt1_subtotal  := ln_bm_sum_amt2_3 - ln_bm_sum_amt2_4;     -- お支払金額(左)
+        ln_bm_sum_amt2_subtotal  := ln_bm_sum_amt3_3 - ln_bm_sum_amt3_4;     -- お支払金額(中)
+        ln_bm_sum_amt3_subtotal  := ln_bm_sum_amt1_3 - ln_bm_sum_amt1_4;     -- お支払金額(右)
+        ln_payment_amt_sum       := ln_bm_sum_amt3_subtotal;                 -- お支払金額
+      END IF;
+--
+      -- 更新項目編集(案内書単位)
+      IF g_summary_tab(i).tax_calc_type = cv_tax_calc_type_1 THEN
+        lv_bm_title1             :=   NULL;             -- 明細欄タイトル(左)
+        lv_bm_title2             :=   NULL;             -- 明細欄タイトル(中)
+        lv_bm_title3             :=   gv_sales_mft;     -- 明細欄タイトル(右)
+        ln_sales_amt_center      :=   NULL;             -- 販売手数料の合計額(中)
+        ln_sales_amt_right       :=   NULL;             -- 販売手数料の合計額(右)
+        ln_electric_amt_center   :=   NULL;             -- 電気料の合計額(中)
+        ln_electric_amt_right    :=   NULL;             -- 電気料の合計額(右)
+      END IF;
+-- Ver.1.20 ADD END
       --==================================================
       -- 帳票ワークテーブル更新
       --==================================================
@@ -749,6 +1054,157 @@ AS
                                            AND g_summary_tab(i).closing_date BETWEEN to_date(flv.ATTRIBUTE1,'YYYY/MM/DD') and to_date(flv.ATTRIBUTE2,'YYYY/MM/DD')
                                        ) 
 -- 2019/08/08 Ver1.19 ADD End
+-- Ver.1.20 ADD START
+        , xrbpd.invoice_t_no       = gv_t_number
+        , xrbpd.payment_t_no       = g_summary_tab(i).payment_t_no
+        , xrbpd.payment_amt_sum    = ln_payment_amt_sum
+        , xrbpd.sales_amt_sum      = g_summary_tab(i).sales_amt_sum
+        , total_title_name1        = lv_total_title_name1                         -- 合計欄タイトル(左)
+        , total_title_name2        = lv_total_title_name2                         -- 合計欄タイトル(中)
+        , total_title_name3        = lv_total_title_name3                         -- 合計欄タイトル(右)
+        , bm_title1                = lv_bm_title1                                 -- 明細欄タイトル(左)
+        , bm_title2                = lv_bm_title2                                 -- 明細欄タイトル(中)
+        , bm_title3                = lv_bm_title3                                 -- 明細欄タイトル(右)
+        -- 合計欄1行目
+        , xrbpd.bm_index_name1     = CASE
+                                     WHEN ln_sales_amt_left > 0 THEN
+                                       g_summary_tab(i).bm_index_name1
+                                     ELSE
+                                       CASE WHEN ln_electric_amt_left > 0 THEN
+                                         g_summary_tab(i).bm_index_name2
+                                       END
+                                     END
+        , xrbpd.tax_type1          = CASE
+                                     WHEN ln_sales_amt_left > 0 THEN
+                                       g_summary_tab(i).tax_type1
+                                     ELSE
+                                       CASE WHEN ln_electric_amt_left > 0 THEN
+                                         g_summary_tab(i).tax_type2
+                                       END
+                                     END
+        , xrbpd.bm_sum_amt1_1      = CASE
+                                     WHEN ln_sales_amt_left > 0 THEN
+                                       ln_sales_amt_left
+                                     ELSE
+                                       CASE WHEN ln_electric_amt_left > 0 THEN
+                                         ln_electric_amt_left
+                                       END
+                                     END
+        , xrbpd.bm_sum_amt2_1      = CASE
+                                     WHEN ln_sales_amt_left > 0 THEN
+                                       ln_sales_amt_center
+                                     ELSE
+                                       CASE WHEN ln_electric_amt_left > 0 THEN
+                                         ln_electric_amt_center
+                                       END
+                                     END
+        , xrbpd.bm_sum_amt3_1      = CASE
+                                     WHEN ln_sales_amt_left > 0 THEN
+                                       ln_sales_amt_right
+                                     ELSE
+                                       CASE WHEN ln_electric_amt_left > 0 THEN
+                                         ln_electric_amt_right
+                                       END
+                                     END
+        -- 合計欄2行目
+        , xrbpd.bm_index_name2     = CASE
+                                     WHEN ln_sales_amt_left > 0
+                                      AND ln_electric_amt_left > 0 THEN
+                                       g_summary_tab(i).bm_index_name2
+                                     END
+        , xrbpd.tax_type2          = CASE
+                                     WHEN ln_sales_amt_left > 0
+                                      AND ln_electric_amt_left > 0 THEN
+                                       g_summary_tab(i).tax_type2
+                                     END
+        , xrbpd.bm_sum_amt1_2      = CASE
+                                     WHEN ln_sales_amt_left > 0
+                                      AND ln_electric_amt_left > 0 THEN
+                                        ln_electric_amt_left
+                                     END
+        , xrbpd.bm_sum_amt2_2      = CASE
+                                     WHEN ln_sales_amt_left > 0
+                                      AND ln_electric_amt_left > 0 THEN
+                                        ln_electric_amt_center
+                                     END
+        , xrbpd.bm_sum_amt3_2      = CASE
+                                     WHEN ln_sales_amt_left > 0
+                                      AND ln_electric_amt_left > 0 THEN
+                                        ln_electric_amt_right
+                                     END
+        -- 合計欄3行目
+        , xrbpd.bm_index_name3     = CASE
+                                     WHEN ln_sales_amt_sum_left > 0 THEN
+                                        g_summary_tab(i).bm_index_name3
+                                     END
+        , xrbpd.tax_type3          = CASE
+                                     WHEN ln_sales_amt_sum_left > 0 THEN
+                                        g_summary_tab(i).tax_type3
+                                     END
+        , xrbpd.bm_sum_amt1_3      = CASE
+                                     WHEN ln_sales_amt_sum_left > 0 THEN
+                                        ln_sales_amt_sum_left
+                                     END
+        , xrbpd.bm_sum_amt2_3      = CASE
+                                     WHEN ln_sales_amt_sum_left > 0 THEN
+                                        ln_sales_amt_sum_center
+                                     END
+        , xrbpd.bm_sum_amt3_3      = CASE
+                                     WHEN ln_sales_amt_sum_left > 0 THEN
+                                        ln_sales_amt_sum_right
+                                     END
+        -- 合計欄4行目
+        , xrbpd.bm_index_name4     = CASE
+                                     WHEN ln_mft_left > 0 THEN
+                                        g_summary_tab(i).bm_index_name4
+                                     END
+        , xrbpd.tax_type4          = CASE
+                                     WHEN ln_mft_left > 0 THEN
+                                        g_summary_tab(i).tax_type4
+                                     END
+        , xrbpd.bm_sum_amt1_4      = CASE
+                                     WHEN ln_mft_left > 0 THEN
+                                        ln_mft_left * -1
+                                     END
+        , xrbpd.bm_sum_amt2_4      = CASE
+                                     WHEN ln_mft_center > 0 THEN
+                                        ln_mft_center * -1
+                                     END
+        , xrbpd.bm_sum_amt3_4      = CASE
+                                     WHEN ln_mft_right > 0 THEN
+                                        ln_mft_right * -1
+                                     END
+        -- 明細欄金額(左)
+        , xrbpd.bm_amt1            = CASE
+                                     WHEN g_summary_tab(i).tax_calc_type = cv_tax_calc_type_1 THEN             -- 案内書単位
+                                       NULL
+                                     WHEN g_summary_tab(i).tax_calc_type = cv_tax_calc_type_2 THEN             -- 明細単位
+                                       xrbpd.bm_amt2
+                                     END
+        -- 明細欄金額(中)
+        , xrbpd.bm_amt2            = CASE
+                                     WHEN g_summary_tab(i).tax_calc_type = cv_tax_calc_type_1 THEN             -- 案内書単位
+                                       NULL
+                                     WHEN g_summary_tab(i).tax_calc_type = cv_tax_calc_type_2 THEN             -- 明細単位
+                                       xrbpd.bm_amt3
+                                     END
+        -- 明細欄金額(右)
+        , xrbpd.bm_amt3            = CASE
+                                     WHEN g_summary_tab(i).tax_calc_type = cv_tax_calc_type_1 THEN             -- 案内書単位
+                                       CASE WHEN g_summary_tab(i).tax_type = cv_tax_type_1    THEN             -- 税込み
+                                         xrbpd.bm_amt1
+                                       WHEN g_summary_tab(i).tax_type IN (cv_tax_type_2,cv_tax_type_3)   THEN  -- 税抜き/非課税
+                                         xrbpd.bm_amt2
+                                       END
+                                     WHEN g_summary_tab(i).tax_calc_type = cv_tax_calc_type_2 THEN             -- 明細単位
+                                       xrbpd.bm_amt1
+                                     END
+        -- お支払金額
+        , xrbpd.tax_type5            = g_summary_tab(i).tax_type5
+        , xrbpd.bm_sum_amt1_subtotal = ln_bm_sum_amt1_subtotal
+        , xrbpd.bm_sum_amt2_subtotal = ln_bm_sum_amt2_subtotal
+        , xrbpd.bm_sum_amt3_subtotal = ln_bm_sum_amt3_subtotal
+-- Ver.1.20 ADD END
       WHERE xrbpd.request_id       = cn_request_id
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
         AND xrbpd.output_num       = gt_upload_output_num
@@ -783,6 +1239,16 @@ AS
     ov_errmsg  := NULL;
 --
   EXCEPTION
+-- Ver.1.20 ADD START
+    -- 支払金額再計算エラー
+    WHEN recalc_pay_amt_err_expt THEN
+      ov_errbuf  := SUBSTRB(  lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- 振込手数料算出エラー
+    WHEN calc_bank_trans_fee_err_expt THEN
+      ov_errbuf  := SUBSTRB(  lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.20 ADD END
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -942,8 +1408,31 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
     , output_num                       -- 出力番号
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+    , bm_amt1                          -- 販売手数料1
+    , bm_amt2                          -- 販売手数料2
+    , bm_amt3                          -- 販売手数料3
+    , payment_type                     -- 支払区分
+    , tax_type                         -- 税区分
+    , tax_calc_type                    -- 税計算区分
+-- Ver.1.20 ADD END
     )
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
@@ -1075,7 +1564,13 @@ AS
          , NULL                                                 AS bm_index_3
          , NULL                                                 AS bm_amt_3
          , xbb.org_slip_number                                  AS org_slip_number
-         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+-- Ver.1.20 MOD START
+--         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , NVL(xbbs2.bank_charge_bearer,
+             NVL(xbbs1.bank_charge_bearer, pvsa.bank_charge_bearer
+             )
+           )                                                    AS bank_charge_bearer
+-- Ver.1.20 MOD END
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -1084,6 +1579,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))                        AS payment_type  -- 支払区分
+         , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))            AS tax_type      -- 税区分
+         , NVL(xbbs2.tax_calc_kbn, NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2)))  AS tax_calc_type -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1157,6 +1678,10 @@ AS
            WHERE flv.lookup_type     = cv_lookup_type_02
              AND flv.language        = USERENV( 'LANG' )
          )                        flv2
+-- Ver.1.20 ADD START
+       , xxcok_bm_balance_snap    xbbs1 -- 販手残高SNAP(2営)
+       , xxcok_bm_balance_snap    xbbs2 -- 販手残高SNAP(FB後)
+-- Ver.1.20 ADD END
     WHERE xcbs.base_code               = xbb.base_code
       AND xcbs.delivery_cust_code      = xbb.cust_code
       AND xcbs.supplier_code           = xbb.supplier_code
@@ -1174,7 +1699,9 @@ AS
       AND xcbs.container_type_code     = flv1.container_type_code(+)
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
-      AND pvsa.attribute4              = cv_bm_type_1
+-- Ver.1.20 DEL START
+--      AND pvsa.attribute4              = cv_bm_type_1
+-- Ver.1.20 DEL END
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
 --      AND pvsa.attribute5              = gv_param_base_code
       AND pvsa.attribute5              = NVL( gv_param_base_code, pvsa.attribute5 )
@@ -1205,6 +1732,18 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND xbbs1.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs1.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs1.snapshot_timing(+)     = cv_snapshot_timing_1   -- 2営
+      AND xbbs2.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs2.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs2.snapshot_timing(+)     = cv_snapshot_timing_2   -- FB後
+      AND pvsa.attribute4              IS NOT NULL
+      AND NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 )) = cv_bm_type_1
+      AND 1 = 1
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.publication_date
@@ -1253,7 +1792,13 @@ AS
                 END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.org_slip_number
-           , pvsa.bank_charge_bearer
+-- Ver.1.20 MOD START
+--           , pvsa.bank_charge_bearer
+           , NVL(xbbs2.bank_charge_bearer,
+               NVL(xbbs1.bank_charge_bearer, pvsa.bank_charge_bearer
+               )
+             )
+-- Ver.1.20 MOD END
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -1263,6 +1808,11 @@ AS
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+-- Ver.1.20 ADD START
+           , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))
+           , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))
+           , NVL(xbbs2.tax_calc_kbn, NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2)))
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -1279,7 +1829,22 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
 -- 2018/03/15 Ver.1.15 [障害E_本稼動_14900] SCSK Y.Sekine ADD START
     UNION ALL
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
          , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
          , SUBSTR( pvsa.address_line1
@@ -1368,6 +1933,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , pvsa.attribute4                                      AS payment_type  -- 支払区分
+         , NVL(pvsa.attribute6,cv_tax_type_1)                   AS tax_type      -- 税区分
+         , NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2))  AS tax_calc_type -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1426,6 +2017,9 @@ AS
            WHERE flv.lookup_type     = cv_lookup_type_02
              AND flv.language        = USERENV( 'LANG' )
          )                        flv2
+-- Ver.1.20 ADD START
+       , xxcok_bm_balance_snap    xbbs1 -- 販手残高SNAP(2営)
+-- Ver.1.20 ADD END
     WHERE xcbs.base_code               = xbb.base_code
       AND xcbs.delivery_cust_code      = xbb.cust_code
       AND xcbs.supplier_code           = xbb.supplier_code
@@ -1454,6 +2048,14 @@ AS
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
       AND gv_belong_base_cd            = gv_dept_jimu   -- 実行ユーザの所属部門が事務センタ
       AND xbb.publication_date         IS NULL          -- 販手残高テーブル．案内書発効日がNULL
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND xbbs1.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs1.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs1.snapshot_timing(+)     = cv_snapshot_timing_1   -- 2営
+      AND pvsa.attribute4              IS NOT NULL
+      AND 2 = 2
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
            , xbb.publication_date
            , pvsa.zip
@@ -1488,6 +2090,11 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+           , pvsa.attribute4
+           , NVL(pvsa.attribute6,cv_tax_type_1)
+           , NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2))
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -1565,8 +2172,31 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
     , output_num                       -- 出力番号
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+    , bm_amt1                          -- 販売手数料1
+    , bm_amt2                          -- 販売手数料2
+    , bm_amt3                          -- 販売手数料3
+    , payment_type                     -- 支払区分
+    , tax_type                         -- 税区分
+    , tax_calc_type                    -- 税計算区分
+-- Ver.1.20 ADD END
     )
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
@@ -1698,7 +2328,13 @@ AS
          , NULL                                                 AS bm_index_3
          , NULL                                                 AS bm_amt_3
          , xbb.org_slip_number                                  AS org_slip_number
-         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+-- Ver.1.20 MOD START
+--         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , NVL(xbbs2.bank_charge_bearer,
+             NVL(xbbs1.bank_charge_bearer, pvsa.bank_charge_bearer
+             )
+           )                                                    AS bank_charge_bearer
+-- Ver.1.20 MOD END
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -1707,6 +2343,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))                        AS payment_type  -- 支払区分
+         , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))            AS tax_type      -- 税区分
+         , NVL(xbbs2.tax_calc_kbn, NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2)))  AS tax_calc_type -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1780,6 +2442,10 @@ AS
            WHERE flv.lookup_type     = cv_lookup_type_02
              AND flv.language        = USERENV( 'LANG' )
          )                        flv2
+-- Ver.1.20 ADD START
+       , xxcok_bm_balance_snap    xbbs1 -- 販手残高SNAP(2営)
+       , xxcok_bm_balance_snap    xbbs2 -- 販手残高SNAP(FB後)
+-- Ver.1.20 ADD END
     WHERE xcbs.base_code               = xbb.base_code
       AND xcbs.delivery_cust_code      = xbb.cust_code
       AND xcbs.supplier_code           = xbb.supplier_code
@@ -1797,7 +2463,9 @@ AS
       AND xcbs.container_type_code     = flv1.container_type_code(+)
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
-      AND pvsa.attribute4              = cv_bm_type_2
+-- Ver.1.20 DEL START
+--      AND pvsa.attribute4              = cv_bm_type_2
+-- Ver.1.20 DEL END
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
 --      AND pvsa.attribute5              = gv_param_base_code
       AND pvsa.attribute5              = NVL( gv_param_base_code, pvsa.attribute5 )
@@ -1819,6 +2487,18 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND xbbs1.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs1.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs1.snapshot_timing(+)     = cv_snapshot_timing_1   -- 2営
+      AND xbbs2.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs2.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs2.snapshot_timing(+)     = cv_snapshot_timing_2   -- FB後
+      AND pvsa.attribute4              IS NOT NULL
+      AND NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 )) = cv_bm_type_2
+      AND 3 = 3
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.publication_date
@@ -1867,7 +2547,13 @@ AS
                 END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.org_slip_number
-           , pvsa.bank_charge_bearer
+-- Ver.1.20 MOD START
+--           , pvsa.bank_charge_bearer
+           , NVL(xbbs2.bank_charge_bearer,
+               NVL(xbbs1.bank_charge_bearer, pvsa.bank_charge_bearer
+               )
+             )
+-- Ver.1.20 MOD END
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -1877,6 +2563,11 @@ AS
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+-- Ver.1.20 ADD START
+           , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))
+           , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))
+           , NVL(xbbs2.tax_calc_kbn, NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2)))
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -1893,7 +2584,22 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
 -- Ver.1.13 [障害E_本稼動_14836] SCSK K.Nara ADD START
     UNION ALL
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
          , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
          , SUBSTR( pvsa.address_line1
@@ -1982,6 +2688,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , pvsa.attribute4                                      AS payment_type                -- 支払区分
+         , NVL(pvsa.attribute6,cv_tax_type_1)                   AS tax_type                    -- 税区分
+         , NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2))  AS tax_calc_type -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -2040,6 +2772,9 @@ AS
            WHERE flv.lookup_type     = cv_lookup_type_02
              AND flv.language        = USERENV( 'LANG' )
          )                        flv2
+-- Ver.1.20 ADD START
+       , xxcok_bm_balance_snap    xbbs1 -- 販手残高SNAP(2営)
+-- Ver.1.20 ADD END
     WHERE xcbs.base_code               = xbb.base_code
       AND xcbs.delivery_cust_code      = xbb.cust_code
       AND xcbs.supplier_code           = xbb.supplier_code
@@ -2068,6 +2803,14 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND xbb.fb_interface_status      = '0'           --FB未連携
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND xbbs1.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs1.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs1.snapshot_timing(+)     = cv_snapshot_timing_1   -- 2営
+      AND pvsa.attribute4              IS NOT NULL
+      AND 4 = 4
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
            , xbb.publication_date
            , pvsa.zip
@@ -2102,6 +2845,11 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+           , pvsa.attribute4
+           , NVL(pvsa.attribute6,cv_tax_type_1)
+           , NVL(xbbs1.tax_calc_kbn, NVL(pvsa.attribute10,cv_tax_calc_type_2))
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -2179,8 +2927,31 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
     , output_num                       -- 出力番号
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+    , bm_amt1                          -- 販売手数料1
+    , bm_amt2                          -- 販売手数料2
+    , bm_amt3                          -- 販売手数料3
+    , payment_type                     -- 支払区分
+    , tax_type                         -- 税区分
+    , tax_calc_type                    -- 税計算区分
+-- Ver.1.20 ADD END
     )
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
@@ -2324,10 +3095,13 @@ AS
          , NULL                                                 AS bm_index_3
          , NULL                                                 AS bm_amt_3
          , xbb.org_slip_number                                  AS org_slip_number
+-- Ver.1.20 MOD START
 -- 2017/12/29 Ver.1.12 [障害E_本稼動_14789] SCSK K.Nara MOD START
 --         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
-         , cv_bank_charge_bearer                                AS bank_charge_bearer  --振込手数料を出力しないために当方とする
+--         , cv_bank_charge_bearer                                AS bank_charge_bearer  --振込手数料を出力しないために当方とする
 -- 2017/12/29 Ver.1.12 [障害E_本稼動_14789] SCSK K.Nara MOD END
+         , cv_bank_charge_bearer                                AS bank_charge_bearer
+-- Ver.1.20 MOD END
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
          , hca1.start_tran_date                                 AS start_tran_date 
@@ -2336,6 +3110,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))             AS payment_type  -- 支払区分
+         , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1))) AS tax_type      -- 税区分
+         , cv_tax_calc_type_2                                   AS tax_calc_type                             -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -2419,6 +3219,10 @@ AS
            WHERE flv.lookup_type     = cv_lookup_type_02
              AND flv.language        = USERENV( 'LANG' )
          )                        flv2
+-- Ver.1.20 ADD START
+       , xxcok_bm_balance_snap    xbbs1 -- 販手残高SNAP(2営)
+       , xxcok_bm_balance_snap    xbbs2 -- 販手残高SNAP(FB後)
+-- Ver.1.20 ADD END
     WHERE xcbs.base_code               = xbb.base_code
       AND xcbs.delivery_cust_code      = xbb.cust_code
       AND xcbs.supplier_code           = xbb.supplier_code
@@ -2438,7 +3242,9 @@ AS
       AND xcbs.container_type_code     = flv1.container_type_code(+)
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
-      AND pvsa.attribute4              = cv_bm_type_3
+-- Ver.1.20 DEL START
+--      AND pvsa.attribute4              = cv_bm_type_3
+-- Ver.1.20 DEL END
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
 --      AND xbb.base_code                = gv_param_base_code
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
@@ -2461,6 +3267,18 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND xbbs1.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs1.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs1.snapshot_timing(+)     = cv_snapshot_timing_1   -- 2営
+      AND xbbs2.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs2.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs2.snapshot_timing(+)     = cv_snapshot_timing_2   -- FB後
+      AND pvsa.attribute4              IS NOT NULL
+      AND NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 )) = cv_bm_type_3
+      AND 5 = 5
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.publication_date
@@ -2517,7 +3335,9 @@ AS
                 END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.org_slip_number
-           , pvsa.bank_charge_bearer
+-- Ver.1.20 DEL START
+--           , pvsa.bank_charge_bearer
+-- Ver.1.20 DEL END
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -2527,6 +3347,10 @@ AS
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+-- Ver.1.20 ADD START
+           , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))
+           , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -2543,7 +3367,22 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
 -- 2017/12/29 Ver.1.12 [障害E_本稼動_14789] SCSK K.Nara ADD START
     UNION ALL
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
          , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
          , SUBSTR( pvsa.address_line1
@@ -2632,6 +3471,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , pvsa.attribute4                                      AS payment_type  -- 支払区分
+         , NVL(pvsa.attribute6,cv_tax_type_1)                   AS tax_type      -- 税区分
+         , cv_tax_calc_type_2                                   AS tax_calc_type -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -2725,6 +3590,10 @@ AS
       AND xbb.expect_payment_amt_tax   > 0  --未消込である
       AND xbb.payment_amt_tax          = 0  --未消込である
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND 6 = 6
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
            , xbb.publication_date
            , pvsa.zip
@@ -2752,12 +3621,18 @@ AS
                   flv1.container_type_name
                 END
            , xbb.org_slip_number
-           , pvsa.bank_charge_bearer
+-- Ver.1.20 DEL START
+--           , pvsa.bank_charge_bearer
+-- Ver.1.20 DEL END
            , xbb.balance_cancel_date
            , hca1.start_tran_date
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+           , pvsa.attribute4
+           , NVL(pvsa.attribute6,cv_tax_type_1)
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -2835,8 +3710,31 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
     , output_num                       -- 出力番号
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+    , bm_amt1                          -- 販売手数料1
+    , bm_amt2                          -- 販売手数料2
+    , bm_amt3                          -- 販売手数料3
+    , payment_type                     -- 支払区分
+    , tax_type                         -- 税区分
+    , tax_calc_type                    -- 税計算区分
+-- Ver.1.20 ADD END
     )
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
 --         , TO_CHAR( SYSDATE, cv_format_date )                   AS publication_date
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
@@ -2980,7 +3878,13 @@ AS
          , NULL                                                 AS bm_index_3
          , NULL                                                 AS bm_amt_3
          , xbb.org_slip_number                                  AS org_slip_number
-         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+-- Ver.1.20 MOD START
+--         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , NVL(xbbs2.bank_charge_bearer,
+             NVL(xbbs1.bank_charge_bearer, pvsa.bank_charge_bearer
+             )
+           )                                                    AS bank_charge_bearer
+-- Ver.1.20 MOD END
          , xbb.balance_cancel_date                              AS balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -2989,6 +3893,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))              AS payment_type  -- 支払区分
+         , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))  AS tax_type      -- 税区分
+         , cv_tax_calc_type_2                                   AS tax_calc_type                              -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -3072,6 +4002,10 @@ AS
            WHERE flv.lookup_type     = cv_lookup_type_02
              AND flv.language        = USERENV( 'LANG' )
          )                        flv2
+-- Ver.1.20 ADD START
+       , xxcok_bm_balance_snap    xbbs1 -- 販手残高SNAP(2営)
+       , xxcok_bm_balance_snap    xbbs2 -- 販手残高SNAP(FB後)
+-- Ver.1.20 ADD END
     WHERE xcbs.base_code               = xbb.base_code
       AND xcbs.delivery_cust_code      = xbb.cust_code
       AND xcbs.supplier_code           = xbb.supplier_code
@@ -3091,7 +4025,9 @@ AS
       AND xcbs.container_type_code     = flv1.container_type_code(+)
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
-      AND pvsa.attribute4              = cv_bm_type_4
+-- Ver.1.20 DEL START
+--      AND pvsa.attribute4              = cv_bm_type_4
+-- Ver.1.20 DEL END
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
 --      AND xbb.base_code                = gv_param_base_code
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
@@ -3108,6 +4044,18 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND xbbs1.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs1.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs1.snapshot_timing(+)     = cv_snapshot_timing_1   -- 2営
+      AND xbbs2.bm_balance_id(+)       = xbb.bm_balance_id
+      AND xbbs2.snapshot_create_ym(+)  = gv_param_target_yyyymm
+      AND xbbs2.snapshot_timing(+)     = cv_snapshot_timing_2   -- FB後
+      AND pvsa.attribute4              IS NOT NULL
+      AND NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 )) = cv_bm_type_4
+      AND 7 = 7
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.publication_date
@@ -3164,7 +4112,13 @@ AS
                 END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
            , xbb.org_slip_number
-           , pvsa.bank_charge_bearer
+-- Ver.1.20 MOD START
+--           , pvsa.bank_charge_bearer
+           , NVL(xbbs2.bank_charge_bearer,
+               NVL(xbbs1.bank_charge_bearer, pvsa.bank_charge_bearer
+               )
+             )
+-- Ver.1.20 MOD END
            , xbb.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
@@ -3174,6 +4128,10 @@ AS
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
+-- Ver.1.20 ADD START
+           , NVL(xbbs2.bm_paymet_kbn, NVL(xbbs1.bm_paymet_kbn, pvsa.attribute4 ))
+           , NVL(xbbs2.bm_tax_kbn, NVL(xbbs1.bm_tax_kbn, NVL(pvsa.attribute6,cv_tax_type_1)))
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -3190,7 +4148,22 @@ AS
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
 -- 2018/03/15 Ver.1.15 [障害E_本稼動_14900] SCSK Y.Sekine ADD START
     UNION ALL
-    SELECT xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD START
+--    SELECT xbb.supplier_code                                    AS payment_code
+    SELECT /*+ LEADING(xbb xcbs)
+               USE_NL(xcbs)
+               USE_NL(pv)
+               USE_NL(pvsa)
+               USE_NL(hca1)
+               USE_NL(hca2)
+               USE_NL(hca3)
+               USE_NL(flv1)
+               USE_NL(flv2)
+               USE_NL(xbbs1)
+               USE_NL(xbbs2)
+               */
+           xbb.supplier_code                                    AS payment_code
+-- Ver.1.20 MOD END
          , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
          , SUBSTRB( pvsa.zip , 1 , 8 )                          AS payment_zip_code
          , SUBSTR( pvsa.address_line1
@@ -3279,6 +4252,32 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
          , gt_upload_output_num                                 AS output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                ELSE
+                  xcbs.cond_bm_amt_tax
+                END
+              )                                                 AS bm_amt1
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_amt_no_tax
+                ELSE
+                  xcbs.cond_bm_amt_no_tax
+                END
+              )                                                 AS bm_amt2
+         , SUM( CASE xcbs.calc_type
+                WHEN '50' THEN
+                  xcbs.electric_tax_amt
+                ELSE
+                  xcbs.cond_tax_amt
+                END
+              )                                                 AS bm_amt3
+         , pvsa.attribute4                                      AS payment_type  -- 支払区分
+         , NVL(pvsa.attribute6,cv_tax_type_1)                   AS tax_type      -- 税区分
+         , cv_tax_calc_type_2                                   AS tax_calc_type -- 税計算区分
+-- Ver.1.20 ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -3371,6 +4370,10 @@ AS
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
       AND gv_belong_base_cd            = gv_dept_jimu   -- 実行ユーザの所属部門が事務センタ
       AND xbb.publication_date         IS NULL          -- 販手残高テーブル．案内書発効日がNULL
+-- Ver.1.20 ADD START
+      AND xbb.balance_cancel_date IS NULL
+      AND 8 = 8
+-- Ver.1.20 ADD END
     GROUP BY xbb.supplier_code
            , xbb.publication_date
            , pvsa.zip
@@ -3404,6 +4407,10 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
            , gt_upload_output_num
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+           , pvsa.attribute4
+           , NVL(pvsa.attribute6,cv_tax_type_1)
+-- Ver.1.20 ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -3837,6 +4844,113 @@ AS
     gn_param_output_num  := in_output_num;
     gt_upload_output_num := ct_output_num_init;    --カレント出力番号初期化
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.20 ADD START
+    gv_param_target_yyyymm   := REPLACE(iv_target_ym,cv_slash);
+    --==================================================
+    -- プロファイル取得(適格請求書発行事業者登録番号)
+    --==================================================
+    gv_t_number := FND_PROFILE.VALUE( cv_t_number );
+    IF( gv_t_number IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_t_number
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_販売手数料計見出し)
+    --==================================================
+    gv_prompt_bm_sum := FND_PROFILE.VALUE( cv_profile_name_15 );
+    IF( gv_prompt_bm_sum IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_15
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_不課税)
+    --==================================================
+    gv_tax_free := FND_PROFILE.VALUE( cv_profile_name_16 );
+    IF( gv_tax_free IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_16
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_対象税率)
+    --==================================================
+    gv_tax_rate := FND_PROFILE.VALUE( cv_profile_name_17 );
+    IF( gv_tax_rate IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_17
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_税込)
+    --==================================================
+    gv_inc_tax := FND_PROFILE.VALUE( cv_profile_name_18 );
+    IF( gv_inc_tax IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_18
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_税抜)
+    --==================================================
+    gv_ex_tax := FND_PROFILE.VALUE( cv_profile_name_19 );
+    IF( gv_ex_tax IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_19
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_消費税)
+    --==================================================
+    gv_tax := FND_PROFILE.VALUE( cv_profile_name_20 );
+    IF( gv_tax IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_20
+                    );
+      RAISE error_proc_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(支払案内書_販売手数料)
+    --==================================================
+    gv_sales_mft := FND_PROFILE.VALUE( cv_profile_name_21 );
+    IF( gv_sales_mft IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_21
+                    );
+      RAISE error_proc_expt;
+    END IF;
+-- Ver.1.20 ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
