@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 3.5                                                       ##
+## Version          : 3.6                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -112,6 +112,8 @@
 ##                                       リトライ時間60秒→1秒                  ##
 ##  2023/08/01    3.5   Hirokazu.Iitsuka [E_本稼動_19079]                       ##
 ##                                       シンボリックリンク対応                 ##
+##  2023/09/11    3.6   Hirokazu.Iitsuka [E_本稼動_19468]                       ##
+##                                       EDIサーバリプレース対応                ##
 ##                                                                              ##
 ##################################################################################
 
@@ -196,6 +198,10 @@ C_prof_delshell_path="XXCCP1_ZBZZDELETEFILE_PATH"            #プロファイル
 # 2009/10/26 Ver.1.10 Masayuki.Sano add START
 C_prof_iffile_chk_max_wait="XXCCP1_IFFILE_CHK_MAX_WAIT"     #プロファイル|XXCCP:起動中IFファイル監視最大時間
 C_prof_iffile_chk_interval="XXCCP1_IFFILE_CHK_INTERVAL"     #プロファイル|XXCCP:起動中IFファイル監視間隔時間
+
+# 2023/09/07 Ver.3.6 H.Iitsuka ADD Start
+C_prof_edi_host_replace="XXCCP1_EDI_HOST_REPLACE"                       #プロファイル|XXCCP:EDI実行先ホスト名リプレース
+# 2023/09/07 Ver.3.6 H.Iitsuka ADD End
 
 C_yes='Y'                                                   #フラグ：有
 C_no='N'                                                    #フラグ：無
@@ -2185,7 +2191,26 @@ EOF
   then
     L_service_name="${C_edi_serv}"
     L_que="${C_edi_que}"
-    L_host="${C_edi_host}"
+# 2023/09/11 Ver.3.6 H.Iitsuka ADD Start
+    sqlplus -s ${C_ora_login} <<EOF >>${C_std_out} 
+    SET HEADING OFF
+    SET LINES 240
+    SELECT 'C_new_host='''||FND_PROFILE.VALUE('${C_prof_edi_host_replace}')||''''                                        --新サーバ名
+    FROM xxcos_lookup_values_v   xlvv
+    WHERE xlvv.lookup_type = 'XXCOS1_EDI_HOST_REPLACE'
+      AND xlvv.lookup_code = '${19}'
+    ;
+    EXIT
+EOF
+    . $C_std_out
+    if [ -z "${C_new_host}" ]
+    then
+      L_host="${C_edi_host}"
+    else
+      L_host="${C_new_host}"
+    fi
+#    L_host="${C_edi_host}"
+# 2023/09/11 Ver.3.6 H.Iitsuka ADD End
   elif [ "${8}" = 'REPORT' ]
   then
     L_service_name="${C_report_serv}"
