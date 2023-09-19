@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.180
+ * Version          : 1.190
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,8 +16,9 @@ AS
  *  init                   p 初期処理                                (A-1)
  *  get_target_inv_header  p 対象請求ヘッダデータ抽出処理            (A-2)
  *  ins_inv_detail_data    p 請求明細データ作成処理                  (A-3)
- *  get_update_target_bill   p 請求更新対象取得処理                  (A-10)
- *  update_bill_amount       p 請求金額更新処理                      (A-11)
+ *  get_update_target_bill p 請求更新対象取得処理                    (A-10)
+ *  update_invoice_lines   p 請求金額更新処理 請求明細情報テーブル   (A-11)
+ *  update_bill_amount     p 請求金額更新処理 請求ヘッダ情報テーブル (A-11)
  *  update_trx_status      p 取引データステータス更新処理            (A-9)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
@@ -47,6 +48,8 @@ AS
  *  2019/07/26    1.160 SCSK 箕浦 健治  [E_本稼動_15472] 軽減税率対応
  *  2019/09/06    1.170 SCSK 渡邊 直樹  [E_本稼動_15472] 軽減税率対応 追加対応
  *  2019/09/19    1.180 SCSK 郭 有司    [E_本稼動_15472] 軽減税率対応 再々対応
+ *  2023/07/04    1.190 SCSK 赤地 学    [E_本稼動_18983] 消費税差額自動作成
+ *                                      [E_本稼動_19082]【AR】インボイス対応_標準請求書
  *
  *****************************************************************************************/
 --
@@ -307,6 +310,13 @@ AS
 -- Modify 2013.06.10 Ver1.140 Start
   cv_inv_creation_flag  CONSTANT VARCHAR2(1)  := 'Y';           -- 請求作成対象フラグ(Y)
 -- Modify 2013.06.10 Ver1.140 End
+-- Ver1.190 Add Start
+  -- 端数処理区分
+  cv_tax_rounding_rule_down        CONSTANT VARCHAR2(10)    :=  'DOWN';    -- 切り捨て
+  cv_output_format_1               CONSTANT VARCHAR2(1)     :=   '1';      -- 請求書出力形式（伊藤園標準）
+  cv_output_format_4               CONSTANT VARCHAR2(1)     :=   '4';      -- 請求書出力形式（業者委託）
+  cv_output_format_5               CONSTANT VARCHAR2(1)     :=   '5';      -- 請求書出力形式（発行なし）
+-- Ver1.190 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -364,14 +374,35 @@ AS
                                                   INDEX BY PLS_INTEGER;
     TYPE get_tax_amt_sum_ttype     IS TABLE OF xxcfr_invoice_headers.tax_amount_sum%TYPE
                                                   INDEX BY PLS_INTEGER;
-    TYPE get_amd_inc_tax_ttype     IS TABLE OF xxcfr_invoice_headers.inv_amount_includ_tax%TYPE
-                                                  INDEX BY PLS_INTEGER;
+-- Ver1.190 Del Start
+--    TYPE get_amd_inc_tax_ttype     IS TABLE OF xxcfr_invoice_headers.inv_amount_includ_tax%TYPE
+--                                                  INDEX BY PLS_INTEGER;
+-- Ver1.190 Del End
 --
     gt_get_inv_id_tab            get_inv_id_ttype;
-    gt_get_amt_no_tax_tab        get_amt_no_tax_ttype;
-    gt_get_tax_amt_sum_tab       get_tax_amt_sum_ttype;
-    gt_get_amd_inc_tax_tab       get_amd_inc_tax_ttype;
+-- Ver1.190 Del Start
+--    gt_get_amt_no_tax_tab        get_amt_no_tax_ttype;
+--    gt_get_tax_amt_sum_tab       get_tax_amt_sum_ttype;
+--    gt_get_amd_inc_tax_tab       get_amd_inc_tax_ttype;
+-- Ver1.190 Del End
 -- Modify 2013.01.17 Ver1.130 End
+-- Ver1.190 Add Start
+    TYPE get_tax_gap_amount_ttype    IS TABLE OF xxcfr_invoice_headers.tax_gap_amount%TYPE      INDEX BY PLS_INTEGER;
+    TYPE get_inv_gap_amount_ttype    IS TABLE OF xxcfr_invoice_headers.inv_gap_amount%TYPE      INDEX BY PLS_INTEGER;
+    TYPE get_invoice_tax_div_ttype   IS TABLE OF xxcfr_invoice_headers.invoice_tax_div%TYPE     INDEX BY PLS_INTEGER;
+    TYPE get_output_format_ttype     IS TABLE OF xxcfr_invoice_headers.output_format%TYPE       INDEX BY PLS_INTEGER;
+    TYPE get_tax_div_ttype           IS TABLE OF xxcmm_cust_accounts.tax_div%TYPE               INDEX BY PLS_INTEGER;
+--
+    gt_invoice_tax_div_tab    get_invoice_tax_div_ttype;       -- 請求書消費税積上げ計算方式
+    gt_output_format_tab      get_output_format_ttype;         -- 請求書出力形式
+    gt_tax_gap_amount_tab     get_tax_gap_amount_ttype;        -- 税差額
+    gt_tax_sum1_tab           get_tax_amt_sum_ttype;           -- 税額合計１
+    gt_tax_sum2_tab           get_tax_amt_sum_ttype;           -- 税額合計２
+    gt_inv_gap_amount_tab     get_inv_gap_amount_ttype;        -- 本体差額
+    gt_no_tax_sum1_tab        get_amt_no_tax_ttype;            -- 税抜合計１
+    gt_no_tax_sum2_tab        get_amt_no_tax_ttype;            -- 税抜合計２
+    gt_tax_div_tab            get_tax_div_ttype;               -- 消費税区分
+-- Ver1.190 Add End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1283,6 +1314,17 @@ AS
 -- Add 2019.07.26 Ver1.160 START
           ,inlv.tax_code                     tax_code                       -- 税金コード
 -- Add 2019.07.26 Ver1.160 END
+-- Ver1.190 Add Start
+          ,NULL                              tax_gap_amount                 -- 税差額
+          ,NULL                              tax_amount_sum                 -- 税額合計１
+          ,NULL                              tax_amount_sum2                -- 税額合計２
+          ,NULL                              category                       -- 内訳分類
+          ,NULL                              inv_gap_amount                 -- 本体差額
+          ,NULL                              inv_amount_sum                 -- 税抜合計１
+          ,NULL                              inv_amount_sum2                -- 税抜合計２
+          ,NULL                              invoice_printing_unit          -- 請求書印刷単位
+          ,NULL                              customer_for_sum               -- 顧客(集計用)
+-- Ver1.190 Add End
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
 -- Modify 2009.09.29 Ver1.5 Start
@@ -1785,6 +1827,17 @@ AS
 -- Add 2019.07.26 Ver1.160 START
           ,inlv.tax_code                     tax_code                       -- 税金コード
 -- Add 2019.07.26 Ver1.160 END
+-- Ver1.190 Add Start
+          ,NULL                              tax_gap_amount                 -- 税差額
+          ,NULL                              tax_amount_sum                 -- 税額合計１
+          ,NULL                              tax_amount_sum2                -- 税額合計２
+          ,NULL                              category                       -- 内訳分類
+          ,NULL                              inv_gap_amount                 -- 本体差額
+          ,NULL                              inv_amount_sum                 -- 税抜合計１
+          ,NULL                              inv_amount_sum2                -- 税抜合計２
+          ,NULL                              invoice_printing_unit          -- 請求書印刷単位
+          ,NULL                              customer_for_sum               -- 顧客(集計用)
+-- Ver1.190 Add End
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
                        LEADING(xih rcta hzca hp_ship xxca hc_sold hp_sold hzsa rlli rlta rgda arta fnvd)
@@ -4628,6 +4681,111 @@ AS
 --
   END update_trx_status;
 --
+-- Ver1.190 Add Start
+--
+  /**********************************************************************************
+   * Procedure Name   : update_invoice_lines
+   * Description      : 請求金額更新処理 請求明細情報テーブル(A-11)
+   ***********************************************************************************/
+  PROCEDURE update_invoice_lines(
+    in_invoice_id             IN  NUMBER,       -- 請求書ID
+    in_invoice_detail_num     IN  NUMBER,       -- 一括請求書明細No
+    in_tax_gap_amount         IN  NUMBER,       -- 税差額
+    in_tax_sum1               IN  NUMBER,       -- 税額合計１
+    in_tax_sum2               IN  NUMBER,       -- 税額合計２
+    in_inv_gap_amount         IN  NUMBER,       -- 本体差額
+    in_no_tax_sum1            IN  NUMBER,       -- 税抜合計１
+    in_no_tax_sum2            IN  NUMBER,       -- 税抜合計２
+    iv_category               IN  VARCHAR2,     -- 内訳分類
+    iv_invoice_printing_unit  IN  VARCHAR2,     -- 請求書印刷単位
+    iv_customer_for_sum       IN  VARCHAR2,     -- 顧客(集計用)
+    iv_tax_div                IN  VARCHAR2,     -- 消費税区分
+    ov_errbuf                 OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode                OUT VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg                 OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_invoice_lines'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 請求明細情報テーブル請求金額更新
+    BEGIN
+--
+      UPDATE  xxcfr_invoice_lines  xxil   -- 請求明細情報テーブル
+      SET     xxil.tax_gap_amount        = in_tax_gap_amount         -- 税差額
+             ,xxil.tax_amount_sum        = in_tax_sum1               -- 税額合計１
+             ,xxil.tax_amount_sum2       = in_tax_sum2               -- 税額合計２
+             ,xxil.inv_gap_amount        = in_inv_gap_amount         -- 本体差額
+             ,xxil.inv_amount_sum        = in_no_tax_sum1            -- 税抜合計１
+             ,xxil.inv_amount_sum2       = in_no_tax_sum2            -- 税抜合計２
+             ,xxil.category              = iv_category               -- 内訳分類
+             ,xxil.invoice_printing_unit = iv_invoice_printing_unit  -- 請求書印刷単位
+             ,xxil.customer_for_sum      = iv_customer_for_sum       -- 顧客(集計用)
+      WHERE   xxil.invoice_id = in_invoice_id                        -- 一括請求書ID
+      AND     xxil.invoice_detail_num = in_invoice_detail_num        -- 一括請求書明細No
+      ;
+--
+    EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                               ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                               ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                               ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxil)) -- 請求明細情報テーブル
+                               ,1
+                               ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_invoice_lines;
+--
+-- Ver1.190 Add End
 -- Modify 2013.01.17 Ver1.130 Start
 --
   /**********************************************************************************
@@ -4660,6 +4818,14 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- Ver1.190 Add Start
+    ln_int             PLS_INTEGER := 0;
+    lt_invoice_id      xxcfr_invoice_headers.invoice_id%TYPE;     -- 一括請求書ID
+    lt_tax_gap_amount  xxcfr_invoice_lines.tax_gap_amount%TYPE;   -- 税差額
+    lt_tax_sum1        xxcfr_invoice_lines.tax_amount_sum%TYPE;   -- 税額合計１
+    lt_inv_gap_amount  xxcfr_invoice_lines.inv_gap_amount%TYPE;   -- 本体差額
+    lt_no_tax_sum1     xxcfr_invoice_lines.inv_amount_sum%TYPE;   -- 税抜合計１
+-- Ver1.190 Add End
 --
     -- *** ローカル・カーソル ***
     --対象請求書情報データロックカーソル
@@ -4669,26 +4835,159 @@ AS
               xxih.invoice_id         invoice_id    -- 請求書ID
       FROM    xxcfr_invoice_headers xxih            -- 請求ヘッダ情報テーブル
       WHERE   xxih.request_id = gt_target_request_id   -- コンカレント要求ID
+-- Ver1.190 Add Start
+      AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+      AND     ( xxih.parallel_type      = gn_parallel_type ) )  -- パラレル実行区分が一致
+      OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+      AND     ( xxih.parallel_type     IS NULL ) ) )            -- パラレル実行区分がNULL
+-- Ver1.190 Add End
       FOR UPDATE NOWAIT
       ;
 --
-    --対象請求書情報取得カーソル
+-- Ver1.190 Add Start
+   --請求明細情報データロックカーソル
+    CURSOR lock_target_inv_lines_cur
+    IS
+      SELECT  xxil.invoice_id         invoice_id    -- 請求書ID
+      FROM    xxcfr_invoice_lines xxil              -- 請求明細情報テーブル
+      WHERE   EXISTS (SELECT 1 
+                      FROM xxcfr_invoice_headers xxih            -- 請求ヘッダ情報テーブル
+                      WHERE  xxih.invoice_id = xxil.invoice_id
+                      AND    xxih.request_id = gt_target_request_id   -- コンカレント要求ID
+                      AND ( ( ( gv_batch_on_judge_type  = cv_judge_type_batch ) -- 夜間手動判断区分が'2'(夜間)
+                      AND     ( xxih.parallel_type      = gn_parallel_type ) )  -- パラレル実行区分が一致
+                      OR    ( ( gv_batch_on_judge_type != cv_judge_type_batch ) -- 夜間手動判断区分が'0'(手動)
+                      AND     ( xxih.parallel_type     IS NULL ) ) )            -- パラレル実行区分がNULL
+                     )
+      FOR UPDATE NOWAIT
+      ;
+-- Ver1.190 Add End
+--
+    --
     CURSOR get_target_inv_cur
     IS
       SELECT  /*+ INDEX(xxih XXCFR_INVOICE_HEADERS_N02) */
-              xxih.invoice_id         invoice_id    -- 請求書ID
-             ,SUM(NVL(xxil.ship_amount, 0))   ship_amount   -- 納品金額
-             ,SUM(NVL(xxil.tax_amount, 0))    tax_amount    -- 消費税金額
-             ,SUM(NVL(xxil.ship_amount, 0) + NVL(xxil.tax_amount, 0)) sold_amount  -- 売上金額
-      FROM    xxcfr_invoice_headers xxih            -- 請求ヘッダ情報テーブル
-             ,xxcfr_invoice_lines   xxil            -- 請求明細情報テーブル
-      WHERE   xxih.request_id = gt_target_request_id   -- コンカレント要求ID
+              xxih.invoice_id                 invoice_id    -- 請求書ID
+-- Ver1.190 Add Start
+             ,MIN(xxil.invoice_detail_num)    invoice_detail_num     -- 一括請求書明細No
+-- Ver1.190 Add End
+             ,SUM(NVL(xxil.ship_amount, 0))   ship_amount   -- 税抜額合計
+             ,SUM(NVL(xxil.tax_amount, 0))    tax_amount    -- 税額合計
+             ,SUM(NVL(xxil.ship_amount, 0) + NVL(xxil.tax_amount, 0)) sold_amount  -- 税込額合計
+-- Ver1.190 Add Start
+             ,flv.attribute2                  category               -- 内訳分類
+             ,CASE WHEN hcsu.attribute7 IN ( cv_output_format_1, cv_output_format_4, cv_output_format_5 )
+                   THEN
+                     DECODE(xcal.invoice_printing_unit,
+                            '0',xxil.ship_cust_code,'1',xcal.invoice_code,'2',xxil.ship_cust_code,
+                            '3',xxih.bill_cust_code,'4',xcal.invoice_code,'5',xxih.bill_cust_code,
+                            '6',xcal.invoice_code,  '7',xcal.invoice_code,'8',xcal20.enclose_invoice_code,
+                            '9',xxih.bill_cust_code,'A',xxih.bill_cust_code,'B',xxih.bill_cust_code,
+                            'C',xxih.bill_cust_code,'D',xxil.ship_cust_code, null)
+                   ELSE NULL
+              END                             customer_for_sum       -- 顧客(集計用)
+             ,hcsu.attribute7                 output_format          -- 請求書出力形式
+             ,xxil.tax_rate                   tax_rate               -- 消費税率
+             ,NVL(xxca.invoice_tax_div,'N')   invoice_tax_div        -- 請求書消費税積上げ計算方式
+             ,xxca.tax_div                    tax_div                -- 消費税区分
+             ,xcal.invoice_printing_unit      invoice_printing_unit  -- 請求書印刷単位
+-- Ver1.190 Add End
+      FROM    xxcfr_invoice_headers xxih                          -- 請求ヘッダ情報テーブル
+             ,xxcfr_invoice_lines   xxil                          -- 請求明細情報テーブル
+-- Ver1.190 Add Start
+             ,xxcmm_cust_accounts   xxca                          -- 顧客追加情報
+             ,hz_cust_accounts      hca                           -- 顧客マスタ
+             ,hz_cust_acct_sites    hcas                          -- 顧客所在地
+             ,hz_cust_site_uses     hcsu                          -- 顧客使用目的
+             ,fnd_lookup_values     flv                           -- 参照表（税分類）
+             ,xxcmm_cust_accounts   xcal20                        -- 顧客追加情報(請求書用顧客)
+             ,xxcmm_cust_accounts   xcal                          -- 顧客追加情報(納品先顧客)
+-- Ver1.190 Add End
+      WHERE   xxih.request_id = gt_target_request_id              -- コンカレント要求ID
       AND     xxih.invoice_id = xxil.invoice_id
+-- Ver1.190 Add Start
+      AND     xxih.bill_cust_account_id = hca.cust_account_id     -- 請求ヘッダ.請求先顧客ID = 顧客マスタ.顧客ID
+      AND     hca.cust_account_id       = xxca.customer_id        -- 顧客マスタ.顧客ID = 顧客追加情報.顧客ID
+      AND     hca.cust_account_id       = hcas.cust_account_id    -- 顧客マスタ.顧客ID = 顧客所在地.顧客ID
+      AND     hcas.cust_acct_site_id    = hcsu.cust_acct_site_id  -- 顧客所在地.顧客所在地ID = 顧客使用目的.顧客所在地ID
+      AND     hcsu.site_use_code        = 'BILL_TO'               -- 顧客使用目的.使用目的コード = 請求先 
+      AND     hcsu.status               = 'A'                     -- 顧客使用目的.ステータス = 有効 
+      AND     flv.lookup_type(+)        = 'XXCFR1_TAX_CATEGORY'   -- 税分類
+      AND     flv.lookup_code(+)        = xxil.tax_code           -- 参照表（税分類）.ルックアップコード = 請求明細.税金コード
+      AND     flv.language(+)           = USERENV( 'LANG' )
+      AND     flv.enabled_flag(+)       = 'Y'
+      AND     flv.attribute2(+)         IS NOT NULL               -- 内訳分類
+      AND     xxil.ship_cust_code       = xcal.customer_code
+      AND     xcal20.customer_code(+)   = xcal.invoice_code
+-- Ver1.190 Add End
       GROUP BY xxih.invoice_id
+-- Ver1.190 Add Start
+              ,flv.attribute2                  -- 内訳分類
+              ,CASE WHEN hcsu.attribute7 IN ( cv_output_format_1, cv_output_format_4, cv_output_format_5 )
+                    THEN
+                      DECODE(xcal.invoice_printing_unit,
+                             '0',xxil.ship_cust_code,'1',xcal.invoice_code,'2',xxil.ship_cust_code,
+                             '3',xxih.bill_cust_code,'4',xcal.invoice_code,'5',xxih.bill_cust_code,
+                             '6',xcal.invoice_code,  '7',xcal.invoice_code,'8',xcal20.enclose_invoice_code,
+                             '9',xxih.bill_cust_code,'A',xxih.bill_cust_code,'B',xxih.bill_cust_code,
+                             'C',xxih.bill_cust_code,'D',xxil.ship_cust_code, null)
+                    ELSE NULL
+               END
+              ,hcsu.attribute7                 -- 請求書出力形式
+              ,xxil.tax_rate                   -- 税率
+              ,NVL(xxca.invoice_tax_div,'N')   -- 請求書消費税積上げ計算方式
+              ,xxca.tax_div                    -- 消費税区分
+              ,xcal.invoice_printing_unit      -- 請求書印刷単位
+      ORDER BY 
+               invoice_id
+              ,category
+              ,customer_for_sum
+-- Ver1.190 Add End
       ;
 --
     -- *** ローカル・レコード ***
 --
+-- Ver1.190 Add Start
+    get_target_inv_rec  get_target_inv_cur%ROWTYPE;
+-- Ver1.190 Add End
+--
+-- Ver1.190 Add Start
+    -- *** ローカル・ファンクション ***
+    -- 税額合計１（税抜き）算出処理
+    FUNCTION calc_tax_sum1(
+       it_ship_amount        IN   xxcfr_invoice_lines.ship_amount%TYPE      -- 税抜額合計
+      ,it_tax_rate           IN   xxcfr_invoice_lines.tax_rate%TYPE         -- 消費税率
+    ) RETURN NUMBER
+    IS
+--
+      ln_tax_sum1  NUMBER;          -- 戻り値：税額合計１
+--
+    BEGIN
+      ln_tax_sum1 := 0;
+      -- 少数点以下の端数を切り捨てします。
+      ln_tax_sum1 := TRUNC( it_ship_amount * ( it_tax_rate / 100 ) );
+--
+      RETURN ln_tax_sum1;
+    END calc_tax_sum1;
+--
+    -- *** ローカル・ファンクション ***
+    -- 税抜合計１算出処理
+    FUNCTION calc_no_tax_sum1(
+       it_sold_amount        IN   xxcfr_invoice_lines.sold_amount%TYPE      -- 税込額合計
+      ,it_tax_rate           IN   xxcfr_invoice_lines.tax_rate%TYPE         -- 消費税率
+    ) RETURN NUMBER
+    IS
+--
+      ln_no_tax_sum1  NUMBER;          -- 戻り値：税抜合計１
+--
+    BEGIN
+      ln_no_tax_sum1 := 0;
+      -- 少数点以下の端数を切り捨てします。
+      ln_no_tax_sum1 := TRUNC( it_sold_amount / ( it_tax_rate / 100 + 1 ) );
+--
+      RETURN ln_no_tax_sum1;
+    END calc_no_tax_sum1;
+-- Ver1.190 Add End
     -- *** ローカル例外 ***
 --
   BEGIN
@@ -4725,26 +5024,229 @@ AS
         RAISE global_process_expt;
     END;
 --
+-- Ver1.190 Add Start
     --==============================================================
-    --請求ヘッダ情報テーブル更新処理
+    --請求明細テーブルロック情報取得処理
     --==============================================================
-    --対象請求書情報取得カーソルオープン
-    OPEN get_target_inv_cur;
+    BEGIN
+      OPEN lock_target_inv_lines_cur;
 --
--- データの一括取得
-    FETCH get_target_inv_cur 
-    BULK COLLECT INTO gt_get_inv_id_tab
-                     ,gt_get_amt_no_tax_tab
-                     ,gt_get_tax_amt_sum_tab
-                     ,gt_get_amd_inc_tax_tab
-    ;
+      CLOSE lock_target_inv_lines_cur;
+--
+    EXCEPTION
+      -- *** テーブルロックエラーハンドラ ***
+      WHEN lock_expt THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                               ,iv_name         => cv_msg_cfr_00003      -- テーブルロックエラー
+                               ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                               ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxil))  -- 請求明細情報テーブル
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+--
+-- Ver1.190 Add End
+-- Ver1.190 Del Start
+--    --==============================================================
+--    --請求ヘッダ情報テーブル更新処理
+--    --==============================================================
+--    --対象請求書情報取得カーソルオープン
+--    OPEN get_target_inv_cur;
+----
+---- データの一括取得
+--    FETCH get_target_inv_cur 
+--    BULK COLLECT INTO gt_get_inv_id_tab
+--                     ,gt_get_amt_no_tax_tab
+--                     ,gt_get_tax_amt_sum_tab
+--                     ,gt_get_amd_inc_tax_tab
+--    ;
+----
+--    -- 処理件数のセット
+--    ov_target_trx_cnt := gt_get_inv_id_tab.COUNT;
+----
+--    --対象請求書情報取得カーソルクローズ
+--    CLOSE get_target_inv_cur;
+--
+-- Ver1.190 Del End
+-- Ver1.190 Add Start
+    --==============================================================
+    --請求明細情報更新処理
+    --==============================================================
+    --
+    <<edit_loop>>
+    FOR get_target_inv_rec IN get_target_inv_cur LOOP
+--
+      IF ( get_target_inv_rec.customer_for_sum IS NOT NULL ) THEN
+        --初回、又は、一括請求書IDが変わった場合ブレーク
+        IF (
+             ( lt_invoice_id IS NULL )
+             OR
+             ( lt_invoice_id <> get_target_inv_rec.invoice_id )
+           )
+        THEN
+          --初期化、及び、１レコード目の税別項目設定
+          ln_int                           := ln_int + 1;                             -- 配列カウントアップ
+          gt_get_inv_id_tab(ln_int)        := get_target_inv_rec.invoice_id;          -- 一括請求書ID
+          gt_invoice_tax_div_tab(ln_int)   := get_target_inv_rec.invoice_tax_div;     -- 請求書消費税積上げ計算方式
+          gt_output_format_tab(ln_int)     := get_target_inv_rec.output_format;       -- 請求書出力形式
+          gt_tax_div_tab(ln_int)           := get_target_inv_rec.tax_div;             -- 消費税区分
+--
+          lt_tax_sum1       := 0;  -- 税額合計１
+          lt_no_tax_sum1    := 0;  -- 税抜合計１
+          lt_tax_gap_amount := 0;  -- 税差額
+          lt_inv_gap_amount := 0;  -- 本体差額
+          --
+          -- 税抜き（消費税区分：外税、非課税）
+          IF ( get_target_inv_rec.tax_div IN ( cv_tax_div_outtax, cv_tax_div_notax ) ) THEN
+            -- 税額合計１（税抜き）算出処理
+            IF( get_target_inv_rec.tax_rate IS NOT NULL ) THEN
+               lt_tax_sum1 := calc_tax_sum1( get_target_inv_rec.ship_amount
+                                            ,get_target_inv_rec.tax_rate );
+            END IF;
+            -- 税抜合計１は取得した税抜額合計
+            lt_no_tax_sum1 := get_target_inv_rec.ship_amount;
+            -- 本体差額は0
+            lt_inv_gap_amount := 0;
+          --
+          -- 税込み（消費税区分：内税(伝票)、内税(単価)）
+          ELSIF ( get_target_inv_rec.tax_div IN ( cv_tax_div_inslip, cv_tax_div_inunit ) ) THEN
+            -- 税抜合計１算出処理
+            IF( get_target_inv_rec.tax_rate IS NOT NULL ) THEN
+              lt_no_tax_sum1 := calc_no_tax_sum1( get_target_inv_rec.sold_amount
+                                                 ,get_target_inv_rec.tax_rate );
+            END IF;
+            -- 税額合計１
+            lt_tax_sum1 := get_target_inv_rec.sold_amount - lt_no_tax_sum1;
+            -- 本体差額
+            -- 請求書消費税積上げ計算方式がYの場合は0
+            IF ( get_target_inv_rec.invoice_tax_div = 'Y' ) THEN
+               lt_inv_gap_amount := 0;
+            ELSE
+            -- 請求書消費税積上げ計算方式がY以外の場合、税抜合計１ －税抜合計２
+               lt_inv_gap_amount := lt_no_tax_sum1 - get_target_inv_rec.ship_amount;
+            END IF;
+          END IF;
+          -- 税差額
+          -- 請求書消費税積上げ計算方式がYの場合は0
+          IF ( get_target_inv_rec.invoice_tax_div = 'Y' ) THEN
+             lt_tax_gap_amount := 0;
+          ELSE
+          -- 請求書消費税積上げ計算方式がY以外の場合、税額合計１ －税額合計２
+             lt_tax_gap_amount := lt_tax_sum1 - get_target_inv_rec.tax_amount;
+          END IF;
+--
+          -- 請求ヘッダ更新用にデータを保持します
+          gt_tax_gap_amount_tab(ln_int) := lt_tax_gap_amount;                      -- 税差額
+          gt_tax_sum1_tab(ln_int)       := lt_tax_sum1;                            -- 税額合計１
+          gt_tax_sum2_tab(ln_int)       := get_target_inv_rec.tax_amount;          -- 税額合計２
+          gt_inv_gap_amount_tab(ln_int) := lt_inv_gap_amount;                      -- 本体差額
+          gt_no_tax_sum1_tab(ln_int)    := lt_no_tax_sum1;                         -- 税抜合計１
+          gt_no_tax_sum2_tab(ln_int)    := get_target_inv_rec.ship_amount;         -- 税抜合計２
+          lt_invoice_id                 := get_target_inv_rec.invoice_id;          -- ブレークコード設定
+--
+          -- 請求明細更新(A-11)
+          update_invoice_lines(
+            get_target_inv_rec.invoice_id,             -- 請求書ID
+            get_target_inv_rec.invoice_detail_num,     -- 一括請求書明細No
+            lt_tax_gap_amount,                         -- 税差額
+            lt_tax_sum1,                               -- 税額合計１
+            get_target_inv_rec.tax_amount,             -- 税額合計２
+            lt_inv_gap_amount,                         -- 本体差額
+            lt_no_tax_sum1,                            -- 税抜合計１
+            get_target_inv_rec.ship_amount,            -- 税抜合計２
+            get_target_inv_rec.category,               -- 内訳分類
+            get_target_inv_rec.invoice_printing_unit,  -- 請求書印刷単位
+            get_target_inv_rec.customer_for_sum,       -- 顧客(集計用)
+            get_target_inv_rec.tax_div,                -- 消費税区分
+            lv_errbuf,                                 -- エラー・メッセージ           --# 固定 #
+            lv_retcode,                                -- リターン・コード             --# 固定 #
+            lv_errmsg                                  -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+        ELSE
+          -- 2レコード目以降
+          lt_tax_sum1       := 0;  -- 税額合計１
+          lt_no_tax_sum1    := 0;  -- 税抜合計１
+          lt_tax_gap_amount := 0;  -- 税差額
+          lt_inv_gap_amount := 0;  -- 本体差額
+          --
+          -- 税抜き（消費税区分：外税、非課税）
+          IF ( get_target_inv_rec.tax_div IN ( cv_tax_div_outtax, cv_tax_div_notax ) ) THEN
+            -- 税額合計１（税抜き）算出処理
+            IF( get_target_inv_rec.tax_rate IS NOT NULL ) THEN
+               lt_tax_sum1 := calc_tax_sum1( get_target_inv_rec.ship_amount
+                                            ,get_target_inv_rec.tax_rate );
+            END IF;
+            -- 税抜合計１は取得した税抜額合計
+            lt_no_tax_sum1 := get_target_inv_rec.ship_amount;
+            -- 本体差額は0
+            lt_inv_gap_amount := 0;
+          --
+          -- 税込み（消費税区分：内税(伝票)、内税(単価)）
+          ELSIF ( get_target_inv_rec.tax_div IN ( cv_tax_div_inslip, cv_tax_div_inunit ) ) THEN
+            -- 税抜合計１算出処理
+            IF( get_target_inv_rec.tax_rate IS NOT NULL ) THEN
+              lt_no_tax_sum1 := calc_no_tax_sum1( get_target_inv_rec.sold_amount
+                                                 ,get_target_inv_rec.tax_rate );
+            END IF;
+            -- 税額合計１
+            lt_tax_sum1 := get_target_inv_rec.sold_amount - lt_no_tax_sum1;
+            -- 本体差額
+            -- 請求書消費税積上げ計算方式がYの場合は0
+            IF ( get_target_inv_rec.invoice_tax_div = 'Y' ) THEN
+               lt_inv_gap_amount := 0;
+            ELSE
+            -- 請求書消費税積上げ計算方式がY以外の場合、税抜合計１ －税抜合計２
+               lt_inv_gap_amount := lt_no_tax_sum1 - get_target_inv_rec.ship_amount;
+            END IF;
+          END IF;
+          -- 税差額
+          -- 請求書消費税積上げ計算方式がYの場合は0
+          IF ( get_target_inv_rec.invoice_tax_div = 'Y' ) THEN
+             lt_tax_gap_amount := 0;
+          ELSE
+          -- 請求書消費税積上げ計算方式がY以外の場合、税額合計１ －税額合計２
+             lt_tax_gap_amount := lt_tax_sum1 - get_target_inv_rec.tax_amount;
+          END IF;
+--
+          -- 請求ヘッダ更新用にデータを保持します
+          gt_tax_gap_amount_tab(ln_int) := gt_tax_gap_amount_tab(ln_int) + lt_tax_gap_amount;                -- 税差額
+          gt_tax_sum1_tab(ln_int)       := gt_tax_sum1_tab(ln_int) + lt_tax_sum1;                            -- 税額合計１
+          gt_tax_sum2_tab(ln_int)       := gt_tax_sum2_tab(ln_int) + get_target_inv_rec.tax_amount;          -- 税額合計２
+          gt_inv_gap_amount_tab(ln_int) := gt_inv_gap_amount_tab(ln_int) + lt_inv_gap_amount;                -- 本体差額
+          gt_no_tax_sum1_tab(ln_int)    := gt_no_tax_sum1_tab(ln_int) + lt_no_tax_sum1;                      -- 税抜合計１
+          gt_no_tax_sum2_tab(ln_int)    := gt_no_tax_sum2_tab(ln_int) + get_target_inv_rec.ship_amount;      -- 税抜合計２
+--
+          -- 請求明細更新(A-11)
+          update_invoice_lines(
+            get_target_inv_rec.invoice_id,             -- 請求書ID
+            get_target_inv_rec.invoice_detail_num,     -- 一括請求書明細No
+            lt_tax_gap_amount,                         -- 税差額
+            lt_tax_sum1,                               -- 税額合計１
+            get_target_inv_rec.tax_amount,             -- 税額合計２
+            lt_inv_gap_amount,                         -- 本体差額
+            lt_no_tax_sum1,                            -- 税抜合計１
+            get_target_inv_rec.ship_amount,            -- 税抜合計２
+            get_target_inv_rec.category,               -- 内訳分類
+            get_target_inv_rec.invoice_printing_unit,  -- 請求書印刷単位
+            get_target_inv_rec.customer_for_sum,       -- 顧客(集計用)
+            get_target_inv_rec.tax_div,                -- 消費税区分
+            lv_errbuf,                                 -- エラー・メッセージ           --# 固定 #
+            lv_retcode,                                -- リターン・コード             --# 固定 #
+            lv_errmsg                                  -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+        END IF;
+      END IF;
+--
+    END LOOP edit_loop;
 --
     -- 処理件数のセット
     ov_target_trx_cnt := gt_get_inv_id_tab.COUNT;
 --
-    --対象請求書情報取得カーソルクローズ
-    CLOSE get_target_inv_cur;
---
+-- Ver1.190 Add End
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
@@ -4763,13 +5265,26 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : update_bill_amount
-   * Description      : 請求金額更新処理(A-11)
+   * Description      : 請求金額更新処理 請求ヘッダ情報テーブル(A-11)
    ***********************************************************************************/
   PROCEDURE update_bill_amount(
     in_invoice_id           IN  NUMBER,       -- 請求書ID
-    in_amt_no_tax           IN  NUMBER,       -- 納品金額
-    in_tax_amt_sum          IN  NUMBER,       -- 消費税金額
-    in_amd_inc_tax          IN  NUMBER,       -- 売上金額
+-- Ver1.190 Del Start
+--    in_amt_no_tax           IN  NUMBER,       -- 納品金額
+--    in_tax_amt_sum          IN  NUMBER,       -- 消費税金額
+--    in_amd_inc_tax          IN  NUMBER,       -- 売上金額
+-- Ver1.190 Del End
+-- Ver1.190 Add Start
+    in_tax_gap_amount       IN  NUMBER,       -- 税差額
+    in_tax_amount_sum       IN  NUMBER,       -- 税額合計１
+    in_tax_amount_sum2      IN  NUMBER,       -- 税額合計２
+    in_inv_gap_amount       IN  NUMBER,       -- 本体差額
+    in_inv_amount_sum       IN  NUMBER,       -- 税抜額合計１
+    in_inv_amount_sum2      IN  NUMBER,       -- 税抜額合計２
+    iv_invoice_tax_div      IN  VARCHAR2,     -- 請求書消費税積上げ計算方式
+    iv_output_format        IN  VARCHAR2,     -- 請求書出力形式
+    iv_tax_div              IN  VARCHAR2,     -- 税区分
+-- Ver1.190 Add End
     ov_errbuf               OUT VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4796,6 +5311,13 @@ AS
     -- *** ローカル変数 ***
     ln_target_cnt       NUMBER;         -- 対象件数
     lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;
+-- Ver1.190 Add Start
+    lt_inv_gap_amount              xxcfr_invoice_headers.inv_gap_amount%TYPE;              -- 本体差額
+    lt_inv_amount_no_tax           xxcfr_invoice_headers.inv_amount_no_tax%TYPE;           -- 税抜請求金額合計
+    lt_tax_amount_sum              xxcfr_invoice_headers.tax_amount_sum%TYPE;              -- 税額合計
+    lt_inv_amount_includ_tax       xxcfr_invoice_headers.inv_amount_includ_tax%TYPE;       -- 税込請求金額合計
+    lt_tax_diff_amount_create_flg  xxcfr_invoice_headers.tax_diff_amount_create_flg%TYPE;  -- 消費税差額作成フラグ
+-- Ver1.190 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -4813,6 +5335,13 @@ AS
 --
     -- ローカル変数の初期化
     ln_target_cnt     := 0;
+-- Ver1.190 Add Start
+    lt_inv_gap_amount              := 0;
+    lt_inv_amount_no_tax           := 0;
+    lt_tax_amount_sum              := 0;
+    lt_inv_amount_includ_tax       := 0;
+    lt_tax_diff_amount_create_flg  := NULL;
+-- Ver1.190 Add Start
 --
     -- 請求作成対象データ取得
     -- 請求ヘッダ情報と請求明細情報を作成せずに、明細データ削除のみを実施しているパターンがある
@@ -4882,13 +5411,64 @@ AS
 --
 -- Modify 2013.06.10 Ver1.140 End
 --
+-- Ver1.190 Add Start
+    -- 税差額を設定する
+--    IF ( iv_invoice_tax_div = 'Y' ) THEN
+--      lt_tax_gap_amount := 0;
+--    ELSE
+--      lt_tax_gap_amount := in_tax_gap_amount;
+--    END IF;
+--
+    -- 税額合計
+    IF ( iv_invoice_tax_div = 'Y' ) THEN
+      lt_tax_amount_sum := in_tax_amount_sum2;  -- 税額合計に税額合計２を設定
+    ELSE
+      lt_tax_amount_sum := in_tax_amount_sum;   -- 税額合計に税額合計１を設定
+    END IF;
+    -- 税抜きの場合
+    IF ( iv_tax_div IN ( cv_tax_div_outtax, cv_tax_div_notax ) )  THEN
+      lt_inv_gap_amount    := 0;                    -- 本体差額に0を設定
+      lt_inv_amount_no_tax := in_inv_amount_sum2;   -- 税抜請求金額合計に税抜額合計２を設定
+--
+    -- 税込みの場合
+    ELSIF ( iv_tax_div IN ( cv_tax_div_inslip, cv_tax_div_inunit ) ) THEN
+      IF ( iv_invoice_tax_div = 'Y' ) THEN
+        lt_inv_gap_amount    := 0;                  -- 本体差額に0を設定
+        lt_inv_amount_no_tax := in_inv_amount_sum2; -- 税抜請求金額合計に税抜額合計２を設定
+      ELSE
+        lt_inv_gap_amount    := in_inv_gap_amount;  -- 本体差額
+        lt_inv_amount_no_tax := in_inv_amount_sum;  -- 税抜請求金額合計に税抜額合計１を設定
+      END IF;
+    END IF;
+--
+    -- 税込請求金額合計 = 税抜請求金額合計 ＋ 税額合計
+    lt_inv_amount_includ_tax := NVL(lt_inv_amount_no_tax,0) + lt_tax_amount_sum;
+    -- 消費税差額作成フラグ
+    -- 請求書消費税積上げ計算方式がY以外かつ税差額または本体差額が0またはNULLでない場合
+    IF ( iv_invoice_tax_div <> 'Y' AND
+         (( NVL(in_tax_gap_amount,0) <> 0 ) OR ( NVL(lt_inv_gap_amount,0) <> 0 )) ) THEN
+      lt_tax_diff_amount_create_flg := '0';
+    END IF;
+-- Ver1.190 Add End
+--
     -- 請求ヘッダ情報テーブル請求金額更新
     BEGIN
 --
       UPDATE  xxcfr_invoice_headers  xxih -- 請求ヘッダ情報テーブル
-      SET     xxih.inv_amount_no_tax      =  in_amt_no_tax  --税抜請求金額合計
-             ,xxih.tax_amount_sum         =  in_tax_amt_sum --税額合計
-             ,xxih.inv_amount_includ_tax  =  in_amd_inc_tax --税込請求金額合計
+-- Ver1.190 Mod Start
+--      SET     xxih.inv_amount_no_tax      =  in_amt_no_tax  --税抜請求金額合計
+--             ,xxih.tax_amount_sum         =  in_tax_amt_sum --税額合計
+--             ,xxih.inv_amount_includ_tax  =  in_amd_inc_tax --税込請求金額合計
+      SET    xxih.tax_gap_amount              =  in_tax_gap_amount         -- 税差額
+            ,xxih.inv_amount_no_tax           =  lt_inv_amount_no_tax      -- 税抜請求金額合計
+            ,xxih.tax_amount_sum              =  lt_tax_amount_sum         -- 税額合計
+            ,xxih.inv_amount_includ_tax       =  lt_inv_amount_includ_tax  -- 税込請求金額合計
+            ,xxih.inv_gap_amount              =  lt_inv_gap_amount         -- 本体差額
+            ,xxih.invoice_tax_div             =  iv_invoice_tax_div        -- 請求書消費税積上げ計算方式
+            ,xxih.tax_diff_amount_create_flg  =  lt_tax_diff_amount_create_flg  -- 消費税差額作成フラグ
+            ,xxih.tax_rounding_rule           =  cv_tax_rounding_rule_down      -- 税金－端数処理
+            ,xxih.output_format               =  iv_output_format          -- 請求書出力形式
+-- Ver1.190 Mod End
       WHERE   xxih.invoice_id = in_invoice_id          -- 請求書ID
       ;
 --
@@ -5177,7 +5757,10 @@ AS
 -- Modify 2013.01.17 Ver1.130 Start
     --夜間手動判断区分の判断（手動実行用）
     --手動実行では請求ヘッダ情報の請求金額を再計算する必要がある為、下記で再計算する
-    IF (gv_batch_on_judge_type != cv_judge_type_batch) THEN
+-- Ver1.190 Del Start
+--   IF (gv_batch_on_judge_type != cv_judge_type_batch) THEN
+-- Ver1.190 Del End
+-- 夜間、手動共に請求ヘッダ情報の請求金額を再計算する。
       --変数初期化
       ln_target_trx_cnt := 0;
       -- =====================================================
@@ -5199,13 +5782,26 @@ AS
       <<for_loop>>
       FOR ln_loop_cnt IN gt_get_inv_id_tab.FIRST..gt_get_inv_id_tab.LAST LOOP
         -- =====================================================
-        -- 請求金額更新処理 (A-11)
+        -- 請求金額更新処理 請求ヘッダ情報テーブル(A-11)
         -- =====================================================
         update_bill_amount(
            gt_get_inv_id_tab(ln_loop_cnt),         -- 請求書ID
-           gt_get_amt_no_tax_tab(ln_loop_cnt),     -- 納品金額
-           gt_get_tax_amt_sum_tab(ln_loop_cnt),    -- 消費税金額
-           gt_get_amd_inc_tax_tab(ln_loop_cnt),    -- 売上金額
+-- Ver1.190 Del Start
+--           gt_get_amt_no_tax_tab(ln_loop_cnt),     -- 税抜総額（合計）
+--           gt_get_tax_amt_sum_tab(ln_loop_cnt),    -- 消費税額（合計）
+--           gt_get_amd_inc_tax_tab(ln_loop_cnt),    -- 売上金額
+-- Ver1.190 Del End
+-- Ver1.190 Add Start
+           gt_tax_gap_amount_tab(ln_loop_cnt),     -- 税差額
+           gt_tax_sum1_tab(ln_loop_cnt),           -- 税額合計１
+           gt_tax_sum2_tab(ln_loop_cnt),           -- 税額合計２
+           gt_inv_gap_amount_tab(ln_loop_cnt),     -- 本体差額
+           gt_no_tax_sum1_tab(ln_loop_cnt),        -- 税抜額合計１
+           gt_no_tax_sum2_tab(ln_loop_cnt),        -- 税抜額合計２
+           gt_invoice_tax_div_tab(ln_loop_cnt),    -- 請求書消費税積上げ計算方式
+           gt_output_format_tab(ln_loop_cnt),      -- 請求書出力形式
+           gt_tax_div_tab(ln_loop_cnt),            -- 税区分
+-- Ver1.190 Add End
            lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
            lv_retcode,                             -- リターン・コード             --# 固定 #
            lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5218,7 +5814,9 @@ AS
 --
       END IF;
 --
-    END IF;
+-- Ver1.190 Del Start
+--    END IF;
+-- Ver1.190 Del End
 --
 -- Modify 2013.01.17 Ver1.130 End
 --
