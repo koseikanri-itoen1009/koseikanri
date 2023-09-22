@@ -1,0 +1,8 @@
+﻿DVM,XXCCD_CONVERT_ESSJOB_CMM001A03,
+Key,Value
+PozSuppliersInt.csv,ImportSuppliers
+PozSupplierAddressesInt.csv,ImportSupplierAddresses
+PozSupplierSitesInt.csv,ImportSupplierSites
+PozSiteAssignmentsInt.csv,ImportSupplierSiteAssignments
+PozSupContactsInt.csv,ImportSupplierContacts
+PozSupContactAddressesInt.csv,ImportSupplierContacts
