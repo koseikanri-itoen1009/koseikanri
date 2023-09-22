@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_BALANCE
  * Description : ”ÌŽèŽc‚ˆê——’ •[ƒ[ƒNƒe[ƒuƒ‹
- * Version     : 1.8
+ * Version     : 1.9
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -18,7 +18,7 @@
  *  2013/04/25    1.6   S.Niki           [E_–{‰Ò“®_10411]Žx•¥æƒR[ƒh,Žx•¥ƒXƒe[ƒ^ƒX,•Ï“®“d‹C‘ã–¢“ü—Íƒ}[ƒN’Ç‰Á
  *  2013/06/11    1.7   S.Niki           [E_–{‰Ò“®_10819]ƒGƒ‰[Ží•Ê•À‚Ñ‡’Ç‰Á
  *  2021/04/21    1.8   H.Futamura       [E_–{‰Ò“®_16946]Žc‚ˆê——‚ÖÅ‹æ•ª’Ç‰Á
- *
+ *  2023/08/25    1.9   T.Okuyama        [E_–{‰Ò“®_19179]ƒCƒ“ƒ{ƒCƒX‘Î‰žiBMŠÖ˜Aj
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
 (
@@ -88,6 +88,17 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
 -- 2021/04/21 Ver.1.8 [E_–{‰Ò“®_16946] SCSK H.Futamura ADD START
    BM_TAX_KBN_NAME              VARCHAR2(80),
 -- 2021/04/21 Ver.1.8 [E_–{‰Ò“®_16946] SCSK H.Futamura ADD END
+-- Ver.1.9 [áŠQE_–{‰Ò“®_19179] SCSK T.Okuama ADD START
+   BM_TAX_KBN                   VARCHAR2(1),
+   TAX_CALC_KBN_NAME            VARCHAR2(80),
+   TAX_CALC_KBN                 VARCHAR2(1),
+   INVOICE_T_NO                 VARCHAR2(14),
+   TOTAL_LINETITLE1             VARCHAR2(30),
+   TOTAL_LINETITLE2             VARCHAR2(30),
+   TOTAL_LINETITLE3             VARCHAR2(30),
+   UNPAID_BALANCE_SUM2          NUMBER,
+   UNPAID_BALANCE_SUM3          NUMBER,
+-- Ver.1.9 [áŠQE_–{‰Ò“®_19179] SCSK T.Okuama ADD END
    CREATED_BY                   NUMBER(15,0)    NOT NULL,
    CREATION_DATE                DATE            NOT NULL,
    LAST_UPDATED_BY              NUMBER(15,0)    NOT NULL,
@@ -204,6 +215,26 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BM_PAYMENT_CODE           IS 'BMŽx•
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BM_TAX_KBN_NAME           IS 'BMÅ‹æ•ª–¼'
 /
 -- 2021/04/21 Ver.1.8 [E_–{‰Ò“®_16946] SCSK H.Futamura ADD END
+-- Ver.1.9 [áŠQE_–{‰Ò“®_19179] SCSK T.Okuama ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BM_TAX_KBN                IS 'BMÅ‹æ•ª'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.TAX_CALC_KBN_NAME         IS 'BMÅŒvŽZ‹æ•ª–¼'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.TAX_CALC_KBN              IS 'BMÅŒvŽZ‹æ•ª'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.INVOICE_T_NO              IS '“o˜^”Ô†iŽx•¥æj'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.TOTAL_LINETITLE1          IS '‡Œvsƒ^ƒCƒgƒ‹‚P'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.TOTAL_LINETITLE2          IS '‡Œvsƒ^ƒCƒgƒ‹‚Q'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.TOTAL_LINETITLE3          IS '‡Œvsƒ^ƒCƒgƒ‹‚R'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.UNPAID_BALANCE_SUM2       IS '‡Œvs–¢•¥Žc‚‡Œv‚Q'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.UNPAID_BALANCE_SUM3       IS '‡Œvs–¢•¥Žc‚‡Œv‚R'
+/
+-- Ver.1.9 [áŠQE_–{‰Ò“®_19179] SCSK T.Okuama ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CREATED_BY                IS 'ì¬ŽÒ'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CREATION_DATE             IS 'ì¬“ú'
