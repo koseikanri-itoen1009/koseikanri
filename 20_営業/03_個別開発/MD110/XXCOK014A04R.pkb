@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  upd_resv_payment_rec   支払ステータス「消込済」更新処理(A-11)
  *  upd_resv_payment       支払ステータス「自動繰越」更新処理(A-10)
  *  ins_worktable_data     ワークテーブルデータ登録(A-7)
+ *  upd_payment_sum_rec    帳票ワーク合計行更新処理(A-13)
  *  upd_worktable_data     ワークテーブルデータ更新処理(A-12)
  *  break_judge            ブレイク判定処理(A-6)
  *  get_bm_contract_err    販手エラー情報抽出処理(A-5)
@@ -65,7 +66,7 @@ AS
  *  2014/09/17    1.22  SCSK S.Niki      [障害E_本稼動_12185]   パフォーマンス改善対応
  *  2020/12/21    1.23  SCSK N.Abe       [障害E_本稼動_16860]   支払ステータス「自動繰越」の表示条件対応
  *  2021/04/21    1.24  SCSK H.Futamura  [障害E_本稼動_16946]   残高一覧へ税区分追加
- *
+ *  2023/09/21    1.25  SCSK T.Okuyama   [障害E_本稼動_19179]   インボイス対応（BM関連）
  *****************************************************************************************/
   -- ===============================================
   -- グローバル定数
@@ -203,6 +204,17 @@ AS
 -- Ver.1.24 ADD START
   cv_lookup_type_bm_tax_kbn  CONSTANT VARCHAR2(20)  := 'XXCSO1_BM_TAX_KBN';
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+  cv_lookup_type_bm_tax_div  CONSTANT VARCHAR2(30)  := 'XXCMM_INVOICE_TAX_DIV_BM';     -- 税計算区分
+  cv_snap_timing1            CONSTANT VARCHAR2(1)   := '1';                            -- スナップショットタイミング(1：2営)
+  cv_bm_payment_type5        CONSTANT VARCHAR2(1)   := '5';                            -- (DFF4)BM支払区分(5：支払なし)
+  cv_tax_calc_kbn2           CONSTANT VARCHAR2(1)   := '2';                            -- (DFF10)税計算区分(2：明細単位)
+  cv_tax_rounding_rule       CONSTANT VARCHAR2(10)  := 'DOWN';                         -- 端数処理区分
+  -- 残高一覧合計行見出し
+  cv_prof_list_inc_tax       CONSTANT VARCHAR2(30)  := 'XXCOK1_BALANCE_LIST_INC_TAX';  -- XXCOK:残高一覧合計行見出し_税込
+  cv_prof_list_ex_tax        CONSTANT VARCHAR2(30)  := 'XXCOK1_BALANCE_LIST_EX_TAX';   -- XXCOK:残高一覧合計行見出し_税抜
+  cv_prof_list_tax           CONSTANT VARCHAR2(30)  := 'XXCOK1_BALANCE_LIST_TAX';      -- XXCOK:残高一覧合計行見出し_消費税
+-- Ver.1.25 ADD END
 -- 2010/01/27 Ver.1.11 [障害E_本稼動_01176] SCS K.Kiriu START
 --  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
   cv_lookup_type_bank        CONSTANT VARCHAR2(16)  := 'XXCSO1_KOZA_TYPE';
@@ -330,6 +342,20 @@ AS
 -- Ver.1.24 ADD START
   gt_bm_tax_kbn_name_bk      xxcok_rep_bm_balance.bm_tax_kbn_name%TYPE            DEFAULT NULL; -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+  gt_bm_tax_kbn_bk             po_vendor_sites_all.attribute6%TYPE                DEFAULT NULL; -- BM税区分
+  gt_tax_calc_kbn_name_bk      xxcok_rep_bm_balance.tax_calc_kbn_name%TYPE        DEFAULT NULL; -- BM税計算区分名
+  gt_tax_calc_kbn_bk           po_vendor_sites_all.attribute10%TYPE               DEFAULT NULL; -- BM税計算区分
+  gt_supplier_code             xxcok_rep_bm_balance.payment_code%TYPE             DEFAULT NULL; -- 支払先コード
+  gt_bm_kbn_bk                 po_vendor_sites_all.attribute4%TYPE                DEFAULT NULL; -- BM支払区分
+  gt_invoice_t_no_bk           xxcok_rep_bm_balance.invoice_t_no%TYPE             DEFAULT NULL; -- 登録番号（支払先）
+  gn_recalc_with_amt           NUMBER                                             DEFAULT 0;    -- 未払残高（税込）仕入先合計
+  gn_recalc_no_amt             NUMBER                                             DEFAULT 0;    -- 未払残高（税抜）仕入先合計
+  gn_recalc_tax                NUMBER                                             DEFAULT 0;    -- 未払残高（消費税）仕入先合計
+  gt_subtitle1                 xxcok_lookups_v.meaning%TYPE                       DEFAULT NULL; -- 合計行見出し：'税込み'
+  gt_subtitle2                 xxcok_lookups_v.meaning%TYPE                       DEFAULT NULL; -- 合計行見出し：'税抜き'
+  gt_subtitle3                 xxcok_lookups_v.meaning%TYPE                       DEFAULT NULL; -- 合計行見出し：'消費税'
+-- Ver.1.25 ADD END
   -- 集計用
   gt_unpaid_last_month_sum xxcok_rep_bm_balance.unpaid_last_month%TYPE          DEFAULT 0;  -- 前月までの未払
   gt_bm_this_month_sum     xxcok_rep_bm_balance.bm_this_month%TYPE              DEFAULT 0;  -- 当月BM
@@ -388,6 +414,17 @@ AS
 -- Ver.1.24 ADD START
    ,BM_TAX_KBN_NAME              VARCHAR2(80)  -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+   ,BM_TAX_KBN                   VARCHAR2(1)   -- BM税区分
+   ,TAX_CALC_KBN_NAME            VARCHAR2(80)  -- BM税計算区分名
+   ,TAX_CALC_KBN                 VARCHAR2(1)   -- BM税計算区分
+   ,INVOICE_T_NO                 VARCHAR2(14)  -- 登録番号（支払先）
+   ,TOTAL_LINETITLE1             VARCHAR2(30)  -- 合計行タイトル１
+   ,TOTAL_LINETITLE2             VARCHAR2(30)  -- 合計行タイトル２
+   ,TOTAL_LINETITLE3             VARCHAR2(30)  -- 合計行タイトル３
+   ,UNPAID_BALANCE_SUM2          NUMBER        -- 合計行未払残高合計２
+   ,UNPAID_BALANCE_SUM3          NUMBER        -- 合計行未払残高合計３
+-- Ver.1.25 ADD END
   );
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki ADD START
   TYPE g_target_rtype IS RECORD(
@@ -405,10 +442,16 @@ AS
    ,expect_payment_amt_tax       xxcok_backmargin_balance.expect_payment_amt_tax%TYPE  -- 支払予定額（税込）
    ,resv_flag                    xxcok_backmargin_balance.resv_flag%TYPE               -- 保留フラグ
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
-   ,payment_amt_tax              xxcok_backmargin_balance.payment_amt_tax%TYPE         -- 支払額（税込）
+-- Ver.1.25 DEL START
+--   ,payment_amt_tax              xxcok_backmargin_balance.payment_amt_tax%TYPE         -- 支払額（税込）
+-- Ver.1.25 DEL END
    ,fb_interface_date            xxcok_backmargin_balance.fb_interface_date%TYPE       -- 連携日（本振用FB）
    ,proc_type                    xxcok_backmargin_balance.proc_type%TYPE               -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
+-- Ver.1.25 ADD START
+   ,tax_calc_kbn                 xxcok_bm_balance_snap.tax_calc_kbn%TYPE               -- SNAP税計算区分
+   ,bm_balance_id2               xxcok_bm_balance_snap.bm_balance_id%TYPE              -- SNAP販手残高ID
+-- Ver.1.25 ADD END
   );
 -- 2011/01/24 Ver.1.12 [障害E_本稼動_06199] SCS S.Niki ADD END
   -- ===============================
@@ -531,10 +574,16 @@ AS
           ,expect_payment_amt_tax -- 支払予定額（税込）
           ,resv_flag              -- 保留フラグ
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
-          ,payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL START
+--          ,payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL END
           ,fb_interface_date      -- 連携日（本振用FB）
           ,proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
+-- Ver.1.25 ADD START
+          ,tax_calc_kbn           -- SNAP税計算区分
+          ,bm_balance_id2         -- SNAP販手残高ID
+-- Ver.1.25 ADD END
     FROM (SELECT /*+
 -- Ver.1.22 MOD START
 --                   leading(xbb2 xbb pv pvsa)
@@ -560,10 +609,16 @@ AS
                  ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
                  ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
-                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL START
+--                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL END
                  ,xbb.fb_interface_date                AS fb_interface_date      -- 連携日（本振用FB）
                  ,xbb.proc_type                        AS proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
+-- Ver.1.25 ADD START
+                 ,xbbs.tax_calc_kbn                    AS tax_calc_kbn           -- SNAP税計算区分
+                 ,xbbs.bm_balance_id                   AS bm_balance_id2         -- SNAP販手残高ID
+-- Ver.1.25 ADD END
           FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
 -- Ver.1.22 DEL START
 --                ,po_vendors                pv     -- 仕入先マスタ
@@ -572,6 +627,9 @@ AS
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD START
                 ,xxcmm_cust_accounts       xca    -- 顧客追加情報
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki ADD END
+-- Ver.1.25 ADD START
+                ,xxcok_bm_balance_snap     xbbs   -- 販手残高SNAP
+-- Ver.1.25 ADD END
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD START
 --          WHERE  xbb.base_code                                 = NVL( gv_selling_base_code ,xbb.base_code)
           WHERE  xbb.cust_code                                 = xca.customer_code
@@ -592,6 +650,11 @@ AS
 --          AND    pvsa.org_id                                   = gn_org_id
           AND    xbb.supplier_code                             = NVL( gt_payment_code ,xbb.supplier_code )
 -- Ver.1.22 MOD END
+-- Ver.1.25 ADD START
+          AND    xbb.BM_BALANCE_ID                             = xbbs.BM_BALANCE_ID(+)
+          AND    xbbs.snapshot_create_ym(+)                    = TO_CHAR(gd_payment_date, 'YYYYMM')
+          AND    xbbs.snapshot_timing(+)                       = cv_snap_timing1  -- スナップショットタイミング「2営」
+-- Ver.1.25 ADD END
           )
     ORDER BY  supplier_code       -- 仕入先コード
              ,base_code           -- 拠点コード
@@ -627,10 +690,16 @@ AS
           ,expect_payment_amt_tax -- 支払予定額（税込）
           ,resv_flag              -- 保留フラグ
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
-          ,payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL START
+--          ,payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL END
           ,fb_interface_date      -- 連携日（本振用FB）
           ,proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
+-- Ver.1.25 ADD START
+          ,tax_calc_kbn           -- SNAP税計算区分
+          ,bm_balance_id2         -- SNAP販手残高ID
+-- Ver.1.25 ADD END
     FROM (SELECT /*+
 -- Ver.1.22 MOD START
 --                   leading(xbb2 xbb pv pvsa)
@@ -656,15 +725,24 @@ AS
                  ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
                  ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD START
-                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL START
+--                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL END
                  ,xbb.fb_interface_date                AS fb_interface_date      -- 連携日（本振用FB）
                  ,xbb.proc_type                        AS proc_type              -- 処理区分
 -- 2012/07/23 Ver.1.15 [障害E_本稼動_08365,08367] SCSK K.Onotsuka ADD END
+-- Ver.1.25 ADD START
+                 ,xbbs.tax_calc_kbn                    AS tax_calc_kbn           -- SNAP税計算区分
+                 ,xbbs.bm_balance_id                   AS bm_balance_id2         -- SNAP販手残高ID
+-- Ver.1.25 ADD END
           FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
 -- Ver.1.22 DEL START
 --                ,po_vendors                pv     -- 仕入先マスタ
 --                ,po_vendor_sites_all       pvsa   -- 仕入先サイト
 -- Ver.1.22 DEL END
+-- Ver.1.25 ADD START
+                ,xxcok_bm_balance_snap     xbbs   -- 販手残高SNAP
+-- Ver.1.25 ADD END
           WHERE  xbb.supplier_code IN (SELECT /*+
 -- Ver.1.22 MOD START
 --                                                index(xbb2 XXCOK_BACKMARGIN_BALANCE_N08)
@@ -698,6 +776,11 @@ AS
 --          AND    pvsa.org_id                                   = gn_org_id
           AND    xbb.supplier_code                             = NVL( gt_payment_code ,xbb.supplier_code )
 -- Ver.1.22 MOD END
+-- Ver.1.25 ADD START
+          AND    xbb.BM_BALANCE_ID                             = xbbs.BM_BALANCE_ID(+)
+          AND    xbbs.snapshot_create_ym(+)                    = TO_CHAR(gd_payment_date, 'YYYYMM')
+          AND    xbbs.snapshot_timing(+)                       = cv_snap_timing1  -- スナップショットタイミング「2営」
+-- Ver.1.25 ADD END
           )
     ORDER BY  supplier_code       -- 仕入先コード
              ,base_code           -- 拠点コード
@@ -723,9 +806,15 @@ AS
           ,expect_payment_date    -- 支払予定日
           ,expect_payment_amt_tax -- 支払予定額（税込）
           ,resv_flag              -- 保留フラグ
-          ,payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL START
+--          ,payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL END
           ,fb_interface_date      -- 連携日（本振用FB）
           ,proc_type              -- 処理区分
+-- Ver.1.25 ADD START
+          ,tax_calc_kbn           -- SNAP税計算区分
+          ,bm_balance_id2         -- SNAP販手残高ID
+-- Ver.1.25 ADD END
     FROM (SELECT /*+
                    leading(pv)
                    use_nl (pv pvsa xbb)
@@ -745,12 +834,21 @@ AS
                  ,xbb.expect_payment_date              AS expect_payment_date    -- 支払予定日
                  ,NVL( xbb.expect_payment_amt_tax ,0 ) AS expect_payment_amt_tax -- 支払予定額（税込）
                  ,xbb.resv_flag                        AS resv_flag              -- 保留フラグ
-                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL START
+--                 ,NVL( xbb.payment_amt_tax ,0 )        AS payment_amt_tax        -- 支払額（税込）
+-- Ver.1.25 DEL END
                  ,xbb.fb_interface_date                AS fb_interface_date      -- 連携日（本振用FB）
                  ,xbb.proc_type                        AS proc_type              -- 処理区分
+-- Ver.1.25 ADD START
+                 ,xbbs.tax_calc_kbn                    AS tax_calc_kbn           -- SNAP税計算区分
+                 ,xbbs.bm_balance_id                   AS bm_balance_id2         -- SNAP販手残高ID
+-- Ver.1.25 ADD END
           FROM   xxcok_backmargin_balance  xbb    -- 販手残高テーブル
                 ,po_vendors                pv     -- 仕入先マスタ
                 ,po_vendor_sites_all       pvsa   -- 仕入先サイト
+-- Ver.1.25 ADD START
+                ,xxcok_bm_balance_snap     xbbs   -- 販手残高SNAP
+-- Ver.1.25 ADD END
           WHERE  xbb.expect_payment_date                      <= gd_payment_date
           AND    xbb.supplier_code                             = pv.segment1
           AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
@@ -758,6 +856,11 @@ AS
           AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
           AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
           AND    pvsa.org_id                                   = gn_org_id
+-- Ver.1.25 ADD START
+          AND    xbb.BM_BALANCE_ID                             = xbbs.BM_BALANCE_ID(+)
+          AND    xbbs.snapshot_create_ym(+)                    = TO_CHAR(gd_payment_date, 'YYYYMM')
+          AND    xbbs.snapshot_timing(+)                       = cv_snap_timing1  -- スナップショットタイミング「2営」
+-- Ver.1.25 ADD END
           )
     ORDER BY  supplier_code       -- 仕入先コード
              ,base_code           -- 拠点コード
@@ -1105,8 +1208,16 @@ AS
     lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
     lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
     lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
-    ln_transfer_fee          NUMBER DEFAULT 0;                         -- 振込手数料
+-- Ver.1.25 DEL   ln_transfer_fee          NUMBER DEFAULT 0;                         -- 振込手数料
     ln_transfer_amount       NUMBER DEFAULT 0;                         -- 振込金額
+-- Ver.1.25 ADD START
+    ln_unpaid_balance        NUMBER DEFAULT 0;                         -- 未払残高(税込)
+    ln_dummy_amt_tax         NUMBER DEFAULT 0;                         -- 未払残高(消費税)
+    ln_dummy_amt_no_tax      NUMBER DEFAULT 0;                         -- 未払残高(税抜)
+    ln_transfer_fee          NUMBER DEFAULT 0;                         -- 振込手数料(税込)
+    ln_dummy_fee_tax         NUMBER DEFAULT 0;                         -- 振込手数料(消費税)
+    ln_dummy_fee_no_tax      NUMBER DEFAULT 0;                         -- 振込手数料(税抜)
+-- Ver.1.25 ADD END
     -- ===============================================
     -- ローカルカーソル
     -- ===============================================
@@ -1116,24 +1227,46 @@ AS
     IS
 -- Ver1.23 N.Abe Mod START
 --      SELECT
-      SELECT /*+ leading(xrbb sub) */
+-- Ver.1.25 MOD START
+--      SELECT /*+ leading(xrbb sub) */
+      SELECT distinct /*+ leading(xrbb sub) */
+-- Ver.1.25 MOD END
 -- Ver1.23 N.Abe Mod END
             xrbb.payment_code                 AS  payment_code        -- 支払先コード
            ,xrbb.bm_payment_code              AS  bm_payment_code     -- BM支払区分
            ,xrbb.bank_trns_fee                AS  bank_trns_fee       -- 振込手数料負担者
 -- Ver1.23 N.Abe Mod START
 --           ,NVL(SUM(xrbb.unpaid_balance), 0)  AS  unpaid_balance      -- 未払残高
-           ,NVL(sub.expect_payment_amt_tax, 0)  AS  unpaid_balance    -- 未払残高
+-- Ver.1.25 MOD START
+--           ,NVL(sub.expect_payment_amt_tax, 0)  AS  unpaid_balance    -- 未払残高
 -- Ver1.23 N.Abe Mod END
+           ,xrbb.tax_calc_kbn                 AS  tax_calc_kbn               -- BM税計算区分
+           ,xrbb.bm_tax_kbn                   AS  bm_tax_kbn                 -- BM税区分
+           ,sub.expect_payment_amt_tax        AS  expect_payment_amt_tax     -- 未払残高(税込)
+           ,sub.expect_payment_amt_no_tax     AS  expect_payment_amt_no_tax  -- 未払残高(税抜)
+           ,sub.expect_payment_tax            AS  expect_payment_tax         -- 未払残高(消費税)
+-- Ver.1.25 MOD END
       FROM
             xxcok_rep_bm_balance    xrbb  -- 販手残高一覧帳票ワークテーブル
 -- Ver1.23 N.Abe Add START
            ,(SELECT xbb.supplier_code                       AS supplier_code                -- 仕入先コード
-                   ,NVL(SUM(xbb.expect_payment_amt_tax), 0) AS expect_payment_amt_tax       -- 支払予定額（税込）
+-- Ver.1.25 MOD START
+--                   ,NVL(SUM(xbb.expect_payment_amt_tax), 0) AS expect_payment_amt_tax       -- 支払予定額（税込）
+                   ,SUM(NVL(xbb.expect_payment_amt_tax, 0)) AS expect_payment_amt_tax       -- 支払予定額（税込）
+                   ,SUM(NVL(xbb.BACKMARGIN, 0) + NVL(xbb.ELECTRIC_AMT, 0))
+                                                            AS expect_payment_amt_no_tax    -- 支払予定額（税抜）
+                   ,SUM(NVL(xbb.BACKMARGIN_TAX, 0) + NVL(xbb.ELECTRIC_AMT_TAX, 0))
+                                                            AS expect_payment_tax           -- 支払予定額（消費税）
+-- Ver.1.25 MOD END
              FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
              WHERE  xbb.expect_payment_date <= gd_payment_date
-             GROUP BY xbb.supplier_code
-             HAVING SUM(NVL(xbb.expect_payment_amt_tax, 0))  >  0  -- 未払分が対象
+-- Ver.1.25 ADD START
+             AND    NVL(xbb.expect_payment_amt_tax, 0)  >  0  -- 未払分が対象
+-- Ver.1.25 ADD END
+           GROUP BY xbb.supplier_code
+-- Ver.1.25 DEL START
+--             HAVING SUM(NVL(xbb.expect_payment_amt_tax, 0))  >  0  -- 未払分が対象
+-- Ver.1.25 DEL END
             ) sub
 -- Ver1.23 N.Abe Add END
       WHERE
@@ -1142,13 +1275,20 @@ AS
 -- Ver1.23 N.Abe Add START
       AND   xrbb.payment_code         =  sub.supplier_code
 -- Ver1.23 N.Abe Add END
-      GROUP BY
-            -- 支払先ごと
-            xrbb.payment_code                       -- 支払先コード
-           ,xrbb.bm_payment_code                    -- BM支払区分
-           ,xrbb.bank_trns_fee                      -- 振込手数料(負担先)
+-- Ver.1.25 ADD START
+      AND   (  xrbb.bank_trns_fee    IS NULL
+            OR xrbb.bank_trns_fee    <> gv_bk_trns_fee_we
+            )                                                                       -- 振込手数料負担者が「I:当方」でない
+-- Ver.1.25 ADD END
+-- Ver.1.25 DEL START
+--      GROUP BY
+--            -- 支払先ごと
+--            xrbb.payment_code                       -- 支払先コード
+--           ,xrbb.bm_payment_code                    -- BM支払区分
+--           ,xrbb.bank_trns_fee                      -- 振込手数料(負担先)
 -- Ver1.23 N.Abe Del START
-           ,NVL(sub.expect_payment_amt_tax, 0)
+--           ,NVL(sub.expect_payment_amt_tax, 0)
+-- Ver.1.25 DEL END
 --      HAVING
 --            NVL(SUM(xrbb.unpaid_balance), 0)  >  0  -- 未払分が対象
 -- Ver1.23 N.Abe Del END
@@ -1167,22 +1307,70 @@ AS
     -- ===============================================
     -- 支払先ごとの販手残高一覧データをループ
     FOR l_payment_rec IN l_payment_cur LOOP
-      --
-      -- 振込手数料の算出
-      ln_transfer_fee := CASE WHEN ( l_payment_rec.unpaid_balance >= gn_trans_fee )
-                           -- 未払残高が基準額以上の場合
-                           THEN gn_more_fee * ( 1 + gn_bm_tax / 100 ) -- 銀行手数料(基準以上)の税込額
-                           -- 未払残高が基準額未満の場合
-                           ELSE gn_less_fee * ( 1 + gn_bm_tax / 100 ) -- 銀行手数料(基準未満)の税込額
-                         END;
-      --
+-- Ver.1.25 MOD START
+--      --
+--      -- 振込手数料の算出
+--      ln_transfer_fee := CASE WHEN ( l_payment_rec.unpaid_balance >= gn_trans_fee )
+--                           -- 未払残高が基準額以上の場合
+--                           THEN gn_more_fee * ( 1 + gn_bm_tax / 100 ) -- 銀行手数料(基準以上)の税込額
+--                           -- 未払残高が基準額未満の場合
+--                           ELSE gn_less_fee * ( 1 + gn_bm_tax / 100 ) -- 銀行手数料(基準未満)の税込額
+--                         END;
+--      --
+--      -- 振込金額の算出
+--      ln_transfer_amount := CASE WHEN ( l_payment_rec.bank_trns_fee = gv_bk_trns_fee_we )
+--                              -- 振込手数料負担者＝当方の場合
+--                              THEN l_payment_rec.unpaid_balance                    -- 未払残高
+--                              -- 振込手数料負担者＝相手先の場合
+--                              ELSE l_payment_rec.unpaid_balance - ln_transfer_fee  -- 未払残高－振込手数料
+--                            END;
+      -- ===============================================
+      -- 未払残高(税込)再計算
+      -- ===============================================
+      xxcok_common_pkg.recalc_pay_amt_p(
+          ov_errbuf             => lv_errbuf                                -- エラー・バッファ
+        , ov_retcode            => lv_retcode                               -- リターンコード
+        , ov_errmsg             => lv_errmsg                                -- エラー・メッセージ
+        , iv_pay_kbn            => l_payment_rec.bm_payment_code            -- 支払区分（1:本振－WEB・ハガキ／2:本振－案内書なし／その他）
+        , iv_tax_calc_kbn       => l_payment_rec.bm_tax_kbn                 -- 税計算区分（1:案内書単位／2:明細単位）
+        , iv_tax_kbn            => l_payment_rec.tax_calc_kbn               -- 税区分（1:税込み／2:税抜き／3:非課税）
+        , iv_tax_rounding_rule  => cv_tax_rounding_rule                     -- 端数処理区分（NEAREST:四捨五入／UP:切上げ／DOWN:切捨て）
+        , in_tax_rate           => gn_bm_tax                                -- 税率
+        , in_pay_amt_no_tax     => l_payment_rec.expect_payment_amt_no_tax  -- 支払金額（税抜） 
+        , in_pay_amt_tax        => l_payment_rec.expect_payment_tax         -- 支払金額（消費税）
+        , in_pay_amt_with_tax   => l_payment_rec.expect_payment_amt_tax     -- 支払金額（税込）
+        , on_pay_amt_no_tax     => ln_dummy_amt_no_tax                      -- 算出後未払残高（税抜）
+        , on_pay_amt_tax        => ln_dummy_amt_tax                         -- 算出後未払残高（消費税）
+        , on_pay_amt_with_tax   => ln_unpaid_balance                        -- 算出後未払残高（税込）
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- ===============================================
+      -- 振込手数料(税込)
+      -- ===============================================
+      xxcok_common_pkg.calc_bank_trans_fee_p(
+          ov_errbuf                   => lv_errbuf                          -- エラー・バッファ
+        , ov_retcode                  => lv_retcode                         -- リターンコード
+        , ov_errmsg                   => lv_errmsg                          -- エラー・メッセージ
+        , in_bank_trans_amt           => ln_unpaid_balance                  -- 振込額
+        , in_base_amt                 => gn_trans_fee                       -- 基準額
+        , in_fee_less_base_amt        => gn_less_fee                        -- 基準額未満手数料
+        , in_fee_more_base_amt        => gn_more_fee                        -- 基準額以上手数料
+        , in_fee_tax_rate             => gn_bm_tax                          -- 手数料税率
+        , iv_bank_charge_bearer       => l_payment_rec.bank_trns_fee        -- 振込手数料負担者（相手負担）
+        , on_bank_trans_fee_no_tax    => ln_dummy_fee_no_tax                -- 振込手数料（税抜）
+        , on_bank_trans_fee_tax       => ln_dummy_fee_tax                   -- 振込手数料（消費税）
+        , on_bank_trans_fee_with_tax  => ln_transfer_fee                    -- 振込手数料（税込）
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
       -- 振込金額の算出
-      ln_transfer_amount := CASE WHEN ( l_payment_rec.bank_trns_fee = gv_bk_trns_fee_we )
-                              -- 振込手数料負担者＝当方の場合
-                              THEN l_payment_rec.unpaid_balance                    -- 未払残高
-                              -- 振込手数料負担者＝相手先の場合
-                              ELSE l_payment_rec.unpaid_balance - ln_transfer_fee  -- 未払残高－振込手数料
-                            END;
+      ln_transfer_amount := ln_unpaid_balance - ln_transfer_fee ;  -- 未払残高－振込手数料
+-- Ver.1.25 MOD END
       --
       -- 振込金額が0円以下になる場合
       IF ( ln_transfer_amount <= 0 ) THEN
@@ -1198,6 +1386,13 @@ AS
     END LOOP;
 --
   EXCEPTION
+-- Ver.1.25 ADD START
+    -- *** 共通関数例外 ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.25 ADD END
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -1298,6 +1493,17 @@ AS
     , bm_tax_kbn_name                 -- BM税区分名
 -- Ver.1.24 ADD END
     , no_data_message                 -- 0件メッセージ
+-- Ver.1.25 ADD START
+    , bm_tax_kbn                      -- BM税区分
+    , tax_calc_kbn_name               -- BM税計算区分名
+    , tax_calc_kbn                    -- BM税計算区分
+    , invoice_t_no                    -- 登録番号（支払先）
+    , total_linetitle1                -- 合計行タイトル１
+    , total_linetitle2                -- 合計行タイトル２
+    , total_linetitle3                -- 合計行タイトル３
+    , unpaid_balance_sum2             -- 合計行未払残高合計２
+    , unpaid_balance_sum3             -- 合計行未払残高合計３
+-- Ver.1.25 ADD END
     , created_by                      -- 作成者
     , creation_date                   -- 作成日
     , last_updated_by                 -- 最終更新者
@@ -1371,6 +1577,17 @@ AS
     , g_bm_balance_ttype(in_index).BM_TAX_KBN_NAME           -- BM税区分名
 -- Ver.1.24 ADD END
     , gv_no_data_msg                                         -- 0件メッセージ
+-- Ver.1.25 ADD START
+    , g_bm_balance_ttype( in_index ).BM_TAX_KBN              -- BM税区分
+    , g_bm_balance_ttype( in_index ).TAX_CALC_KBN_NAME       -- BM税計算区分名
+    , g_bm_balance_ttype( in_index ).TAX_CALC_KBN            -- BM税計算区分
+    , g_bm_balance_ttype( in_index ).INVOICE_T_NO            -- 登録番号（支払先）
+    , g_bm_balance_ttype( in_index ).TOTAL_LINETITLE1        -- 合計行タイトル１
+    , g_bm_balance_ttype( in_index ).TOTAL_LINETITLE2        -- 合計行タイトル２
+    , g_bm_balance_ttype( in_index ).TOTAL_LINETITLE3        -- 合計行タイトル３
+    , g_bm_balance_ttype( in_index ).UNPAID_BALANCE_SUM2     -- 合計行未払残高合計２
+    , g_bm_balance_ttype( in_index ).UNPAID_BALANCE_SUM3     -- 合計行未払残高合計３
+-- Ver.1.25 ADD END
     , cn_created_by                                          -- created_by
     , SYSDATE                                                -- creation_date
     , cn_last_updated_by                                     -- last_updated_by
@@ -1393,6 +1610,97 @@ AS
       ov_retcode := cv_status_error;
   END ins_worktable_data;
 --
+-- Ver.1.25 ADD START
+  /**********************************************************************************
+   * Procedure Name   : upd_payment_sum_rec
+   * Description      : 帳票ワーク合計行更新処理(A-13)
+   ***********************************************************************************/
+  PROCEDURE upd_payment_sum_rec(
+    ov_errbuf                OUT VARCHAR2           -- エラー・メッセージ
+  , ov_retcode               OUT VARCHAR2           -- リターン・コード
+  , ov_errmsg                OUT VARCHAR2           -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name      CONSTANT VARCHAR2(20) := 'upd_payment_sum_rec';    -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    -- 販手残高一覧帳票ワークテーブル更新
+    CURSOR upd_payment_cur
+    IS
+      SELECT xrbb.payment_code         AS payment_code         -- 支払先コード
+           , xrbb.total_linetitle1     AS total_linetitle1     -- 合計行タイトル１
+           , xrbb.total_linetitle2     AS total_linetitle2     -- 合計行タイトル２
+           , xrbb.total_linetitle3     AS total_linetitle3     -- 合計行タイトル３
+           , xrbb.unpaid_balance_sum2  AS unpaid_balance_sum2  -- 合計行未払残高合計２
+           , xrbb.unpaid_balance_sum3  AS unpaid_balance_sum3  -- 合計行未払残高合計３
+      FROM   xxcok_rep_bm_balance xrbb                         -- 販手残高一覧帳票ワークテーブル
+      WHERE  xrbb.request_id      = cn_request_id
+      AND    xrbb.total_linetitle1 IS NOT NULL                 -- 合計行タイトル１
+      ORDER BY xrbb.payment_code
+      ;
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+--
+    -- 帳票ワークデータをループ
+    FOR l_worktable_rec IN upd_payment_cur LOOP
+      BEGIN
+        -- 合計行情報を更新する
+        UPDATE  xxcok_rep_bm_balance xrbb                                       -- 販手残高一覧帳票ワークテーブル
+        SET     xrbb.total_linetitle1    = l_worktable_rec.total_linetitle1     -- 合計行タイトル１
+              , xrbb.total_linetitle2    = l_worktable_rec.total_linetitle2     -- 合計行タイトル２
+              , xrbb.total_linetitle3    = l_worktable_rec.total_linetitle3     -- 合計行タイトル３
+              , xrbb.unpaid_balance_sum2 = l_worktable_rec.unpaid_balance_sum2  -- 合計行未払残高合計２
+              , xrbb.unpaid_balance_sum3 = l_worktable_rec.unpaid_balance_sum3  -- 合計行未払残高合計３
+        WHERE   xrbb.request_id    =  cn_request_id                             -- 要求ID(今回実行分)
+        AND     xrbb.total_linetitle1 IS NULL
+        AND     xrbb.payment_code  =  l_worktable_rec.payment_code
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+        WHEN OTHERS THEN
+          -- 帳票ワークテーブル更新エラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_10535
+                        , iv_token_name1  => cv_token_errmsg
+                        , iv_token_value1 => SQLERRM
+                        );
+          RAISE global_api_expt;
+      END;
+    END LOOP;
+--
+  EXCEPTION
+    -- *** 共通関数例外 ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END upd_payment_sum_rec;
+--
+-- Ver.1.25 ADD END
 -- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
 --
   /**********************************************************************************
@@ -1785,6 +2093,15 @@ AS
 -- Ver.1.24 ADD START
       g_bm_balance_ttype( gn_index ).BM_TAX_KBN_NAME             := NULL;  -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+      g_bm_balance_ttype( gn_index ).TAX_CALC_KBN_NAME           := NULL;  -- BM税計算区分名
+      g_bm_balance_ttype( gn_index ).INVOICE_T_NO                := NULL;  -- 登録番号（支払先）
+      g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE1            := NULL;  -- 合計行タイトル１
+      g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE2            := NULL;  -- 合計行タイトル２
+      g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE3            := NULL;  -- 合計行タイトル３
+      g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM2         := NULL;  -- 合計行未払残高合計２
+      g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM3         := NULL;  -- 合計行未払残高合計３
+-- Ver.1.25 ADD END
 --
       -- ===============================================
       -- 対象データなしメッセージ取得
@@ -1876,6 +2193,12 @@ AS
 -- Ver.1.24 ADD START
   , iv_bm_tax_kbn_name         IN  VARCHAR2                                          DEFAULT NULL -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+  , iv_bm_tax_kbn              IN  po_vendor_sites_all.attribute6%TYPE               DEFAULT NULL -- (DFF6)BM税区分
+  , iv_tax_calc_kbn_name       IN  xxcok_rep_bm_balance.tax_calc_kbn_name%TYPE       DEFAULT NULL -- BM税計算区分名
+  , iv_tax_calc_kbn            IN  xxcok_bm_balance_snap.tax_calc_kbn%TYPE           DEFAULT NULL -- 税計算区分
+  , iv_invoice_t_no            IN  xxcok_rep_bm_balance.invoice_t_no%TYPE            DEFAULT NULL -- 登録番号（支払先）
+-- Ver.1.25 ADD END
   )
   IS
     -- ===============================================
@@ -1888,6 +2211,11 @@ AS
     lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
     lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
     lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+-- Ver.1.25 ADD START
+    lv_amt_no_tax_out        NUMBER;                                   -- 算出後未払残高（税抜）
+    lv_amt_tax_out           NUMBER;                                   -- 算出後未払残高（消費税）
+    lv_amt_with_tax_out      NUMBER;                                   -- 算出後未払残高（税込）
+-- Ver.1.25 ADD END
     cv_bm_payment_type3      CONSTANT VARCHAR2(1)  := '3'; -- BM支払区分(3：AP支払)
     cv_bm_payment_type4      CONSTANT VARCHAR2(1)  := '4'; -- BM支払区分(4：現金支払)
     cv_bk_trns_fee_cd        CONSTANT VARCHAR2(1)  := 'I'; -- 銀行手数料負担者(当方)
@@ -1919,7 +2247,9 @@ AS
         -------------------------
         -- 退避・集計項目の初期化
         -------------------------
-        gt_payment_code_bk        := NULL;
+-- Ver.1.25 DEL START
+--        gt_payment_code_bk        := NULL;
+-- Ver.1.25 DEL END
         gt_payment_name_bk        := NULL;
         gt_bank_no_bk             := NULL;
         gt_bank_name_bk           := NULL;
@@ -1929,7 +2259,9 @@ AS
         gt_bank_acct_type_name_bk := NULL;
         gt_bank_acct_no_bk        := NULL;
         gt_bank_acct_name_bk      := NULL;
-        gt_bm_type_bk             := NULL;
+-- Ver.1.25 DEL START
+--        gt_bm_type_bk             := NULL;
+-- Ver.1.25 DEL END
         gt_bm_payment_type_bk     := NULL;
         gt_bank_trns_fee_bk       := NULL;
         gt_payment_stop_bk        := NULL;
@@ -2019,11 +2351,19 @@ AS
 --          -- 対象件数変数に件数を設定
 --          gn_target_cnt             := gn_index;
 -- Ver.1.22 DEL END
+-- Ver.1.25 ADD START
+          g_bm_balance_ttype( gn_index ).BM_TAX_KBN                := gt_bm_tax_kbn_bk;          -- BM税区分
+          g_bm_balance_ttype( gn_index ).TAX_CALC_KBN_NAME         := gt_tax_calc_kbn_name_bk;   -- BM税計算区分名
+          g_bm_balance_ttype( gn_index ).TAX_CALC_KBN              := gt_tax_calc_kbn_bk;        -- BM税計算区分
+          g_bm_balance_ttype( gn_index ).INVOICE_T_NO              := gt_invoice_t_no_bk;        -- 登録番号（支払先）
+-- Ver.1.25 ADD END
         END IF;
         -------------------------
         -- 退避・集計項目の初期化
         -------------------------
-        gt_payment_code_bk        := NULL;
+-- Ver.1.25 DEL START
+--        gt_payment_code_bk        := NULL;
+-- Ver.1.25 DEL END
         gt_payment_name_bk        := NULL;
         gt_bank_no_bk             := NULL;
         gt_bank_name_bk           := NULL;
@@ -2033,7 +2373,9 @@ AS
         gt_bank_acct_type_name_bk := NULL;
         gt_bank_acct_no_bk        := NULL;
         gt_bank_acct_name_bk      := NULL;
-        gt_bm_type_bk             := NULL;
+-- Ver.1.25 DEL START
+--        gt_bm_type_bk             := NULL;
+-- Ver.1.25 DEL END
         gt_bm_payment_type_bk     := NULL;
         gt_bank_trns_fee_bk       := NULL;
         gt_payment_stop_bk        := NULL;
@@ -2055,22 +2397,109 @@ AS
 -- Ver.1.24 ADD END
       END IF;
     END IF;
+-- Ver.1.25 ADD START
+    -- 支払先別の未払残高合計を取得する
+    IF ( gn_index > 0 AND (gt_payment_code_bk <> i_target_rec.supplier_code OR ( NVL(iv_last_record_flg,'N') = cv_flag_y )) AND gn_recalc_no_amt <> 0 ) THEN
+      -- 支払金額再計算
+      xxcok_common_pkg.recalc_pay_amt_p(
+        ov_errbuf               => lv_errbuf                  -- エラー・バッファ
+      , ov_retcode              => lv_retcode                 -- リターンコード
+      , ov_errmsg               => lv_errmsg                  -- エラー・メッセージ
+      , iv_pay_kbn              => gt_bm_type_bk              -- BM支払区分
+      , iv_tax_calc_kbn         => gt_tax_calc_kbn_bk         -- BM税計算区分
+      , iv_tax_kbn              => gt_bm_tax_kbn_bk           -- BM税区分
+      , iv_tax_rounding_rule    => cv_tax_rounding_rule       -- 端数処理区分
+      , in_tax_rate             => gn_bm_tax                  -- 税率
+      , in_pay_amt_no_tax       => gn_recalc_no_amt           -- 未払残高（税抜）仕入先合計
+      , in_pay_amt_tax          => gn_recalc_tax              -- 未払残高（消費税）仕入先合計
+      , in_pay_amt_with_tax     => gn_recalc_with_amt         -- 未払残高（税込）仕入先合計
+      , on_pay_amt_no_tax       => lv_amt_no_tax_out          -- 算出後未払残高（税抜）
+      , on_pay_amt_tax          => lv_amt_tax_out             -- 算出後未払残高（消費税）
+      , on_pay_amt_with_tax     => lv_amt_with_tax_out        -- 算出後未払残高（税込）
+      );
+--
+      IF ( lv_retcode = cv_status_normal ) THEN               -- 正常終了
+        ----------------
+        -- PL/SQL表格納
+        ----------------
+        -- 合計行の見出し
+        IF gt_bm_tax_kbn_bk = cv_tax_included THEN                                      -- BM税区分(1：税込み)の時
+          g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE1    := gt_subtitle1;           -- 税込み
+          g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE2    := gt_subtitle2;           -- 税抜き
+          g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE3    := gt_subtitle3;           -- 消費税
+          g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM2 := lv_amt_no_tax_out;      -- 算出後未払残高（税抜）
+          g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM3 := lv_amt_tax_out;         -- 算出後未払残高（消費税）
+        ELSE                                                                            -- BM税区分(2:税抜き/3:非課税)の時
+          g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE1    := gt_subtitle2;           -- 税抜き
+          g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE2    := gt_subtitle3;           -- 消費税
+          g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE3    := gt_subtitle1;           -- 税込み
+          g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM2 := lv_amt_tax_out;         -- 算出後未払残高（消費税）
+          g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM3 := lv_amt_with_tax_out;    -- 算出後未払残高（税込）
+        END IF;
+      ELSE
+        RAISE global_api_expt;
+      END IF;
+      gn_recalc_with_amt := 0;                               -- 未払残高（税込）仕入先合計
+      gn_recalc_no_amt   := 0;                               -- 未払残高（税抜）仕入先合計
+      gn_recalc_tax      := 0;                               -- 未払残高（消費税）仕入先合計
+    END IF;
+    IF ( NVL(iv_last_record_flg,'N') = cv_flag_y ) THEN
+      return;
+    END IF;
+-- Ver.1.25 ADD END
+--
+-- Ver.1.25 ADD START
+    -------------------------------
+    -- 「当月BM」、「電気料」の集計
+    -------------------------------
+    -- 販手残高TBLの支払予定日が、入力パラメータで指定した支払日の当月初日から支払予定日当日までの場合
+    IF ( TRUNC( i_target_rec.expect_payment_date ) BETWEEN TRUNC( gd_payment_date , 'MM' ) AND gd_payment_date ) THEN
+      IF iv_bm_tax_kbn = cv_tax_included THEN                                                           -- BM税区分(1：税込み)の時
+        gt_bm_this_month_sum := gt_bm_this_month_sum + i_target_rec.backmargin   + i_target_rec.backmargin_tax;
+        gt_electric_amt_sum  := gt_electric_amt_sum  + i_target_rec.electric_amt + i_target_rec.electric_amt_tax;
+      ELSE
+        gt_bm_this_month_sum := gt_bm_this_month_sum + i_target_rec.backmargin;
+        gt_electric_amt_sum  := gt_electric_amt_sum  + i_target_rec.electric_amt;
+      END IF;
+    END IF;
+-- Ver.1.25 ADD END
     ----------------------------
     -- 「前月までの未払」の集計
     ----------------------------
 -- 2012/07/10 Ver.1.15 [障害E_本稼動_08367] SCSK K.Onotsuka UPD START
 --    IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) THEN
 --      gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.expect_payment_amt_tax;
+    --
+    -- 販手残高TBLの連携日（本振用FB）が無しの時
     IF i_target_rec.fb_interface_date IS NULL THEN
-      IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) THEN
-        gt_unpaid_last_month_sum := gt_unpaid_last_month_sum
-                                  + i_target_rec.expect_payment_amt_tax;
+-- Ver.1.25 MOD START
+--      IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) THEN
+      --
+      -- 販手残高TBLの支払予定日が入力パラメータで指定した支払日の前月末以前で、支払予定額（税込）が0円ではない時
+      IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) ) AND ( i_target_rec.expect_payment_amt_tax <> 0 ) THEN
+--          gt_unpaid_last_month_sum := gt_unpaid_last_month_sum
+--                                    + i_target_rec.expect_payment_amt_tax;
+        IF iv_bm_tax_kbn = cv_tax_included THEN                                              -- BM税区分(1：税込み)の時
+          gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.backmargin   + i_target_rec.backmargin_tax
+                                                               + i_target_rec.electric_amt + i_target_rec.electric_amt_tax;
+        ELSE
+          gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.backmargin   + i_target_rec.electric_amt;
+        END IF;
       END IF;
+    --
+    -- 販手残高TBLの連携日（本振用FB）が有りの時
     ELSE
+      -- 販手残高TBLの支払予定日が入力パラメータで指定した支払日の前月末以前の時
       IF ( i_target_rec.expect_payment_date <= LAST_DAY( ADD_MONTHS( gd_payment_date ,-1 ) ) )
         AND ( TRUNC(gd_payment_date ,cv_format_mm) <= TRUNC(i_target_rec.fb_interface_date ,cv_format_mm)) THEN
-        gt_unpaid_last_month_sum := gt_unpaid_last_month_sum
-                                  + i_target_rec.payment_amt_tax;
+--        gt_unpaid_last_month_sum := gt_unpaid_last_month_sum
+--                                  + i_target_rec.payment_amt_tax;
+        IF iv_bm_tax_kbn = cv_tax_included THEN                                              -- BM税区分(1：税込み)の時
+          gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.backmargin   + i_target_rec.backmargin_tax
+                                                               + i_target_rec.electric_amt + i_target_rec.electric_amt_tax;
+        ELSE
+          gt_unpaid_last_month_sum := gt_unpaid_last_month_sum + i_target_rec.backmargin   + i_target_rec.electric_amt;
+        END IF;
       END IF;
     END IF;
     --
@@ -2078,16 +2507,33 @@ AS
     ----------------------------
     -- 「未払残高」の集計
     ----------------------------
-    IF ( i_target_rec.expect_payment_date <= gd_payment_date ) THEN
-      gt_unpaid_balance_sum := gt_unpaid_balance_sum + i_target_rec.expect_payment_amt_tax;
+--    IF ( i_target_rec.expect_payment_date <= gd_payment_date ) THEN
+--      gt_unpaid_balance_sum := gt_unpaid_balance_sum + i_target_rec.expect_payment_amt_tax;
+--    END IF;
+    --
+    -- 支払予定額（税込）が0円ではない時
+    IF ( i_target_rec.expect_payment_amt_tax <> 0 ) THEN
+      gt_unpaid_balance_sum := gt_unpaid_last_month_sum + gt_bm_this_month_sum + gt_electric_amt_sum;   -- 税区分を加味した「前月までの未払」+「当月BM」+「電気料」
+      ---------------------------------------
+      -- 「未払残高」の再計算用(共通関数引数)
+      ---------------------------------------
+      gn_recalc_tax      := gn_recalc_tax      + (i_target_rec.backmargin_tax + i_target_rec.electric_amt_tax);  -- 未払残高（消費税）集計
+      gn_recalc_no_amt   := gn_recalc_no_amt   + (i_target_rec.backmargin     + i_target_rec.electric_amt);      -- 未払残高（税抜）集計
+      gn_recalc_with_amt := gn_recalc_with_amt + (i_target_rec.backmargin_tax + i_target_rec.electric_amt_tax)
+                                               + (i_target_rec.backmargin     + i_target_rec.electric_amt);      -- 未払残高（税込）集計
     END IF;
-    ----------------------------
-    -- 「当月BM」、「電気料」の集計
-    ----------------------------
-    IF ( TRUNC( i_target_rec.expect_payment_date ) BETWEEN TRUNC( gd_payment_date , 'MM' ) AND gd_payment_date ) THEN
-      gt_bm_this_month_sum := gt_bm_this_month_sum + i_target_rec.backmargin + i_target_rec.backmargin_tax;
-      gt_electric_amt_sum  := gt_electric_amt_sum + i_target_rec.electric_amt + i_target_rec.electric_amt_tax;
-    END IF;
+-- Ver.1.25 MOD END
+--
+-- Ver.1.25 DEL START
+--    ----------------------------
+--    -- 「当月BM」、「電気料」の集計
+--    ----------------------------
+--    IF ( TRUNC( i_target_rec.expect_payment_date ) BETWEEN TRUNC( gd_payment_date , 'MM' ) AND gd_payment_date ) THEN
+--      gt_bm_this_month_sum := gt_bm_this_month_sum + i_target_rec.backmargin + i_target_rec.backmargin_tax;
+--      gt_electric_amt_sum  := gt_electric_amt_sum + i_target_rec.electric_amt + i_target_rec.electric_amt_tax;
+--    END IF;
+-- Ver.1.25 DEL END
+--
     ----------------------------
     -- 支払保留の設定
     ----------------------------
@@ -2174,8 +2620,21 @@ AS
 -- Ver.1.24 ADD START
     gt_bm_tax_kbn_name_bk           := iv_bm_tax_kbn_name;               -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+    gt_bm_tax_kbn_bk                := iv_bm_tax_kbn;                    -- BM税区分
+    gt_tax_calc_kbn_name_bk         := iv_tax_calc_kbn_name;             -- BM税計算区分名
+    gt_tax_calc_kbn_bk              := iv_tax_calc_kbn;                  -- BM税計算区分
+    gt_invoice_t_no_bk              := iv_invoice_t_no;                  -- 登録番号（支払先）
+-- Ver.1.25 ADD END
 --
   EXCEPTION
+-- Ver.1.25 ADD START
+    -- *** 共通関数例外 ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.25 ADD END
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -2251,6 +2710,10 @@ AS
   , ov_errmsg                  OUT VARCHAR2              -- ユーザー・エラー・メッセージ
   , iv_supplier_code           IN  VARCHAR2 DEFAULT NULL                              -- 仕入先コード
   , iv_supplier_site_code      IN  VARCHAR2 DEFAULT NULL                              -- 仕入先サイトコード
+-- Ver.1.25 ADD START
+  , iv_snap_tax_calc_kbn       IN  xxcok_bm_balance_snap.tax_calc_kbn%TYPE            -- 税計算区分
+  , iv_snap_balance_id         IN  xxcok_bm_balance_snap.bm_balance_id%TYPE           -- SNAP販手残高ID
+-- Ver.1.25 ADD END
   , ov_vendor_name             OUT po_vendors.vendor_name%TYPE                        -- 仕入先名
   , ov_bank_charge_bearer      OUT po_vendors.bank_charge_bearer%TYPE                 -- 銀行手数料負担者
   , ov_hold_all_payments_flag  OUT po_vendors.hold_all_payments_flag%TYPE             -- 全支払の保留フラグ
@@ -2280,6 +2743,12 @@ AS
 -- Ver.1.24 ADD START
   , ov_bm_tax_kbn_name         OUT xxcok_lookups_v.meaning%TYPE                       -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+  , ov_bm_tax_kbn              OUT po_vendor_sites_all.attribute6%TYPE                -- (DFF6)BM税区分
+  , ov_tax_calc_kbn_name       OUT xxcok_lookups_v.meaning%TYPE                       -- BM税計算区分名
+  , ov_tax_calc_kbn            OUT xxcok_bm_balance_snap.tax_calc_kbn%TYPE            -- BM税計算区分
+  , ov_invoice_t_no            OUT xxcok_rep_bm_balance.invoice_t_no%TYPE             -- 登録番号（支払先）
+-- Ver.1.25 ADD END
   )
   IS
     -- ===============================================
@@ -2295,6 +2764,9 @@ AS
     lv_outmsg   VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
     lb_retcode  BOOLEAN        DEFAULT TRUE;              -- メッセージ出力関数戻り値
     lt_bm_tax_kbn  po_vendor_sites_all.attribute6%TYPE;   -- DFF6(BM税区分)
+-- Ver.1.25 ADD START
+    lv_invoice_tax_div_bm  po_vendor_sites_all.attribute10%TYPE     := NULL;      -- DFF10(税計算区分)
+-- Ver.1.25 ADD END
     -- 例外ハンドラ
     no_data_expt            EXCEPTION; -- データ取得エラー
 --
@@ -2317,7 +2789,10 @@ AS
             ,pvsa.bank_charge_bearer           -- 銀行手数料負担者
             ,pvsa.hold_all_payments_flag       -- 全支払の保留フラグ
 -- 2009/07/15 Ver.1.7 [障害0000689] SCS T.Taniguchi END
-            ,pvsa.attribute4                   -- DFF4(BM支払区分)
+-- Ver.1.25 MOD START
+--            ,pvsa.attribute4                   -- DFF4(BM支払区分)
+            ,NVL(pvsa.attribute4, cv_bm_payment_type5)  -- DFF4(BM支払区分)
+-- Ver.1.25 MOD END
             ,pvsa.attribute5                   -- DFF5(問合せ担当拠点コード)
             ,bank_data.bank_number             -- 銀行番号
             ,bank_data.bank_name               -- 銀行口座名
@@ -2330,6 +2805,14 @@ AS
 -- Ver.1.24 ADD START
             ,pvsa.attribute6                   -- DFF6(BM税区分)
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+            ,CASE WHEN (pvsa.attribute8 IS NOT NULL AND pvsa.attribute9 IS NOT NULL) THEN
+               pvsa.attribute8 || pvsa.attribute9
+             ELSE
+               NULL
+             END       invoice_t_no            -- 登録番号（送付先）
+            ,pvsa.attribute10                  -- DFF10(税計算区分)
+-- Ver.1.25 ADD END
       INTO   ov_vendor_name
             ,ov_bank_charge_bearer
             ,ov_hold_all_payments_flag
@@ -2346,6 +2829,10 @@ AS
 -- Ver.1.24 ADD START
             ,lt_bm_tax_kbn
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+            ,ov_invoice_t_no
+            ,lv_invoice_tax_div_bm
+-- Ver.1.25 ADD END
       FROM   po_vendors          pv       -- 仕入先マスタ
             ,po_vendor_sites_all pvsa     -- 仕入先サイト
             ,hz_cust_accounts       hca   -- 顧客マスタ
@@ -2402,7 +2889,10 @@ AS
         ov_vendor_name              := NULL;
         ov_bank_charge_bearer       := NULL;
         ov_hold_all_payments_flag   := NULL;
-        ov_bm_kbn_dff4              := NULL;
+-- Ver.1.25 MOD START
+--        ov_bm_kbn_dff4              := NULL;
+        ov_bm_kbn_dff4              := cv_bm_payment_type5;
+-- Ver.1.25 MOD END
         ov_ref_base_code            := NULL;
         ov_bank_number              := NULL;
         ov_bank_name                := NULL;
@@ -2416,6 +2906,9 @@ AS
 -- Ver.1.24 ADD START
         lt_bm_tax_kbn               := NULL;
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+        ov_invoice_t_no             := NULL;
+-- Ver.1.25 ADD END
       -- 仕入・銀行情報複数件エラー
       WHEN TOO_MANY_ROWS THEN
         lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -2436,9 +2929,11 @@ AS
     -- ===============================================
     -- BM支払区分情報
     -- ===============================================
+-- Ver.1.25 DEL START
 -- Ver.1.22 ADD START
-    IF ov_bm_kbn_dff4 IS NOT NULL THEN
+--    IF ov_bm_kbn_dff4 IS NOT NULL THEN
 -- Ver.1.22 ADD END
+-- Ver.1.25 DEL END
       BEGIN
         SELECt lookup_code  -- BM支払区分
               ,meaning      -- BM支払区分名
@@ -2467,12 +2962,14 @@ AS
                         );
           RAISE no_data_expt;
       END;
+-- Ver.1.25 DEL START
 -- Ver.1.22 ADD START
-    ELSE
-      ov_bm_kbn     := NULL;
-      ov_bm_kbn_nm  := NULL;
-    END IF;
+--    ELSE
+--      ov_bm_kbn     := NULL;
+--      ov_bm_kbn_nm  := NULL;
+--    END IF;
 -- Ver.1.22 ADD END
+-- Ver.1.25 DEL END
     -- ===============================================
     -- 口座種別情報
     -- ===============================================
@@ -2542,6 +3039,52 @@ AS
         RAISE no_data_expt;
     END;
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+    ov_bm_tax_kbn := lt_bm_tax_kbn;
+    -- ===============================================
+    -- 税計算区分情報
+    -- ===============================================
+    IF ov_bm_kbn_dff4 IN (cv_bm_payment_type1, cv_bm_payment_type2) THEN     -- BM支払区分が(本振)の時
+      IF iv_snap_balance_id IS NOT NULL THEN                                 -- 「2営」のデータが残高SNAPにある時
+        ov_tax_calc_kbn := iv_snap_tax_calc_kbn;                             -- 販手残高SNAP.税計算区分を取得
+      ELSE
+        ov_tax_calc_kbn := lv_invoice_tax_div_bm;                            -- 仕入先サイト.DFF10（税計算区分）を取得
+      END IF;
+      --
+      IF ov_tax_calc_kbn IS NULL THEN                                        -- 取得した税計算区分がNULLの時
+        ov_tax_calc_kbn := cv_tax_calc_kbn2;                                 -- 2：明細単位
+      END IF;
+    ELSE                                                                     -- BM支払区分が(本振)以外の時
+      ov_tax_calc_kbn := cv_tax_calc_kbn2;                                   -- 2：明細単位
+    END IF;
+--
+    BEGIN
+      SELECT xlv.meaning      -- BM税計算区分名
+      INTO   ov_tax_calc_kbn_name
+      FROM   xxcok_lookups_v xlv
+      WHERE  xlv.lookup_type = cv_lookup_type_bm_tax_div
+      AND    xlv.lookup_code = ov_tax_calc_kbn
+      AND    NVL(xlv.start_date_active, TRUNC(SYSDATE)) <= TRUNC(SYSDATE)
+      AND    NVL(xlv.end_date_active,   TRUNC(SYSDATE)) >= TRUNC(SYSDATE)
+      AND    xlv.enabled_flag = cv_flag_y
+      ;
+    EXCEPTION
+      -- 税計算区分情報取得エラー
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_00015
+                      , iv_token_name1  => cv_token_lookup_value_set
+                      , iv_token_value1 => cv_lookup_type_bm_tax_div
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.LOG
+                      , iv_message  => lv_errmsg
+                      , in_new_line => cn_number_0
+                      );
+        RAISE no_data_expt;
+    END;
+-- Ver.1.25 ADD END
 --
   EXCEPTION
     -- *** データ取得例外 ***
@@ -2789,6 +3332,12 @@ AS
 -- Ver.1.24 ADD START
     lv_bm_tax_kbn_name          VARCHAR2(30)                                      DEFAULT NULL; -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+    lv_bm_tax_kbn               po_vendor_sites_all.attribute6%TYPE               DEFAULT NULL; -- BM税区分
+    lv_tax_calc_kbn_name        xxcok_lookups_v.meaning%TYPE                      DEFAULT NULL; -- BM税計算区分名
+    lv_tax_calc_kbn             xxcok_bm_balance_snap.tax_calc_kbn%TYPE           DEFAULT NULL; -- BM税計算区分
+    lv_invoice_t_no             xxcok_rep_bm_balance.invoice_t_no%TYPE            DEFAULT NULL; -- 登録番号（支払先）
+-- Ver.1.25 ADD END
 --
   BEGIN
     -- ===============================================
@@ -2866,6 +3415,10 @@ AS
             , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
             , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
             , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+-- Ver.1.25 ADD START
+            , iv_snap_tax_calc_kbn       => g_target_rec.tax_calc_kbn       -- 税計算区分
+            , iv_snap_balance_id         => g_target_rec.bm_balance_id2     -- SNAP販手残高ID
+-- Ver.1.25 ADD END
             , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
             , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
             , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
@@ -2889,6 +3442,12 @@ AS
 -- Ver.1.24 ADD START
             , ov_bm_tax_kbn_name         => lv_bm_tax_kbn_name              -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+            , ov_bm_tax_kbn              => lv_bm_tax_kbn                   -- (DFF6)BM税区分
+            , ov_tax_calc_kbn_name       => lv_tax_calc_kbn_name            -- BM税計算区分名
+            , ov_tax_calc_kbn            => lv_tax_calc_kbn                 -- BM税計算区分
+            , ov_invoice_t_no            => lv_invoice_t_no                 -- 登録番号（支払先）
+-- Ver.1.25 ADD END
           );
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
@@ -2949,6 +3508,12 @@ AS
 -- Ver.1.24 ADD START
           , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+          , iv_bm_tax_kbn              => lv_bm_tax_kbn              -- (DFF6)BM税区分
+          , iv_tax_calc_kbn_name       => lv_tax_calc_kbn_name       -- BM税計算区分名
+          , iv_tax_calc_kbn            => lv_tax_calc_kbn            -- BM税計算区分
+          , iv_invoice_t_no            => lv_invoice_t_no            -- 登録番号（支払先）
+-- Ver.1.25 ADD END
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -3023,6 +3588,10 @@ AS
             , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
             , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
             , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+-- Ver.1.25 ADD START
+            , iv_snap_tax_calc_kbn       => g_target_rec.tax_calc_kbn       -- 税計算区分
+            , iv_snap_balance_id         => g_target_rec.bm_balance_id2     -- SNAP販手残高ID
+-- Ver.1.25 ADD END
             , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
             , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
             , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
@@ -3046,6 +3615,12 @@ AS
 -- Ver.1.24 ADD START
             , ov_bm_tax_kbn_name         => lv_bm_tax_kbn_name              -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+            , ov_bm_tax_kbn              => lv_bm_tax_kbn                   -- (DFF6)BM税区分
+            , ov_tax_calc_kbn_name       => lv_tax_calc_kbn_name            -- BM税計算区分名
+            , ov_tax_calc_kbn            => lv_tax_calc_kbn                 -- BM税計算区分
+            , ov_invoice_t_no            => lv_invoice_t_no                 -- 登録番号（支払先）
+-- Ver.1.25 ADD END
           );
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
@@ -3106,6 +3681,12 @@ AS
 -- Ver.1.24 ADD START
           , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+          , iv_bm_tax_kbn              => lv_bm_tax_kbn              -- (DFF6)BM税区分
+          , iv_tax_calc_kbn_name       => lv_tax_calc_kbn_name       -- BM税計算区分名
+          , iv_tax_calc_kbn            => lv_tax_calc_kbn            -- BM税計算区分
+          , iv_invoice_t_no            => lv_invoice_t_no            -- 登録番号（支払先）
+-- Ver.1.25 ADD END
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -3174,6 +3755,10 @@ AS
             , ov_errmsg                  => lv_errmsg                       -- ユーザー・エラー・メッセージ
             , iv_supplier_code           => g_target_rec.supplier_code      -- 仕入先コード
             , iv_supplier_site_code      => g_target_rec.supplier_site_code -- 仕入先サイトコード
+-- Ver.1.25 ADD START
+            , iv_snap_tax_calc_kbn       => g_target_rec.tax_calc_kbn       -- 税計算区分
+            , iv_snap_balance_id         => g_target_rec.bm_balance_id2     -- SNAP販手残高ID
+-- Ver.1.25 ADD END
             , ov_vendor_name             => lt_vendor_name                  -- 仕入先名
             , ov_bank_charge_bearer      => lt_bank_charge_bearer           -- 銀行手数料負担者
             , ov_hold_all_payments_flag  => lt_hold_all_payments_flag       -- 全支払の保留フラグ
@@ -3194,6 +3779,12 @@ AS
 -- Ver.1.24 ADD START
             , ov_bm_tax_kbn_name         => lv_bm_tax_kbn_name              -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+            , ov_bm_tax_kbn              => lv_bm_tax_kbn                   -- (DFF6)BM税区分
+            , ov_tax_calc_kbn_name       => lv_tax_calc_kbn_name            -- BM税計算区分名
+            , ov_tax_calc_kbn            => lv_tax_calc_kbn                 -- BM税計算区分
+            , ov_invoice_t_no            => lv_invoice_t_no                 -- 登録番号（支払先）
+-- Ver.1.25 ADD END
           );
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
@@ -3251,6 +3842,12 @@ AS
 -- Ver.1.24 ADD START
           , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+          , iv_bm_tax_kbn              => lv_bm_tax_kbn              -- (DFF6)BM税区分
+          , iv_tax_calc_kbn_name       => lv_tax_calc_kbn_name       -- BM税計算区分名
+          , iv_tax_calc_kbn            => lv_tax_calc_kbn            -- BM税計算区分
+          , iv_invoice_t_no            => lv_invoice_t_no            -- 登録番号（支払先）
+-- Ver.1.25 ADD END
         );
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -3438,6 +4035,12 @@ AS
 -- Ver.1.24 ADD START
       , iv_bm_tax_kbn_name         => lv_bm_tax_kbn_name         -- BM税区分名
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+      , iv_bm_tax_kbn              => lv_bm_tax_kbn              -- (DFF6)BM税区分
+      , iv_tax_calc_kbn_name       => lv_tax_calc_kbn_name       -- BM税計算区分名
+      , iv_tax_calc_kbn            => lv_tax_calc_kbn            -- BM税計算区分
+      , iv_invoice_t_no            => lv_invoice_t_no            -- 登録番号（支払先）
+-- Ver.1.25 ADD END
     );
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
@@ -3493,6 +4096,15 @@ AS
 -- Ver.1.24 ADD START
       g_bm_balance_ttype( gn_index ).BM_TAX_KBN_NAME           := NULL;
 -- Ver.1.24 ADD END
+-- Ver.1.25 ADD START
+      g_bm_balance_ttype( gn_index ).TAX_CALC_KBN_NAME         := NULL;
+      g_bm_balance_ttype( gn_index ).INVOICE_T_NO              := NULL;
+      g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE1          := NULL;
+      g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE2          := NULL;
+      g_bm_balance_ttype( gn_index ).TOTAL_LINETITLE3          := NULL;
+      g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM2       := NULL;
+      g_bm_balance_ttype( gn_index ).UNPAID_BALANCE_SUM3       := NULL;
+-- Ver.1.25 ADD END
       -- ===============================================
       -- 対象データなしメッセージ取得
       -- ===============================================
@@ -3527,6 +4139,19 @@ AS
           RAISE global_process_expt;
         END IF;
       END LOOP ins_loop;
+-- Ver.1.25 ADD START
+      -- ===============================================
+      -- 帳票ワーク合計行更新処理(A-13)
+      -- ===============================================
+      upd_payment_sum_rec(
+        ov_errbuf                =>  lv_errbuf                -- エラーバッファ
+      , ov_retcode               =>  lv_retcode               -- リターンコード
+      , ov_errmsg                =>  lv_errmsg                -- エラーメッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- Ver.1.25 ADD END
 -- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD START
       -- ===============================================
       -- 支払ステータス「自動繰越」更新処理(A-10)
@@ -3903,6 +4528,32 @@ AS
       lv_profile_nm := cv_prof_org_id;
       RAISE no_profile_expt;
     END IF;
+-- Ver.1.25 ADD START
+    --==================================================
+    -- プロファイル取得(合計行見出し_税込み)
+    --==================================================
+    gt_subtitle1 := FND_PROFILE.VALUE( cv_prof_list_inc_tax );
+    IF ( gt_subtitle1 IS NULL ) THEN
+      lv_profile_nm := cv_prof_list_inc_tax;
+      RAISE no_profile_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(合計行見出し_税抜き)
+    --==================================================
+    gt_subtitle2 := FND_PROFILE.VALUE( cv_prof_list_ex_tax );
+    IF ( gt_subtitle2 IS NULL ) THEN
+      lv_profile_nm := cv_prof_list_ex_tax;
+      RAISE no_profile_expt;
+    END IF;
+    --==================================================
+    -- プロファイル取得(合計行見出し_消費税)
+    --==================================================
+    gt_subtitle3 := FND_PROFILE.VALUE( cv_prof_list_tax );
+    IF ( gt_subtitle3 IS NULL ) THEN
+      lv_profile_nm := cv_prof_list_tax;
+      RAISE no_profile_expt;
+    END IF;
+-- Ver.1.25 ADD END
     -- ===============================================
     -- 在庫組織ID取得
     -- ===============================================
@@ -4103,7 +4754,7 @@ AS
     -- ===============================================
     COMMIT;
     -- ===============================================
-    -- SVF起動(A-5)
+    -- SVF起動(A-8)
     -- ===============================================
     start_svf(
       ov_errbuf   => lv_errbuf   -- エラー・メッセージ
@@ -4114,7 +4765,7 @@ AS
       RAISE global_process_expt;
     END IF;
     -- ===============================================
-    -- ワークテーブルデータ削除(A-6)
+    -- ワークテーブルデータ削除(A-9)
     -- ===============================================
     del_worktable_data(
       ov_errbuf   => lv_errbuf   -- エラー・メッセージ
