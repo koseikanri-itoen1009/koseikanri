@@ -5,105 +5,106 @@ AS
  * Copyright(c)Oracle Corporation Japan, 2003. All rights reserved.
  *
  * Package Name     : XX034PT001C(body)
- * Description      : æ‰¿èªæ¸ˆéƒ¨é–€å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã‚’APæ¨™æº–I/Fã«è»¢é€å¾Œã€éƒ¨é–€å…¥åŠ›è»¢é€æ—¥ã‚’æ›´æ–°ã™ã‚‹
- * MD.050           : éƒ¨é–€å…¥åŠ›ãƒãƒƒãƒå‡¦ç†(AP)   OCSJ/BFAFIN/MD050/F212
- * MD.070           : æ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ã®è»¢é€ OCSJ/BFAFIN/MD070/F406
- * Version          : 11.5.10.2.11
+ * Description      : ³”FÏ•”–å“ü—Íƒf[ƒ^‚ğAP•W€I/F‚É“]‘—ŒãA•”–å“ü—Í“]‘—“ú‚ğXV‚·‚é
+ * MD.050           : •”–å“ü—Íƒoƒbƒ`ˆ—(AP)   OCSJ/BFAFIN/MD050/F212
+ * MD.070           : ³”FÏd“üæ¿‹‘‚Ì“]‘— OCSJ/BFAFIN/MD070/F406
+ * Version          : 11.5.10.2.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
- *  vaild_approval         APæœªæ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®ç¢ºèª (A-1)
- *  get_approval_slip_data çµŒç†æ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®å–å¾— (A-2)
- *  ins_ap_interface       API/Fã®æ›´æ–° (A-3)
- *  ins_ap_interface_lines APã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹(æ˜ç´°)ãƒ‡ãƒ¼ã‚¿ã®å–å¾—ã¨æŒ¿å…¥ (A-2ã€A-3)
- *  upd_slip_data          APè»¢é€æ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®æ›´æ–° (A-4)
- *  msg_output             çµæœå‡ºåŠ› (A-4)
- *  submain                ãƒ¡ã‚¤ãƒ³å‡¦ç†ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
- *  main                   ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆå®Ÿè¡Œãƒ•ã‚¡ã‚¤ãƒ«ç™»éŒ²ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
+ *  vaild_approval         AP–¢³”FÏd“üæ¿‹‘ƒf[ƒ^‚ÌŠm”F (A-1)
+ *  get_approval_slip_data Œo—³”FÏd“üæ¿‹‘ƒf[ƒ^‚Ìæ“¾ (A-2)
+ *  ins_ap_interface       API/F‚ÌXV (A-3)
+ *  ins_ap_interface_lines APƒCƒ“ƒ^[ƒtƒF[ƒX(–¾×)ƒf[ƒ^‚Ìæ“¾‚Æ‘}“ü (A-2AA-3)
+ *  upd_slip_data          AP“]‘—Ïd“üæ¿‹‘ƒf[ƒ^‚ÌXV (A-4)
+ *  msg_output             Œ‹‰Êo—Í (A-4)
+ *  submain                ƒƒCƒ“ˆ—ƒvƒƒV[ƒWƒƒ
+ *  main                   ƒRƒ“ƒJƒŒƒ“ƒgÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒ
  *
  * Change Record
  * ------------ -------------- -------------------------------------------------
  *  Date         Ver.           Description
  * ------------ -------------- -------------------------------------------------
- *  2004/02/20   1.0            æ–°è¦ä½œæˆ
- *  2004/02/27   1.1            å˜ä½“ãƒ†ã‚¹ãƒˆä¸å…·åˆä¿®æ­£
- *  2005/09/05   11.5.10.1.5    é–¢é›»ãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯ãƒ‘ãƒ•ã‚©ãƒ¼ãƒãƒ³ã‚¹å¯¾å¿œ
- *  2005/11/29   11.5.10.1.6    ãƒ‘ãƒ•ã‚©ãƒ¼ãƒãƒ³ã‚¹å¯¾å¿œã«ã‚ˆã‚Šãƒ’ãƒ³ãƒˆå¥å¤‰æ›´
- *  2007/11/26   11.5.10.2.10   ãƒ‡ãƒ¼ã‚¿è»¢é€ã¨è»¢é€æ¸ˆãƒ•ãƒ©ã‚°æ›´æ–°ã‚¿ã‚¤ãƒŸãƒ³ã‚°ã®ä¿®æ­£
- *  2021/12/17   11.5.10.2.11   [E_æœ¬ç¨¼åƒ_17678]å¯¾å¿œ é›»å­å¸³ç°¿ä¿å­˜æ³•æ”¹æ­£å¯¾å¿œ
+ *  2004/02/20   1.0            V‹Kì¬
+ *  2004/02/27   1.1            ’P‘ÌƒeƒXƒg•s‹ï‡C³
+ *  2005/09/05   11.5.10.1.5    ŠÖ“dƒtƒB[ƒhƒoƒbƒNƒpƒtƒH[ƒ}ƒ“ƒX‘Î‰
+ *  2005/11/29   11.5.10.1.6    ƒpƒtƒH[ƒ}ƒ“ƒX‘Î‰‚É‚æ‚èƒqƒ“ƒg‹å•ÏX
+ *  2007/11/26   11.5.10.2.10   ƒf[ƒ^“]‘—‚Æ“]‘—Ïƒtƒ‰ƒOXVƒ^ƒCƒ~ƒ“ƒO‚ÌC³
+ *  2021/12/17   11.5.10.2.11   [E_–{‰Ò“­_17678]‘Î‰ “dq’ •ë•Û‘¶–@‰ü³‘Î‰
+ *  2023/08/09   11.5.10.2.12   [E_–{‰Ò“®_19332]‘Î‰ ƒCƒ“ƒ{ƒCƒX‘Î‰
  *
  *****************************************************************************************/
 --
---#####################  å›ºå®šå…±é€šä¾‹å¤–å®£è¨€éƒ¨ START   ####################
+--#####################  ŒÅ’è‹¤’Ê—áŠOéŒ¾•” START   ####################
 --
-  --*** å‡¦ç†éƒ¨å…±é€šä¾‹å¤– ***
+  --*** ˆ—•”‹¤’Ê—áŠO ***
   global_process_expt       EXCEPTION;
-  --*** å…±é€šé–¢æ•°ä¾‹å¤– ***
+  --*** ‹¤’ÊŠÖ”—áŠO ***
   global_api_expt           EXCEPTION;
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-  -- *** ã‚°ãƒ­ãƒ¼ãƒãƒ«å®šæ•° ***
-  cv_date_time_format CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS';   --çµæœå‡ºåŠ›ç”¨æ—¥ä»˜å½¢å¼1
-  cv_date_format      CONSTANT VARCHAR2(30) := 'YYYY/MM/DD';              --çµæœå‡ºåŠ›ç”¨æ—¥ä»˜å½¢å¼2
-  cv_appr_status      CONSTANT  xx03_payment_slips.wf_status%TYPE := '80';  -- çµŒç†æ‰¿èªæ¸ˆã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
+  -- *** ƒOƒ[ƒoƒ‹’è” ***
+  cv_date_time_format CONSTANT VARCHAR2(30) := 'YYYY/MM/DD HH24:MI:SS';   --Œ‹‰Êo—Í—p“ú•tŒ`®1
+  cv_date_format      CONSTANT VARCHAR2(30) := 'YYYY/MM/DD';              --Œ‹‰Êo—Í—p“ú•tŒ`®2
+  cv_appr_status      CONSTANT  xx03_payment_slips.wf_status%TYPE := '80';  -- Œo—³”FÏƒXƒe[ƒ^ƒX
 --
   -- ===============================
-  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®šç¾©ä¾‹å¤–
+  -- ƒ†[ƒU[’è‹`—áŠO
   -- ===============================
-  vaild_approval_expt       EXCEPTION;              -- APæœªæ‰¿èªè«‹æ±‚æ›¸å­˜åœ¨ã‚¨ãƒ©ãƒ¼
-  chk_data_none_expt        EXCEPTION;              -- APè»¢é€ãƒ‡ãƒ¼ã‚¿æœªå–å¾—ã‚¨ãƒ©ãƒ¼
+  vaild_approval_expt       EXCEPTION;              -- AP–¢³”F¿‹‘‘¶İƒGƒ‰[
+  chk_data_none_expt        EXCEPTION;              -- AP“]‘—ƒf[ƒ^–¢æ“¾ƒGƒ‰[
 --
   /**********************************************************************************
    * Procedure Name   : vaild_approval
-   * Description      : APæœªæ‰¿èªä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®ç¢ºèª (A-1)
+   * Description      : AP–¢³”Fd“üæ¿‹‘ƒf[ƒ^‚ÌŠm”F (A-1)
    ***********************************************************************************/
   PROCEDURE vaild_approval(
-    on_org_id         OUT NUMBER,       -- 1.ã‚ªãƒ«ã‚°ID(OUT)
-    on_books_id       OUT NUMBER,       -- 2.ä¼šè¨ˆå¸³ç°¿ID(OUT)
-    ov_currency_code  OUT VARCHAR2,     -- 3.æ©Ÿèƒ½é€šè²¨(OUT)
-    ov_errbuf         OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode        OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg         OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    on_org_id         OUT NUMBER,       -- 1.ƒIƒ‹ƒOID(OUT)
+    on_books_id       OUT NUMBER,       -- 2.‰ïŒv’ •ëID(OUT)
+    ov_currency_code  OUT VARCHAR2,     -- 3.‹@”\’Ê‰İ(OUT)
+    ov_errbuf         OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode        OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg         OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'vaild_approval'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'vaild_approval'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°å®£è¨€éƒ¨ START   ########################
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
-    -- è«‹æ±‚æ›¸æœªæ‰¿èªã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
+    -- *** ƒ[ƒJƒ‹’è” ***
+    -- ¿‹‘–¢³”FƒXƒe[ƒ^ƒX
     cv_unappr_status      CONSTANT  VARCHAR2(30) := 'UNAPPROVED';
--- 1.1 add start æœªæ‰¿èªã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã®è¿½åŠ 
+-- 1.1 add start –¢³”FƒXƒe[ƒ^ƒX‚Ì’Ç‰Á
     cv_nev_appr_status    CONSTANT  VARCHAR2(30) := 'NEVER APPROVED';
     cv_need_reappr_status CONSTANT  VARCHAR2(30) := 'NEEDS REAPPROVAL';
 -- 1.1 add end
-    -- ä¼šè¨ˆæœŸé–“ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹(ã‚ªãƒ¼ãƒ—ãƒ³)
+    -- ‰ïŒvŠúŠÔƒXƒe[ƒ^ƒX(ƒI[ƒvƒ“)
     cv_gl_status_open   CONSTANT  gl_period_statuses.closing_status%TYPE := 'O';
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
-    ln_app_id         fnd_application.application_id%TYPE;    -- ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ID
-    ln_data_cnt       NUMBER;                                 -- å‰Šé™¤å¯¾è±¡ãƒ‡ãƒ¼ã‚¿ä»¶æ•°
-    lv_gl_status      gl_period_statuses.closing_status%TYPE; -- ä¼šè¨ˆã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    ln_app_id         fnd_application.application_id%TYPE;    -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+    ln_data_cnt       NUMBER;                                 -- íœ‘ÎÛƒf[ƒ^Œ”
+    lv_gl_status      gl_period_statuses.closing_status%TYPE; -- ‰ïŒvƒXƒe[ƒ^ƒX
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ã‚«ãƒ¼ã‚½ãƒ« ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
     CURSOR get_ap_unappr_data_cur
     IS
       SELECT
---Ver 11.5.10.1.5 2005/09/05 Change Start ä¼šè¨ˆæœŸé–“ãŒã‚ªãƒ¼ãƒ—ãƒ³ã—ã¦ã„ã‚‹ã‚‚ã®ã®ã¿å–å¾—ã™ã‚‹
+--Ver 11.5.10.1.5 2005/09/05 Change Start ‰ïŒvŠúŠÔ‚ªƒI[ƒvƒ“‚µ‚Ä‚¢‚é‚à‚Ì‚Ì‚İæ“¾‚·‚é
 --Ver 11.5.10.1.5 2005/09/05 Change Start
 --Ver 11.5.10.1.6 Change Start
        /*+ ORDERED INDEX(aia XX03_AP_INVOICES_N1)
@@ -111,9 +112,9 @@ AS
 --       /*+ INDEX(aia XX03_AP_INVOICES_N1) */
 --Ver 11.5.10.1.6 Change End
 --Ver 11.5.10.1.5 2005/09/05 Change End
-      aia.gl_date AS gl_date,    -- è¨ˆä¸Šæ—¥
--- 1.1 add start ã‚¨ãƒ©ãƒ¼æ™‚ã®ãƒ­ã‚°è§£æç”¨ã«è«‹æ±‚æ›¸ç•ªå·ã‚’è¿½åŠ 
-              aia.invoice_num AS invoice_num     -- è«‹æ±‚æ›¸ç•ªå·
+      aia.gl_date AS gl_date,    -- Œvã“ú
+-- 1.1 add start ƒGƒ‰[‚ÌƒƒO‰ğÍ—p‚É¿‹‘”Ô†‚ğ’Ç‰Á
+              aia.invoice_num AS invoice_num     -- ¿‹‘”Ô†
 -- 1.1 add end
 --Ver 11.5.10.1.6 Change Start
 --      FROM    ap_invoices_all aia
@@ -134,7 +135,7 @@ AS
       AND     gps.adjustment_period_flag  != 'Y'
       AND     gps.closing_status = cv_gl_status_open
 --Ver 11.5.10.1.5 2005/09/05 Add End
--- 1.1 change start æœªæ‰¿èªã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã®è¿½åŠ ã«ã‚ˆã‚‹å¤‰æ›´
+-- 1.1 change start –¢³”FƒXƒe[ƒ^ƒX‚Ì’Ç‰Á‚É‚æ‚é•ÏX
 /*
       AND     cv_unappr_status = ap_invoices_pkg.get_approval_status(
         aia.invoice_id,
@@ -163,58 +164,58 @@ AS
 -- 1.1 change end
 --Ver 11.5.10.1.5 2005/09/05 Add End
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ ***
-    --ãƒã‚§ãƒƒã‚¯å¯¾è±¡å–å¾—ã‚«ãƒ¼ã‚½ãƒ«ãƒ¬ã‚³ãƒ¼ãƒ‰
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+    --ƒ`ƒFƒbƒN‘ÎÛæ“¾ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh
     get_ap_unappr_data_rec get_ap_unappr_data_cur%ROWTYPE;
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-    -- ãƒ­ã‚°å‡ºåŠ›
+    -- ƒƒOo—Í
     xx00_file_pkg.log('>>'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
-    -- ã‚ªãƒ«ã‚°IDã®å–å¾—
+    -- ƒIƒ‹ƒOID‚Ìæ“¾
     on_org_id := TO_NUMBER(xx00_profile_pkg.value('ORG_ID'));
-    -- ä¼šè¨ˆå¸³ç°¿IDã®å–å¾—
+    -- ‰ïŒv’ •ëID‚Ìæ“¾
     on_books_id := xx00_profile_pkg.value('GL_SET_OF_BKS_ID');
-    -- ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³IDã®å–å¾—
+    -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID‚Ìæ“¾
     ln_app_id := xx03_application_pkg.get_application_id_f('SQLAP');
-    -- æ©Ÿèƒ½é€šè²¨ã®å–å¾—
+    -- ‹@”\’Ê‰İ‚Ìæ“¾
     SELECT  gsob.currency_code AS currency_code
     INTO    ov_currency_code
     FROM    gl_sets_of_books gsob
     WHERE   gsob.set_of_books_id = on_books_id;
 --
-    -- Ver1.1 add start ãƒ­ã‚°å‡ºåŠ›
+    -- Ver1.1 add start ƒƒOo—Í
     xx00_file_pkg.log('org_id = ' || TO_CHAR(on_org_id));
     xx00_file_pkg.log('books_id = ' || TO_CHAR(on_books_id));
     xx00_file_pkg.log('app_id = ' || TO_CHAR(ln_app_id));
     xx00_file_pkg.log('currency_code = ' || ov_currency_code);
     -- Ver1.1 add end
 --
-    --å‰Šé™¤å¯¾è±¡å–å¾—ã‚«ãƒ¼ã‚½ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³
+    --íœ‘ÎÛæ“¾ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
     OPEN get_ap_unappr_data_cur;
     <<get_ap_unappr_loop>>
     LOOP
       FETCH get_ap_unappr_data_cur INTO get_ap_unappr_data_rec;
-      -- 0ä»¶åˆ¤å®š
+      -- 0Œ”»’è
       IF (get_ap_unappr_data_cur%NOTFOUND) THEN
         EXIT get_ap_unappr_loop;
---Ver 11.5.10.1.5 2005/09/05 Add Start ä¸€ä»¶ä»¥ä¸Šæœ‰ã‚‹å ´åˆã¯ã‚¨ãƒ©ãƒ¼å‡¦ç†ã‚’è¡Œã†
+--Ver 11.5.10.1.5 2005/09/05 Add Start ˆêŒˆÈã—L‚éê‡‚ÍƒGƒ‰[ˆ—‚ğs‚¤
       ELSE
         RAISE vaild_approval_expt;
 --Ver 11.5.10.1.5 2005/09/05 Add End
       END IF;
 --Ver 11.5.10.1.5 2005/09/05 Delete Start
 /*
-      -- è¨ˆä¸Šæ—¥ã‹ã‚‰ä¼šè¨ˆæœŸé–“ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã®ãƒã‚§ãƒƒã‚¯
+      -- Œvã“ú‚©‚ç‰ïŒvŠúŠÔƒXƒe[ƒ^ƒX‚Ìƒ`ƒFƒbƒN
       SELECT  gps.closing_status
       INTO    lv_gl_status
       FROM    gl_period_statuses gps
@@ -222,7 +223,7 @@ AS
       AND     gps.set_of_books_id = on_books_id
       AND     get_ap_unappr_data_rec.gl_date BETWEEN gps.start_date AND gps.end_date
       AND     gps.adjustment_period_flag  != 'Y';
-      -- ä¼šè¨ˆã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ãŒã‚ªãƒ¼ãƒ—ãƒ³ã§ã‚ã‚‹ãƒ‡ãƒ¼ã‚¿ãŒå­˜åœ¨ã™ã‚‹å ´åˆã‚¨ãƒ©ãƒ¼ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’å‡ºåŠ›
+      -- ‰ïŒvƒXƒe[ƒ^ƒX‚ªƒI[ƒvƒ“‚Å‚ ‚éƒf[ƒ^‚ª‘¶İ‚·‚éê‡ƒGƒ‰[ƒƒbƒZ[ƒW‚ğo—Í
       IF lv_gl_status = cv_gl_status_open THEN
         RAISE vaild_approval_expt;
       END IF;
@@ -231,116 +232,119 @@ AS
     END LOOP get_ap_unappr_loop;
     CLOSE get_ap_unappr_data_cur;
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('<<'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
   EXCEPTION
-    WHEN vaild_approval_expt THEN        --*** APæœªæ‰¿èªè«‹æ±‚æ›¸å­˜åœ¨ã‚¨ãƒ©ãƒ¼ ***
-      -- *** ä»»æ„ã§ä¾‹å¤–å‡¦ç†ã‚’è¨˜è¿°ã™ã‚‹ ****
+    WHEN vaild_approval_expt THEN        --*** AP–¢³”F¿‹‘‘¶İƒGƒ‰[ ***
+      -- *** ”CˆÓ‚Å—áŠOˆ—‚ğ‹Lq‚·‚é ****
       xx00_file_pkg.log(
         xx00_message_pkg.get_msg(
           'XX03',
-          'APP-XX03-08002',                 -- APæœªæ‰¿èªè«‹æ±‚æ›¸å­˜åœ¨ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
--- Ver1.1 add start ãƒ­ã‚°ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã®ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+          'APP-XX03-08002',                 -- AP–¢³”F¿‹‘‘¶İƒƒbƒZ[ƒW
+-- Ver1.1 add start ƒƒOƒƒbƒZ[ƒW‚ÌƒƒbƒZ[ƒW
           'TOK_XX03_INVOICE_NUM',
           get_ap_unappr_data_rec.invoice_num));
 -- Ver1.1 add end
-      ov_errmsg := lv_errmsg;                                                           --# ä»»æ„ #
-      ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000); --# ä»»æ„ #
-      ov_retcode := xx00_common_pkg.set_status_error_f;                                 --# ä»»æ„ #
+      ov_errmsg := lv_errmsg;                                                           --# ”CˆÓ #
+      ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000); --# ”CˆÓ #
+      ov_retcode := xx00_common_pkg.set_status_error_f;                                 --# ”CˆÓ #
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ####################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
 --
-    WHEN global_api_expt THEN   -- *** å…±é€šé–¢æ•°ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_api_expt THEN   -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---#####################################  å›ºå®šéƒ¨ END   ##########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
   END vaild_approval;
 --
   /**********************************************************************************
    * Procedure Name   : ins_ap_interface_lines
-   * Description      : APã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹(æ˜ç´°)ãƒ‡ãƒ¼ã‚¿ã®å–å¾—ã¨æŒ¿å…¥ (A-2ã€A-3)
+   * Description      : APƒCƒ“ƒ^[ƒtƒF[ƒX(–¾×)ƒf[ƒ^‚Ìæ“¾‚Æ‘}“ü (A-2AA-3)
    ***********************************************************************************/
   PROCEDURE ins_ap_interface_lines(
-    in_invoice_id     IN NUMBER,        -- 1.è«‹æ±‚æ›¸ID(IN)
-    in_org_id         IN NUMBER,        -- 2.ã‚ªãƒ«ã‚°ID(IN)
-    id_upd_date       IN DATE,          -- 3.ãƒ˜ãƒƒãƒ€ãƒ¼å–å¾—æ™‚ã®SYSDATE(IN)
-    in_updated_by     IN NUMBER,        -- 4.æœ€çµ‚æ›´æ–°è€…(IN)
-    in_update_login   IN NUMBER,        -- 5.æœ€çµ‚ãƒ­ã‚°ã‚¤ãƒ³(IN)
-    in_created_by     IN NUMBER,        -- 6.ä½œæˆè€…(IN)
-    on_detail_cnt    OUT NUMBER,        -- 7.æ˜ç´°ä»¶æ•°(OUT)
---Ver1.1 add start æ˜ç´°ã‚­ãƒ¼(xx03_payment_slipsã®invoice_id)ã®æ¸¡ã—å¿˜ã‚Œ
-    in_key_invoice_id IN NUMBER,        -- 8.æ˜ç´°ã‚­ãƒ¼è«‹æ±‚æ›¸ID(IN)
+    in_invoice_id     IN NUMBER,        -- 1.¿‹‘ID(IN)
+    in_org_id         IN NUMBER,        -- 2.ƒIƒ‹ƒOID(IN)
+    id_upd_date       IN DATE,          -- 3.ƒwƒbƒ_[æ“¾‚ÌSYSDATE(IN)
+    in_updated_by     IN NUMBER,        -- 4.ÅIXVÒ(IN)
+    in_update_login   IN NUMBER,        -- 5.ÅIƒƒOƒCƒ“(IN)
+    in_created_by     IN NUMBER,        -- 6.ì¬Ò(IN)
+    on_detail_cnt    OUT NUMBER,        -- 7.–¾×Œ”(OUT)
+--Ver1.1 add start –¾×ƒL[(xx03_payment_slips‚Ìinvoice_id)‚Ì“n‚µ–Y‚ê
+    in_key_invoice_id IN NUMBER,        -- 8.–¾×ƒL[¿‹‘ID(IN)
 --Ver1.1 add end
-    ov_errbuf         OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode        OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg         OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    ov_errbuf         OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode        OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg         OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_ap_interface_lines'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_ap_interface_lines'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°å®£è¨€éƒ¨ START   ########################
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
+    -- *** ƒ[ƒJƒ‹’è” ***
     cv_tax_code_override
       CONSTANT ap_invoice_lines_interface.tax_code_override_flag%TYPE := 'Y';
     cv_type_header CONSTANT VARCHAR2(100) := 'HEADER';
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
-    ln_line_id      ap_invoice_lines_interface.invoice_line_id%TYPE;  -- è«‹æ±‚æ›¸æ˜ç´°IDå–å¾—ç”¨
-    ln_detail_cnt   NUMBER  :=0;                                      -- æ˜ç´°ä»¶æ•°è¨ˆä¸Šç”¨
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    ln_line_id      ap_invoice_lines_interface.invoice_line_id%TYPE;  -- ¿‹‘–¾×IDæ“¾—p
+    ln_detail_cnt   NUMBER  :=0;                                      -- –¾×Œ”Œvã—p
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ã‚«ãƒ¼ã‚½ãƒ« ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
     CURSOR get_pay_slip_lines_cur
     IS
-      SELECT  xpsjlv.invoice_id AS invoice_id,                        -- è«‹æ±‚æ›¸ID
-              xpsjlv.line_number * 10 AS line_number,                 -- æ˜ç´°è¡Œç•ªå·
-              xpsjlv.line_type_lookup_code AS line_type_lookup_code,  -- æ˜ç´°ã‚¿ã‚¤ãƒ—
-              xpsjlv.amount AS amount,                                -- æ˜ç´°é‡‘é¡
-              xpsjlv.description AS description,                      -- è«‹æ±‚æ›¸æ˜ç´°å‚™è€ƒ
-              xpsjlv.tax_code AS tax_code,                            -- ç¨åŒºåˆ†
-              xpsjlv.code_concatenated AS code_concatenated,          -- æ˜ç´°AFFå€¤
-              xpsjlv.code_combination_id AS ccid,                     -- æ˜ç´°AFF CCID
-              xpsjlv.incr_decr_reason_code AS incr_decr_reason,       -- å¢—æ¸›äº‹ç”±
-              xpsjlv.recon_reference AS recon_reference,              -- æ¶ˆè¾¼å‚ç…§
+      SELECT  xpsjlv.invoice_id AS invoice_id,                        -- ¿‹‘ID
+              xpsjlv.line_number * 10 AS line_number,                 -- –¾×s”Ô†
+              xpsjlv.line_type_lookup_code AS line_type_lookup_code,  -- –¾×ƒ^ƒCƒv
+              xpsjlv.amount AS amount,                                -- –¾×‹àŠz
+              xpsjlv.description AS description,                      -- ¿‹‘–¾×”õl
+              xpsjlv.tax_code AS tax_code,                            -- Å‹æ•ª
+              xpsjlv.code_concatenated AS code_concatenated,          -- –¾×AFF’l
+              xpsjlv.code_combination_id AS ccid,                     -- –¾×AFF CCID
+              xpsjlv.incr_decr_reason_code AS incr_decr_reason,       -- ‘Œ¸–—R
+              xpsjlv.recon_reference AS recon_reference,              -- ÁQÆ
 --Ver11.5.10.2.11 add start
-              xps.invoice_ele_data_yes AS invoice_ele_data_yes,       -- è«‹æ±‚æ›¸é›»å­ãƒ‡ãƒ¼ã‚¿å—é ˜ã‚ã‚Š
+              xps.invoice_ele_data_yes AS invoice_ele_data_yes,       -- ¿‹‘“dqƒf[ƒ^ó—Ì‚ ‚è
 --Ver11.5.10.2.11 add end
-              xpsjlv.attribute1 AS attribute1,                        -- äºˆå‚™ï¼‘
-              xpsjlv.attribute2 AS attribute2,                        -- äºˆå‚™ï¼’
-              xpsjlv.attribute3 AS attribute3,                        -- äºˆå‚™ï¼“
-              xpsjlv.attribute4 AS attribute4,                        -- äºˆå‚™ï¼”
-              xpsjlv.attribute5 AS attribute5,                        -- äºˆå‚™ï¼•
-              xpsjlv.attribute6 AS attribute6,                        -- äºˆå‚™ï¼–
-              xpsjlv.attribute7 AS attribute7,                        -- äºˆå‚™ï¼—
-              xpsjlv.attribute8 AS attribute8                         -- äºˆå‚™ï¼˜
+--Ver11.5.10.2.12 add start
+              xps.invoice_t_num_yes    AS invoice_t_num_yes,          -- “KŠi¿‹‘(ƒCƒ“ƒ{ƒCƒX)‚ ‚è
+--Ver11.5.10.2.12 add end
+              xpsjlv.attribute1 AS attribute1,                        -- —\”õ‚P
+              xpsjlv.attribute2 AS attribute2,                        -- —\”õ‚Q
+              xpsjlv.attribute3 AS attribute3,                        -- —\”õ‚R
+              xpsjlv.attribute4 AS attribute4,                        -- —\”õ‚S
+              xpsjlv.attribute5 AS attribute5,                        -- —\”õ‚T
+              xpsjlv.attribute6 AS attribute6,                        -- —\”õ‚U
+              xpsjlv.attribute7 AS attribute7,                        -- —\”õ‚V
+              xpsjlv.attribute8 AS attribute8                         -- —\”õ‚W
       FROM    xx03_pay_slip_journal_lines_v xpsjlv
 --Ver11.5.10.2.11 add start
              ,xx03_payment_slips            xps
 --Ver11.5.10.2.11 add end
---Ver1.1 change start æ˜ç´°ã‚­ãƒ¼(xx03_payment_slipsã®invoice_id)é–“é•ã„
+--Ver1.1 change start –¾×ƒL[(xx03_payment_slips‚Ìinvoice_id)ŠÔˆá‚¢
 --      WHERE   xpsjlv.invoice_id = in_invoice_id
       WHERE   xpsjlv.invoice_id = in_key_invoice_id
 --Ver1.1 change end
@@ -350,38 +354,38 @@ AS
 --Ver11.5.10.2.11 add end
       ORDER BY xpsjlv.line_number;
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ ***
-    -- APä»•å…¥å…ˆè«‹æ±‚æ›¸æ˜ç´°ã‚«ãƒ¼ã‚½ãƒ«ãƒ¬ã‚³ãƒ¼ãƒ‰
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+    -- APd“üæ¿‹‘–¾×ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh
     get_pay_slip_lines_rec get_pay_slip_lines_cur%ROWTYPE;
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-    -- ãƒ­ã‚°å‡ºåŠ›
+    -- ƒƒOo—Í
     xx00_file_pkg.log('>>'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
-    --APä»•å…¥å…ˆè«‹æ±‚æ›¸æ˜ç´°ã‚«ãƒ¼ã‚½ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³
+    --APd“üæ¿‹‘–¾×ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
     OPEN get_pay_slip_lines_cur;
     <<get_ap_lines_loop>>
     LOOP
       FETCH get_pay_slip_lines_cur INTO get_pay_slip_lines_rec;
-      -- 0ä»¶åˆ¤å®š
+      -- 0Œ”»’è
       IF (get_pay_slip_lines_cur%NOTFOUND) THEN
         EXIT get_ap_lines_loop;
       END IF;
 --
-      -- è«‹æ±‚æ›¸æ˜ç´°IDã®å–å¾—
+      -- ¿‹‘–¾×ID‚Ìæ“¾
       SELECT  ap_invoice_lines_interface_s.NEXTVAL
       INTO    ln_line_id
       FROM    DUAL;
 --
-      -- APæ¨™æº–ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹(æ˜ç´°)ã¸ã®æŒ¿å…¥
+      -- AP•W€ƒCƒ“ƒ^[ƒtƒF[ƒX(–¾×)‚Ö‚Ì‘}“ü
       INSERT INTO ap_invoice_lines_interface (
         invoice_id,
         invoice_line_id,
@@ -408,12 +412,15 @@ AS
         attribute8,
         attribute9,
         attribute10,
+--Ver11.5.10.2.12 add start
+        attribute13,
+--Ver11.5.10.2.12 add end
         org_id,
         tax_code_override_flag
       )
       VALUES (
---Ver1.1 change start éƒ¨é–€å…¥åŠ›æ˜ç´°ã®è«‹æ±‚æ›¸ID(xx03_payment_slipsã®invoice_id)ã§ã¯ãªãã€
---                    æ¨™æº–ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹ãƒ˜ãƒƒãƒ€ãƒ¼ã®è«‹æ±‚æ›¸IDã‚’è¨­å®šã™ã‚‹ã®ãŒæ­£ã—ã„
+--Ver1.1 change start •”–å“ü—Í–¾×‚Ì¿‹‘ID(xx03_payment_slips‚Ìinvoice_id)‚Å‚Í‚È‚­A
+--                    •W€ƒCƒ“ƒ^[ƒtƒF[ƒXƒwƒbƒ_[‚Ì¿‹‘ID‚ğİ’è‚·‚é‚Ì‚ª³‚µ‚¢
 --        get_pay_slip_lines_rec.invoice_id,
         in_invoice_id,
 --Ver1.1 change end
@@ -444,6 +451,9 @@ AS
 --        get_pay_slip_lines_rec.attribute8,
         get_pay_slip_lines_rec.invoice_ele_data_yes,
 --Ver11.5.10.2.11 change end
+--Ver11.5.10.2.12 add start
+        get_pay_slip_lines_rec.invoice_t_num_yes,
+--Ver11.5.10.2.12 add end
         in_org_id,
         cv_tax_code_override
       );
@@ -452,88 +462,88 @@ AS
     CLOSE get_pay_slip_lines_cur;
 --
     on_detail_cnt := ln_detail_cnt;
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('<<'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
   EXCEPTION
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ####################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
 --
-    WHEN global_api_expt THEN   -- *** å…±é€šé–¢æ•°ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_api_expt THEN   -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---#####################################  å›ºå®šéƒ¨ END   ##########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
   END ins_ap_interface_lines;
 --
   /**********************************************************************************
    * Procedure Name   : ins_ap_interface
-   * Description      : APã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹(ãƒ˜ãƒƒãƒ€ãƒ¼)ã¸ã®æŒ¿å…¥ (A-3)
+   * Description      : APƒCƒ“ƒ^[ƒtƒF[ƒX(ƒwƒbƒ_[)‚Ö‚Ì‘}“ü (A-3)
    ***********************************************************************************/
   PROCEDURE ins_ap_interface(
-    i_ap_if_rec       IN ap_invoices_interface%ROWTYPE, -- 1.APã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹ãƒ¬ã‚³ãƒ¼ãƒ‰(IN)
-    in_org_id         IN NUMBER,                        -- 2.ã‚ªãƒ«ã‚°ID(IN)
-    id_upd_date       IN DATE,                          -- 3.ãƒ˜ãƒƒãƒ€ãƒ¼å–å¾—æ™‚ã®SYSDATE(IN)
-    in_updated_by     IN NUMBER,                        -- 4.æœ€çµ‚æ›´æ–°è€…(IN)
-    in_update_login   IN NUMBER,                        -- 5.æœ€çµ‚ãƒ­ã‚°ã‚¤ãƒ³(IN)
-    in_created_by     IN NUMBER,                        -- 6.ä½œæˆè€…(IN)
-    on_detail_cnt     OUT NUMBER,                       -- 7.æ˜ç´°ä»¶æ•°(OUT)
---Ver1.1 add start æ˜ç´°ã‚­ãƒ¼(xx03_payment_slipsã®invoice_id)ã®æ¸¡ã—å¿˜ã‚Œ
-    in_key_invoice_id IN NUMBER,                        -- 8.æ˜ç´°ã‚­ãƒ¼è«‹æ±‚æ›¸ID(IN)
+    i_ap_if_rec       IN ap_invoices_interface%ROWTYPE, -- 1.APƒCƒ“ƒ^[ƒtƒF[ƒXƒŒƒR[ƒh(IN)
+    in_org_id         IN NUMBER,                        -- 2.ƒIƒ‹ƒOID(IN)
+    id_upd_date       IN DATE,                          -- 3.ƒwƒbƒ_[æ“¾‚ÌSYSDATE(IN)
+    in_updated_by     IN NUMBER,                        -- 4.ÅIXVÒ(IN)
+    in_update_login   IN NUMBER,                        -- 5.ÅIƒƒOƒCƒ“(IN)
+    in_created_by     IN NUMBER,                        -- 6.ì¬Ò(IN)
+    on_detail_cnt     OUT NUMBER,                       -- 7.–¾×Œ”(OUT)
+--Ver1.1 add start –¾×ƒL[(xx03_payment_slips‚Ìinvoice_id)‚Ì“n‚µ–Y‚ê
+    in_key_invoice_id IN NUMBER,                        -- 8.–¾×ƒL[¿‹‘ID(IN)
 --Ver1.1 add end
-    ov_errbuf         OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode        OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg         OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    ov_errbuf         OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode        OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg         OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_ap_interface'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_ap_interface'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°å®£è¨€éƒ¨ START   ########################
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
+    -- *** ƒ[ƒJƒ‹’è” ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
-    ln_detail_cnt   NUMBER := 0;     -- æ˜ç´°ä»¶æ•°
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    ln_detail_cnt   NUMBER := 0;     -- –¾×Œ”
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ã‚«ãƒ¼ã‚½ãƒ« ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ ***
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-    -- ãƒ­ã‚°å‡ºåŠ›
+    -- ƒƒOo—Í
     xx00_file_pkg.log('>>'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
-    -- APæ¨™æº–ã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹ã¸ã®æŒ¿å…¥
+    -- AP•W€ƒCƒ“ƒ^[ƒtƒF[ƒX‚Ö‚Ì‘}“ü
     INSERT INTO ap_invoices_interface (
       invoice_id,
       invoice_num,
@@ -567,7 +577,7 @@ AS
       gl_date,
       org_id,
       prepay_num,
--- Ver1.1 add start å‰æ‰•å……å½“ä»•è¨³è¨ˆä¸Šæ—¥ã®è¨­å®šæ¼ã‚Œå¯¾å¿œ
+-- Ver1.1 add start ‘O•¥[“–d–óŒvã“ú‚Ìİ’è˜R‚ê‘Î‰
       prepay_gl_date,
 -- Ver1.1 add end
       terms_date
@@ -605,120 +615,120 @@ AS
       i_ap_if_rec.gl_date,
       i_ap_if_rec.org_id,
       i_ap_if_rec.prepay_num,
--- Ver1.1 add start å‰æ‰•å……å½“ä»•è¨³è¨ˆä¸Šæ—¥ã®è¨­å®šæ¼ã‚Œå¯¾å¿œ
+-- Ver1.1 add start ‘O•¥[“–d–óŒvã“ú‚Ìİ’è˜R‚ê‘Î‰
       i_ap_if_rec.gl_date,
 -- Ver1.1 add end
       i_ap_if_rec.terms_date
     );
 --
     -- ========================================================
-    -- çµŒç†æ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸æ˜ç´°ãƒ‡ãƒ¼ã‚¿ã®å–å¾—ã¨æ›´æ–° (A-2ã€A-3)
+    -- Œo—³”FÏd“üæ¿‹‘–¾×ƒf[ƒ^‚Ìæ“¾‚ÆXV (A-2AA-3)
     -- ========================================================
     ins_ap_interface_lines(
-      i_ap_if_rec.invoice_id,         -- 1.è«‹æ±‚æ›¸ID(IN)
-      in_org_id,                      -- 2.ã‚ªãƒ«ã‚°ID(IN)
-      id_upd_date,                    -- 3.ãƒ˜ãƒƒãƒ€ãƒ¼å–å¾—æ™‚ã®SYSDATE(IN)
-      in_updated_by,                  -- 4.æœ€çµ‚æ›´æ–°è€…(IN)
-      in_update_login,                -- 5.æœ€çµ‚ãƒ­ã‚°ã‚¤ãƒ³(IN)
-      in_created_by,                  -- 6.ä½œæˆè€…(IN)
-      ln_detail_cnt,                  -- 7.æ˜ç´°ä»¶æ•°(OUT)
---Ver1.1 add start æ˜ç´°ã‚­ãƒ¼(xx03_payment_slipsã®invoice_id)ã®æ¸¡ã—å¿˜ã‚Œ
-      in_key_invoice_id,              -- 8.æ˜ç´°ã‚­ãƒ¼è«‹æ±‚æ›¸ID(IN)
+      i_ap_if_rec.invoice_id,         -- 1.¿‹‘ID(IN)
+      in_org_id,                      -- 2.ƒIƒ‹ƒOID(IN)
+      id_upd_date,                    -- 3.ƒwƒbƒ_[æ“¾‚ÌSYSDATE(IN)
+      in_updated_by,                  -- 4.ÅIXVÒ(IN)
+      in_update_login,                -- 5.ÅIƒƒOƒCƒ“(IN)
+      in_created_by,                  -- 6.ì¬Ò(IN)
+      ln_detail_cnt,                  -- 7.–¾×Œ”(OUT)
+--Ver1.1 add start –¾×ƒL[(xx03_payment_slips‚Ìinvoice_id)‚Ì“n‚µ–Y‚ê
+      in_key_invoice_id,              -- 8.–¾×ƒL[¿‹‘ID(IN)
 --Ver1.1 add end
-      lv_errbuf,      -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-      lv_retcode,     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-      lv_errmsg);     -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+      lv_errbuf,      -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+      lv_retcode,     -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+      lv_errmsg);     -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
     IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-      --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+      --(ƒGƒ‰[ˆ—)
       RAISE global_process_expt;
     END IF;
     on_detail_cnt := ln_detail_cnt;
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('<<'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
   EXCEPTION
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ####################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
 --
-    WHEN global_process_expt THEN  -- *** å‡¦ç†éƒ¨å…±é€šä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_process_expt THEN  -- *** ˆ—•”‹¤’Ê—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN global_api_expt THEN   -- *** å…±é€šé–¢æ•°ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_api_expt THEN   -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---#####################################  å›ºå®šéƒ¨ END   ##########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
   END ins_ap_interface;
 --
   /**********************************************************************************
    * Procedure Name   : get_approval_slip_data
-   * Description      : çµŒç†æ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®å–å¾—(A-2)
+   * Description      : Œo—³”FÏd“üæ¿‹‘ƒf[ƒ^‚Ìæ“¾(A-2)
    ***********************************************************************************/
   PROCEDURE get_approval_slip_data(
-    iv_source         IN VARCHAR2,      -- 1.ã‚½ãƒ¼ã‚¹å(IN)
-    in_org_id         IN NUMBER,        -- 2.ã‚ªãƒ«ã‚°ID(IN)
-    iv_currency_code  IN VARCHAR2,      -- 3.æ©Ÿèƒ½é€šè²¨(IN)
-    on_header_cnt     OUT NUMBER,       -- 4.ãƒ˜ãƒƒãƒ€ä»¶æ•°(OUT)
-    on_detail_cnt     OUT NUMBER,       -- 5.æ˜ç´°ä»¶æ•°(OUT)
-    od_upd_date       OUT DATE,         -- 6.æ›´æ–°æ—¥ä»˜(OUT)
-    ov_errbuf         OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode        OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg         OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    iv_source         IN VARCHAR2,      -- 1.ƒ\[ƒX–¼(IN)
+    in_org_id         IN NUMBER,        -- 2.ƒIƒ‹ƒOID(IN)
+    iv_currency_code  IN VARCHAR2,      -- 3.‹@”\’Ê‰İ(IN)
+    on_header_cnt     OUT NUMBER,       -- 4.ƒwƒbƒ_Œ”(OUT)
+    on_detail_cnt     OUT NUMBER,       -- 5.–¾×Œ”(OUT)
+    od_upd_date       OUT DATE,         -- 6.XV“ú•t(OUT)
+    ov_errbuf         OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode        OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg         OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_approval_slip_data'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_approval_slip_data'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°å®£è¨€éƒ¨ START   ########################
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
+    -- *** ƒ[ƒJƒ‹’è” ***
     cv_us_rate_type     CONSTANT VARCHAR2(10) := 'User';
     cv_pay_lookup_type  CONSTANT xx03_ap_pay_groups_v.lookup_type%TYPE := 'PAY GROUP';
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
-    ln_updated_by     NUMBER;         -- æœ€çµ‚æ›´æ–°è€…é€€é¿ç”¨
-    ln_update_login   NUMBER;         -- æœ€çµ‚ãƒ­ã‚°ã‚¤ãƒ³é€€é¿ç”¨
-    ln_created_by     NUMBER;         -- ä½œæˆè€…é€€é¿ç”¨
-    lv_cur_lang       VARCHAR2(4);    -- ç¾åœ¨ã®è¨€èªã‚³ãƒ¼ãƒ‰
-    ln_detail_cnt     NUMBER;         -- æ˜ç´°ä»¶æ•°
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    ln_updated_by     NUMBER;         -- ÅIXVÒ‘Ş”ğ—p
+    ln_update_login   NUMBER;         -- ÅIƒƒOƒCƒ“‘Ş”ğ—p
+    ln_created_by     NUMBER;         -- ì¬Ò‘Ş”ğ—p
+    lv_cur_lang       VARCHAR2(4);    -- Œ»İ‚ÌŒ¾ŒêƒR[ƒh
+    ln_detail_cnt     NUMBER;         -- –¾×Œ”
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ã‚«ãƒ¼ã‚½ãƒ« ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
     CURSOR get_ap_trance_data_cur
     IS
       SELECT    xps.invoice_num AS invoice_num,
---Ver1.1 add start æ˜ç´°ã‚­ãƒ¼(xx03_payment_slipsã®invoice_id)ã®æ¸¡ã—å¿˜ã‚Œ
+--Ver1.1 add start –¾×ƒL[(xx03_payment_slips‚Ìinvoice_id)‚Ì“n‚µ–Y‚ê
                 xps.invoice_id AS key_invoice_id,
 --Ver1.1 add end
                 xps.invoice_date AS invoice_date,
                 xps.vendor_id AS vendor_id,
                 xps.vendor_site_id AS vendor_site_id,
---Ver1.1 change start åˆè¨ˆé‡‘é¡ã®ç®—å‡ºé–“é•ã„
+--Ver1.1 change start ‡Œv‹àŠz‚ÌZoŠÔˆá‚¢
 --                xps.inv_amount AS inv_amount,
                 xps.inv_item_amount  AS  inv_item_amount,
                 xps.inv_tax_amount  AS  inv_tax_amount,
---Ver1.1 change end åˆè¨ˆé‡‘é¡ã®ç®—å‡ºé–“é•ã„
+--Ver1.1 change end ‡Œv‹àŠz‚ÌZoŠÔˆá‚¢
                 xps.invoice_currency_code AS inv_currency_code,
                 xps.exchange_rate AS exchange_rate,
                 DECODE(xps.invoice_currency_code,
@@ -752,30 +762,30 @@ AS
       ORDER BY  xps.invoice_id
       FOR UPDATE NOWAIT;
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ ***
-    -- APä»•å…¥å…ˆè«‹æ±‚æ›¸è»¢é€ã‚«ãƒ¼ã‚½ãƒ«ãƒ¬ã‚³ãƒ¼ãƒ‰
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
+    -- APd“üæ¿‹‘“]‘—ƒJ[ƒ\ƒ‹ƒŒƒR[ƒh
     get_ap_trance_data_rec get_ap_trance_data_cur%ROWTYPE;
-    -- AP I/Fãƒ˜ãƒƒãƒ€ãƒ¼ãƒ¬ã‚³ãƒ¼ãƒ‰
+    -- AP I/Fƒwƒbƒ_[ƒŒƒR[ƒh
     l_ap_if_rec ap_invoices_interface%ROWTYPE;
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-    -- ãƒ­ã‚°å‡ºåŠ›
+    -- ƒƒOo—Í
     xx00_file_pkg.log('>>'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
-    -- APä»•å…¥å…ˆè«‹æ±‚æ›¸è»¢é€ã‚«ãƒ¼ã‚½ãƒ«ã‚ªãƒ¼ãƒ—ãƒ³
+    -- APd“üæ¿‹‘“]‘—ƒJ[ƒ\ƒ‹ƒI[ƒvƒ“
     OPEN get_ap_trance_data_cur;
-    -- å¤‰æ•°åˆæœŸåŒ–
+    -- •Ï”‰Šú‰»
     on_header_cnt := 0;
---Ver1.1 add start å¤‰æ•°åˆæœŸåŒ–æ¼ã‚Œ
+--Ver1.1 add start •Ï”‰Šú‰»˜R‚ê
     on_detail_cnt := 0;
 --Ver1.1 add end
     ln_updated_by := xx00_global_pkg.last_updated_by;
@@ -785,9 +795,9 @@ AS
     <<get_ap_trance_loop>>
     LOOP
       FETCH get_ap_trance_data_cur INTO get_ap_trance_data_rec;
-      -- 0ä»¶åˆ¤å®š
+      -- 0Œ”»’è
       IF (get_ap_trance_data_cur%NOTFOUND) THEN
-        -- ä»¶æ•°åˆ¤å®š
+        -- Œ””»’è
         IF on_header_cnt < 1 THEN
           RAISE chk_data_none_expt;
         END IF;
@@ -796,7 +806,7 @@ AS
       IF on_header_cnt = 0 THEN
         od_upd_date := get_ap_trance_data_rec.upd_date;
       END IF;
-      -- APã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹ãƒ¬ã‚³ãƒ¼ãƒ‰å‹ã«ã‚»ãƒƒãƒˆ
+      -- APƒCƒ“ƒ^[ƒtƒF[ƒXƒŒƒR[ƒhŒ^‚ÉƒZƒbƒg
       -- INVOICE_ID
       SELECT  ap_invoices_interface_s.NEXTVAL
       INTO    l_ap_if_rec.invoice_id
@@ -810,7 +820,7 @@ AS
       -- VENDOR_SITE_ID
       l_ap_if_rec.vendor_site_id := get_ap_trance_data_rec.vendor_site_id;
       -- INVOICE_AMOUNT
---Ver1.1 change start åˆè¨ˆé‡‘é¡ã®ç®—å‡ºé–“é•ã„
+--Ver1.1 change start ‡Œv‹àŠz‚ÌZoŠÔˆá‚¢
 --      l_ap_if_rec.invoice_amount := get_ap_trance_data_rec.inv_amount;
       l_ap_if_rec.invoice_amount := get_ap_trance_data_rec.inv_item_amount +
         get_ap_trance_data_rec.inv_tax_amount;
@@ -891,29 +901,29 @@ AS
       AND     at.language = lv_cur_lang;
 --
       -- =======================================
-      -- API/Fã®æ›´æ–° (A-3)
+      -- API/F‚ÌXV (A-3)
       -- =======================================
       ins_ap_interface(
-        l_ap_if_rec,                              -- 1.APã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹ãƒ¬ã‚³ãƒ¼ãƒ‰(IN)
-        in_org_id,                                -- 2.ã‚ªãƒ«ã‚°ID(IN)
-        get_ap_trance_data_rec.upd_date,          -- 3.ãƒ˜ãƒƒãƒ€ãƒ¼å–å¾—æ™‚ã®SYSDATE(IN)
-        ln_updated_by,                            -- 4.æœ€çµ‚æ›´æ–°è€…(IN)
-        ln_update_login,                          -- 5.æœ€çµ‚ãƒ­ã‚°ã‚¤ãƒ³(IN)
-        ln_created_by,                            -- 6.ä½œæˆè€…(IN)
-        ln_detail_cnt,                            -- 7.æ˜ç´°ä»¶æ•°(OUT)
---Ver1.1 add start æ˜ç´°ã‚­ãƒ¼(xx03_payment_slipsã®invoice_id)ã®æ¸¡ã—å¿˜ã‚Œ
-        get_ap_trance_data_rec.key_invoice_id,    -- 8.æ˜ç´°ã‚­ãƒ¼è«‹æ±‚æ›¸ID(IN)
+        l_ap_if_rec,                              -- 1.APƒCƒ“ƒ^[ƒtƒF[ƒXƒŒƒR[ƒh(IN)
+        in_org_id,                                -- 2.ƒIƒ‹ƒOID(IN)
+        get_ap_trance_data_rec.upd_date,          -- 3.ƒwƒbƒ_[æ“¾‚ÌSYSDATE(IN)
+        ln_updated_by,                            -- 4.ÅIXVÒ(IN)
+        ln_update_login,                          -- 5.ÅIƒƒOƒCƒ“(IN)
+        ln_created_by,                            -- 6.ì¬Ò(IN)
+        ln_detail_cnt,                            -- 7.–¾×Œ”(OUT)
+--Ver1.1 add start –¾×ƒL[(xx03_payment_slips‚Ìinvoice_id)‚Ì“n‚µ–Y‚ê
+        get_ap_trance_data_rec.key_invoice_id,    -- 8.–¾×ƒL[¿‹‘ID(IN)
 --Ver1.1 add end
-        lv_errbuf,      -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-        lv_retcode,     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-        lv_errmsg);     -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+        lv_errbuf,      -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+        lv_retcode,     -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+        lv_errmsg);     -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
       IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-        --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+        --(ƒGƒ‰[ˆ—)
         RAISE global_process_expt;
       END IF;
 --
       -- ver 11.5.10.2.10 Add Start
-      -- æ­£å¸¸æ™‚å‡¦ç†
+      -- ³íˆ—
       IF (ov_retcode != xx00_common_pkg.set_status_error_f) AND
          (ov_retcode != xx00_common_pkg.set_status_warn_f ) THEN
         UPDATE  xx03_payment_slips xps
@@ -926,101 +936,101 @@ AS
       END IF;
       -- ver 11.5.10.2.10 Add End
 --
-      -- ä»¶æ•°ã®ã‚«ã‚¦ãƒ³ãƒˆ
+      -- Œ”‚ÌƒJƒEƒ“ƒg
       on_header_cnt := on_header_cnt + 1;
       on_detail_cnt := on_detail_cnt + ln_detail_cnt;
     END LOOP get_ap_trance_loop;
     CLOSE get_ap_trance_data_cur;
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('<<'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
   EXCEPTION
-    WHEN chk_data_none_expt THEN        --*** è»¢é€å‡¦ç†å¯¾è±¡ãƒ‡ãƒ¼ã‚¿æœªå–å¾—ã‚¨ãƒ©ãƒ¼ ***
-      -- *** ä»»æ„ã§ä¾‹å¤–å‡¦ç†ã‚’è¨˜è¿°ã™ã‚‹ ****
+    WHEN chk_data_none_expt THEN        --*** “]‘—ˆ—‘ÎÛƒf[ƒ^–¢æ“¾ƒGƒ‰[ ***
+      -- *** ”CˆÓ‚Å—áŠOˆ—‚ğ‹Lq‚·‚é ****
       xx00_file_pkg.log(
         xx00_message_pkg.get_msg(
           'XX03',
-          'APP-XX03-08003'));           -- è»¢é€å‡¦ç†å¯¾è±¡ãƒ‡ãƒ¼ã‚¿æœªå–å¾—ã‚¨ãƒ©ãƒ¼ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-      ov_errmsg := lv_errmsg;                                                           --# ä»»æ„ #
-      ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000); --# ä»»æ„ #
-      --Ver1.1 change start ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã¯è­¦å‘Šã«ã™ã‚‹
---      ov_retcode := xx00_common_pkg.set_status_error_f;                                 --# ä»»æ„ #
-      ov_retcode := xx00_common_pkg.set_status_warn_f;                                  --# ä»»æ„ #
+          'APP-XX03-08003'));           -- “]‘—ˆ—‘ÎÛƒf[ƒ^–¢æ“¾ƒGƒ‰[ƒƒbƒZ[ƒW
+      ov_errmsg := lv_errmsg;                                                           --# ”CˆÓ #
+      ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000); --# ”CˆÓ #
+      --Ver1.1 change start ƒXƒe[ƒ^ƒX‚ÍŒx‚É‚·‚é
+--      ov_retcode := xx00_common_pkg.set_status_error_f;                                 --# ”CˆÓ #
+      ov_retcode := xx00_common_pkg.set_status_warn_f;                                  --# ”CˆÓ #
       --Ver1.1 change end
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ####################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
 --
-    WHEN global_process_expt THEN  -- *** å‡¦ç†éƒ¨å…±é€šä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_process_expt THEN  -- *** ˆ—•”‹¤’Ê—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN global_api_expt THEN   -- *** å…±é€šé–¢æ•°ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_api_expt THEN   -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---#####################################  å›ºå®šéƒ¨ END   ##########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
   END get_approval_slip_data;
 --
   /**********************************************************************************
    * Procedure Name   : upd_slip_data
-   * Description      : APè»¢é€æ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®æ›´æ–° (A-4)
+   * Description      : AP“]‘—Ïd“üæ¿‹‘ƒf[ƒ^‚ÌXV (A-4)
    ***********************************************************************************/
   PROCEDURE upd_slip_data(
-    in_org_id         IN  NUMBER,       -- 1.ã‚ªãƒ«ã‚°ID(IN)
-    id_sysdate        IN  DATE,         -- 2.æ›´æ–°æ—¥ä»˜(IN)
-    ov_errbuf         OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode        OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg         OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    in_org_id         IN  NUMBER,       -- 1.ƒIƒ‹ƒOID(IN)
+    id_sysdate        IN  DATE,         -- 2.XV“ú•t(IN)
+    ov_errbuf         OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode        OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg         OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_slip_data'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_slip_data'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°å®£è¨€éƒ¨ START   ########################
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
+    -- *** ƒ[ƒJƒ‹’è” ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
+    -- *** ƒ[ƒJƒ‹•Ï” ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ã‚«ãƒ¼ã‚½ãƒ« ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ ***
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('>>'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
-    --ä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®æ›´æ–°
+    --d“üæ¿‹‘ƒf[ƒ^‚ÌXV
     UPDATE  xx03_payment_slips xps
     SET     xps.ap_forword_date = id_sysdate,
             xps.last_update_date = id_sysdate,
@@ -1030,104 +1040,104 @@ AS
     AND     xps.ap_forword_date IS NULL
     AND     xps.org_id = in_org_id;
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('UPDATE table :xx03_payment_slips');
     xx00_file_pkg.log('org_id = '|| TO_CHAR(in_org_id));
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('<<'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
   EXCEPTION
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ####################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
 --
-    WHEN global_api_expt THEN   -- *** å…±é€šé–¢æ•°ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_api_expt THEN   -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---#####################################  å›ºå®šéƒ¨ END   ##########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
   END upd_slip_data;
 --
   /**********************************************************************************
    * Procedure Name   : msg_output
-   * Description      : çµæœå‡ºåŠ› (A-4)
+   * Description      : Œ‹‰Êo—Í (A-4)
    ***********************************************************************************/
   PROCEDURE msg_output(
-    in_org_id     IN  NUMBER,       --  1.ãƒã‚§ãƒƒã‚¯ID(IN)
-    in_books_id   IN  NUMBER,       --  2.ä¼šè¨ˆå¸³ç°¿ID(IN)
-    in_header_cnt IN  NUMBER,       --  3.ãƒ˜ãƒƒãƒ€ä»¶æ•°(IN)
-    in_detail_cnt IN  NUMBER,       --  4.æ˜ç´°ä»¶æ•°(IN)
-    iv_source     IN  VARCHAR2,     --  5.ã‚½ãƒ¼ã‚¹å(IN)
-    ov_errbuf     OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode    OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg     OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    in_org_id     IN  NUMBER,       --  1.ƒ`ƒFƒbƒNID(IN)
+    in_books_id   IN  NUMBER,       --  2.‰ïŒv’ •ëID(IN)
+    in_header_cnt IN  NUMBER,       --  3.ƒwƒbƒ_Œ”(IN)
+    in_detail_cnt IN  NUMBER,       --  4.–¾×Œ”(IN)
+    iv_source     IN  VARCHAR2,     --  5.ƒ\[ƒX–¼(IN)
+    ov_errbuf     OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode    OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg     OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'msg_output'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'msg_output'; -- ƒvƒƒOƒ‰ƒ€–¼
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°å®£è¨€éƒ¨ START   ########################
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
+    -- *** ƒ[ƒJƒ‹’è” ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
+    -- *** ƒ[ƒJƒ‹•Ï” ***
     lv_conc_name  fnd_concurrent_programs.concurrent_program_name%TYPE;
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ã‚«ãƒ¼ã‚½ãƒ« ***
+    -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«ãƒ»ãƒ¬ã‚³ãƒ¼ãƒ‰ ***
+    -- *** ƒ[ƒJƒ‹EƒŒƒR[ƒh ***
     l_conc_para_rec  xx03_get_prompt_pkg.g_conc_para_tbl_type;
 --
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
-    --ãƒ­ã‚°å‡ºåŠ›
+    --ƒƒOo—Í
     xx00_file_pkg.log('>>'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
-    -- ãƒ˜ãƒƒãƒ€ãƒ¼å‡ºåŠ›
-    xx03_header_line_output_pkg.header_line_output_p('GL',    -- ä¼šè¨ˆå¸³ç°¿åã‚’è¡¨ç¤ºã™ã‚‹
+    -- ƒwƒbƒ_[o—Í
+    xx03_header_line_output_pkg.header_line_output_p('GL',    -- ‰ïŒv’ •ë–¼‚ğ•\¦‚·‚é
       xx00_global_pkg.prog_appl_id,
-      in_books_id,                        -- ä¼šè¨ˆå¸³ç°¿ID
-      in_org_id,                          -- ã‚ªãƒ«ã‚°ID
+      in_books_id,                        -- ‰ïŒv’ •ëID
+      in_org_id,                          -- ƒIƒ‹ƒOID
       xx00_global_pkg.conc_program_id,
       lv_errbuf,
       lv_retcode,
       lv_errmsg);
     IF (lv_retcode <> xx00_common_pkg.set_status_normal_f(cv_prg_name)) THEN
-      --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+      --(ƒGƒ‰[ˆ—)
       RAISE global_process_expt;
     END IF;
-    -- ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã®ãƒ­ã‚°å‡ºåŠ›
+    -- ƒpƒ‰ƒ[ƒ^‚ÌƒƒOo—Í
     xx00_file_pkg.output(' ');
---Ver1.1 add Start CDæ¼ã‚Œ
+--Ver1.1 add Start CD˜R‚ê
     xx03_get_prompt_pkg.conc_parameter_strc(lv_conc_name,l_conc_para_rec);
 --Ver1.1 add End
     xx00_file_pkg.output(l_conc_para_rec(1).param_prompt ||
@@ -1135,162 +1145,162 @@ AS
       iv_source);
     xx00_file_pkg.output(' ');
 --
-    -- ä»¶æ•°å‡ºåŠ›
+    -- Œ”o—Í
     xx00_file_pkg.output(
     xx00_message_pkg.get_msg(
       'XX03',
-      'APP-XX03-04004',             -- æ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸è»¢é€çµæœå‡ºåŠ›
+      'APP-XX03-04004',             -- ³”FÏd“üæ¿‹‘“]‘—Œ‹‰Êo—Í
       'XX03_TOK_HEAD_CNT',
-      in_header_cnt,                -- APè»¢é€ä»¶æ•°(ãƒ˜ãƒƒãƒ€)
+      in_header_cnt,                -- AP“]‘—Œ”(ƒwƒbƒ_)
       'XX03_TOK_DETAIL_CNT',
-      in_detail_cnt));              -- APè»¢é€ä»¶æ•°(é…åˆ†)
-    --ãƒ­ã‚°å‡ºåŠ›
+      in_detail_cnt));              -- AP“]‘—Œ”(”z•ª)
+    --ƒƒOo—Í
     xx00_file_pkg.log('<<'||cv_prg_name||'() '||
       TO_CHAR(xx00_date_pkg.get_system_datetime_f,cv_date_time_format));
     xx00_file_pkg.log(' ');
 --
   EXCEPTION
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ####################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
 --
-    WHEN global_process_expt THEN  -- *** å‡¦ç†éƒ¨å…±é€šä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_process_expt THEN  -- *** ˆ—•”‹¤’Ê—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN global_api_expt THEN   -- *** å…±é€šé–¢æ•°ä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_api_expt THEN   -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---#####################################  å›ºå®šéƒ¨ END   ##########################################
+--#####################################  ŒÅ’è•” END   ##########################################
 --
   END msg_output;
 --
   /**********************************************************************************
    * Procedure Name   : submain
-   * Description      : ãƒ¡ã‚¤ãƒ³å‡¦ç†ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
+   * Description      : ƒƒCƒ“ˆ—ƒvƒƒV[ƒWƒƒ
    **********************************************************************************/
   PROCEDURE submain(
-    iv_source     IN  VARCHAR2,     -- 1.ã‚½ãƒ¼ã‚¹å
-    ov_errbuf     OUT VARCHAR2,     --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-    ov_retcode    OUT VARCHAR2,     --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-    ov_errmsg     OUT VARCHAR2)     --   ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+    iv_source     IN  VARCHAR2,     -- 1.ƒ\[ƒX–¼
+    ov_errbuf     OUT VARCHAR2,     --   ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+    ov_retcode    OUT VARCHAR2,     --   ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+    ov_errmsg     OUT VARCHAR2)     --   ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
   IS
 --
---#####################  å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°å¤‰æ•°å®£è¨€éƒ¨ START   ####################
+--#####################  ŒÅ’èƒ[ƒJƒ‹’è”•Ï”éŒ¾•” START   ####################
 --
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- ƒvƒƒOƒ‰ƒ€–¼
     -- ===============================
-    -- ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°
+    -- ƒ[ƒJƒ‹•Ï”
     -- ===============================
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
---###########################  å›ºå®šéƒ¨ END   ####################################
+--###########################  ŒÅ’è•” END   ####################################
 --
     -- ===============================
-    -- ãƒ¦ãƒ¼ã‚¶ãƒ¼å®£è¨€éƒ¨
+    -- ƒ†[ƒU[éŒ¾•”
     -- ===============================
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å®šæ•° ***
+    -- *** ƒ[ƒJƒ‹’è” ***
 --
-    -- *** ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•° ***
-    ln_org_id         NUMBER(15,0);   -- ã‚ªãƒ«ã‚°ID
-    ln_books_id       gl_sets_of_books.set_of_books_id%TYPE;  -- ä¼šè¨ˆå¸³ç°¿ID
-    lv_currency_code  gl_sets_of_books.currency_code%TYPE;    -- æ©Ÿèƒ½é€šè²¨
-    ln_header_cnt     NUMBER;         -- ãƒ˜ãƒƒãƒ€ä»¶æ•°
-    ln_detail_cnt     NUMBER;         -- æ˜ç´°ä»¶æ•°
-    ld_upd_date       DATE;           -- æ›´æ–°æ—¥ä»˜
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    ln_org_id         NUMBER(15,0);   -- ƒIƒ‹ƒOID
+    ln_books_id       gl_sets_of_books.set_of_books_id%TYPE;  -- ‰ïŒv’ •ëID
+    lv_currency_code  gl_sets_of_books.currency_code%TYPE;    -- ‹@”\’Ê‰İ
+    ln_header_cnt     NUMBER;         -- ƒwƒbƒ_Œ”
+    ln_detail_cnt     NUMBER;         -- –¾×Œ”
+    ld_upd_date       DATE;           -- XV“ú•t
 --
   BEGIN
 --
---##################  å›ºå®šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹åˆæœŸåŒ–éƒ¨ START   ###################
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
 --
     ov_retcode := xx00_common_pkg.set_status_normal_f(cv_prg_name);
 --
---###########################  å›ºå®šéƒ¨ END   ############################
+--###########################  ŒÅ’è•” END   ############################
 --
 --
     --*********************************************
-    --***      MD.050ã®ãƒ•ãƒ­ãƒ¼å›³ã‚’è¡¨ã™           ***
-    --***      åˆ†å²ã¨å‡¦ç†éƒ¨ã®å‘¼ã³å‡ºã—ã‚’è¡Œã†     ***
+    --***      MD.050‚Ìƒtƒ[}‚ğ•\‚·           ***
+    --***      •ªŠò‚Æˆ—•”‚ÌŒÄ‚Ño‚µ‚ğs‚¤     ***
     --*********************************************
 --
     -- =======================================
-    -- APæœªæ‰¿èªä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®ç¢ºèª (A-1)
+    -- AP–¢³”Fd“üæ¿‹‘ƒf[ƒ^‚ÌŠm”F (A-1)
     -- =======================================
     vaild_approval(
-      ln_org_id,          -- 1.ã‚ªãƒ«ã‚°ID(OUT)
-      ln_books_id,        -- 2.ä¼šè¨ˆå¸³ç°¿ID(OUT)
-      lv_currency_code,   -- 3.æ©Ÿèƒ½é€šè²¨(OUT)
-      lv_errbuf,          -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-      lv_retcode,         -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-      lv_errmsg);         -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+      ln_org_id,          -- 1.ƒIƒ‹ƒOID(OUT)
+      ln_books_id,        -- 2.‰ïŒv’ •ëID(OUT)
+      lv_currency_code,   -- 3.‹@”\’Ê‰İ(OUT)
+      lv_errbuf,          -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+      lv_retcode,         -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+      lv_errmsg);         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
     IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-      --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+      --(ƒGƒ‰[ˆ—)
       RAISE global_process_expt;
     END IF;
 --
     -- =======================================
-    -- çµŒç†æ‰¿èªæ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®å–å¾—(A-2)
+    -- Œo—³”FÏd“üæ¿‹‘ƒf[ƒ^‚Ìæ“¾(A-2)
     -- =======================================
     get_approval_slip_data(
-      iv_source,          -- 1.ã‚½ãƒ¼ã‚¹å(IN)
-      ln_org_id,          -- 2.ã‚ªãƒ«ã‚°ID(IN)
-      lv_currency_code,   -- 3.æ©Ÿèƒ½é€šè²¨(IN)
-      ln_header_cnt,      -- 4.ãƒ˜ãƒƒãƒ€ä»¶æ•°(OUT)
-      ln_detail_cnt,      -- 5.æ˜ç´°ä»¶æ•°(OUT)
-      ld_upd_date,        -- 6.æ›´æ–°æ—¥ä»˜(OUT)
-      lv_errbuf,          -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-      lv_retcode,         -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-      lv_errmsg);         -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+      iv_source,          -- 1.ƒ\[ƒX–¼(IN)
+      ln_org_id,          -- 2.ƒIƒ‹ƒOID(IN)
+      lv_currency_code,   -- 3.‹@”\’Ê‰İ(IN)
+      ln_header_cnt,      -- 4.ƒwƒbƒ_Œ”(OUT)
+      ln_detail_cnt,      -- 5.–¾×Œ”(OUT)
+      ld_upd_date,        -- 6.XV“ú•t(OUT)
+      lv_errbuf,          -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+      lv_retcode,         -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+      lv_errmsg);         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
     IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-      --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+      --(ƒGƒ‰[ˆ—)
       RAISE global_process_expt;
-    --Ver1.1 add start è­¦å‘Šã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹æ™‚ã€å‡¦ç†ä¸­æ–­
+    --Ver1.1 add start ŒxƒXƒe[ƒ^ƒXAˆ—’†’f
     ELSIF (lv_retcode = xx00_common_pkg.set_status_warn_f) THEN
       ov_retcode := xx00_common_pkg.set_status_warn_f;
     ELSE
 --
       -- ver 11.5.10.2.10 Del Start
       ---- =======================================
-      ---- APè»¢é€æ¸ˆä»•å…¥å…ˆè«‹æ±‚æ›¸ãƒ‡ãƒ¼ã‚¿ã®æ›´æ–° (A-4)
+      ---- AP“]‘—Ïd“üæ¿‹‘ƒf[ƒ^‚ÌXV (A-4)
       ---- =======================================
       --upd_slip_data(
-      --  ln_org_id,            -- 1.ã‚ªãƒ«ã‚°ID(IN)
-      --  ld_upd_date,          -- 2.æ›´æ–°æ—¥ä»˜(IN)
-      --  lv_errbuf,            -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-      --  lv_retcode,           -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-      --  lv_errmsg);           -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+      --  ln_org_id,            -- 1.ƒIƒ‹ƒOID(IN)
+      --  ld_upd_date,          -- 2.XV“ú•t(IN)
+      --  lv_errbuf,            -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+      --  lv_retcode,           -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+      --  lv_errmsg);           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
       --IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-      --  --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+      --  --(ƒGƒ‰[ˆ—)
       --  RAISE global_process_expt;
       --END IF;
       -- ver 11.5.10.2.10 Del End
 --
       -- =======================================
-      -- çµæœå‡ºåŠ› (A-4)
+      -- Œ‹‰Êo—Í (A-4)
       -- =======================================
       msg_output(
-        ln_org_id,          --  1.ãƒã‚§ãƒƒã‚¯ID(IN)
-        ln_books_id,        --  2.ä¼šè¨ˆå¸³ç°¿ID(IN)
-        ln_header_cnt,      --  3.ãƒ˜ãƒƒãƒ€ä»¶æ•°(IN)
-        ln_detail_cnt,      --  4.æ˜ç´°ä»¶æ•°(IN)
-        iv_source,          --  5.ã‚½ãƒ¼ã‚¹å(IN)
-        lv_errbuf,          -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-        lv_retcode,         -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-        lv_errmsg);         -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+        ln_org_id,          --  1.ƒ`ƒFƒbƒNID(IN)
+        ln_books_id,        --  2.‰ïŒv’ •ëID(IN)
+        ln_header_cnt,      --  3.ƒwƒbƒ_Œ”(IN)
+        ln_detail_cnt,      --  4.–¾×Œ”(IN)
+        iv_source,          --  5.ƒ\[ƒX–¼(IN)
+        lv_errbuf,          -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+        lv_retcode,         -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+        lv_errmsg);         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
       IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-        --(ã‚¨ãƒ©ãƒ¼å‡¦ç†)
+        --(ƒGƒ‰[ˆ—)
         RAISE global_process_expt;
       END IF;
     --Ver1.1 add end
@@ -1298,102 +1308,102 @@ AS
 --
   EXCEPTION
 --
---#################################  å›ºå®šä¾‹å¤–å‡¦ç†éƒ¨ START   ###################################
+--#################################  ŒÅ’è—áŠOˆ—•” START   ###################################
 --
-    WHEN global_process_expt THEN  -- *** å‡¦ç†éƒ¨å…±é€šä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN global_process_expt THEN  -- *** ˆ—•”‹¤’Ê—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errmsg := lv_errmsg;
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN xx00_global_pkg.global_api_others_expt THEN  --*** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN  --*** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN  -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN  -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
       ov_errbuf := SUBSTRB(cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM,1,5000);
       ov_retcode := xx00_common_pkg.set_status_error_f;
 --
---####################################  å›ºå®šéƒ¨ END   ##########################################
+--####################################  ŒÅ’è•” END   ##########################################
 --
   END submain;
 --
   /**********************************************************************************
    * Procedure Name   : main
-   * Description      : ã‚³ãƒ³ã‚«ãƒ¬ãƒ³ãƒˆå®Ÿè¡Œãƒ•ã‚¡ã‚¤ãƒ«ç™»éŒ²ãƒ—ãƒ­ã‚·ãƒ¼ã‚¸ãƒ£
+   * Description      : ƒRƒ“ƒJƒŒƒ“ƒgÀsƒtƒ@ƒCƒ‹“o˜^ƒvƒƒV[ƒWƒƒ
    **********************************************************************************/
 --
   PROCEDURE main(
-    errbuf        OUT VARCHAR2,      --   ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸  --# å›ºå®š #
-    retcode       OUT VARCHAR2,      --   ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰    --# å›ºå®š #
-    iv_source     IN  VARCHAR2)      -- 1.ã‚½ãƒ¼ã‚¹å(IN)
+    errbuf        OUT VARCHAR2,      --   ƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+    retcode       OUT VARCHAR2,      --   ƒŠƒ^[ƒ“EƒR[ƒh    --# ŒÅ’è #
+    iv_source     IN  VARCHAR2)      -- 1.ƒ\[ƒX–¼(IN)
 --
---###########################  å›ºå®šéƒ¨ START   ###########################
+--###########################  ŒÅ’è•” START   ###########################
 --
   IS
 --
     -- ===============================
-    -- å›ºå®šãƒ­ãƒ¼ã‚«ãƒ«å®šæ•°
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'main';  -- ãƒ—ãƒ­ã‚°ãƒ©ãƒ å
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'main';  -- ƒvƒƒOƒ‰ƒ€–¼
     -- ===============================
-    -- ãƒ­ãƒ¼ã‚«ãƒ«å¤‰æ•°
+    -- ƒ[ƒJƒ‹•Ï”
     -- ===============================
-    lv_errbuf  VARCHAR2(5000);  -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
-    lv_retcode VARCHAR2(1);     -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰
-    lv_errmsg  VARCHAR2(5000);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸
+    lv_errbuf  VARCHAR2(5000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(5000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
 --
   BEGIN
     -- ===============================
-    -- ãƒ­ã‚°ãƒ˜ãƒƒãƒ€ã®å‡ºåŠ›
+    -- ƒƒOƒwƒbƒ_‚Ìo—Í
     -- ===============================
     xx00_file_pkg.log_header;
 --
---###########################  å›ºå®šéƒ¨ END   #############################
+--###########################  ŒÅ’è•” END   #############################
 --
     -- ===============================================
-    -- submainã®å‘¼ã³å‡ºã—ï¼ˆå®Ÿéš›ã®å‡¦ç†ã¯submainã§è¡Œã†ï¼‰
+    -- submain‚ÌŒÄ‚Ño‚µiÀÛ‚Ìˆ—‚Ísubmain‚Ås‚¤j
     -- ===============================================
     submain(
-      iv_source,   -- 1.ã‚½ãƒ¼ã‚¹å(IN)
-      lv_errbuf,   -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸           --# å›ºå®š #
-      lv_retcode,  -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰             --# å›ºå®š #
-      lv_errmsg);  -- ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ --# å›ºå®š #
+      iv_source,   -- 1.ƒ\[ƒX–¼(IN)
+      lv_errbuf,   -- ƒGƒ‰[EƒƒbƒZ[ƒW           --# ŒÅ’è #
+      lv_retcode,  -- ƒŠƒ^[ƒ“EƒR[ƒh             --# ŒÅ’è #
+      lv_errmsg);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW --# ŒÅ’è #
 --
---###########################  å›ºå®šéƒ¨ START   #####################################################
+--###########################  ŒÅ’è•” START   #####################################################
     -- ======================
-    -- ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å‡ºåŠ›
+    -- ƒGƒ‰[EƒƒbƒZ[ƒWo—Í
     -- ======================
     IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
       IF (lv_errmsg IS NULL) THEN
-        --å®šå‹ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ãƒ»ã‚»ãƒƒãƒˆ
+        --’èŒ^ƒƒbƒZ[ƒWEƒZƒbƒg
         lv_errmsg := xx00_message_pkg.get_msg('XX00','APP-XX00-00001');
       ELSIF (lv_errbuf IS NULL) THEN
-        --ãƒ¦ãƒ¼ã‚¶ãƒ¼ãƒ»ã‚¨ãƒ©ãƒ¼ãƒ»ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã®ã‚³ãƒ”ãƒ¼
+        --ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW‚ÌƒRƒs[
         lv_errbuf := lv_errmsg;
       END IF;
       xx00_file_pkg.log(lv_errbuf);
       xx00_file_pkg.output(lv_errmsg);
     END IF;
     -- ===============================
-    -- ãƒ­ã‚°ãƒ•ãƒƒã‚¿ã®å‡ºåŠ›
+    -- ƒƒOƒtƒbƒ^‚Ìo—Í
     -- ===============================
     xx00_file_pkg.log_footer;
     -- ==================================
-    -- ãƒªã‚¿ãƒ¼ãƒ³ãƒ»ã‚³ãƒ¼ãƒ‰ã®ã‚»ãƒƒãƒˆã€çµ‚äº†å‡¦ç†
+    -- ƒŠƒ^[ƒ“EƒR[ƒh‚ÌƒZƒbƒgAI—¹ˆ—
     -- ==================================
     retcode := lv_retcode;
-    --çµ‚äº†ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ãŒã‚¨ãƒ©ãƒ¼ã®å ´åˆã¯ROLLBACKã™ã‚‹
+    --I—¹ƒXƒe[ƒ^ƒX‚ªƒGƒ‰[‚Ìê‡‚ÍROLLBACK‚·‚é
     IF (retcode = xx00_common_pkg.set_status_error_f) THEN
       ROLLBACK;
     END IF;
   EXCEPTION
-    WHEN xx00_global_pkg.global_api_others_expt THEN     -- *** å…±é€šé–¢æ•°OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN xx00_global_pkg.global_api_others_expt THEN     -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
         errbuf := cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM;
         retcode := xx00_common_pkg.set_status_error_f;
-    WHEN OTHERS THEN                              -- *** OTHERSä¾‹å¤–ãƒãƒ³ãƒ‰ãƒ© ***
+    WHEN OTHERS THEN                              -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
         errbuf := cv_prg_name||xx00_global_pkg.cv_msg_part||SQLERRM;
         retcode := xx00_common_pkg.set_status_error_f;
   END main;
 --
---###########################  å›ºå®šéƒ¨ END   #######################################################
+--###########################  ŒÅ’è•” END   #######################################################
 --
 END XX034PT001C;
 /
