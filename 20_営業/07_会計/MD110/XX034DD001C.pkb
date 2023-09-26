@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求書データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AP） OCSJ/BFAFIN/MD050/F212
  * MD.070(CMD.050)  : 部門入力（AP）データインポート OCSJ/BFAFIN/MD070/F423
- * Version          : 11.5.10.2.11
+ * Version          : 11.5.10.2.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2016/11/11   11.5.10.2.10H  [E_本稼動_13901]対応 稟議決済番号の追加
  *  2020/02/02   11.5.10.2.10I  障害対応E_本稼動_16026
  *  2021/12/20   11.5.10.2.11   [E_本稼働_17678]対応 電子帳簿保存法改正対応
+ *  2023/08/09   11.5.10.2.12   [E_本稼働_19332]対応 インボイス対応（部門入力への適格請求書チェック追加）
  *
  *****************************************************************************************/
 --
@@ -253,6 +254,10 @@ AS
      , HEAD.INVOICE_ELE_DATA_YES   as HEAD_INVOICE_ELE_DATA_YES          -- 請求書電子データ受領あり
      , HEAD.INVOICE_ELE_DATA_NO    as HEAD_INVOICE_ELE_DATA_NO           -- 請求書電子データ受領なし
      -- ver 11.5.10.2.11 Add End
+     -- ver 11.5.10.2.12 Add Start
+     , HEAD.INVOICE_T_NUM_YES      as HEAD_INVOICE_T_NUM_YES             -- 適格請求書（インボイス）あり
+     , HEAD.INVOICE_T_NUM_NO       as HEAD_INVOICE_T_NUM_NO              -- 適格請求書（インボイス）なし
+     -- ver 11.5.10.2.12 Add End
      , HEAD.CREATED_BY             as HEAD_CREATED_BY                    --
      , HEAD.CREATION_DATE          as HEAD_CREATION_DATE                 --
      , HEAD.LAST_UPDATED_BY        as HEAD_LAST_UPDATED_BY               --
@@ -382,6 +387,10 @@ AS
          , xpsi.INVOICE_ELE_DATA_YES   as INVOICE_ELE_DATA_YES               -- 請求書電子データ受領あり
          , xpsi.INVOICE_ELE_DATA_NO    as INVOICE_ELE_DATA_NO                -- 請求書電子データ受領なし
 -- ver 11.5.10.2.11 Add End
+-- ver 11.5.10.2.12 Add Start
+         , xpsi.INVOICE_T_NUM_YES      as INVOICE_T_NUM_YES                  -- 適格請求書（インボイス）あり
+         , xpsi.INVOICE_T_NUM_NO       as INVOICE_T_NUM_NO                   -- 適格請求書（インボイス）なし
+-- ver 11.5.10.2.12 Add End
          , xpsi.CREATED_BY             as CREATED_BY                         --
          , xpsi.CREATION_DATE          as CREATION_DATE                      --
          , xpsi.LAST_UPDATED_BY        as LAST_UPDATED_BY                    --
@@ -2517,6 +2526,10 @@ AS
       INVOICE_ELE_DATA_YES         ,
       INVOICE_ELE_DATA_NO          ,
 -- ver 11.5.10.2.11 Add End
+-- ver 11.5.10.2.12 Add Start
+      INVOICE_T_NUM_YES            ,
+      INVOICE_T_NUM_NO             ,
+-- ver 11.5.10.2.12 Add End
       CREATED_BY                   ,
       CREATION_DATE                ,
       LAST_UPDATED_BY              ,
@@ -2606,6 +2619,10 @@ AS
       xx03_if_head_line_rec.HEAD_INVOICE_ELE_DATA_YES,
       xx03_if_head_line_rec.HEAD_INVOICE_ELE_DATA_NO,
 -- ver 11.5.10.2.11 Add End
+-- ver 11.5.10.2.12 Add Start
+      xx03_if_head_line_rec.HEAD_INVOICE_T_NUM_YES,
+      xx03_if_head_line_rec.HEAD_INVOICE_T_NUM_NO,
+-- ver 11.5.10.2.12 Add End
       xx00_global_pkg.user_id,
       xx00_date_pkg.get_system_datetime_f,
       xx00_global_pkg.user_id,
