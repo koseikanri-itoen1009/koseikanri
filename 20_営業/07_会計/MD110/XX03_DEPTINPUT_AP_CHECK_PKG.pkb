@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ap_check_pkg(body)
  * Description            : 部門入力(AP)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AP)共通関数 OCSJ/BFAFIN/MD070/F409
- * Version                : 11.5.10.2.17
+ * Version                : 11.5.10.2.18
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2021/04/06   11.5.10.2.15   [E_本稼動_16026]対応 AP部門入力 負債科目計上時の制御
  *  2021/12/17   11.5.10.2.16   [E_本稼動_17678]対応 電子帳簿保存法改正対応
  *  2022/03/29   11.5.10.2.17   [E_本稼動_17926]対応 部門入力の科目制限
+ *  2023/08/04   11.5.10.2.18   [E_本稼動_19332]対応 インボイス対応（部門入力への適格請求書チェック追加）
  *
  *****************************************************************************************/
 --
@@ -845,6 +846,20 @@ AS
       AND    xps.invoice_id = in_invoice_id
     ;
 -- Ver11.5.10.2.16 ADD END
+-- Ver11.5.10.2.18 ADD START
+    -- 適格請求書（インボイス）チェック
+    CURSOR xx03_invoice_t_num_data_cur
+    IS
+      SELECT xps.request_date         AS request_date
+            ,xps.orig_invoice_num     AS orig_invoice_num
+            ,xps.invoice_t_num_yes    AS invoice_t_num_yes
+            ,xps.invoice_t_num_no     AS invoice_t_num_no
+            ,xps.slip_type            AS slip_type
+      FROM   xx03_payment_slips      xps
+      WHERE  xps.org_id     = XX00_PROFILE_PKG.VALUE('ORG_ID')
+      AND    xps.invoice_id = in_invoice_id
+    ;
+-- Ver11.5.10.2.18 ADD END
 --
     -- *** ローカル・レコード ***
     -- 処理対象データ取得カーソルレコード型
@@ -908,6 +923,9 @@ AS
 -- 11.5.10.2.16 ADD START
     xx03_invoice_ele_data_rec    xx03_invoice_ele_data_cur%ROWTYPE;
 -- 11.5.10.2.16 ADD END
+-- 11.5.10.2.18 ADD START
+    xx03_invoice_t_num_data_rec  xx03_invoice_t_num_data_cur%ROWTYPE;
+-- 11.5.10.2.18 ADD END
 --
     -- ===============================
     -- ユーザー定義例外
@@ -1379,6 +1397,26 @@ AS
         END IF;
         CLOSE xx03_invoice_ele_data_cur;
 -- Ver11.5.10.2.16 ADD END
+-- Ver11.5.10.2.18 ADD START
+        --適格請求書（インボイス）チェック
+        OPEN xx03_invoice_t_num_data_cur;
+        FETCH xx03_invoice_t_num_data_cur INTO xx03_invoice_t_num_data_rec;
+        IF ( xx03_invoice_t_num_data_rec.slip_type <> cv_slip_type ) THEN
+          IF ( xx03_invoice_t_num_data_rec.invoice_t_num_yes = 'Y' 
+              AND xx03_invoice_t_num_data_rec.invoice_t_num_no = 'N' )
+            OR ( xx03_invoice_t_num_data_rec.invoice_t_num_yes = 'N' 
+              AND xx03_invoice_t_num_data_rec.invoice_t_num_no = 'Y' )
+            OR ( xx03_invoice_t_num_data_rec.request_date IS NOT NULL   )
+            OR ( xx03_invoice_t_num_data_rec.orig_invoice_num IS NOT NULL   ) THEN
+            NULL;
+          ELSE
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO', 'APP-XXCFO1-00064');
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+        END IF;
+        CLOSE xx03_invoice_t_num_data_cur;
+-- Ver11.5.10.2.18 ADD END
 --
         -- 部門入力エラーチェックでエラーがなかった場合のみチェックID取得
         IF ( ln_err_cnt <= 0 ) THEN
