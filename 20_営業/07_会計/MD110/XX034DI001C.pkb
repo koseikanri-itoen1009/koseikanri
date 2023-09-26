@@ -8,7 +8,7 @@ AS
  * Description      : 請求書データのインポート、及び入力チェックを行います。
  * MD.050           : 部門入力バッチ処理(AP)    OCSJ/BFAFIN/MD050/F212
  * MD.070           : 部門入力（AP）インポート  OCSJ/BFAFIN/MD070/F421
- * Version          : 11.5.10.2.11
+ * Version          : 11.5.10.2.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2007/08/01   11.5.10.2.10   エラー時のデータクリア処理でcommitが抜けており
  *                              ロールバックでデータが復活することの修正
  *  2021/12/17   11.5.10.2.11   [E_本稼働_17678]対応 電子帳簿保存法改正対応
+ *  2023/08/09   11.5.10.2.12   [E_本稼働_19332]対応 インボイス対応（部門入力への適格請求書チェック追加）
  *
  *****************************************************************************************/
 --
@@ -529,6 +530,10 @@ AS
                     xpsi.invoice_ele_data_yes     AS invoice_ele_data_yes,
                     xpsi.invoice_ele_data_no      AS invoice_ele_data_no,
 -- Ver11.5.10.2.11 Add End
+-- Ver11.5.10.2.12 Add Start
+                    xpsi.invoice_t_num_yes        AS invoice_t_num_yes,
+                    xpsi.invoice_t_num_no         AS invoice_t_num_no,
+-- Ver11.5.10.2.12 Add End
                 MAX(xpsi.org_id)                  AS org_id,
                 MAX(xpsi.created_by)              AS created_by,
                 MAX(xpsi.creation_date)           AS creation_date,
@@ -559,8 +564,12 @@ AS
                 xpsi.terms_date,
 -- Ver11.5.10.2.11 Add Start
                 xpsi.invoice_ele_data_yes,
-                xpsi.invoice_ele_data_no
+                xpsi.invoice_ele_data_no,
 -- Ver11.5.10.2.11 Add End
+-- Ver11.5.10.2.12 Add Start
+                xpsi.invoice_t_num_yes,
+                xpsi.invoice_t_num_no
+-- Ver11.5.10.2.12 Add Start
       ORDER BY  xpsi.interface_id;
 -- Ver11.5.10.1.5 2005/09/02 Change End
 --
@@ -622,6 +631,10 @@ AS
         invoice_ele_data_yes,
         invoice_ele_data_no,
 -- Ver11.5.10.2.11 Add End
+-- Ver11.5.10.2.13 Add Start
+        invoice_t_num_yes,
+        invoice_t_num_no,
+-- Ver11.5.10.2.13 Add End
         org_id,
         created_by,
         creation_date,
@@ -658,6 +671,10 @@ AS
         NVL(slip_if_head_data_rec.invoice_ele_data_yes,'N'),
         NVL(slip_if_head_data_rec.invoice_ele_data_no,'N'),
 -- Ver11.5.10.2.11 Add End
+-- Ver11.5.10.2.12 Add Start
+        NVL(slip_if_head_data_rec.invoice_t_num_yes,'N'),
+        NVL(slip_if_head_data_rec.invoice_t_num_no,'N'),
+-- Ver11.5.10.2.12 Add End
         slip_if_head_data_rec.org_id,
         slip_if_head_data_rec.created_by,
         slip_if_head_data_rec.creation_date,
