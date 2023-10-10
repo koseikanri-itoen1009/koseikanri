@@ -8,7 +8,7 @@ AS
  * Description      : 請求書データのインポート、及び入力チェックを行います。
  * MD.050           : 部門入力バッチ処理(AP)    OCSJ/BFAFIN/MD050/F212
  * MD.070           : 部門入力（AP）インポート  OCSJ/BFAFIN/MD070/F421
- * Version          : 11.5.10.2.12
+ * Version          : 11.5.10.2.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                              ロールバックでデータが復活することの修正
  *  2021/12/17   11.5.10.2.11   [E_本稼働_17678]対応 電子帳簿保存法改正対応
  *  2023/08/09   11.5.10.2.12   [E_本稼働_19332]対応 インボイス対応（部門入力への適格請求書チェック追加）
+ *  2023/10/03   11.5.10.2.13   [E_本稼働_19542]対応 SQLLDRのDB接続先を修正
  *
  *****************************************************************************************/
 --
@@ -314,7 +315,10 @@ AS
 -- コンカレント変更
 --    cv_program_name     CONSTANT  VARCHAR2(11) := 'XX034DL002C';
     cv_program_name     CONSTANT  VARCHAR2(11) := 'XX034DL001C';
-    cv_oracle_sid CONSTANT  VARCHAR2(11) := XX00_PROFILE_PKG.VALUE('CSF_MAP_DB_SID');
+-- Ver11.5.10.2.13 Add Start
+--    cv_oracle_sid CONSTANT  VARCHAR2(11) := XX00_PROFILE_PKG.VALUE('CSF_MAP_DB_SID');
+    cv_oracle_sid CONSTANT  VARCHAR2(30) := XX00_PROFILE_PKG.VALUE('XXCFO1_SQLLDR_CONNECT_DB_NAME');
+-- Ver11.5.10.2.13 Add End
 -- 20050310 V1.2 END
 -- Ver11.5.10.1.2 Add BEGIN
     cv_program_appl_sname CONSTANT  VARCHAR2(4) := 'XX03';
