@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A02C (body)
  * Description      : 仕入先マスタIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_001_A02_仕入先マスタIF抽出_EBSコンカレント
- * Version          : 1.11
+ * Version          : 1.12
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -46,6 +46,7 @@ AS
  *  2023-03-22    1.9   Y.Ooyama         移行障害No.5対応
  *  2023-06-20    1.10  F.Hasebe         初期流動障害No.4対応
  *  2023-07-03    1.11  Y.Sato           E_本稼動_19314対応
+ *  2023-09-21    1.12  S.hosonuma       E_本稼動_19311対応
  *
  *****************************************************************************************/
 --
@@ -4149,6 +4150,9 @@ AS
           , abaua.creation_date              AS creation_date_abaua
 -- Ver1.10 Mod End
           , abaa.last_update_date            AS last_update_date_abaa
+-- Ver1.12 Add Start
+          , abb. last_update_date            AS last_update_date_abb
+-- Ver1.12 Add End
           , (CASE
                WHEN (   NVL(xobae.bank_account_num, '@')   <> NVL(abaa.bank_account_num, '@')
                      OR NVL(xobae.bank_number, '@')        <> NVL(abb.bank_number, '@')
@@ -4171,7 +4175,14 @@ AS
             (   (      abaa.last_update_date  > gt_pre_process_date
                    AND abaa.last_update_date  <= gt_cur_process_date)
              OR (      abaua.last_update_date > gt_pre_process_date
-                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.12 Mod Start
+--                   AND abaua.last_update_date <= gt_cur_process_date))
+                   AND abaua.last_update_date <= gt_cur_process_date)
+             OR (
+                       abb.last_update_date > gt_pre_process_date
+                   AND abb.last_update_date <= gt_cur_process_date)
+            )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
         AND abb.bank_branch_id   = abaa.bank_branch_id
         AND abaa.bank_account_id = abaua.external_bank_account_id
@@ -4214,12 +4225,23 @@ AS
           pvsa.org_id    = gt_target_organization_id
       AND pvsa.vendor_id = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
+-- Ver1.12 Add Start
+      AND ( pvsa.inactive_date IS NULL
+            OR pvsa.inactive_date > gt_cur_process_date
+          )
+      AND ( pv.end_date_active IS NULL
+            OR pv.end_date_active > gt_cur_process_date
+          )
+-- Ver1.12 Add End
       AND EXISTS (
               SELECT
                   1  AS flag
               FROM
                   ap_bank_accounts_all      abaa
-                 ,ap_bank_account_uses_all  abaua
+                  ,ap_bank_account_uses_all  abaua
+-- Ver1.12 Add Start
+                  ,ap_bank_branches         abb
+-- Ver1.12 Add End
               WHERE
                   (   gt_pre_process_date IS NULL
 -- Ver1.11 Mod Start
@@ -4229,8 +4251,15 @@ AS
                        AND abaa.last_update_date  <= gt_cur_process_date)
                    OR (    abaua.last_update_date > gt_pre_process_date
                        AND abaua.last_update_date <= gt_cur_process_date)
+-- Ver1.12 Add Start
+                   OR (    abb.last_update_date > gt_pre_process_date
+                       AND abb.last_update_date <= gt_cur_process_date)
+-- Ver1.12 Add End
                   )
 -- Ver1.11 Mod End
+-- Ver1.12 Add Start
+              AND abb.bank_branch_id   = abaa.bank_branch_id
+-- Ver1.12 Add End
               AND abaa.bank_account_id = abaua.external_bank_account_id
               AND abaua.vendor_id      = pvsa.vendor_id
               AND abaua.vendor_site_id = pvsa.vendor_site_id
@@ -4267,8 +4296,15 @@ AS
                      OR
 -- Ver1.11 Mod Start
 --                     (    af.last_update_date_abaa > gt_pre_process_date
-                     (  (      af.last_update_date_abaa > gt_pre_process_date
+-- Ver1.12 Mod Start
+--                     (  (      af.last_update_date_abaa > gt_pre_process_date
+--                           AND af.last_update_date_abaa <= gt_cur_process_date)
+                     ((  (      af.last_update_date_abaa > gt_pre_process_date
                            AND af.last_update_date_abaa <= gt_cur_process_date)
+                      OR (    af.last_update_date_abb > gt_pre_process_date
+                              AND af.last_update_date_abb <= gt_cur_process_date)
+                      )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
                       AND af.spec_items_chg_flag = cv_y
                      ))
@@ -4469,6 +4505,9 @@ AS
           , abaua.creation_date              AS creation_date_abaua
 -- Ver1.10 Mod End
           , abaa.last_update_date            AS last_update_date_abaa
+-- Ver1.12 Add Start
+          , abb. last_update_date            AS last_update_date_abb
+-- Ver1.12 Add End
           , (CASE
                WHEN (   NVL(xobae.bank_account_num, '@')   <> NVL(abaa.bank_account_num, '@')
                      OR NVL(xobae.bank_number, '@')        <> NVL(abb.bank_number, '@')
@@ -4491,7 +4530,13 @@ AS
             (   (      abaa.last_update_date  > gt_pre_process_date
                    AND abaa.last_update_date  <= gt_cur_process_date)
              OR (      abaua.last_update_date > gt_pre_process_date
-                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.12 Mod Start
+--                   AND abaua.last_update_date <= gt_cur_process_date))
+                   AND abaua.last_update_date <= gt_cur_process_date)
+             OR (      abb.last_update_date > gt_pre_process_date
+                   AND abb.last_update_date <= gt_cur_process_date)
+            )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
         AND abb.bank_branch_id   = abaa.bank_branch_id
         AND abaa.bank_account_id = abaua.external_bank_account_id
@@ -4555,8 +4600,14 @@ AS
               OR (   (      abaa.last_update_date  > gt_pre_process_date
                         AND abaa.last_update_date  <= gt_cur_process_date)
               OR (          abaua.last_update_date > gt_pre_process_date
-                        AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.12 Mod Start             
+--                        AND abaua.last_update_date <= gt_cur_process_date))
+                        AND abaua.last_update_date <= gt_cur_process_date)
+              OR (          abb.last_update_date > gt_pre_process_date
+                        AND abb.last_update_date <= gt_cur_process_date)
+                )
            )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
       AND abb.bank_branch_id   = abaa.bank_branch_id
       AND abaa.bank_account_id = abaua.external_bank_account_id
@@ -4566,6 +4617,14 @@ AS
       AND pvsa.vendor_id       = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
       AND abaa.bank_account_id = xobae.bank_account_id (+)
+-- Ver1.12 Add Start
+      AND ( pvsa.inactive_date IS NULL
+            OR pvsa.inactive_date > gt_cur_process_date
+          )
+      AND ( pv.end_date_active IS NULL
+            OR pv.end_date_active > gt_cur_process_date
+          )
+-- Ver1.12 Add End
 -- Ver1.8 Add Start
       AND (
             gt_pre_process_date IS NULL
@@ -4598,8 +4657,15 @@ AS
                      OR
 -- Ver1.11 Mod Start
 --                     (    af.last_update_date_abaa > gt_pre_process_date
-                     (  (      af.last_update_date_abaa > gt_pre_process_date
+-- Ver1.12 Mod Start
+--                     (  (      af.last_update_date_abaa > gt_pre_process_date
+--                           AND af.last_update_date_abaa <= gt_cur_process_date)
+                     ((  (      af.last_update_date_abaa > gt_pre_process_date
                            AND af.last_update_date_abaa <= gt_cur_process_date)
+                      OR (    af.last_update_date_abb > gt_pre_process_date
+                              AND af.last_update_date_abb <= gt_cur_process_date)
+                      )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
                       AND af.spec_items_chg_flag = cv_y
                      ))
@@ -4821,6 +4887,9 @@ AS
           , abaua.creation_date              AS creation_date_abaua
 -- Ver1.10 Mod End
           , abaa.last_update_date            AS last_update_date_abaa
+-- Ver1.12 Add Start
+          , abb. last_update_date            AS last_update_date_abb
+-- Ver1.12 Add End
           , (CASE
                WHEN (   NVL(xobae.bank_account_num, '@')   <> NVL(abaa.bank_account_num, '@')
                      OR NVL(xobae.bank_number, '@')        <> NVL(abb.bank_number, '@')
@@ -4843,7 +4912,14 @@ AS
             (   (      abaa.last_update_date  > gt_pre_process_date
                    AND abaa.last_update_date  <= gt_cur_process_date)
              OR (      abaua.last_update_date > gt_pre_process_date
-                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.12 Mod Start
+--                   AND abaua.last_update_date <= gt_cur_process_date))
+                   AND abaua.last_update_date <= gt_cur_process_date)
+             OR (
+                       abb.last_update_date > gt_pre_process_date
+                   AND abb.last_update_date <= gt_cur_process_date)
+            )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
         AND abb.bank_branch_id   = abaa.bank_branch_id
         AND abaa.bank_account_id = abaua.external_bank_account_id
@@ -4877,6 +4953,9 @@ AS
         , ap_bank_account_uses_all  abaua  -- 銀行口座使用
         , po_vendor_sites_all       pvsa   -- 仕入先サイト
         , po_vendors                pv     -- 仕入先マスタ
+-- Ver1.12 Add Start
+        , ap_bank_branches          abb    -- 銀行支店
+-- Ver1.12 Add End
       WHERE
           (   gt_pre_process_date IS NULL
 -- Ver1.11 Mod Start
@@ -4885,14 +4964,31 @@ AS
              OR  (      abaa.last_update_date  > gt_pre_process_date
                    AND abaa.last_update_date  <= gt_cur_process_date)
              OR (      abaua.last_update_date > gt_pre_process_date
-                   AND abaua.last_update_date <= gt_cur_process_date))
+-- Ver1.12 Mod Start
+--                   AND abaua.last_update_date <= gt_cur_process_date))
+                   AND abaua.last_update_date <= gt_cur_process_date)
+                   OR (    abb.last_update_date > gt_pre_process_date
+                       AND abb.last_update_date <= gt_cur_process_date)
+          )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
+-- Ver1.12 Add Start
+      AND abb.bank_branch_id = abaa.bank_branch_id
+-- Ver1.12 Add End
       AND abaa.bank_account_id = abaua.external_bank_account_id
       AND abaua.vendor_id      = pvsa.vendor_id
       AND abaua.vendor_site_id = pvsa.vendor_site_id
       AND pvsa.org_id          = gt_target_organization_id
       AND pvsa.vendor_id       = pv.vendor_id
       AND NVL(pv.vendor_type_lookup_code, 'X') <> cv_employee
+-- Ver1.12 Add Start
+      AND ( pvsa.inactive_date IS NULL
+            OR pvsa.inactive_date > gt_cur_process_date
+          )
+      AND ( pv.end_date_active IS NULL
+            OR pv.end_date_active > gt_cur_process_date
+          )
+-- Ver1.12 Add End
 -- Ver1.8 Add Start
       AND (
             gt_pre_process_date IS NULL
@@ -4925,8 +5021,14 @@ AS
                      OR
 -- Ver1.11 Mod Start
 --                     (    af.last_update_date_abaa > gt_pre_process_date
-                     (  (      af.last_update_date_abaa > gt_pre_process_date
+-- Ver1.12 Mod Start
+--                     (  (      af.last_update_date_abaa > gt_pre_process_date
+--                           AND af.last_update_date_abaa <= gt_cur_process_date)
+                     ((  (      af.last_update_date_abaa > gt_pre_process_date
                            AND af.last_update_date_abaa <= gt_cur_process_date)
+                      OR (    af.last_update_date_abb > gt_pre_process_date
+                              AND af.last_update_date_abb <= gt_cur_process_date)
+                      )
 -- Ver1.11 Mod End
                       AND af.spec_items_chg_flag = cv_y
                      ))
@@ -5451,6 +5553,9 @@ AS
                 , ap_bank_account_uses_all  abaua      -- 銀行口座使用
                 , po_vendor_sites_all       pvsa       -- 仕入先サイト
                 , po_vendors                pv         -- 仕入先マスタ
+-- Ver1.12 Add Start
+                , ap_bank_branches          abb_sub    -- 銀行支店
+-- Ver1.12 Add End
               WHERE
                    (   gt_pre_process_date IS NULL
 -- Ver1.11 Mod Start
@@ -5459,8 +5564,23 @@ AS
                     OR (      abaa_sub.last_update_date > gt_pre_process_date
                           AND abaa_sub.last_update_date <= gt_cur_process_date)
                     OR (      abaua.last_update_date    > gt_pre_process_date
-                          AND abaua.last_update_date    <= gt_cur_process_date))
+-- Ver1.12 Mod Start
+--                          AND abaua.last_update_date    <= gt_cur_process_date))
+                          AND abaua.last_update_date    <= gt_cur_process_date)
+                    OR (     abb_sub.last_update_date > gt_pre_process_date
+                          AND abb_sub.last_update_date <= gt_cur_process_date)
+                  )
+-- Ver1.12 Mod End
 -- Ver1.11 Mod End
+-- Ver1.12 Add Start
+                AND ( pvsa.inactive_date IS NULL
+                      OR pvsa.inactive_date > gt_cur_process_date
+                    )
+                AND ( pv.end_date_active IS NULL
+                      OR pv.end_date_active > gt_cur_process_date
+                    )
+                AND abb_sub.bank_branch_id = abaa_sub.bank_branch_id
+-- Ver1.12 Add End
                AND abaa_sub.bank_account_id = abaa.bank_account_id
                AND abaa_sub.bank_account_id = abaua.external_bank_account_id
                AND abaua.vendor_id          = pvsa.vendor_id

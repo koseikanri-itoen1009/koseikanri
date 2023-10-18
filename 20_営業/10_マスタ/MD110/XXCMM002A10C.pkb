@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A10C (body)
  * Description      : 社員データIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_002_A10_社員データIF抽出_EBSコンカレント
- * Version          : 1.18
+ * Version          : 1.19
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -45,6 +45,7 @@ AS
  *  2023-06-05    1.16  F.Hasebe         内部ToDoNo.50修正対応
  *  2023-07-11    1.17  F.Hasebe         E_本稼働_19324対応
  *  2023-07-06    1.18  F.Hasebe         E_本稼働_19314対応
+ *  2023-09-21    1.19  Y.Koh            E_本稼動_19311【マスタ】ERP銀行口座 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4292,6 +4293,12 @@ AS
                       abaa.last_update_date >= gt_pre_process_date
                   AND abaa.last_update_date <  gt_cur_process_date
                )
+-- Ver1.19 Add Start
+           OR  (
+                      abb.last_update_date  >= gt_pre_process_date
+                  AND abb.last_update_date  <  gt_cur_process_date
+               )
+-- Ver1.19 Add End
            OR         abaa.inactive_date    =  gt_if_dest_date
           )
 -- Ver1.18 Mod End
