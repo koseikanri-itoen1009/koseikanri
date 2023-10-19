@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    請求書兼有償支給相殺確認書（伊藤園）  (T_MD070_BPO_78A)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       コンカレント名を変更：計算書 ⇒ 請求書兼有償支給相殺確認書（伊藤園）
  *  2019/10/18    1.9  N.Abe             E_本稼動_15601対応（追加対応）
  *  2019/11/22    1.10 Y.Sasaki          E_本稼動_16050対応(軽減税率_計算書_合計数量の記入)
+ *  2023/10/11    1.11 M.Akachi          E_本稼動_19497対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,7 +173,9 @@ AS
 -- 2019/09/11 Ver1.8 Mod End
 -- add start ver1.6
      ,amount                NUMBER                                            -- 金額
-     ,tax                   NUMBER                                            -- 消費税
+-- Ver1.11 Del Start
+--     ,tax                   NUMBER                                            -- 消費税
+-- Ver1.11 Del End
 -- add end ver1.6
      ,quantity              xxwsh_order_lines_all.quantity%TYPE               -- 出荷実績数量
 -- 2019/09/11 Ver1.8 Add Start
@@ -253,6 +256,10 @@ AS
   gv_title_ito              fnd_profile_option_values.profile_option_value%TYPE;
   gv_title_ven              fnd_profile_option_values.profile_option_value%TYPE;
 -- 2019/09/11 Ver1.8 Add End
+-- Ver1.11 Add Start
+  gc_prof_invoice_t_no     CONSTANT VARCHAR2(30) := 'XXPO_INVOICE_T_NO';
+  gv_invoice_t_no          fnd_profile_option_values.profile_option_value%TYPE;
+-- Ver1.11 Add End
 --
 --#####################  固定共通例外宣言部 START   ####################
 --
@@ -525,7 +532,10 @@ AS
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        lv_err_code     := 'APP-XXCMN-10121' ;
+-- Ver1.11 Mod Start
+--        lv_err_code     := 'APP-XXCMN-10121' ;
+        lv_err_code     := 'APP-XXPO-40054' ;
+-- Ver1.11 Mod End
         lv_token_name1  := 'LOOKUP_TYPE' ;
         lv_token_name2  := 'MEANING' ;
         lv_token_value1 := gc_lookup_type_fix_class  ;
@@ -550,7 +560,10 @@ AS
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        lv_err_code     := 'APP-XXCMN-10121' ;
+-- Ver1.11 Mod Start
+--        lv_err_code     := 'APP-XXCMN-10121' ;
+        lv_err_code     := 'APP-XXPO-40054' ;
+-- Ver1.11 Mod End
         lv_token_name1  := 'LOOKUP_TYPE' ;
         lv_token_name2  := 'MEANING' ;
         lv_token_value1 := gc_lookup_type_shikyu_class  ;
@@ -593,7 +606,10 @@ AS
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        lv_err_code     := 'APP-XXCMN-10121' ;
+-- Ver1.11 Mod Start
+--        lv_err_code     := 'APP-XXCMN-10121' ;
+        lv_err_code     := 'APP-XXPO-40054' ;
+-- Ver1.11 Mod End
         lv_token_name1  := 'LOOKUP_TYPE' ;
         lv_token_name2  := 'MEANING' ;
         lv_token_value1 := gc_lkup_acct_pay  ;
@@ -612,13 +628,28 @@ AS
     ------------------------------
     gn_prof_mst_org_id := FND_PROFILE.VALUE( gc_prof_mst_org_id ) ;
     IF ( gn_prof_mst_org_id IS NULL ) THEN
-      lv_err_code     := 'APP-XXCMN-10002' ;
+-- Ver1.11 Mod Start
+--      lv_err_code     := 'APP-XXCMN-10002' ;
+      lv_err_code     := 'APP-XXPO-40053';
+-- Ver1.11 Mod End
       lv_token_name1  := 'NG_PROFILE' ;
       lv_token_value1 := gc_prof_mst_org_id  ;
       RAISE get_value_expt ;
     END IF ;
 --
 -- E 2008/02/06 mod by m.ikeda ---------------------------------------------------------------- E --
+-- Ver1.11 Add Start
+    -------------------------------------------
+    -- インボイス適格請求書発行事業者登録番号
+    -------------------------------------------
+    gv_invoice_t_no := FND_PROFILE.VALUE( gc_prof_invoice_t_no );
+    IF ( gv_invoice_t_no IS NULL ) THEN
+      lv_err_code     := 'APP-XXPO-40053';
+      lv_token_name1  := 'NG_PROFILE';
+      lv_token_value1 := gc_prof_invoice_t_no;
+      RAISE get_value_expt;
+    END IF;
+-- Ver1.11 Add End
 -- 2019/09/11 Ver1.8 Add Start
     ------------------------------
     -- 表題（伊藤園）
@@ -685,10 +716,13 @@ AS
     WHEN get_value_expt THEN
       -- メッセージセット
       lv_errmsg := xxcmn_common_pkg.get_msg
--- 2019/10/18 Ver1.9 Mod Start
---                    ( iv_application    => gc_application_po
-                    ( iv_application    => gc_application_cmn
--- 2019/10/18 Ver1.9 Mod End
+-- Ver1.11 Mod Start
+---- 2019/10/18 Ver1.9 Mod Start
+----                    ( iv_application    => gc_application_po
+--                    ( iv_application    => gc_application_cmn
+---- 2019/10/18 Ver1.9 Mod End
+                    ( iv_application    => gc_application_po
+-- Ver1.11 Mod End
                      ,iv_name           => lv_err_code
                      ,iv_token_name1    => lv_token_name1
                      ,iv_token_name2    => lv_token_name2
@@ -801,13 +835,15 @@ AS
               WHEN ( otta.order_category_code = 'ORDER'  ) THEN xmld.actual_quantity
               WHEN ( otta.order_category_code = 'RETURN' ) THEN xmld.actual_quantity * -1
              END * xola.unit_price))        AS amount       -- 金額
-            ,SUM(ROUND(CASE
-              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xmld.actual_quantity
-              WHEN ( otta.order_category_code = 'RETURN' ) THEN xmld.actual_quantity * -1
--- 2019/09/11 Ver1.8 Mod Start
---             END * xola.unit_price * TO_NUMBER( flv.lookup_code ) / 100)) AS tax -- 消費税
-             END * xola.unit_price * TO_NUMBER( xitrv.tax ) / 100)) AS tax -- 消費税
--- 2019/09/11 Ver1.8 Mod End
+-- Ver1.11 Del Start
+--            ,SUM(ROUND(CASE
+--              WHEN ( otta.order_category_code = 'ORDER'  ) THEN xmld.actual_quantity
+--              WHEN ( otta.order_category_code = 'RETURN' ) THEN xmld.actual_quantity * -1
+---- 2019/09/11 Ver1.8 Mod Start
+----             END * xola.unit_price * TO_NUMBER( flv.lookup_code ) / 100)) AS tax -- 消費税
+--             END * xola.unit_price * TO_NUMBER( xitrv.tax ) / 100)) AS tax -- 消費税
+---- 2019/09/11 Ver1.8 Mod End
+-- Ver1.11 Del End
 -- add start ver1.6
 -- mod start ver1.6
 --            ,CASE
@@ -1196,10 +1232,16 @@ AS
          ,it_data_rec(i).quantity         -- 14.数量
          ,it_data_rec(i).unit_price       -- 15.単価
          ,it_data_rec(i).amount           -- 16.金額（税抜）
-         ,it_data_rec(i).tax              -- 17.消費税額
+-- Ver1.11 Mod Start
+--         ,it_data_rec(i).tax              -- 17.消費税額
+         ,NULL
+-- Ver1.11 Mod End
          ,it_data_rec(i).tax_type_name    -- 18.税区分（名称）
-         ,it_data_rec(i).amount + it_data_rec(i).tax
-                                          -- 19.税抜金額 + 消費税額
+-- Ver1.11 Mod Start
+--         ,it_data_rec(i).amount + it_data_rec(i).tax
+--                                          -- 19.税抜金額 + 消費税額
+         ,NULL
+-- Ver1.11 Mod End
          ,it_data_rec(i).sikyu_date       -- 20.有償支給年月
         );
       END LOOP;
@@ -1288,11 +1330,17 @@ AS
 -- 2019/09/11 Ver1.8 Del End
 -- 2019/09/11 Ver1.8 Add Start
     ln_amount_10            NUMBER := 0;          -- 税抜金額（標準税率(10%)）
-    ln_tax_10               NUMBER := 0;          -- 消費税額（標準税率(10%)）
+-- Ver1.11 Del Start
+--    ln_tax_10               NUMBER := 0;          -- 消費税額（標準税率(10%)）
+-- Ver1.11 Del End
     ln_amount_8             NUMBER := 0;          -- 税抜金額（軽減税率(8%)）
-    ln_tax_8                NUMBER := 0;          -- 消費税額（軽減税率(8%)）
+-- Ver1.11 Del Start
+--    ln_tax_8                NUMBER := 0;          -- 消費税額（軽減税率(8%)）
+-- Ver1.11 Del End
     ln_amount_old_8         NUMBER := 0;          -- 税抜金額（旧標準税率(8%)）
-    ln_tax_old_8            NUMBER := 0;          -- 消費税額（旧標準税率(8%)）
+-- Ver1.11 Del Start
+--    ln_tax_old_8            NUMBER := 0;          -- 消費税額（旧標準税率(8%)）
+-- Ver1.11 Del End
     ln_amount_no_tax        NUMBER := 0;          -- 課税対象外
     ln_no_tax               NUMBER := 0;          -- 課税対象外
 -- Ver1.10 Add Start
@@ -1300,6 +1348,11 @@ AS
 -- Ver1.10 Add End
     ln_request_id           NUMBER;               -- 要求ID（呼出先）
 -- 2019/09/11 Ver1.8 Add End
+-- Ver1.11 Add Start
+   ln_tax_rate_10           NUMBER := 0;          -- 標準税率(10%)
+   ln_tax_rate_8            NUMBER := 0;          -- 軽減税率(8%)
+   ln_tax_rate_old_8        NUMBER := 0;          -- 旧標準税率(8%)
+-- Ver1.11 Add End
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;           -- 取得レコードなし
 --  
@@ -1454,7 +1507,10 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_10';
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-          gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_10;
+-- Ver1.11 Mod Start
+--          gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_10;
+          gt_xml_data_table(gl_xml_idx).tag_value := ROUND( NVL( ln_amount_10, 0 ) * ( ln_tax_rate_10 / 100 ) );
+-- Ver1.11 Mod End
           -- 税抜金額(軽減税率(8%))
           gl_xml_idx := gt_xml_data_table.COUNT + 1;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_8';
@@ -1464,7 +1520,10 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_8';
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-          gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_8;
+-- Ver1.11 Mod Start
+--          gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_8;
+          gt_xml_data_table(gl_xml_idx).tag_value := ROUND( NVL( ln_amount_8, 0 ) * ( ln_tax_rate_8 / 100 ) );
+-- Ver1.11 Mod End
           -- 税抜金額(旧標準税率(8%))
           gl_xml_idx := gt_xml_data_table.COUNT + 1;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_old_8';
@@ -1474,7 +1533,10 @@ AS
           gl_xml_idx := gt_xml_data_table.COUNT + 1;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_old_8';
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-          gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_old_8;
+-- Ver1.11 Mod Start
+--          gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_old_8;
+          gt_xml_data_table(gl_xml_idx).tag_value := ROUND( NVL( ln_amount_old_8, 0 ) * ( ln_tax_rate_old_8 / 100 ) );
+-- Ver1.11 Mod End
           -- 税抜金額(課税対象外)
           gl_xml_idx := gt_xml_data_table.COUNT + 1;
           gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_no_tax';
@@ -1638,6 +1700,13 @@ AS
           gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB( gv_l_address, 31, 30 ) ;
         END IF;
 -- 2019/10/18 Mod Ver1.9 End
+-- Ver1.11 Add Start
+        -- インボイス適格請求書発行事業者登録番号
+        gl_xml_idx := gt_xml_data_table.COUNT + 1;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'invoice_t_no';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_invoice_t_no;
+-- Ver1.11 Add End
         -- 事業所：電話番号
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_phone_num' ;
@@ -1794,11 +1863,17 @@ AS
 -- 2019/09/11 Ver1.8 Del End
 -- 2019/09/11 Ver1.8 Add Start
         ln_amount_10      := 0;   -- 税抜金額（標準税率(10%)）
-        ln_tax_10         := 0;   -- 消費税額（標準税率(10%)）
+-- Ver1.11 Del Start
+--        ln_tax_10         := 0;   -- 消費税額（標準税率(10%)）
+-- Ver1.11 Del End
         ln_amount_8       := 0;   -- 税抜金額（軽減税率(8%)）
-        ln_tax_8          := 0;   -- 消費税額（軽減税率(8%)）
+-- Ver1.11 Del Start
+--        ln_tax_8          := 0;   -- 消費税額（軽減税率(8%)）
+-- Ver1.11 Del End
         ln_amount_old_8   := 0;   -- 税抜金額（旧標準税率(8%)）
-        ln_tax_old_8      := 0;   -- 消費税額（旧標準税率(8%)）
+-- Ver1.11 Del Start
+--        ln_tax_old_8      := 0;   -- 消費税額（旧標準税率(8%)）
+-- Ver1.11 Del End
         ln_amount_no_tax  := 0;   -- 課税対象外
         ln_no_tax         := 0;   -- 課税対象外
 -- Ver1.10 Add Start
@@ -1977,19 +2052,30 @@ AS
       -- 税区分が標準税率(10%)
       IF ( gv_tax_type_10 = gt_main_data(i).tax_type_code ) THEN
         ln_amount_10      := ln_amount_10 + gt_main_data(i).amount;
-        ln_tax_10         := ln_tax_10 + gt_main_data(i).tax;
+-- Ver1.11 Mod Start
+--        ln_tax_10         := ln_tax_10 + gt_main_data(i).tax;
+        ln_tax_rate_10    := gt_main_data(i).tax_rate;
+-- Ver1.11 Mod End
       -- 税区分が軽減税率(8%)
       ELSIF ( gv_tax_type_8 = gt_main_data(i).tax_type_code ) THEN
         ln_amount_8       := ln_amount_8 + gt_main_data(i).amount;
-        ln_tax_8          := ln_tax_8 + gt_main_data(i).tax;
+-- Ver1.11 Mod Start
+--        ln_tax_8          := ln_tax_8 + gt_main_data(i).tax;
+        ln_tax_rate_8     := gt_main_data(i).tax_rate;
+-- Ver1.11 Mod End
       -- 税区分が旧標準税率(8%)
       ELSIF ( gv_tax_type_old_8 = gt_main_data(i).tax_type_code ) THEN
         ln_amount_old_8   := ln_amount_old_8 + gt_main_data(i).amount;
-        ln_tax_old_8      := ln_tax_old_8 + gt_main_data(i).tax;
+-- Ver1.11 Mod Start
+--        ln_tax_old_8      := ln_tax_old_8 + gt_main_data(i).tax;
+        ln_tax_rate_old_8 := gt_main_data(i).tax_rate;
+-- Ver1.11 Mod End
       -- 税区分が課税対象外
       ELSIF ( gv_tax_type_no_tax = gt_main_data(i).tax_type_code ) THEN
         ln_amount_no_tax  := ln_amount_no_tax + gt_main_data(i).amount;
-        ln_no_tax         := ln_no_tax + gt_main_data(i).tax;
+-- Ver1.11 Del Start
+--        ln_no_tax         := ln_no_tax + gt_main_data(i).tax;
+-- Ver1.11 Del End
       END IF;
 -- Ver1.10 Add Start
       ln_sum_quant      := ln_sum_quant + gt_main_data(i).quantity;
@@ -2070,11 +2156,13 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).amount;
 -- 2019/09/11 Ver1.8 Mod End
 -- 2019/09/11 Ver1.8 Add Start
-      -- 消費税額
-      gl_xml_idx := gt_xml_data_table.COUNT + 1;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'tax';
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-      gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).tax;
+-- Ver1.11 Del Start
+--      -- 消費税額
+--      gl_xml_idx := gt_xml_data_table.COUNT + 1;
+--      gt_xml_data_table(gl_xml_idx).tag_name  := 'tax';
+--      gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
+--      gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).tax;
+-- Ver1.11 Del End
       -- 税区分
       gl_xml_idx := gt_xml_data_table.COUNT + 1;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_type';
@@ -2139,7 +2227,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_10';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_10;
+-- Ver1.11 Mod Start
+--    gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_10;
+    gt_xml_data_table(gl_xml_idx).tag_value := ROUND( NVL( ln_amount_10, 0 ) * ( ln_tax_rate_10 / 100 ) );
+-- Ver1.11 Mod End
     -- 有償支給金額(税抜)(軽減税率(8%))
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_8';
@@ -2149,7 +2240,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_8';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_8;
+-- Ver1.11 Mod Start
+--    gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_8;
+    gt_xml_data_table(gl_xml_idx).tag_value := ROUND( NVL( ln_amount_8, 0 ) * ( ln_tax_rate_8 / 100 ) );
+-- Ver1.11 Mod End
     -- 有償支給金額(税抜)(旧標準税率(8%))
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_old_8';
@@ -2159,7 +2253,10 @@ AS
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'tax_old_8';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-    gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_old_8;
+-- Ver1.11 Mod Start
+--    gt_xml_data_table(gl_xml_idx).tag_value := ln_tax_old_8;
+    gt_xml_data_table(gl_xml_idx).tag_value := ROUND( NVL( ln_amount_old_8, 0 ) * ( ln_tax_rate_old_8 / 100 ) );
+-- Ver1.11 Mod End
     -- 有償支給金額(税抜)(課税対象外)
     gl_xml_idx := gt_xml_data_table.COUNT + 1;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'amount_no_tax';

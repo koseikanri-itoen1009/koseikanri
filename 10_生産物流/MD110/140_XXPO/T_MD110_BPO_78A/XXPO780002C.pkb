@@ -7,7 +7,7 @@ AS
  * Description      : ¿‹‘Œ“—Lx‹‹‘ŠEŠm”F‘CSVo—Í
  * MD.050/070       : ŒŸYØˆ—i—Lx‹‹‘ŠEjIssue1.0  (T_MD050_BPO_780)
  *                    ¿‹‘Œ“—Lx‹‹‘ŠEŠm”F‘CSVo—Í     (T_MD070_BPO_78B)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2019/09/10    1.0  N.Abe             V‹Kì¬
+ *  2023/10/11    1.1  M.Akachi          E_–{‰Ò“®_19497‘Î‰
  *
  *****************************************************************************************/
 --
@@ -92,9 +93,13 @@ AS
             ,xiw.quantity         AS  quantity          -- ”—Ê
             ,xiw.unit_price       AS  unit_price        -- ’P‰¿
             ,xiw.amount           AS  amount            -- Å”²‹àŠz
-            ,xiw.tax              AS  tax               -- Á”ïÅŠz
+-- Ver1.1 Del Start
+--            ,xiw.tax              AS  tax               -- Á”ïÅŠz
+-- Ver1.1 Del End
             ,xiw.tax_type         AS  tax_type          -- Å‹æ•ª
-            ,xiw.tax_include      AS  tax_include       -- Å‹àŠz
+-- Ver1.1 Del Start
+--            ,xiw.tax_include      AS  tax_include       -- Å‹àŠz
+-- Ver1.1 Del End
             ,xiw.yusyo_year_month AS  yusyo_data        -- —L”NŒ
       FROM   xxpo_invoice_work  xiw
       WHERE  xiw.request_id = in_request_id
@@ -121,9 +126,13 @@ AS
    ,quantity          xxpo_invoice_work.quantity%TYPE         -- ”—Ê
    ,unit_price        xxpo_invoice_work.unit_price%TYPE       -- ’P‰¿
    ,amount            xxpo_invoice_work.amount%TYPE           -- Å”²‹àŠz
-   ,tax               xxpo_invoice_work.tax%TYPE              -- Á”ïÅŠz
+-- Ver1.1 Del Start
+--   ,tax               xxpo_invoice_work.tax%TYPE              -- Á”ïÅŠz
+-- Ver1.1 Del End
    ,tax_type          xxpo_invoice_work.tax_type%TYPE         -- Å‹æ•ª
-   ,tax_include       xxpo_invoice_work.tax_include%TYPE      -- Å‹àŠz
+-- Ver1.1 Del Start
+--   ,tax_include       xxpo_invoice_work.tax_include%TYPE      -- Å‹àŠz
+-- Ver1.1 Del End
    ,yusyo_date        xxpo_invoice_work.yusyo_year_month%TYPE -- —L”NŒ
   ) ;
 --
@@ -371,9 +380,13 @@ AS
          || cv_delimit ||                gt_main_data(i).quantity                                               -- ”—Ê
          || cv_delimit ||                gt_main_data(i).unit_price                                             -- ’P‰¿
          || cv_delimit ||                gt_main_data(i).amount                                                 -- Å”²‹àŠz
-         || cv_delimit ||                gt_main_data(i).tax                                                    -- Á”ïÅŠz
+-- Ver1.1 Del Start
+--         || cv_delimit ||                gt_main_data(i).tax                                                    -- Á”ïÅŠz
+-- Ver1.1 Del End
          || cv_delimit || cv_enclosed || gt_main_data(i).tax_type                               || cv_enclosed  -- Å‹æ•ª
-         || cv_delimit ||                gt_main_data(i).tax_include                                            -- Å‹àŠz
+-- Ver1.1 Del Start
+--         || cv_delimit ||                gt_main_data(i).tax_include                                            -- Å‹àŠz
+-- Ver1.1 Del End
       ;
       --ƒf[ƒ^‚ğo—Í
       FND_FILE.PUT_LINE(
