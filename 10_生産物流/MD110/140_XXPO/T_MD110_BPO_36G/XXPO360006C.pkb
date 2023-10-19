@@ -7,7 +7,7 @@ AS
  * Description      : d“üæˆø–¾×•\
  * MD.050           : —Lx‹‹’ •[Issue1.0(T_MD050_BPO_360)
  * MD.070           : —Lx‹‹’ •[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2010/01/12    1.32  T.Yoshimoto      E_–{‰Ò“®#892‘Î‰
  *  2019/04/08    1.33  Y.Sasaki         E_–{‰Ò“®_15601(¶Y_ŒyŒ¸Å—¦)‘Î‰
  *  2019/10/30    1.34  Y.Shouji         E_–{‰Ò“®_16020‘Î‰
+ *  2023/10/17    1.35  R.Oikawa         E_–{‰Ò“­_19497‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -231,6 +232,10 @@ AS
      ,gaku            NUMBER                                                --‹àŠz(•²ˆøŒã’P‰¿*ó“ü•Ô•i”—Ê)
      ,siire_tax       NUMBER                                                --d“ü‹àŠziÁ”ïÅŠzj
      ,kousen_tax      NUMBER                                                --Œû‘KiÁ”ïÅŠzj
+-- Ver1.35 Add Start
+     ,sum_siire_tax   NUMBER                                                --æˆøæŒv_d“ü‹àŠziÁ”ïÅŠzj
+     ,sum_kousen_tax  NUMBER                                                --æˆøæŒv_Œû‘KiÁ”ïÅŠzj
+-- Ver1.35 Add End
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -1016,7 +1021,12 @@ AS
         lv_select := lv_select
           ||   ' NULL txns_id '
           || ' , ' || lv_dept || ' break_dtl '
-          || ' , ' || lv_dept || ' break_mid '
+-- Ver1.35 Mod Start
+--          || ' , ' || lv_dept || ' break_mid '
+            || ',  LPAD(NVL('|| lv_dept ||  ' , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+            || '|| LPAD(NVL(xvv_part.segment1 , '|| cv_code_format||'), 4, '|| cv_zero ||')'
+            ||                                                      ' break_mid ' --’†ƒuƒŒƒCƒNƒL[
+-- Ver1.35 Mod End
           ;
 --
       --“ü—Íƒpƒ‰ƒ[ƒ^3.WŒvˆÈŠO‚Ìê‡
@@ -1219,6 +1229,10 @@ AS
 -- V1.34 Y.Shouji MOD END
 -- V1.33 Y.Sasaki Modified END
         -- 2008/12/02 ADD END
+-- Ver1.35 Add Start
+        || '   , 0   sum_siire_tax '
+        || '   , 0   sum_kousen_tax '
+-- Ver1.35 Add End
         ;
 -- 2009/05/26 v1.26 T.Yoshimoto Del Start –{”Ô#1478
     --END IF;
@@ -1662,6 +1676,52 @@ AS
     ln_sum_jun_kosen        NUMBER DEFAULT 0;         -- ƒŒû‘K‹àŠz
     ln_sum_jun_sasihiki     NUMBER DEFAULT 0;         -- ƒ·ˆø‹àŠz
 --
+-- Ver1.35 Add Start
+--
+    ln_wk_sum_tax_siire     NUMBER DEFAULT 0;         -- Á”ïÅ(d“ü‹àŠz)
+    ln_wk_sum_tax_kousen    NUMBER DEFAULT 0;         -- Á”ïÅ(Œû‘K‹àŠz)
+    -- Å—¦•ÊŠi”[—pƒŒƒR[ƒh•Ï”id“ü‹àŠzj
+    TYPE rec_zeiritu_dtl_type  IS RECORD(
+        zeiritu           NUMBER         -- Å—¦
+       ,amount            NUMBER         -- d“ü‹àŠz
+       ,tax_amount        NUMBER         -- Á”ïÅŠz
+      ) ;
+    TYPE rec_zeiritu_dtl_ttype IS TABLE OF rec_zeiritu_dtl_type INDEX BY BINARY_INTEGER ;
+    ct_zei_tab              rec_zeiritu_dtl_ttype;
+--
+    -- Å—¦•ÊŠi”[—pƒŒƒR[ƒh•Ï”iŒû‘K‹àŠzj
+    TYPE rec_zeiritu_k_dtl_type  IS RECORD(
+        zeiritu_k           NUMBER         -- Å—¦(Œû‘K)
+       ,amount_k            NUMBER         -- d“ü‹àŠz(Œû‘K)
+       ,tax_amount_k        NUMBER         -- Á”ïÅŠz(Œû‘K)
+      ) ;
+    TYPE rec_zeiritu_k_dtl_ttype IS TABLE OF rec_zeiritu_k_dtl_type INDEX BY BINARY_INTEGER ;
+    ct_zei_k_tab              rec_zeiritu_k_dtl_ttype;
+--
+    -- Å‹æ•ª“à–óî•ñid“ü‹àŠzj
+    CURSOR  tax_kbn_cur
+    IS
+      SELECT to_number(flv_p_tax.lookup_code) zeiritu,
+             0                                amount,
+             0                                tax_amount
+      FROM   fnd_lookup_values flv_p_tax      --ƒNƒCƒbƒNƒR[ƒh(Á”ïÅ)
+      WHERE  flv_p_tax.lookup_type = gc_lookup_type_tax_rate
+      AND    flv_p_tax.language    = gc_language_code
+      ORDER BY to_number(flv_p_tax.lookup_code)
+      ;
+--
+    -- Å‹æ•ª“à–óî•ñiŒû‘K‹àŠzj
+    CURSOR  tax_kbn_k_cur
+    IS
+      SELECT to_number(flv_p_tax.lookup_code) zeiritu_k,
+             0                                amount_k,
+             0                                tax_amount_k
+      FROM   fnd_lookup_values flv_p_tax      --ƒNƒCƒbƒNƒR[ƒh(Á”ïÅ)
+      WHERE  flv_p_tax.lookup_type = gc_lookup_type_tax_rate
+      AND    flv_p_tax.language    = gc_language_code
+      ORDER BY to_number(flv_p_tax.lookup_code)
+      ;
+-- Ver1.35 Add End
     -- *** ƒ[ƒJƒ‹EƒJ[ƒ\ƒ‹ ***
 --
   BEGIN
@@ -1680,6 +1740,22 @@ AS
     lv_siire_no    := it_data_rec(1).siire_no;                -- d“üæƒR[ƒh
     lv_rcv_rtn_uom := it_data_rec(1).rcv_rtn_uom;             -- ’PˆÊ
 --
+-- Ver1.35 Add Start
+    -- ƒ[ƒNƒe[ƒuƒ‹•Ï”—p
+    -- ƒI[ƒvƒ“
+    OPEN tax_kbn_cur;
+    -- ƒoƒ‹ƒNƒtƒFƒbƒ`
+    FETCH tax_kbn_cur BULK COLLECT INTO ct_zei_tab;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE tax_kbn_cur;
+--
+    -- ƒI[ƒvƒ“
+    OPEN tax_kbn_k_cur;
+    -- ƒoƒ‹ƒNƒtƒFƒbƒ`
+    FETCH tax_kbn_k_cur BULK COLLECT INTO ct_zei_k_tab;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE tax_kbn_k_cur;
+-- Ver1.35 Add End
     <<main_data_loop>>
     FOR ln_loop_index IN 1..it_data_rec.COUNT LOOP
 --
@@ -1769,6 +1845,40 @@ AS
         ot_data_rec(ln_count).siire_tax     := ln_sum_tax_siire;                          --d“ü‹àŠziÁ”ïÅŠzj
         ot_data_rec(ln_count).kousen_tax    := ln_sum_tax_kousen;                         --Œû‘KiÁ”ïÅŠzj
 --
+-- Ver1.35 Add Start
+        -- æˆøæŒv‚ÌÁ”ïÅZo•Ï”‚Ì‰Šú’l
+        ln_wk_sum_tax_siire  := 0;
+        ln_wk_sum_tax_kousen := 0;
+        -- •”ƒR[ƒh/d“üæ‚ª•ÏX‚µ‚½ê‡
+        IF ( ( lv_dept_code <> it_data_rec(ln_loop_index).dept_code )
+          OR ( lv_siire_no <> it_data_rec(ln_loop_index).siire_no ) ) THEN
+--
+          <<zeikin_loop>>
+          FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+            ln_wk_sum_tax_siire := ln_wk_sum_tax_siire +
+              ROUND(NVL(ct_zei_tab(ln_zei_loop_index).amount, 0) * NVL(ct_zei_tab(ln_zei_loop_index).zeiritu , 0) / 100 ,0);             -- Á”ïÅ(Å—¦•Ê)
+          END LOOP;
+          --
+          <<zeikin_k_loop2>>
+          FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+            ln_wk_sum_tax_kousen  := ln_wk_sum_tax_kousen +
+              ROUND(NVL(ct_zei_k_tab(ln_zei_k_loop_index).amount_k, 0) * NVL(ct_zei_k_tab(ln_zei_k_loop_index).zeiritu_k , 0) / 100 ,0); -- Á”ïÅ(Œû‘K‹àŠz)
+          END LOOP;
+--
+          <<zeikin_loop>>
+          FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+            ct_zei_tab(ln_zei_loop_index).amount     := 0;
+            ct_zei_tab(ln_zei_loop_index).tax_amount := 0;
+          END LOOP;
+          <<zeikin_k_loop>>
+          FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+            ct_zei_k_tab(ln_zei_k_loop_index).amount_k     := 0;
+            ct_zei_k_tab(ln_zei_k_loop_index).tax_amount_k := 0;
+          END LOOP;
+        END IF;
+        ot_data_rec(ln_count).sum_siire_tax     := ln_wk_sum_tax_siire;                   --æˆøæŒv‚Ìd“ü‹àŠziÁ”ïÅŠzj
+        ot_data_rec(ln_count).sum_kousen_tax    := ln_wk_sum_tax_kousen;                  --æˆøæŒv‚ÌŒû‘KiÁ”ïÅŠzj
+-- Ver1.35 Add End
         -- ƒuƒŒƒCƒN—p•Ï”‚Ö‘ã“ü
         lv_dept_code   := it_data_rec(ln_loop_index).dept_code;
         lv_assen_no    := NVL(it_data_rec(ln_loop_index).assen_no, 'NULL');
@@ -1889,6 +1999,23 @@ AS
       -- •Š‰Û‹àŠz‚ğ‰ÁZ
       ln_sum_fuka  := ln_sum_fuka + ln_fuka;
 --
+-- Ver1.35 Add Start
+      -- Å—¦‚²‚Æ‚ÉZo‚µƒ[ƒNƒe[ƒuƒ‹‚ÉŠi”[(d“ü‹àŠz)
+      <<zeikin_loop>>
+      FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+        IF ( NVL(ct_zei_tab(ln_zei_loop_index).zeiritu , 0) = NVL(it_data_rec(ln_loop_index).zeiritu , 0) ) THEN
+          ct_zei_tab(ln_zei_loop_index).amount     := ct_zei_tab(ln_zei_loop_index).amount + NVL(ln_siire, 0);                     -- d“ü‹àŠz
+        END IF;
+      END LOOP;
+--
+      -- Å—¦‚²‚Æ‚ÉZo‚µƒ[ƒNƒe[ƒuƒ‹‚ÉŠi”[(Œû‘K‹àŠz)
+      <<zeikin_k_loop>>
+      FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+        IF ( NVL(ct_zei_k_tab(ln_zei_k_loop_index).zeiritu_k , 0) = NVL(it_data_rec(ln_loop_index).zeiritu_k , 0) ) THEN
+          ct_zei_k_tab(ln_zei_k_loop_index).amount_k     := ct_zei_k_tab(ln_zei_k_loop_index).amount_k + NVL(ln_kousen, 0);        -- Œû‘K‹àŠz
+        END IF;
+      END LOOP;
+-- Ver1.35 Add End
     END LOOP main_data_loop ;
 --
 --
@@ -1921,6 +2048,26 @@ AS
       --ƒ·ˆø‹àŠz
       ln_sum_jun_sasihiki := ln_sum_sasihiki + ln_sum_tax_sasihiki;
 --
+-- Ver1.35 Add Start
+      -- æˆøæŒv‚ÌÁ”ïÅZo•Ï”‚Ì‰Šú’l
+      ln_wk_sum_tax_siire  := 0;
+      ln_wk_sum_tax_kousen := 0;
+--
+      <<zeikin_loop>>
+      FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+        ln_wk_sum_tax_siire := ln_wk_sum_tax_siire +
+          ROUND(NVL(ct_zei_tab(ln_zei_loop_index).amount, 0) * NVL(ct_zei_tab(ln_zei_loop_index).zeiritu , 0) / 100 ,0);            -- Á”ïÅ(Å—¦•Ê)
+      END LOOP;
+      --
+      <<zeikin_k_loop2>>
+      FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+        ln_wk_sum_tax_kousen  := ln_wk_sum_tax_kousen +
+          ROUND(NVL(ct_zei_k_tab(ln_zei_k_loop_index).amount_k, 0) * NVL(it_data_rec(ln_loop_index).zeiritu_k , 0) / 100 ,0);         -- Á”ïÅ(Œû‘K‹àŠz)
+      END LOOP;
+--
+      ot_data_rec(ln_count).sum_siire_tax     := ln_wk_sum_tax_siire;                   --æˆøæŒv‚Ìd“ü‹àŠziÁ”ïÅŠzj
+      ot_data_rec(ln_count).sum_kousen_tax    := ln_wk_sum_tax_kousen;                  --æˆøæŒv‚ÌŒû‘KiÁ”ïÅŠzj
+-- Ver1.35 Add End
       -- ==========================
       --  •ÒWŒãƒŒƒR[ƒh‚Æ‚µ‚ÄŠi”[
       -- ==========================
@@ -2087,6 +2234,60 @@ AS
     ln_sum_jun_siire        NUMBER DEFAULT 0;         -- ƒd“ü‹àŠz
     ln_sum_jun_kosen        NUMBER DEFAULT 0;         -- ƒŒû‘K‹àŠz
     ln_sum_jun_sasihiki     NUMBER DEFAULT 0;         -- ƒ·ˆø‹àŠz
+-- Ver1.35 Add Start
+    -- ˆ´ùÒoræˆøæ¬Œv—p
+    ln_sum_mid_siire            NUMBER DEFAULT 0;         -- d“ü‹àŠz
+    ln_sum_mid_kosen            NUMBER DEFAULT 0;         -- Œû‘K‹àŠz
+    ln_sum_mid_huka             NUMBER DEFAULT 0;         -- •Š‰Û‹àŠz
+    ln_sum_mid_sasihiki         NUMBER DEFAULT 0;         -- ·ˆø‹àŠz
+    ln_sum_mid_tax_siire        NUMBER DEFAULT 0;         -- Á”ïÅ(d“ü‹àŠz)
+    ln_sum_mid_tax_kousen       NUMBER DEFAULT 0;         -- Á”ïÅ(Œû‘K‹àŠz)
+    ln_sum_mid_tax_sasihiki     NUMBER DEFAULT 0;         -- Á”ïÅ(·ˆø‹àŠz)
+    ln_sum_mid_jun_siire        NUMBER DEFAULT 0;         -- ƒd“ü‹àŠz
+    ln_sum_mid_jun_kosen        NUMBER DEFAULT 0;         -- ƒŒû‘K‹àŠz
+    ln_sum_mid_jun_sasihiki     NUMBER DEFAULT 0;         -- ƒ·ˆø‹àŠz
+    -- Å—¦•ÊŠi”[—pƒŒƒR[ƒh•Ï”id“ü‹àŠzj
+    TYPE rec_zeiritu_dtl_type  IS RECORD(
+        zeiritu           NUMBER         -- Å—¦
+       ,amount            NUMBER         -- d“ü‹àŠz
+       ,tax_amount        NUMBER         -- Á”ïÅŠz
+      ) ;
+    TYPE rec_zeiritu_dtl_ttype IS TABLE OF rec_zeiritu_dtl_type INDEX BY BINARY_INTEGER ;
+    ct_zei_tab              rec_zeiritu_dtl_ttype;
+--
+    -- Å—¦•ÊŠi”[—pƒŒƒR[ƒh•Ï”iŒû‘K‹àŠzj
+    TYPE rec_zeiritu_k_dtl_type  IS RECORD(
+        zeiritu_k           NUMBER         -- Å—¦(Œû‘K)
+       ,amount_k            NUMBER         -- d“ü‹àŠz(Œû‘K)
+       ,tax_amount_k        NUMBER         -- Á”ïÅŠz(Œû‘K)
+      ) ;
+    TYPE rec_zeiritu_k_dtl_ttype IS TABLE OF rec_zeiritu_k_dtl_type INDEX BY BINARY_INTEGER ;
+    ct_zei_k_tab              rec_zeiritu_k_dtl_ttype;
+--
+    -- Å‹æ•ª“à–óî•ñid“ü‹àŠzj
+    CURSOR  tax_kbn_cur
+    IS
+      SELECT to_number(flv_p_tax.lookup_code) zeiritu,
+             0                                amount,
+             0                                tax_amount
+      FROM   fnd_lookup_values flv_p_tax      --ƒNƒCƒbƒNƒR[ƒh(Á”ïÅ)
+      WHERE  flv_p_tax.lookup_type = gc_lookup_type_tax_rate
+      AND    flv_p_tax.language    = gc_language_code
+      ORDER BY to_number(flv_p_tax.lookup_code)
+      ;
+--
+    -- Å‹æ•ª“à–óî•ñiŒû‘K‹àŠzj
+    CURSOR  tax_kbn_k_cur
+    IS
+      SELECT to_number(flv_p_tax.lookup_code) zeiritu_k,
+             0                                amount_k,
+             0                                tax_amount_k
+      FROM   fnd_lookup_values flv_p_tax      --ƒNƒCƒbƒNƒR[ƒh(Á”ïÅ)
+      WHERE  flv_p_tax.lookup_type = gc_lookup_type_tax_rate
+      AND    flv_p_tax.language    = gc_language_code
+      ORDER BY to_number(flv_p_tax.lookup_code)
+      ;
+-- Ver1.35 Add End
 --
     lb_ret                  BOOLEAN;
     ln_loop_index           NUMBER DEFAULT 0;
@@ -2101,6 +2302,22 @@ AS
 --
 --###########################  ŒÅ’è•” END   ############################
 --
+-- Ver1.35 Add Start
+    -- ƒ[ƒNƒe[ƒuƒ‹•Ï”—p
+    -- ƒI[ƒvƒ“
+    OPEN tax_kbn_cur;
+    -- ƒoƒ‹ƒNƒtƒFƒbƒ`
+    FETCH tax_kbn_cur BULK COLLECT INTO ct_zei_tab;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE tax_kbn_cur;
+--
+    -- ƒI[ƒvƒ“
+    OPEN tax_kbn_k_cur;
+    -- ƒoƒ‹ƒNƒtƒFƒbƒ`
+    FETCH tax_kbn_k_cur BULK COLLECT INTO ct_zei_k_tab;
+    -- ƒJ[ƒ\ƒ‹ƒNƒ[ƒY
+    CLOSE tax_kbn_k_cur;
+-- Ver1.35 Add End
     -- =====================================================
     -- ƒwƒbƒ_[ƒf[ƒ^’ŠoEo—Íˆ—
     -- =====================================================
@@ -2221,6 +2438,59 @@ AS
                   -- ’†‡Œv(ˆ´ùÒ or æˆøæ
                   IF ( NVL(lr_now_key.middle, lc_break_null ) <> lr_pre_key.middle ) THEN
                     lb_ret := fnc_set_xml('T', '/lg_detail');
+-- Ver1.35 Add Start
+                    -- ˆ´ùÒor“¾ˆÓæŒvo—Í
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_siire', ln_sum_mid_siire);                -- d“ü‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_kosen', ln_sum_mid_kosen);                -- Œû‘K‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_sasihiki', ln_sum_mid_sasihiki);          -- ·ˆø‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_siire', ln_sum_mid_tax_siire);        -- Á”ïÅ(d“ü‹àŠz)
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_kousen', ln_sum_mid_tax_kousen);      -- Á”ïÅ(Œû‘K‹àŠz)
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_sasihiki', ln_sum_mid_tax_sasihiki);  -- Á”ïÅ(·ˆø‹àŠz)
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_siire', ln_sum_mid_jun_siire);        -- ƒd“ü‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_kosen', ln_sum_mid_jun_kosen);        -- ƒŒû‘K‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_sasihiki', ln_sum_mid_jun_sasihiki);  -- ƒ·ˆø‹àŠz
+                    -- •”¬Œv‰ÁZ
+                    ln_sum_post_siire        := ln_sum_post_siire        + NVL(ln_sum_mid_siire, 0);        -- d“ü‹àŠz
+                    ln_sum_post_kosen        := ln_sum_post_kosen        + NVL(ln_sum_mid_kosen, 0);        -- Œû‘K‹àŠz
+                    ln_sum_post_sasihiki     := ln_sum_post_sasihiki     + NVL(ln_sum_mid_sasihiki, 0);     -- ·ˆø‹àŠz
+                    ln_sum_post_tax_siire    := ln_sum_post_tax_siire    + NVL(ln_sum_mid_tax_siire, 0);    -- Á”ïÅ(d“ü‹àŠz)
+                    ln_sum_post_tax_kousen   := ln_sum_post_tax_kousen   + NVL(ln_sum_mid_tax_kousen, 0);   -- Á”ïÅ(Œû‘K‹àŠz)
+                    ln_sum_post_tax_sasihiki := ln_sum_post_tax_sasihiki + NVL(ln_sum_mid_tax_sasihiki, 0); -- Á”ïÅ(·ˆø‹àŠz)
+                    ln_sum_post_jun_siire    := ln_sum_post_jun_siire    + NVL(ln_sum_mid_jun_siire, 0);    -- ƒd“ü‹àŠz
+                    ln_sum_post_jun_kosen    := ln_sum_post_jun_kosen    + NVL(ln_sum_mid_jun_kosen, 0);    -- ƒŒû‘K‹àŠz
+                    ln_sum_post_jun_sasihiki := ln_sum_post_jun_sasihiki + NVL(ln_sum_mid_jun_sasihiki, 0); -- ƒ·ˆø‹àŠz
+                    -- ‘‡Œv‰ÁZ
+                    ln_sum_siire             := ln_sum_siire        + NVL(ln_sum_mid_siire, 0);
+                    ln_sum_kosen             := ln_sum_kosen        + NVL(ln_sum_mid_kosen, 0);
+                    ln_sum_sasihiki          := ln_sum_sasihiki     + NVL(ln_sum_mid_sasihiki, 0);
+                    ln_sum_tax_siire         := ln_sum_tax_siire    + NVL(ln_sum_mid_tax_siire, 0);
+                    ln_sum_tax_kousen        := ln_sum_tax_kousen   + NVL(ln_sum_mid_tax_kousen, 0);
+                    ln_sum_tax_sasihiki      := ln_sum_tax_sasihiki + NVL(ln_sum_mid_tax_sasihiki, 0);
+                    ln_sum_jun_siire         := ln_sum_jun_siire    + NVL(ln_sum_mid_jun_siire, 0);
+                    ln_sum_jun_kosen         := ln_sum_jun_kosen    + NVL(ln_sum_mid_jun_kosen, 0);
+                    ln_sum_jun_sasihiki      := ln_sum_jun_sasihiki + NVL(ln_sum_mid_jun_sasihiki, 0);
+                    -- ˆ´ùÒor“¾ˆÓæŒv—p•Ï”‰Šú‰»
+                    ln_sum_mid_siire         := lc_zero;
+                    ln_sum_mid_kosen         := lc_zero;
+                    ln_sum_mid_sasihiki      := lc_zero;
+                    ln_sum_mid_tax_siire     := lc_zero;
+                    ln_sum_mid_tax_kousen    := lc_zero;
+                    ln_sum_mid_tax_sasihiki  := lc_zero;
+                    ln_sum_mid_jun_siire     := lc_zero;
+                    ln_sum_mid_jun_kosen     := lc_zero;
+                    ln_sum_mid_jun_sasihiki  := lc_zero;
+                    --
+                    <<zeikin_loop>>
+                    FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+                      ct_zei_tab(ln_zei_loop_index).amount     := lc_zero;
+                      ct_zei_tab(ln_zei_loop_index).tax_amount := lc_zero;
+                    END LOOP;
+                    <<zeikin_k_loop>>
+                    FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+                      ct_zei_k_tab(ln_zei_k_loop_index).amount_k     := lc_zero;
+                      ct_zei_k_tab(ln_zei_k_loop_index).tax_amount_k := lc_zero;
+                    END LOOP;
+-- Ver1.35 Add End
                     IF (NVL(lr_now_key.dept, lc_break_null ) <> lr_pre_key.dept ) THEN
                       -- WŒv•Ê‚Ìê‡‚Ío—Í‚µ‚È‚¢
                       IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
@@ -2623,55 +2893,107 @@ AS
       --–Œãˆ—
       lr_pre_key := lr_now_key;
 --
+-- Ver1.35 Add Start
+      -- ˆ´ùÒor“¾ˆÓæŒv‰ÁZ
+      ln_sum_mid_siire            := ln_sum_mid_siire + NVL(ln_siire, 0);                                                          -- d“ü‹àŠz
+      ln_sum_mid_kosen            := ln_sum_mid_kosen + NVL(ln_kousen, 0);                                                         -- Œû‘K‹àŠz
+      ln_sum_mid_huka             := ln_sum_mid_huka + NVL(ln_fuka, 0);                                                            -- •Š‰Û‹àŠz
+      ln_sum_mid_sasihiki         := ln_sum_mid_sasihiki + ( NVL(ln_siire, 0) - NVL(ln_kousen, 0) - NVL(ln_fuka, 0) );             -- ·ˆø‹àŠz
+      -- Å—¦‚²‚Æ‚ÉZo‚µƒ[ƒNƒe[ƒuƒ‹‚ÉŠi”[(d“ü‹àŠz)
+      <<zeikin_loop>>
+      FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+        IF ( NVL(ct_zei_tab(ln_zei_loop_index).zeiritu , 0) = NVL(gt_main_data(ln_loop_index).zeiritu , 0) ) THEN
+          ct_zei_tab(ln_zei_loop_index).amount     := ct_zei_tab(ln_zei_loop_index).amount + NVL(ln_siire, 0);                     -- d“ü‹àŠz
+          ct_zei_tab(ln_zei_loop_index).tax_amount := 
+            ROUND(NVL(ct_zei_tab(ln_zei_loop_index).amount, 0) * NVL(gt_main_data(ln_loop_index).zeiritu , 0) / 100 ,0);           -- Á”ïÅ(Å—¦•Ê)
+        END IF;
+      END LOOP;
+      -- ƒ[ƒNƒe[ƒuƒ‹‚ÉŠi”[‚µ‚½Á”ïÅ‚ğ‰ÁZ
+      -- ‰ÁZ‚µ‚½Á”ïÅ‚ª“ü‚Á‚Ä‚¢‚é‚Ì‚Å–ˆ‰ñ‰Šú‰»
+      ln_sum_mid_tax_siire := 0;
+      <<zeikin_loop2>>
+      FOR ln_zei_loop_index IN 1..ct_zei_tab.COUNT LOOP
+        ln_sum_mid_tax_siire        := ln_sum_mid_tax_siire + ct_zei_tab(ln_zei_loop_index).tax_amount;                            -- Á”ïÅ(d“ü‹àŠz)
+      END LOOP;
+--
+      -- Å—¦‚²‚Æ‚ÉZo‚µƒ[ƒNƒe[ƒuƒ‹‚ÉŠi”[(Œû‘K‹àŠz)
+      <<zeikin_k_loop>>
+      FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+        IF ( NVL(ct_zei_k_tab(ln_zei_k_loop_index).zeiritu_k , 0) = NVL(gt_main_data(ln_loop_index).zeiritu_k , 0) ) THEN
+          ct_zei_k_tab(ln_zei_k_loop_index).amount_k     := ct_zei_k_tab(ln_zei_k_loop_index).amount_k + NVL(ln_kousen, 0);        -- Œû‘K‹àŠz
+          ct_zei_k_tab(ln_zei_k_loop_index).tax_amount_k := 
+            ROUND(NVL(ct_zei_k_tab(ln_zei_k_loop_index).amount_k, 0) * NVL(gt_main_data(ln_loop_index).zeiritu_k , 0) / 100 ,0);   -- Á”ïÅ(Å—¦•Ê)
+        END IF;
+      END LOOP;
+      -- ƒ[ƒNƒe[ƒuƒ‹‚ÉŠi”[‚µ‚½Á”ïÅ‚ğ‰ÁZ
+      -- ‰ÁZ‚µ‚½Á”ïÅ‚ª“ü‚Á‚Ä‚¢‚é‚Ì‚Å–ˆ‰ñ‰Šú‰»
+      ln_sum_mid_tax_kousen := 0;
+      <<zeikin_k_loop2>>
+      FOR ln_zei_k_loop_index IN 1..ct_zei_k_tab.COUNT LOOP
+        ln_sum_mid_tax_kousen        := ln_sum_mid_tax_kousen + ct_zei_k_tab(ln_zei_k_loop_index).tax_amount_k;                    -- Á”ïÅ(Œû‘K‹àŠz)
+      END LOOP;
+      ln_sum_mid_tax_sasihiki     := ln_sum_mid_tax_siire - ln_sum_mid_tax_kousen;                                                 -- Á”ïÅ(·ˆø‹àŠz)
+      ln_sum_mid_jun_siire        := ln_sum_mid_siire + ln_sum_mid_tax_siire;                                                      -- ƒd“ü‹àŠz
+      ln_sum_mid_jun_kosen        := ln_sum_mid_kosen + ln_sum_mid_tax_kousen;                                                     -- ƒŒû‘K‹àŠz
+      ln_sum_mid_jun_sasihiki     := ln_sum_mid_sasihiki + ln_sum_mid_tax_sasihiki;                                                -- ƒ·ˆø‹àŠz
+-- Ver1.35 Add End
       -- WŒv•Ê‚Ìê‡‚Ío—Í‚µ‚È‚¢
       IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
         -- •”‡Œv‰ÁZ
         ln_sum_post_qty          := ln_sum_post_qty
                                           + NVL(gt_main_data(ln_loop_index).quantity, 0);
-        ln_sum_post_siire        := ln_sum_post_siire
-                                          + NVL(ln_siire, 0);
-        ln_sum_post_kosen        := ln_sum_post_kosen
--- 2009/05/18 v1.26 T.Yoshimoto Mod Start –{”Ô#1478
---                                          + NVL(gt_main_data(ln_loop_index).kousen_price, 0);
-                                          + NVL(ln_kousen, 0);
+-- Ver1.35 Del Start
+--        ln_sum_post_siire        := ln_sum_post_siire
+--                                          + NVL(ln_siire, 0);
+--        ln_sum_post_kosen        := ln_sum_post_kosen
+---- 2009/05/18 v1.26 T.Yoshimoto Mod Start –{”Ô#1478
+----                                          + NVL(gt_main_data(ln_loop_index).kousen_price, 0);
+--                                          + NVL(ln_kousen, 0);
+-- Ver1.35 Del End
 -- 2009/05/18 v1.26 T.Yoshimoto Mod End –{”Ô#1478
         ln_sum_post_huka         := ln_sum_post_huka
 -- 2009/05/18 v1.26 T.Yoshimoto Mod Start –{”Ô#1478
 --                                          + NVL(gt_main_data(ln_loop_index).fukakin_price, 0);
                                           + NVL(ln_fuka, 0);
 -- 2009/05/18 v1.26 T.Yoshimoto Mod End –{”Ô#1478
-        ln_sum_post_sasihiki     := ln_sum_post_sasihiki
-                                          + NVL(ln_sasihiki, 0);
-        ln_sum_post_tax_siire    := ln_sum_post_tax_siire
-                                          + NVL(ln_tax_siire, 0);
-        ln_sum_post_tax_kousen   := ln_sum_post_tax_kousen
-                                          + NVL(ln_tax_kousen, 0);
-        ln_sum_post_tax_sasihiki := ln_sum_post_tax_sasihiki
-                                          + NVL(ln_tax_sasihiki, 0);
-        ln_sum_post_jun_siire    := ln_sum_post_jun_siire
-                                          + NVL(ln_jun_siire, 0);
-        ln_sum_post_jun_kosen    := ln_sum_post_jun_kosen
-                                          + NVL(ln_jun_kosen, 0);
-        ln_sum_post_jun_sasihiki := ln_sum_post_jun_sasihiki
-                                          + NVL(ln_jun_sasihiki, 0);
+-- Ver1.35 Del Start
+--        ln_sum_post_sasihiki     := ln_sum_post_sasihiki
+--                                          + NVL(ln_sasihiki, 0);
+--        ln_sum_post_tax_siire    := ln_sum_post_tax_siire
+--                                          + NVL(ln_tax_siire, 0);
+--        ln_sum_post_tax_kousen   := ln_sum_post_tax_kousen
+--                                          + NVL(ln_tax_kousen, 0);
+--        ln_sum_post_tax_sasihiki := ln_sum_post_tax_sasihiki
+--                                          + NVL(ln_tax_sasihiki, 0);
+--        ln_sum_post_jun_siire    := ln_sum_post_jun_siire
+--                                          + NVL(ln_jun_siire, 0);
+--        ln_sum_post_jun_kosen    := ln_sum_post_jun_kosen
+--                                          + NVL(ln_jun_kosen, 0);
+--        ln_sum_post_jun_sasihiki := ln_sum_post_jun_sasihiki
+--                                          + NVL(ln_jun_sasihiki, 0);
+-- Ver1.35 Del End
       END IF;
 --
       --‘‡Œv‰ÁZ
       ln_sum_qty          := ln_sum_qty        + NVL(gt_main_data(ln_loop_index).quantity, 0);
-      ln_sum_siire        := ln_sum_siire      + NVL(ln_siire, 0);
--- 2009/05/18 v1.26 T.Yoshimoto Mod Start –{”Ô#1478
-      --ln_sum_kosen        := ln_sum_kosen      + NVL(gt_main_data(ln_loop_index).kousen_price, 0);
-      --ln_sum_huka         := ln_sum_huka       + NVL(gt_main_data(ln_loop_index).fukakin_price, 0);
-      ln_sum_kosen        := ln_sum_kosen      + NVL(ln_kousen, 0);
+-- Ver1.35 Del Start
+--      ln_sum_siire        := ln_sum_siire      + NVL(ln_siire, 0);
+---- 2009/05/18 v1.26 T.Yoshimoto Mod Start –{”Ô#1478
+--      --ln_sum_kosen        := ln_sum_kosen      + NVL(gt_main_data(ln_loop_index).kousen_price, 0);
+--      --ln_sum_huka         := ln_sum_huka       + NVL(gt_main_data(ln_loop_index).fukakin_price, 0);
+--      ln_sum_kosen        := ln_sum_kosen      + NVL(ln_kousen, 0);
+-- Ver1.35 Del End
       ln_sum_huka         := ln_sum_huka       + NVL(ln_fuka, 0);
 -- 2009/05/18 v1.26 T.Yoshimoto Mod End –{”Ô#1478
-      ln_sum_sasihiki     := ln_sum_sasihiki   + NVL(ln_sasihiki, 0);
-      ln_sum_tax_siire    := ln_sum_tax_siire  + NVL(ln_tax_siire, 0);
-      ln_sum_tax_kousen   := ln_sum_tax_kousen + NVL(ln_tax_kousen, 0);
-      ln_sum_tax_sasihiki := ln_sum_tax_sasihiki + NVL(ln_tax_sasihiki, 0);
-      ln_sum_jun_siire    := ln_sum_jun_siire    + NVL(ln_jun_siire, 0);
-      ln_sum_jun_kosen    := ln_sum_jun_kosen    + NVL(ln_jun_kosen, 0);
-      ln_sum_jun_sasihiki := ln_sum_jun_sasihiki + NVL(ln_jun_sasihiki, 0);
+-- Ver1.35 Del Start
+--      ln_sum_sasihiki     := ln_sum_sasihiki   + NVL(ln_sasihiki, 0);
+--      ln_sum_tax_siire    := ln_sum_tax_siire  + NVL(ln_tax_siire, 0);
+--      ln_sum_tax_kousen   := ln_sum_tax_kousen + NVL(ln_tax_kousen, 0);
+--      ln_sum_tax_sasihiki := ln_sum_tax_sasihiki + NVL(ln_tax_sasihiki, 0);
+--      ln_sum_jun_siire    := ln_sum_jun_siire    + NVL(ln_jun_siire, 0);
+--      ln_sum_jun_kosen    := ln_sum_jun_kosen    + NVL(ln_jun_kosen, 0);
+--      ln_sum_jun_sasihiki := ln_sum_jun_sasihiki + NVL(ln_jun_sasihiki, 0);
+-- Ver1.35 Del End
 --
     END LOOP main_data_loop ;
 --
@@ -2699,6 +3021,39 @@ AS
     lb_ret := fnc_set_xml('T', '/lg_detail');
 --
     -- ’†‡Œv(ˆ´ùÒ or æˆøæ
+-- Ver1.35 Add Start
+    -- “¾ˆÓæŒvo—Í
+    lb_ret := fnc_set_xml('Z', 'sum_mid_siire', ln_sum_mid_siire);                -- d“ü‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_kosen', ln_sum_mid_kosen);                -- Œû‘K‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_sasihiki', ln_sum_mid_sasihiki);          -- ·ˆø‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_siire', ln_sum_mid_tax_siire);        -- Á”ïÅ(d“ü‹àŠz)
+    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_kousen', ln_sum_mid_tax_kousen);      -- Á”ïÅ(Œû‘K‹àŠz)
+    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_sasihiki', ln_sum_mid_tax_sasihiki);  -- Á”ïÅ(·ˆø‹àŠz)
+    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_siire', ln_sum_mid_jun_siire);        -- ƒd“ü‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_kosen', ln_sum_mid_jun_kosen);        -- ƒŒû‘K‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_sasihiki', ln_sum_mid_jun_sasihiki);  -- ƒ·ˆø‹àŠz
+    --
+    -- •”¬Œv‰ÁZ
+    ln_sum_post_siire        := ln_sum_post_siire        + NVL(ln_sum_mid_siire, 0);        -- d“ü‹àŠz
+    ln_sum_post_kosen        := ln_sum_post_kosen        + NVL(ln_sum_mid_kosen, 0);        -- Œû‘K‹àŠz
+    ln_sum_post_sasihiki     := ln_sum_post_sasihiki     + NVL(ln_sum_mid_sasihiki, 0);     -- ·ˆø‹àŠz
+    ln_sum_post_tax_siire    := ln_sum_post_tax_siire    + NVL(ln_sum_mid_tax_siire, 0);    -- Á”ïÅ(d“ü‹àŠz)
+    ln_sum_post_tax_kousen   := ln_sum_post_tax_kousen   + NVL(ln_sum_mid_tax_kousen, 0);   -- Á”ïÅ(Œû‘K‹àŠz)
+    ln_sum_post_tax_sasihiki := ln_sum_post_tax_sasihiki + NVL(ln_sum_mid_tax_sasihiki, 0); -- Á”ïÅ(·ˆø‹àŠz)
+    ln_sum_post_jun_siire    := ln_sum_post_jun_siire    + NVL(ln_sum_mid_jun_siire, 0);    -- ƒd“ü‹àŠz
+    ln_sum_post_jun_kosen    := ln_sum_post_jun_kosen    + NVL(ln_sum_mid_jun_kosen, 0);    -- ƒŒû‘K‹àŠz
+    ln_sum_post_jun_sasihiki := ln_sum_post_jun_sasihiki + NVL(ln_sum_mid_jun_sasihiki, 0); -- ƒ·ˆø‹àŠz
+    --‘‡Œv‰ÁZ
+    ln_sum_siire             := ln_sum_siire        + NVL(ln_sum_mid_siire, 0);
+    ln_sum_kosen             := ln_sum_kosen        + NVL(ln_sum_mid_kosen, 0);
+    ln_sum_sasihiki          := ln_sum_sasihiki     + NVL(ln_sum_mid_sasihiki, 0);
+    ln_sum_tax_siire         := ln_sum_tax_siire    + NVL(ln_sum_mid_tax_siire, 0);
+    ln_sum_tax_kousen        := ln_sum_tax_kousen   + NVL(ln_sum_mid_tax_kousen, 0);
+    ln_sum_tax_sasihiki      := ln_sum_tax_sasihiki + NVL(ln_sum_mid_tax_sasihiki, 0);
+    ln_sum_jun_siire         := ln_sum_jun_siire    + NVL(ln_sum_mid_jun_siire, 0);
+    ln_sum_jun_kosen         := ln_sum_jun_kosen    + NVL(ln_sum_mid_jun_kosen, 0);
+    ln_sum_jun_sasihiki      := ln_sum_jun_sasihiki + NVL(ln_sum_mid_jun_sasihiki, 0);
+-- Ver1.35 Add End
     -- •”¬Œvo—Í
     IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
       lb_ret := fnc_set_xml('Z', 'whse_subtotal', ln_sum_post_qty);     --“üŒÉ‘”
@@ -2877,6 +3232,19 @@ AS
     ln_sum_jun_siire        NUMBER DEFAULT 0;         -- ƒd“ü‹àŠz
     ln_sum_jun_kosen        NUMBER DEFAULT 0;         -- ƒŒû‘K‹àŠz
     ln_sum_jun_sasihiki     NUMBER DEFAULT 0;         -- ƒ·ˆø‹àŠz
+-- Ver1.35 Add Start
+    -- æˆøæ¬Œv—p
+    ln_sum_mid_siire            NUMBER DEFAULT 0;         -- d“ü‹àŠz
+    ln_sum_mid_kosen            NUMBER DEFAULT 0;         -- Œû‘K‹àŠz
+    ln_sum_mid_huka             NUMBER DEFAULT 0;         -- •Š‰Û‹àŠz
+    ln_sum_mid_sasihiki         NUMBER DEFAULT 0;         -- ·ˆø‹àŠz
+    ln_sum_mid_tax_siire        NUMBER DEFAULT 0;         -- Á”ïÅ(d“ü‹àŠz)
+    ln_sum_mid_tax_kousen       NUMBER DEFAULT 0;         -- Á”ïÅ(Œû‘K‹àŠz)
+    ln_sum_mid_tax_sasihiki     NUMBER DEFAULT 0;         -- Á”ïÅ(·ˆø‹àŠz)
+    ln_sum_mid_jun_siire        NUMBER DEFAULT 0;         -- ƒd“ü‹àŠz
+    ln_sum_mid_jun_kosen        NUMBER DEFAULT 0;         -- ƒŒû‘K‹àŠz
+    ln_sum_mid_jun_sasihiki     NUMBER DEFAULT 0;         -- ƒ·ˆø‹àŠz
+-- Ver1.35 Add End
 --
     lb_ret                  BOOLEAN;
     ln_loop_index           NUMBER DEFAULT 0;
@@ -2928,6 +3296,9 @@ AS
       lb_ret := fnc_set_xml('D', 'middle_sum_name', lc_sum_assensya);
       lb_ret := fnc_set_xml('D', 'caption', lc_caption_assen);
     ELSE
+-- Ver1.35 Add Start
+      lb_ret := fnc_set_xml('D', 'middle_sum_name', lc_sum_torihikisaki);
+-- Ver1.35 Add End
       lb_ret := fnc_set_xml('D', 'caption', lc_caption_sum);
     END IF;
 --
@@ -2994,30 +3365,40 @@ AS
       ELSE
         --ƒL[Š„‚ê”»’f@×‚©‚¢‡‚É”»’f
         -- ƒƒbƒg
-        IF ( NVL(lr_now_key.lot, lc_break_null ) <> lr_pre_key.lot ) THEN
+-- Ver1.35 Del Start
+--        IF ( NVL(lr_now_key.lot, lc_break_null ) <> lr_pre_key.lot ) THEN
+-- Ver1.35 Del End
           lb_ret := fnc_set_xml('T', '/g_lot');
           ln_group_depth := lc_depth_g_lot;
 --
           -- •t‘Ñ
-          IF ( NVL(lr_now_key.hutai, lc_break_null ) <> lr_pre_key.hutai ) THEN
+-- Ver1.35 Del Start
+--          IF ( NVL(lr_now_key.hutai, lc_break_null ) <> lr_pre_key.hutai ) THEN
+-- Ver1.35 Del End
             lb_ret := fnc_set_xml('T', '/lg_lot');
             lb_ret := fnc_set_xml('T', '/g_hutai');
             ln_group_depth := lc_depth_g_hutai;
 --
             -- •i–Ú
-            IF ( NVL(lr_now_key.item, lc_break_null ) <> lr_pre_key.item ) THEN
+-- Ver1.35 Del Start
+--            IF ( NVL(lr_now_key.item, lc_break_null ) <> lr_pre_key.item ) THEN
+-- Ver1.35 Del End
               lb_ret := fnc_set_xml('T', '/lg_hutai');
               lb_ret := fnc_set_xml('T', '/g_item');
               ln_group_depth := lc_depth_g_item;
 --
               -- ”[“ü“ú
-              IF ( NVL(lr_now_key.deliver, lc_break_null ) <> lr_pre_key.deliver ) THEN
+-- Ver1.35 Del Start
+--              IF ( NVL(lr_now_key.deliver, lc_break_null ) <> lr_pre_key.deliver ) THEN
+-- Ver1.35 Del End
                 lb_ret := fnc_set_xml('T', '/lg_item');
                 lb_ret := fnc_set_xml('T', '/g_deliver_date');
                 ln_group_depth := lc_depth_g_deliver_date;
 --
                 -- Ú×‡Œv(ˆ´ùÒ•æˆøæ
-                IF ( NVL(lr_now_key.detail, lc_break_null ) <> lr_pre_key.detail ) THEN
+-- Ver1.35 Del Start
+--                IF ( NVL(lr_now_key.detail, lc_break_null ) <> lr_pre_key.detail ) THEN
+-- Ver1.35 Del End
                   lb_ret := fnc_set_xml('T', '/lg_deliver_date');
                   lb_ret := fnc_set_xml('T', '/g_detail');
                   ln_group_depth := lc_depth_g_detail;
@@ -3025,6 +3406,38 @@ AS
                   -- ’†‡Œv(ˆ´ùÒ or æˆøæ
                   IF ( NVL(lr_now_key.middle, lc_break_null ) <> lr_pre_key.middle ) THEN
                     lb_ret := fnc_set_xml('T', '/lg_detail');
+-- Ver1.35 Add Start
+                    -- “¾ˆÓæŒvo—Í
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_siire', ln_sum_mid_siire);                -- d“ü‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_kosen', ln_sum_mid_kosen);                -- Œû‘K‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_sasihiki', ln_sum_mid_sasihiki);          -- ·ˆø‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_siire', ln_sum_mid_tax_siire);        -- Á”ïÅ(d“ü‹àŠz)
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_kousen', ln_sum_mid_tax_kousen);      -- Á”ïÅ(Œû‘K‹àŠz)
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_sasihiki', ln_sum_mid_tax_sasihiki);  -- Á”ïÅ(·ˆø‹àŠz)
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_siire', ln_sum_mid_jun_siire);        -- ƒd“ü‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_kosen', ln_sum_mid_jun_kosen);        -- ƒŒû‘K‹àŠz
+                    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_sasihiki', ln_sum_mid_jun_sasihiki);  -- ƒ·ˆø‹àŠz
+                    --‘‡Œv‰ÁZ
+                    ln_sum_siire            := ln_sum_siire        + NVL(ln_sum_mid_siire, 0);
+                    ln_sum_kosen            := ln_sum_kosen        + NVL(ln_sum_mid_kosen, 0);
+                    ln_sum_sasihiki         := ln_sum_sasihiki     + NVL(ln_sum_mid_sasihiki, 0);
+                    ln_sum_tax_siire        := ln_sum_tax_siire    + NVL(ln_sum_mid_tax_siire, 0);
+                    ln_sum_tax_kousen       := ln_sum_tax_kousen   + NVL(ln_sum_mid_tax_kousen, 0);
+                    ln_sum_tax_sasihiki     := ln_sum_tax_sasihiki + NVL(ln_sum_mid_tax_sasihiki, 0);
+                    ln_sum_jun_siire        := ln_sum_jun_siire    + NVL(ln_sum_mid_jun_siire, 0);
+                    ln_sum_jun_kosen        := ln_sum_jun_kosen    + NVL(ln_sum_mid_jun_kosen, 0);
+                    ln_sum_jun_sasihiki     := ln_sum_jun_sasihiki + NVL(ln_sum_mid_jun_sasihiki, 0);
+                    -- “¾ˆÓæŒv—p•Ï”‰Šú‰»
+                    ln_sum_mid_siire        := lc_zero;
+                    ln_sum_mid_kosen        := lc_zero;
+                    ln_sum_mid_sasihiki     := lc_zero;
+                    ln_sum_mid_tax_siire    := lc_zero;
+                    ln_sum_mid_tax_kousen   := lc_zero;
+                    ln_sum_mid_tax_sasihiki := lc_zero;
+                    ln_sum_mid_jun_siire    := lc_zero;
+                    ln_sum_mid_jun_kosen    := lc_zero;
+                    ln_sum_mid_jun_sasihiki := lc_zero;
+-- Ver1.35 Add End
                     IF (NVL(lr_now_key.dept, lc_break_null ) <> lr_pre_key.dept ) THEN
                       -- WŒv•Ê‚Ìê‡‚Ío—Í‚µ‚È‚¢
                       IF ( gr_param_rec.out_flg <> lc_out_syukei) THEN
@@ -3083,11 +3496,13 @@ AS
                       ln_group_depth := lc_depth_g_dept;
                     END IF;
                   END IF;
-                END IF;
-              END IF;
-            END IF;
-          END IF;
-        END IF;
+-- Ver1.35 Del Start
+--                END IF;
+--              END IF;
+--            END IF;
+--          END IF;
+--        END IF;
+-- Ver1.35 Del End
       END IF;
 --
         --------------------------------------
@@ -3102,16 +3517,20 @@ AS
       END IF;
 --
       IF (ln_group_depth >= lc_depth_g_middle) THEN
-        -- ’†‡Œv(ˆ´ùÒ or æˆøæ
+        -- ’†‡Œv(æˆøæ
         lb_ret := fnc_set_xml('T', 'g_middle');
         lb_ret := fnc_set_xml('D', 'mid_code', gt_main_data(ln_loop_index).break_mid);
-        IF (gr_param_rec.out_flg = '1') THEN
-          lb_ret := fnc_set_xml('D', 'middle_code', gt_main_data(ln_loop_index).assen_no);
-          lb_ret := fnc_set_xml('D', 'middle_name', gt_main_data(ln_loop_index).assen_sht, 20);
-        ELSIF (gr_param_rec.out_flg = '2') THEN
+-- Ver1.35 Del Start
+--        IF (gr_param_rec.out_flg = '1') THEN
+--          lb_ret := fnc_set_xml('D', 'middle_code', gt_main_data(ln_loop_index).assen_no);
+--          lb_ret := fnc_set_xml('D', 'middle_name', gt_main_data(ln_loop_index).assen_sht, 20);
+--        ELSIF (gr_param_rec.out_flg = '2') THEN
+-- Ver1.35 Del End
           lb_ret := fnc_set_xml('D', 'middle_code', gt_main_data(ln_loop_index).siire_no);
           lb_ret := fnc_set_xml('D', 'middle_name', gt_main_data(ln_loop_index).siire_sht, 20);
-        END IF;
+-- Ver1.35 Del Start
+--        END IF;
+-- Ver1.35 Del End
         lb_ret := fnc_set_xml('T', 'lg_detail');
       END IF;
 --
@@ -3282,18 +3701,35 @@ AS
       --–Œãˆ—
       lr_pre_key := lr_now_key;
 --
+-- Ver1.35 Add Start
+      -- “¾ˆÓæŒv‰ÁZ
+      ln_sum_mid_siire            := ln_sum_mid_siire + NVL(ln_siire, 0);                                                  -- d“ü‹àŠz
+      ln_sum_mid_kosen            := ln_sum_mid_kosen + NVL(ln_kousen, 0);                                                 -- Œû‘K‹àŠz
+      ln_sum_mid_huka             := ln_sum_mid_huka + NVL(ln_fuka, 0);                                                    -- •Š‰Û‹àŠz
+      ln_sum_mid_sasihiki         := ln_sum_mid_sasihiki + ( NVL(ln_siire, 0) - NVL(ln_kousen, 0) - NVL(ln_fuka, 0) );     -- ·ˆø‹àŠz
+      ln_sum_mid_tax_siire        := NVL(gt_main_data(ln_loop_index).sum_siire_tax,0);                                     -- Á”ïÅ(d“ü‹àŠz)
+      ln_sum_mid_tax_kousen       := NVL(gt_main_data(ln_loop_index).sum_kousen_tax,0);                                    -- Á”ïÅ(Œû‘K‹àŠz)
+      ln_sum_mid_tax_sasihiki     := ln_sum_mid_tax_siire - ln_sum_mid_tax_kousen;                                         -- Á”ïÅ(·ˆø‹àŠz)
+      ln_sum_mid_jun_siire        := ln_sum_mid_siire + ln_sum_mid_tax_siire;                                              -- ƒd“ü‹àŠz
+      ln_sum_mid_jun_kosen        := ln_sum_mid_kosen + ln_sum_mid_tax_kousen;                                             -- ƒŒû‘K‹àŠz
+      ln_sum_mid_jun_sasihiki     := ln_sum_mid_sasihiki + ln_sum_mid_tax_sasihiki;                                        -- ƒ·ˆø‹àŠz
+-- Ver1.35 Add End
       --‘‡Œv‰ÁZ
       ln_sum_qty          := ln_sum_qty        + NVL(gt_main_data(ln_loop_index).quantity, 0);
-      ln_sum_siire        := ln_sum_siire      + NVL(ln_siire, 0);
-      ln_sum_kosen        := ln_sum_kosen      + NVL(ln_kousen, 0);
+-- Ver1.35 Del Start
+--      ln_sum_siire        := ln_sum_siire      + NVL(ln_siire, 0);
+--      ln_sum_kosen        := ln_sum_kosen      + NVL(ln_kousen, 0);
+-- Ver1.35 Del End
       ln_sum_huka         := ln_sum_huka       + NVL(ln_fuka, 0);
-      ln_sum_sasihiki     := ln_sum_sasihiki   + NVL(ln_sasihiki, 0);
-      ln_sum_tax_siire    := ln_sum_tax_siire  + NVL(ln_tax_siire, 0);
-      ln_sum_tax_kousen   := ln_sum_tax_kousen + NVL(ln_tax_kousen, 0);
-      ln_sum_tax_sasihiki := ln_sum_tax_sasihiki + NVL(ln_tax_sasihiki, 0);
-      ln_sum_jun_siire    := ln_sum_jun_siire    + NVL(ln_jun_siire, 0);
-      ln_sum_jun_kosen    := ln_sum_jun_kosen    + NVL(ln_jun_kosen, 0);
-      ln_sum_jun_sasihiki := ln_sum_jun_sasihiki + NVL(ln_jun_sasihiki, 0);
+-- Ver1.35 Del Start
+--      ln_sum_sasihiki     := ln_sum_sasihiki   + NVL(ln_sasihiki, 0);
+--      ln_sum_tax_siire    := ln_sum_tax_siire  + NVL(ln_tax_siire, 0);
+--      ln_sum_tax_kousen   := ln_sum_tax_kousen + NVL(ln_tax_kousen, 0);
+--      ln_sum_tax_sasihiki := ln_sum_tax_sasihiki + NVL(ln_tax_sasihiki, 0);
+--      ln_sum_jun_siire    := ln_sum_jun_siire    + NVL(ln_jun_siire, 0);
+--      ln_sum_jun_kosen    := ln_sum_jun_kosen    + NVL(ln_jun_kosen, 0);
+--      ln_sum_jun_sasihiki := ln_sum_jun_sasihiki + NVL(ln_jun_sasihiki, 0);
+-- Ver1.35 Del End
 --
     END LOOP main_data_loop ;
 --
@@ -3348,6 +3784,29 @@ AS
                                               ln_sum_post_huka);        --•Š‰Û‹àŠz
     END IF;
 --
+-- Ver1.35 Add Start
+    -- “¾ˆÓæŒvo—Í
+    lb_ret := fnc_set_xml('Z', 'sum_mid_siire', ln_sum_mid_siire);                -- d“ü‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_kosen', ln_sum_mid_kosen);                -- Œû‘K‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_sasihiki', ln_sum_mid_sasihiki);          -- ·ˆø‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_siire', ln_sum_mid_tax_siire);        -- Á”ïÅ(d“ü‹àŠz)
+    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_kousen', ln_sum_mid_tax_kousen);      -- Á”ïÅ(Œû‘K‹àŠz)
+    lb_ret := fnc_set_xml('Z', 'sum_mid_tax_sasihiki', ln_sum_mid_tax_sasihiki);  -- Á”ïÅ(·ˆø‹àŠz)
+    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_siire', ln_sum_mid_jun_siire);        -- ƒd“ü‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_kosen', ln_sum_mid_jun_kosen);        -- ƒŒû‘K‹àŠz
+    lb_ret := fnc_set_xml('Z', 'sum_mid_jun_sasihiki', ln_sum_mid_jun_sasihiki);  -- ƒ·ˆø‹àŠz
+    --
+    --‘‡Œv‰ÁZ
+    ln_sum_siire        := ln_sum_siire        + NVL(ln_sum_mid_siire, 0);
+    ln_sum_kosen        := ln_sum_kosen        + NVL(ln_sum_mid_kosen, 0);
+    ln_sum_sasihiki     := ln_sum_sasihiki     + NVL(ln_sum_mid_sasihiki, 0);
+    ln_sum_tax_siire    := ln_sum_tax_siire    + NVL(ln_sum_mid_tax_siire, 0);
+    ln_sum_tax_kousen   := ln_sum_tax_kousen   + NVL(ln_sum_mid_tax_kousen, 0);
+    ln_sum_tax_sasihiki := ln_sum_tax_sasihiki + NVL(ln_sum_mid_tax_sasihiki, 0);
+    ln_sum_jun_siire    := ln_sum_jun_siire    + NVL(ln_sum_mid_jun_siire, 0);
+    ln_sum_jun_kosen    := ln_sum_jun_kosen    + NVL(ln_sum_mid_jun_kosen, 0);
+    ln_sum_jun_sasihiki := ln_sum_jun_sasihiki + NVL(ln_sum_mid_jun_sasihiki, 0);
+-- Ver1.35 Add End
     lb_ret := fnc_set_xml('D', 'total_flg' ,lc_flg_y);
 --
     lb_ret := fnc_set_xml('T', '/g_middle');
