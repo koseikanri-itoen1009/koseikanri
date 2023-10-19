@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2019/08/30    1.22  Y.Shoji          E_本稼働_15601
  *  2019/10/18    1.23  H.Ishii          E_本稼働_15601
  *  2019/11/12    1.24  H.Ishii          E_本稼働_16036
+ *  2023/10/10    1.25  R.Oikawa         E_本稼働_19497
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -256,6 +257,9 @@ AS
      ,bank_account_name_alt ap_bank_accounts_all.account_holder_name_alt%TYPE -- 口座名義ｶﾅ
      ,break_page_flg        VARCHAR2(1)                                       -- 改ページフラグ
 -- 2019/08/30 Ver1.22 Add End
+-- Ver1.25 Add Start
+     ,invoice_t_no          VARCHAR2(14)                          -- 登録番号
+-- Ver1.25 Add End
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -297,6 +301,12 @@ AS
   TYPE g_ded_amount_tax_bd_ttype      IS TABLE OF NUMBER  INDEX BY PLS_INTEGER;
   gt_ded_amount_tax_bd_tab            g_ded_amount_tax_bd_ttype;
 -- 2019/08/30 Ver1.22 Add End
+-- Ver1.25 Add Start
+  TYPE g_tax_rate_ttype               IS TABLE OF NUMBER  INDEX BY PLS_INTEGER;
+  gt_tax_rate_tab                     g_tax_rate_ttype;
+  TYPE g_kousen_tax_rate_ttype        IS TABLE OF NUMBER  INDEX BY PLS_INTEGER;
+  gt_kousen_tax_rate_tab              g_kousen_tax_rate_ttype;
+-- Ver1.25 Add End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1651,6 +1661,9 @@ AS
     lv_break_init_flg        VARCHAR2(1);                                       -- ブレイク初期化フラグ
 --
 -- 2019/08/30 Ver1.22 Add End
+-- Ver1.25 Add Start
+    lt_invoice_t_no          VARCHAR2(14);                                      -- 登録番号
+-- Ver1.25 Add End
     -- *** ローカル・例外処理 ***
     get_value_expt    EXCEPTION ;     -- 値取得エラー
 -- 2013/07/05 v1.21 R.Watanabe Add End E_本稼動_10839
@@ -1679,6 +1692,10 @@ AS
     gt_l_u_price_rate_tax_bd_tab.DELETE;                 -- 賦課金消費税
     gt_tax_exc_amount_bd_tab.DELETE;                     -- 合計(税抜金額)
     gt_ded_amount_tax_bd_tab.DELETE;                     -- 合計(消費税)
+-- Ver1.25 Add Start
+    gt_tax_rate_tab.DELETE;                              -- 税率
+    gt_kousen_tax_rate_tab.DELETE;                       -- 税率(口銭)
+-- Ver1.25 Add End
 --
     lv_break_flg      := cv_flag_y;                      -- ブレイクフラグ
     lv_break_init_flg := cv_flag_n;                      -- ブレイク初期化フラグ
@@ -1743,9 +1760,14 @@ AS
       -- ==========================
       --  レコードをブレイク
       -- ==========================
-      -- 部署コード/仕入先/斡旋者/税コードが変更した場合
-      IF ( ( lv_dept_code <> it_data_rec(ln_loop_index).attribute10 )
-        OR ( lv_assen_no <> NVL(it_data_rec(ln_loop_index).segment1_a, 'NULL') )
+-- Ver1.25 Mod Start
+--      -- 部署コード/仕入先/斡旋者/税コードが変更した場合
+--      IF ( ( lv_dept_code <> it_data_rec(ln_loop_index).attribute10 )
+--        OR ( lv_assen_no <> NVL(it_data_rec(ln_loop_index).segment1_a, 'NULL') )
+      -- 仕入先/斡旋者/税コードが変更した場合
+      IF ( 
+           ( lv_assen_no <> NVL(it_data_rec(ln_loop_index).segment1_a, 'NULL') )
+-- Ver1.25 Mod End
 -- 2019/08/30 Ver1.22 Mod Start
 --        OR ( lv_siire_no <> it_data_rec(ln_loop_index).segment1_s ) ) THEN
         OR ( lv_siire_no <> it_data_rec(ln_loop_index).segment1_s )
@@ -1788,11 +1810,17 @@ AS
                 ,flv.meaning                    bank_account_type        -- 預金区分名
                 ,aba.bank_account_num           bank_account_num         -- 口座No
                 ,aba.account_holder_name_alt    bank_account_name_alt    -- 口座名義ｶﾅ
+-- Ver1.25 Add Start
+                ,pvsa_sales.attribute8 || pvsa_sales.attribute9 invoice_t_no   -- 登録番号
+-- Ver1.25 Add End
           INTO   lt_bank_name
                 ,lt_bank_branch_name
                 ,lv_bank_account_type
                 ,lt_bank_account_num
                 ,lt_bank_account_name_alt
+-- Ver1.25 Add Start
+                ,lt_invoice_t_no
+-- Ver1.25 Add End
           FROM   ap_bank_account_uses_all  abaua       -- 口座使用情報テーブル
                 ,ap_bank_accounts_all      aba         -- 銀行口座
                 ,ap_bank_branches          abb         -- 銀行支店
@@ -1872,6 +1900,10 @@ AS
         ot_data_rec(ln_count).purchase_amount      := ln_sum_siire;                                  --仕入金額
         ot_data_rec(ln_count).attribute5           := ln_sum_kosen;                                  --預り口銭金額
         ot_data_rec(ln_count).attribute8           := ln_sum_fuka;                                   --賦課金額
+-- Ver1.25 Add Start
+        ln_sum_tax_siire                           := ROUND(NVL(ln_sum_siire, 0) * it_data_rec(ln_loop_index-1).tax ,0);
+        ln_sum_tax_kousen                          := ROUND(NVL(ln_sum_kosen, 0) * gn_tax ,0);
+-- Ver1.25 Add End
         ot_data_rec(ln_count).purchase_amount_tax  := ln_sum_tax_siire;                              --仕入金額(消費税)
         ot_data_rec(ln_count).attribute5_tax       := ln_sum_tax_kousen;                             --預かり口銭金額(消費税)
 --
@@ -1886,6 +1918,9 @@ AS
         ot_data_rec(ln_count).bank_account_name_alt := lt_bank_account_name_alt;                     --口座名義ｶﾅ
 --
 -- 2019/08/30 Ver1.22 Add End
+-- Ver1.25 Add Start
+        ot_data_rec(ln_count).invoice_t_no          := lt_invoice_t_no;                              --登録番号
+-- Ver1.25 Add End
         -- ブレイク用変数へ代入
         lv_dept_code   := it_data_rec(ln_loop_index).attribute10;
         lv_assen_no    := NVL(it_data_rec(ln_loop_index).segment1_a, 'NULL');
@@ -1991,12 +2026,14 @@ AS
       --  必要項目をサマリー
       -- ==========================
       --消費税(仕入金額)
--- 2019/08/30 Ver1.22 Mod Start
---      ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * gn_tax ,0));
-      ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0));
--- 2019/08/30 Ver1.22 Mod End
-      --消費税(口銭金額)
-      ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0));
+-- Ver1.25 Del Start
+---- 2019/08/30 Ver1.22 Mod Start
+----      ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * gn_tax ,0));
+--      ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0));
+---- 2019/08/30 Ver1.22 Mod End
+--      --消費税(口銭金額)
+--      ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0));
+-- Ver1.25 Del End
       -- 入庫総数を加算
       ln_sum_qty          := ln_sum_qty + it_data_rec(ln_loop_index).quantity;
       -- 仕入金額を加算
@@ -2026,6 +2063,10 @@ AS
           gt_l_u_price_rate_tax_bd_tab(gn_tax_kbn)  := 0;                                -- 賦課金消費税
           gt_tax_exc_amount_bd_tab(gn_tax_kbn)      := 0;                                -- 合計(税抜金額)
           gt_ded_amount_tax_bd_tab(gn_tax_kbn)      := 0;                                -- 合計(消費税)
+-- Ver1.25 Add Start
+          gt_tax_rate_tab(gn_tax_kbn)               := 0;                                -- 税率
+          gt_kousen_tax_rate_tab(gn_tax_kbn)        := 0;                                -- 税率(口銭)
+-- Ver1.25 Add End
         -- ブレイクしていない場合
         ELSE
           -- 初期化
@@ -2041,15 +2082,24 @@ AS
           AND (it_data_rec(ln_loop_index).attribute3 = lv_comm_price_tax_kbn) THEN
           -- 金額の設定
           gt_p_amount_bd_tab(gn_tax_kbn)            := gt_p_amount_bd_tab(gn_tax_kbn)            + ln_siire;                                                    -- 仕入金額(税抜)
-          gt_p_amount_tax_bd_tab(gn_tax_kbn)        := gt_p_amount_tax_bd_tab(gn_tax_kbn)        + ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0); -- 仕入消費税
+-- Ver1.25 Add Start
+          gt_tax_rate_tab(gn_tax_kbn)               := it_data_rec(ln_loop_index).tax;                                                                          -- 税率
+-- Ver1.25 Add End
+-- Ver1.25 Del Start
+--          gt_p_amount_tax_bd_tab(gn_tax_kbn)        := gt_p_amount_tax_bd_tab(gn_tax_kbn)        + ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0); -- 仕入消費税
+-- Ver1.25 Del End
           gt_unit_price_rate_bd_tab(gn_tax_kbn)     := gt_unit_price_rate_bd_tab(gn_tax_kbn)     + (ln_kousen * -1);                                            -- 口銭金額(税抜)(マイナス表示)
-          gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) := gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0) * -1);                -- 口銭消費税(マイナス表示)
+-- Ver1.25 Del Start
+--          gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) := gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0) * -1);                -- 口銭消費税(マイナス表示)
+-- Ver1.25 Del End
           -- 仕入金額(税抜) + 口銭金額(税抜)
           gt_tax_exc_amount_bd_tab(gn_tax_kbn)      := gt_tax_exc_amount_bd_tab(gn_tax_kbn)      + ln_siire + (ln_kousen * -1);                                 -- 合計(税抜金額)
-          -- 仕入消費税 + 口銭消費税
-          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      :=   gt_ded_amount_tax_bd_tab(gn_tax_kbn)
-                                                       + (ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0))
-                                                       + ((ROUND(NVL(ln_kousen, 0) * gn_tax ,0)) * -1);                                                         -- 合計(消費税)
+-- Ver1.25 Del Start
+--          -- 仕入消費税 + 口銭消費税
+--          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      :=   gt_ded_amount_tax_bd_tab(gn_tax_kbn)
+--                                                       + (ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0))
+--                                                       + ((ROUND(NVL(ln_kousen, 0) * gn_tax ,0)) * -1);                                                         -- 合計(消費税)
+-- Ver1.25 Del End
         END IF;
 --
         -- 税区分が仕入税区分と一致し、口銭税区分と不一致となる場合 ※賦課金にて出力する為、税区分が対象外のデータを除く
@@ -2058,12 +2108,19 @@ AS
           AND (it_data_rec(ln_loop_index).attribute3 <> lv_comm_price_tax_kbn) THEN
           -- 金額の設定
           gt_p_amount_bd_tab(gn_tax_kbn)            := gt_p_amount_bd_tab(gn_tax_kbn)            + ln_siire;                                                    -- 仕入金額(税抜)
-          gt_p_amount_tax_bd_tab(gn_tax_kbn)        := gt_p_amount_tax_bd_tab(gn_tax_kbn)        + ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0); -- 仕入消費税
+-- Ver1.25 Add Start
+          gt_tax_rate_tab(gn_tax_kbn)               := it_data_rec(ln_loop_index).tax;                                                                          -- 税率
+-- Ver1.25 Add End
+-- Ver1.25 Del Start
+--          gt_p_amount_tax_bd_tab(gn_tax_kbn)        := gt_p_amount_tax_bd_tab(gn_tax_kbn)        + ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0); -- 仕入消費税
+-- Ver1.25 Del End
           -- 仕入金額(税抜) + 口銭金額(税抜)
           gt_tax_exc_amount_bd_tab(gn_tax_kbn)      := gt_tax_exc_amount_bd_tab(gn_tax_kbn)      + ln_siire;                                                    -- 合計(税抜金額)
-          -- 仕入消費税 + 口銭消費税
-          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      :=   gt_ded_amount_tax_bd_tab(gn_tax_kbn)
-                                                       + (ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0));                                         -- 合計(消費税)
+-- Ver1.25 Del Start
+--          -- 仕入消費税 + 口銭消費税
+--          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      :=   gt_ded_amount_tax_bd_tab(gn_tax_kbn)
+--                                                       + (ROUND(NVL(ln_siire, 0) * it_data_rec(ln_loop_index).tax ,0));                                         -- 合計(消費税)
+-- Ver1.25 Del End
         END IF;
 --
         -- 税区分が口銭税区分と一致し、仕入税区分と不一致となる場合 ※賦課金にて出力する為、税区分が対象外のデータを除く
@@ -2071,12 +2128,19 @@ AS
           AND (gt_description_tbl(ln_loop_tax) <> gv_tax_kbn_0000)
           AND (it_data_rec(ln_loop_index).attribute3 <> lv_comm_price_tax_kbn) THEN
           gt_unit_price_rate_bd_tab(gn_tax_kbn)     := gt_unit_price_rate_bd_tab(gn_tax_kbn)     + (ln_kousen * -1);                                            -- 口銭金額(税抜)(マイナス表示)
-          gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) := gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0) * -1);                -- 口銭消費税(マイナス表示)
+-- Ver1.25 Add Start
+          gt_kousen_tax_rate_tab(gn_tax_kbn)        := gn_tax;                                                                                                  -- 税率(口銭)
+-- Ver1.25 Add End
+-- Ver1.25 Del Start
+--          gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) := gt_unit_price_rate_tax_bd_tab(gn_tax_kbn) + (ROUND(NVL(ln_kousen, 0) * gn_tax ,0) * -1);                -- 口銭消費税(マイナス表示)
+-- Ver1.25 Del End
           -- 仕入金額(税抜) + 口銭金額(税抜)
           gt_tax_exc_amount_bd_tab(gn_tax_kbn)      := gt_tax_exc_amount_bd_tab(gn_tax_kbn)      + (ln_kousen * -1);                                            -- 合計(税抜金額)
-          -- 仕入消費税 + 口銭消費税
-          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      :=   gt_ded_amount_tax_bd_tab(gn_tax_kbn)
-                                                       + ((ROUND(NVL(ln_kousen, 0) * gn_tax ,0)) * -1);                                                         -- 合計(消費税)
+-- Ver1.25 Del Start
+--          -- 仕入消費税 + 口銭消費税
+--          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      :=   gt_ded_amount_tax_bd_tab(gn_tax_kbn)
+--                                                       + ((ROUND(NVL(ln_kousen, 0) * gn_tax ,0)) * -1);                                                         -- 合計(消費税)
+-- Ver1.25 Del End
         END IF;
 --
         -- 税区分が対象外の場合
@@ -2084,7 +2148,9 @@ AS
           gt_l_unit_price_rate_bd_tab(gn_tax_kbn)   := gt_l_unit_price_rate_bd_tab(gn_tax_kbn)   + (ln_fuka * -1);                                              -- 賦課金(マイナス表示)
           gt_l_u_price_rate_tax_bd_tab(gn_tax_kbn)  := gt_l_u_price_rate_tax_bd_tab(gn_tax_kbn)  + (0 * -1);                                                    -- 賦課金消費税(マイナス表示)
           gt_tax_exc_amount_bd_tab(gn_tax_kbn)      := gt_tax_exc_amount_bd_tab(gn_tax_kbn)      + (ln_fuka * -1);                                              -- 合計(税抜金額)
-          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      := gt_ded_amount_tax_bd_tab(gn_tax_kbn)      + (0 * -1);                                                    -- 合計(消費税)
+-- Ver1.25 Del Start
+--          gt_ded_amount_tax_bd_tab(gn_tax_kbn)      := gt_ded_amount_tax_bd_tab(gn_tax_kbn)      + (0 * -1);                                                    -- 合計(消費税)
+-- Ver1.25 Del End
         END IF;
 --
       END LOOP tax_kbn_loop;
@@ -2125,11 +2191,17 @@ AS
               ,flv.meaning                    bank_account_type        -- 預金区分名
               ,aba.bank_account_num           bank_account_num         -- 口座No
               ,aba.account_holder_name_alt    bank_account_name_alt    -- 口座名義ｶﾅ
+-- Ver1.25 Add Start
+              ,pvsa_sales.attribute8 || pvsa_sales.attribute9 invoice_t_no   -- 登録番号
+-- Ver1.25 Add End
         INTO   lt_bank_name
               ,lt_bank_branch_name
               ,lv_bank_account_type
               ,lt_bank_account_num
               ,lt_bank_account_name_alt
+-- Ver1.25 Add Start
+              ,lt_invoice_t_no
+-- Ver1.25 Add End
         FROM   ap_bank_account_uses_all  abaua       -- 口座使用情報テーブル
               ,ap_bank_accounts_all      aba         -- 銀行口座
               ,ap_bank_branches          abb         -- 銀行支店
@@ -2190,6 +2262,10 @@ AS
       ot_data_rec(ln_count).purchase_amount      := ln_sum_siire;                                  --仕入金額
       ot_data_rec(ln_count).attribute5           := ln_sum_kosen;                                  --預り口銭金額
       ot_data_rec(ln_count).attribute8           := ln_sum_fuka;                                   --賦課金額
+-- Ver1.25 Add Start
+      ln_sum_tax_siire                           := ROUND(NVL(ln_sum_siire, 0) * it_data_rec(ln_loop_index).tax ,0);
+      ln_sum_tax_kousen                          := ROUND(NVL(ln_sum_kosen, 0) * gn_tax ,0);
+-- Ver1.25 Add End
       ot_data_rec(ln_count).purchase_amount_tax  := ln_sum_tax_siire;                              --仕入金額(消費税)
       ot_data_rec(ln_count).attribute5_tax       := ln_sum_tax_kousen;                             --預かり口銭金額(消費税)
 --
@@ -2206,6 +2282,9 @@ AS
       ot_data_rec(ln_count).bank_account_num      := lt_bank_account_num;                          --口座No
       ot_data_rec(ln_count).bank_account_name_alt := lt_bank_account_name_alt;                     --口座名義ｶﾅ
 --
+-- Ver1.25 Add Start
+      ot_data_rec(ln_count).invoice_t_no          := lt_invoice_t_no;                              --登録番号
+-- Ver1.25 Add End
       -- (明細行数) / (1ページ最大行数)の余りが表示可能明細数より大きい場合
       IF ( MOD(ln_line_count ,gn_max_line_9) > gn_line_count ) THEN
         -- 最終仕入先の帳票改ページフラグON
@@ -2326,6 +2405,10 @@ AS
     ln_deduction_amount           NUMBER; -- 差引金額
     ln_deduction_amount_tax       NUMBER; -- 消費税:差引金額
     ln_pure_deduction_amount      NUMBER; -- 純差引金額
+-- Ver1.25 Add Start
+    ln_p_amount_tax_bd_tab        NUMBER; -- 仕入消費税(税区分内訳)
+    ln_unit_price_rate_tax_bd_tab NUMBER; -- 口銭消費税(税区分内訳)
+-- Ver1.25 Add End
 --
     lt_xml_idx                NUMBER DEFAULT 0; -- ＸＭＬデータタグ表のインデックス
     lv_errmsg_no_data         VARCHAR2(5000);   -- データなしメッセージ
@@ -2506,20 +2589,32 @@ AS
             ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
             ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_p_amount_bd_tab(ln_tax_kbn) ,0) ;
             -- 仕入消費税
+-- Ver1.25 Add Start
+            ln_p_amount_tax_bd_tab := ROUND( NVL(gt_p_amount_bd_tab(ln_tax_kbn) ,0) * gt_tax_rate_tab(ln_tax_kbn) ,0);
+-- Ver1.25 Add End
             lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
             ot_xml_data_table(lt_xml_idx).tag_name  := 'purchase_amount_tax_breakdown' ;
             ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-            ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_p_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+-- Ver1.25 Mod Start
+--            ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_p_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+            ot_xml_data_table(lt_xml_idx).tag_value := ln_p_amount_tax_bd_tab ;
+-- Ver1.25 Mod End
             -- 口銭金額(税抜)
             lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
             ot_xml_data_table(lt_xml_idx).tag_name  := 'commission_unit_price_rate_breakdown' ;
             ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
             ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_unit_price_rate_bd_tab(ln_tax_kbn) ,0) ;
             -- 口銭消費税
+-- Ver1.25 Add Start
+            ln_unit_price_rate_tax_bd_tab := ROUND( NVL(gt_unit_price_rate_bd_tab(ln_tax_kbn) ,0) * gt_kousen_tax_rate_tab(ln_tax_kbn) ,0);
+-- Ver1.25 Add End
             lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
             ot_xml_data_table(lt_xml_idx).tag_name  := 'commission_unit_price_rate_tax_breakdown' ;
             ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-            ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_unit_price_rate_tax_bd_tab(ln_tax_kbn) ,0) ;
+-- Ver1.25 Mod Start
+--            ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_unit_price_rate_tax_bd_tab(ln_tax_kbn) ,0) ;
+            ot_xml_data_table(lt_xml_idx).tag_value :=ln_unit_price_rate_tax_bd_tab ;
+-- Ver1.25 Mod End
             -- 賦課金
             lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
             ot_xml_data_table(lt_xml_idx).tag_name  := 'levy_unit_price_rate_breakdown' ;
@@ -2539,7 +2634,10 @@ AS
             lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
             ot_xml_data_table(lt_xml_idx).tag_name  := 'deduction_amount_tax_breakdown' ;
             ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-            ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_ded_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+-- Ver1.25 Mod Start
+--            ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_ded_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+            ot_xml_data_table(lt_xml_idx).tag_value := ln_p_amount_tax_bd_tab + ln_unit_price_rate_tax_bd_tab ;
+-- Ver1.25 Mod End
 --
             ------------------------------
             -- 税区分内訳表ヘッダＧ終了タグ
@@ -2610,6 +2708,13 @@ AS
 ---- mod end 1.10
         ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(it_data_rec(i).vendor_name,gn_16,gn_30) ;
 -- 2019/08/30 Ver1.22 Mod End
+-- Ver1.25 Add Start
+        -- 登録番号
+        lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
+        ot_xml_data_table(lt_xml_idx).tag_name  := 'invoice_t_no' ;
+        ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
+        ot_xml_data_table(lt_xml_idx).tag_value := it_data_rec(i).invoice_t_no ;
+-- Ver1.25 Add End
         -- 貴社コード
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'your_company_code' ;
@@ -2959,20 +3064,32 @@ AS
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
         ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_p_amount_bd_tab(ln_tax_kbn) ,0) ;
         -- 仕入消費税
+-- Ver1.25 Add Start
+        ln_p_amount_tax_bd_tab := ROUND( NVL(gt_p_amount_bd_tab(ln_tax_kbn) ,0) * gt_tax_rate_tab(ln_tax_kbn) ,0);
+-- Ver1.25 Add End
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'purchase_amount_tax_breakdown' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_p_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+-- Ver1.25 Mod Start
+--        ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_p_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := ln_p_amount_tax_bd_tab ;
+-- Ver1.25 Mod End
         -- 口銭金額(税抜)
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'commission_unit_price_rate_breakdown' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
         ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_unit_price_rate_bd_tab(ln_tax_kbn) ,0) ;
         -- 口銭消費税
+-- Ver1.25 Add Start
+        ln_unit_price_rate_tax_bd_tab := ROUND( NVL(gt_unit_price_rate_bd_tab(ln_tax_kbn) ,0) * gt_kousen_tax_rate_tab(ln_tax_kbn) ,0);
+-- Ver1.25 Add End
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'commission_unit_price_rate_tax_breakdown' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_unit_price_rate_tax_bd_tab(ln_tax_kbn) ,0) ;
+-- Ver1.25 Mod Start
+--        ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_unit_price_rate_tax_bd_tab(ln_tax_kbn) ,0) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := ln_unit_price_rate_tax_bd_tab ;
+-- Ver1.25 Mod End
         -- 賦課金
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'levy_unit_price_rate_breakdown' ;
@@ -2992,7 +3109,10 @@ AS
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'deduction_amount_tax_breakdown' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_ded_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+-- Ver1.25 Mod Start
+--        ot_xml_data_table(lt_xml_idx).tag_value := NVL(gt_ded_amount_tax_bd_tab(ln_tax_kbn) ,0) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := ln_p_amount_tax_bd_tab + ln_unit_price_rate_tax_bd_tab ;
+-- Ver1.25 Mod End
 --
         ------------------------------
         -- 税区分内訳表ヘッダＧ終了タグ
