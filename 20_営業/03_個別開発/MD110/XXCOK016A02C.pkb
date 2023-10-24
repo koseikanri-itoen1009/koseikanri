@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2010/09/30    1.10  S.Arizumi        [E_本稼動_01144対応]当月保留分を翌月のイセトー経由の支払案内書に含む修正
  *                                                           金額確定ステータスが確定済のレコードのみ対象とするように修正
  *  2018/08/07    1.11  K.Nara           [E_本稼動_15203対応]本振用FBデータ作成で振込先がダミー口座は作成対象外とする
+ *  2023/06/06    1.12  Y.Ooyama         [E_本稼動_19179対応]インボイス対応（BM関連）
  *
  *****************************************************************************************/
 --
@@ -176,6 +177,13 @@ AS
 -- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
   cv_lookup_type_fb_not       CONSTANT VARCHAR2(50)  := 'XXCOK1_FB_NOT_TARGET';   -- 参照タイプ：FB作成対象外ダミー口座
 -- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
+-- Ver.1.12 ADD START
+  cv_tax_rounding_rule_down   CONSTANT VARCHAR2(4)   := 'DOWN';                   -- 端数処理区分：切捨て
+  cv_get_target_amt_with_tax  CONSTANT VARCHAR2(1)   := '3';                      -- 取得対象金額：支払金額(税込)
+  cv_snapshot_timing_2_bd     CONSTANT VARCHAR2(1)   := '1';                      -- スナップショットタイミング：2営
+  cv_tax_calc_kbn_line        CONSTANT VARCHAR2(1)   := '2';                      -- 税計算区分：明細単位
+  cv_tax_kbn_with_tax         CONSTANT VARCHAR2(1)   := '1';                      -- 税区分：税込み
+-- Ver.1.12 ADD END
   --
   --===============================
   -- グローバル変数
@@ -274,8 +282,21 @@ AS
 --        ,SUM( xbb.electric_amt_tax )                     AS electric_amt_tax         -- 電気料消費税額
 --        ,SUM( xbb.backmargin + xbb.backmargin_tax +
 --              xbb.electric_amt + xbb.electric_amt_tax )  AS trns_amt                 -- 振込額
-        ,SUM( xbb.expect_payment_amt_tax )               AS trns_amt                 -- 振込額
--- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Ver.1.12 MOD START
+--        ,SUM( xbb.expect_payment_amt_tax )               AS trns_amt                 -- 振込額
+---- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+        ,xxcok_common_pkg.recalc_pay_amt_f(                       -- [支払金額再計算ファンクション]
+           MAX(pvsa.attribute4)                                   -- 支払区分
+         , NVL(MAX(xbbs.tax_calc_kbn), cv_tax_calc_kbn_line)      -- 税計算区分 ※NULLの場合:明細単位
+         , NVL(MAX(pvsa.attribute6), cv_tax_kbn_with_tax)         -- 税区分     ※NULLの場合:税込み
+         , cv_tax_rounding_rule_down                              -- 端数処理区分
+         , gt_prof_bm_tax                                         -- 税率
+         , NVL(SUM(xbb.backmargin + xbb.electric_amt), 0)         -- 支払金額（税抜）   <= 販売手数料 + 電気料
+         , NVL(SUM(xbb.backmargin_tax + xbb.electric_amt_tax), 0) -- 支払金額（消費税） <= 販売手数料（消費税額） + 電気料（消費税額）
+         , NVL(SUM(xbb.expect_payment_amt_tax), 0)                -- 支払金額（税込）   <= 支払予定額（税込）
+         , cv_get_target_amt_with_tax                             -- 取得対象金額
+         )                                               AS trns_amt                 -- 振込額
+-- Ver.1.12 MOD END
         ,pvsa.bank_charge_bearer                         AS bank_charge_bearer       -- 銀行手数料負担者
         ,abb.bank_number                                 AS bank_number              -- 銀行番号
         ,abb.bank_name_alt                               AS bank_name_alt            -- 銀行名カナ
@@ -285,6 +306,9 @@ AS
         ,abaa.bank_account_num                           AS bank_account_num         -- 銀行口座番号
         ,abaa.account_holder_name_alt                    AS account_holder_name_alt  -- 口座名義人カナ
   FROM   xxcok_backmargin_balance      xbb                                           -- 販手残高テーブル
+-- Ver.1.12 ADD START
+        ,xxcok_bm_balance_snap         xbbs                                          -- 販手残高テーブルスナップショット
+-- Ver.1.12 ADD END
         ,po_vendors                    pv                                            -- 仕入先マスタ
         ,po_vendor_sites_all           pvsa                                          -- 仕入先サイトマスタ
         ,ap_bank_account_uses_all      abaua                                         -- 銀行口座使用情報
@@ -318,6 +342,11 @@ AS
   AND    abaua.org_id                   = TO_NUMBER( gt_prof_org_id )
   AND    abaa.org_id                    = TO_NUMBER( gt_prof_org_id )
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Ver.1.12 ADD START
+  AND    xbb.bm_balance_id              = xbbs.bm_balance_id(+)            -- 販手残高ID
+  AND    xbbs.snapshot_create_ym(+)     = TO_CHAR(gd_proc_date, 'YYYYMM')  -- スナップショット作成年月   = 業務日付の年月
+  AND    xbbs.snapshot_timing(+)        = cv_snapshot_timing_2_bd          -- スナップショットタイミング = 2営
+-- Ver.1.12 ADD END
 -- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
 --  GROUP BY pv.attribute5
   GROUP BY pvsa.attribute5
