@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.190
+ * Version          : 1.200
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2019/09/19    1.180 SCSK 郭 有司    [E_本稼動_15472] 軽減税率対応 再々対応
  *  2023/07/04    1.190 SCSK 赤地 学    [E_本稼動_18983] 消費税差額自動作成
  *                                      [E_本稼動_19082]【AR】インボイス対応_標準請求書
+ *  2023/10/25    1.200 SCSK 赤地 学    [E_本稼動_19546] 請求書の消費税額訂正
  *
  *****************************************************************************************/
 --
@@ -1324,6 +1325,10 @@ AS
           ,NULL                              inv_amount_sum2                -- 税抜合計２
           ,NULL                              invoice_printing_unit          -- 請求書印刷単位
           ,NULL                              customer_for_sum               -- 顧客(集計用)
+-- Ver1.200 Add Start
+          ,NULL                              invoice_id_bef                 -- 一括請求書ID(最新請求先適用前)
+          ,NULL                              invoice_detail_num_bef         -- 一括請求書明細No(最新請求先適用前)
+-- Ver1.200 Add End
 -- Ver1.190 Add End
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
@@ -1837,6 +1842,10 @@ AS
           ,NULL                              inv_amount_sum2                -- 税抜合計２
           ,NULL                              invoice_printing_unit          -- 請求書印刷単位
           ,NULL                              customer_for_sum               -- 顧客(集計用)
+-- Ver1.200 Add Start
+          ,NULL                              invoice_id_bef                 -- 一括請求書ID(最新請求先適用前)
+          ,NULL                              invoice_detail_num_bef         -- 一括請求書明細No(最新請求先適用前)
+-- Ver1.200 Add End
 -- Ver1.190 Add End
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
@@ -5754,71 +5763,73 @@ AS
 --    END IF;
 -- Modify 2009.09.29 Ver1.5 End
 --
--- Modify 2013.01.17 Ver1.130 Start
-    --夜間手動判断区分の判断（手動実行用）
-    --手動実行では請求ヘッダ情報の請求金額を再計算する必要がある為、下記で再計算する
--- Ver1.190 Del Start
---   IF (gv_batch_on_judge_type != cv_judge_type_batch) THEN
--- Ver1.190 Del End
--- 夜間、手動共に請求ヘッダ情報の請求金額を再計算する。
-      --変数初期化
-      ln_target_trx_cnt := 0;
-      -- =====================================================
-      -- 請求更新対象取得処理 (A-10)
-      -- =====================================================
-      get_update_target_bill(
-         ln_target_trx_cnt,                      -- 対象取引件数
-         lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
-         lv_retcode,                             -- リターン・コード             --# 固定 #
-         lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        --(エラー処理)
-        RAISE global_process_expt;
-      END IF;
---
-      IF (ln_target_trx_cnt > 0) THEN
-      --ループ
-      <<for_loop>>
-      FOR ln_loop_cnt IN gt_get_inv_id_tab.FIRST..gt_get_inv_id_tab.LAST LOOP
-        -- =====================================================
-        -- 請求金額更新処理 請求ヘッダ情報テーブル(A-11)
-        -- =====================================================
-        update_bill_amount(
-           gt_get_inv_id_tab(ln_loop_cnt),         -- 請求書ID
--- Ver1.190 Del Start
---           gt_get_amt_no_tax_tab(ln_loop_cnt),     -- 税抜総額（合計）
---           gt_get_tax_amt_sum_tab(ln_loop_cnt),    -- 消費税額（合計）
---           gt_get_amd_inc_tax_tab(ln_loop_cnt),    -- 売上金額
--- Ver1.190 Del End
--- Ver1.190 Add Start
-           gt_tax_gap_amount_tab(ln_loop_cnt),     -- 税差額
-           gt_tax_sum1_tab(ln_loop_cnt),           -- 税額合計１
-           gt_tax_sum2_tab(ln_loop_cnt),           -- 税額合計２
-           gt_inv_gap_amount_tab(ln_loop_cnt),     -- 本体差額
-           gt_no_tax_sum1_tab(ln_loop_cnt),        -- 税抜額合計１
-           gt_no_tax_sum2_tab(ln_loop_cnt),        -- 税抜額合計２
-           gt_invoice_tax_div_tab(ln_loop_cnt),    -- 請求書消費税積上げ計算方式
-           gt_output_format_tab(ln_loop_cnt),      -- 請求書出力形式
-           gt_tax_div_tab(ln_loop_cnt),            -- 税区分
--- Ver1.190 Add End
-           lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
-           lv_retcode,                             -- リターン・コード             --# 固定 #
-           lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode = cv_status_error) THEN
-          --(エラー処理)
-          RAISE global_process_expt;
-        END IF;
-      END LOOP for_loop;
---
-      END IF;
---
--- Ver1.190 Del Start
---    END IF;
--- Ver1.190 Del End
---
--- Modify 2013.01.17 Ver1.130 End
+-- Ver1.200 Del Start
+---- Modify 2013.01.17 Ver1.130 Start
+--    --夜間手動判断区分の判断（手動実行用）
+--    --手動実行では請求ヘッダ情報の請求金額を再計算する必要がある為、下記で再計算する
+---- Ver1.190 Del Start
+----   IF (gv_batch_on_judge_type != cv_judge_type_batch) THEN
+---- Ver1.190 Del End
+---- 夜間、手動共に請求ヘッダ情報の請求金額を再計算する。
+--      --変数初期化
+--      ln_target_trx_cnt := 0;
+--      -- =====================================================
+--      -- 請求更新対象取得処理 (A-10)
+--      -- =====================================================
+--      get_update_target_bill(
+--         ln_target_trx_cnt,                      -- 対象取引件数
+--         lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
+--         lv_retcode,                             -- リターン・コード             --# 固定 #
+--         lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode = cv_status_error) THEN
+--        --(エラー処理)
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      IF (ln_target_trx_cnt > 0) THEN
+--      --ループ
+--      <<for_loop>>
+--      FOR ln_loop_cnt IN gt_get_inv_id_tab.FIRST..gt_get_inv_id_tab.LAST LOOP
+--        -- =====================================================
+--        -- 請求金額更新処理 請求ヘッダ情報テーブル(A-11)
+--        -- =====================================================
+--        update_bill_amount(
+--           gt_get_inv_id_tab(ln_loop_cnt),         -- 請求書ID
+---- Ver1.190 Del Start
+----           gt_get_amt_no_tax_tab(ln_loop_cnt),     -- 税抜総額（合計）
+----           gt_get_tax_amt_sum_tab(ln_loop_cnt),    -- 消費税額（合計）
+----           gt_get_amd_inc_tax_tab(ln_loop_cnt),    -- 売上金額
+---- Ver1.190 Del End
+---- Ver1.190 Add Start
+--           gt_tax_gap_amount_tab(ln_loop_cnt),     -- 税差額
+--           gt_tax_sum1_tab(ln_loop_cnt),           -- 税額合計１
+--           gt_tax_sum2_tab(ln_loop_cnt),           -- 税額合計２
+--           gt_inv_gap_amount_tab(ln_loop_cnt),     -- 本体差額
+--           gt_no_tax_sum1_tab(ln_loop_cnt),        -- 税抜額合計１
+--           gt_no_tax_sum2_tab(ln_loop_cnt),        -- 税抜額合計２
+--           gt_invoice_tax_div_tab(ln_loop_cnt),    -- 請求書消費税積上げ計算方式
+--           gt_output_format_tab(ln_loop_cnt),      -- 請求書出力形式
+--           gt_tax_div_tab(ln_loop_cnt),            -- 税区分
+---- Ver1.190 Add End
+--           lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
+--           lv_retcode,                             -- リターン・コード             --# 固定 #
+--           lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF (lv_retcode = cv_status_error) THEN
+--          --(エラー処理)
+--          RAISE global_process_expt;
+--        END IF;
+--      END LOOP for_loop;
+----
+--      END IF;
+----
+---- Ver1.190 Del Start
+----    END IF;
+---- Ver1.190 Del End
+----
+---- Modify 2013.01.17 Ver1.130 End
+--- Ver1.200 Del END
 --
     -- =====================================================
     -- 取引データステータス更新処理 (A-9)
