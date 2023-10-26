@@ -11,6 +11,7 @@
                        SCSK   吉岡           2023/03/01 Issue1.1 10MB超えの抽出ファイル対応
                        SCSK   吉岡           2023/04/28 Issue1.2 ESSジョブ階層取得対応
                        SCSK   細沼           2023/07/26 Issue1.3 障害対応：E_本稼動_19362
+                       SCSK   細沼           2023/09/29 Issue1.4 障害対応：E_本稼動_19531
 
      [戻り値]
         0 : 正常
@@ -39,14 +40,17 @@ import functools
 
 from com.Xxccdcomn import Xxccdcomn
 from com.PyComnException import PyComnException
+from requests.exceptions import ConnectTimeout
 
 def execApi(com, execPayload, exeName, apiUrl, isExecFunk=True):
 
+    try:
         ## RESTAPI実行
         apiResponse = requests.request("POST"
             , com.getEnvValue("OIC_HOST") + apiUrl
             , headers=com.headers
-            , data=execPayload)
+            , data=execPayload
+            , timeout=(float(com.getEnvConstValue("REST_CONN_TIMEOUT_SEC")), None))
 
         ## RESTAPIエラー判定
         com.oicErrChk(apiResponse, exeName)
@@ -57,6 +61,18 @@ def execApi(com, execPayload, exeName, apiUrl, isExecFunk=True):
             rtnRes = com.oicRtnCdChk(apiResponse, exeName)
 
         return rtnRes
+
+    ## 例外判定
+    except ConnectTimeout as e:
+        com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+        
+        callName = ""
+        if len(exeName) > 0:
+            callName = exeName[0]
+        else:
+            callName = exeName
+            
+        raise PyComnException("CCDE0010", [callName, str(e)])
 
 async def paraExecCallBackApi(com, pram):
     loop = asyncio.get_event_loop()
