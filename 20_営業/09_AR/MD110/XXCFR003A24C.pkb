@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細請求先顧客反映
  * MD.050           : MD050_CFR_003_A24_請求明細請求先顧客反映
  * MD.070           : MD050_CFR_003_A24_請求明細請求先顧客反映
- * Version          : 1.00
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/10/20    1.00  SCSK 赤地 学     初回作成 [E_本稼動_19546] 請求書の消費税額訂正
+ *  2023/10/27    1.01  SCSK 赤地 学     [E_本稼動_19546] 請求書の消費税額訂正 修正
  *
  *****************************************************************************************/
 --
@@ -1665,7 +1666,6 @@ AS
 --
     -- *** ローカル変数 ***
     ln_xih_invoice_id    NUMBER;                       -- 請求ヘッダ.一括請求書ID
-    ln_xil_invoice_detail_num_new NUMBER;              -- 一括請求書明細No更新値
     ln_target_trx_cnt    NUMBER;                       -- 請求対象取引データ件数
     lv_bill_acct_code    VARCHAR2(30);                      -- 
     lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;
@@ -1971,11 +1971,20 @@ AS
         lv_retcode,                                   -- リターン・コード             --# 固定 #
         lv_errmsg                                     -- ユーザー・エラー・メッセージ --# 固定 #
       );
+      IF (lv_retcode = cv_status_error) THEN
+        --(エラー処理)
+        RAISE global_process_expt;
+      END IF;
       --明細更新件数
       gn_target_line_cnt := gn_target_line_cnt + 1;
     END LOOP edit_loop;
 --
   EXCEPTION
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -2407,6 +2416,10 @@ AS
           lv_retcode,                                -- リターン・コード             --# 固定 #
           lv_errmsg                                  -- ユーザー・エラー・メッセージ --# 固定 #
         );
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE global_process_expt;
+        END IF;
 --
       ELSE
         -- 2レコード目以降
@@ -2480,6 +2493,10 @@ AS
           lv_retcode,                                -- リターン・コード             --# 固定 #
           lv_errmsg                                  -- ユーザー・エラー・メッセージ --# 固定 #
         );
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE global_process_expt;
+        END IF;
 --
       END IF;
 --
@@ -2558,7 +2575,6 @@ AS
     -- *** ローカル例外 ***
 --
   BEGIN
---(which => FND_FILE.OUTPUT, buff => 'A-9 update_bill_amount start'); -- ★
 --
 --##################  固定ステータス初期化部 START   ###################
 --
