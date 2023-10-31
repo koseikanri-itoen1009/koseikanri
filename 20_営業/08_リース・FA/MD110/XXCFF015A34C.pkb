@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF015A34C(body)
  * Description      : 自販機リース料予算作成
  * MD.050           : 自販機リース料予算作成 MD050_CFF_015_A34
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2017/08/17    1.4   SCSK 小路恭弘    E_本稼動_14390対応
  *  2018/03/20    1.5   SCSK 森晴加      E_本稼動_14390対応 不具合対応
  *  2018/12/17    1.6   SCSK 小路恭弘    E_本稼動_15401対応
+ *  2023/10/31    1.7   SCSK 小路恭弘    E_本稼動_19646対応 償却期間10年緊急対応
  *
  *****************************************************************************************/
 --
@@ -4202,7 +4203,10 @@ AS
 -- 2017/08/17 Ver.1.4 Y.Shouji ADD START
     cv_assets_kbn_1                  CONSTANT VARCHAR2(1)   := '1';                        -- 資産区分：リース
     cv_assets_kbn_2                  CONSTANT VARCHAR2(1)   := '2';                        -- 資産区分：購入
-    cn_deprn_end_months_95           CONSTANT NUMBER        := 95;                         -- 8年償却計算用
+-- Ver.1.7 MOD START
+--    cn_deprn_end_months_95           CONSTANT NUMBER        := 95;                         -- 8年償却計算用
+    cn_deprn_end_months_95           CONSTANT NUMBER        := 119;                        -- 10年償却計算用
+-- Ver.1.7 MOD END
     cn_org_end_months_59             CONSTANT NUMBER        := 59;                         -- 5年計算用
     cv_asset_category_id             CONSTANT VARCHAR2(27)  := 'XXCFF1_ASSET_CATEGORY_ID'; -- 自販機資産カテゴリ固定値
 -- 2017/08/17 Ver.1.4 Y.Shouji ADD END
