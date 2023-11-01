@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
  * Description     : ¿‹–¾×î•ñƒe[ƒuƒ‹
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.6
+ * Version         : 1.7
  * 	
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -18,6 +18,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
  *  2011/10/11    1.4  SCS ”’ì “Äj  [E_–{‰Ò“®_07906]—¬’ÊBMS‘Î‰
  *  2019/07/26    1.5  SCSK –¥‰Y Œ’¡ [E_–{‰Ò“®_15472]ŒyŒ¸Å—¦‘Î‰
  *  2023/04/13    1.6  SCSK ‹gì Œ[‰î [E_–{‰Ò“®_18983]¿‹·Šz‚Ì©“®˜AŒg
+ *  2023/10/31    1.7  SCSK ‹gì Œ[‰î [E_–{‰Ò“®_19546]¿‹‘‚ÌÁ”ïÅŠz’ù³
  ************************************************************************/
 ( 
   invoice_id                   NUMBER         NOT NULL  ,     -- ˆêŠ‡¿‹‘ID
@@ -105,6 +106,10 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
   inv_amount_sum2              NUMBER                   ,     -- Å”²‡Œv‚Q
   invoice_printing_unit        VARCHAR2(1)              ,     -- ¿‹‘ˆóü’PˆÊ
   customer_for_sum             VARCHAR2(10)             ,     -- ŒÚ‹q(WŒv—p)
+/* 2023.10.31 Ver1.7 Add Start   */
+  invoice_id_bef               NUMBER                   ,     -- ˆêŠ‡¿‹‘ID(ÅV¿‹æ“K—p‘O)
+  invoice_detail_num_bef       NUMBER                   ,     -- ˆêŠ‡¿‹‘–¾×No(ÅV¿‹æ“K—p‘O)
+/* 2023.10.31 Ver1.7 Add End   */
 /* 2023.04.13 Ver1.6 Add End   */
   CONSTRAINT xxcfr_invoice_lines_pk PRIMARY KEY ( invoice_id, invoice_detail_num )
   USING INDEX TABLESPACE xxidx2
@@ -200,5 +205,9 @@ COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.inv_amount_sum2              IS 'Å”
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.invoice_printing_unit        IS '¿‹‘ˆóü’PˆÊ'
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.customer_for_sum             IS 'ŒÚ‹q(WŒv—p)'
 /* 2023.04.13 Ver1.6 Add End */
+/* 2023.10.31 Ver1.7 Add Start   */
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.invoice_id_bef               IS 'ˆêŠ‡¿‹‘ID(ÅV¿‹æ“K—p‘O)';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.invoice_detail_num_bef       IS 'ˆêŠ‡¿‹‘–¾×No(ÅV¿‹æ“K—p‘O)';
+/* 2023.10.31 Ver1.7 Add End   */
 --
 COMMENT ON TABLE  xxcfr.xxcfr_invoice_lines IS '¿‹–¾×î•ñƒe[ƒuƒ‹';
