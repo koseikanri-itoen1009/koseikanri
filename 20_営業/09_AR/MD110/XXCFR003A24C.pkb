@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細請求先顧客反映
  * MD.050           : MD050_CFR_003_A24_請求明細請求先顧客反映
  * MD.070           : MD050_CFR_003_A24_請求明細請求先顧客反映
- * Version          : 1.01
+ * Version          : 1.02
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/10/20    1.00  SCSK 赤地 学     初回作成 [E_本稼動_19546] 請求書の消費税額訂正
  *  2023/10/27    1.01  SCSK 赤地 学     [E_本稼動_19546] 請求書の消費税額訂正 修正
+ *  2023/11/14    1.02  SCSK 赤地 学     [E_本稼動_19546] サイクル跨ぎ対応
  *
  *****************************************************************************************/
 --
@@ -413,24 +414,26 @@ AS
     --入力パラメータ日付型変換処理
     --==============================================================
 --
-    IF (iv_target_date IS NOT NULL) THEN
-      gd_target_date := xxcfr_common_pkg.get_date_param_trans(iv_target_date);
-      -- 業務処理日付に入力パラメータ．締日を設定
-      gd_process_date := gd_target_date;
-      IF (gd_target_date IS NULL) THEN
-        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
-                               iv_loopup_type_prefix => cv_msg_kbn_cfr
-                              ,iv_keyword            => cv_dict_cfr_00000003);
-        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_cfr    
-                              ,iv_name         => cv_msg_cfr_00010  
-                              ,iv_token_name1  => cv_tkn_func_name  
-                              ,iv_token_value1 => lt_look_dict_word)
-                            ,1
-                            ,5000);
-        RAISE global_api_expt;
-      END IF;
-    END IF;
+-- Del Ver1.02 Start
+--    IF (iv_target_date IS NOT NULL) THEN
+--      gd_target_date := xxcfr_common_pkg.get_date_param_trans(iv_target_date);
+--      -- 業務処理日付に入力パラメータ．締日を設定
+--      gd_process_date := gd_target_date;
+--      IF (gd_target_date IS NULL) THEN
+--        lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
+--                               iv_loopup_type_prefix => cv_msg_kbn_cfr
+--                              ,iv_keyword            => cv_dict_cfr_00000003);
+--        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_cfr    
+--                              ,iv_name         => cv_msg_cfr_00010  
+--                              ,iv_token_name1  => cv_tkn_func_name  
+--                              ,iv_token_value1 => lt_look_dict_word)
+--                            ,1
+--                            ,5000);
+--        RAISE global_api_expt;
+--      END IF;
+--    END IF;
+-- Del Ver1.02 End
 --
     --==============================================================
     --与信関連条件取得処理
@@ -1124,7 +1127,6 @@ AS
         AND   hzlo_bill.location_id = hzps_bill.location_id
         AND   ROWNUM = 1
         ;
--- Modify 2009.12.28 Ver1.08 end
       -- *** OTHERS例外ハンドラ ***
       WHEN OTHERS THEN
         lt_look_dict_word := xxcfr_common_pkg.lookup_dictionary(
@@ -1424,7 +1426,7 @@ AS
         parallel_type                      -- パラレル実行区分
       ) VALUES (
 --        xxcfr_invoice_headers_s1.NEXTVAL,                             -- 一括請求書ID
-        ov_invoice_id,
+        ov_invoice_id,                                                -- 一括請求書ID
         gn_set_book_id,                                               -- 会計帳簿ID
         id_cutoff_date,                                               -- 締日
         iv_term_name,                                                 -- 支払条件
@@ -1595,7 +1597,10 @@ AS
 --
       UPDATE  xxcfr_invoice_lines  xxil   -- 請求明細情報テーブル
       SET     xxil.invoice_id         = in_xih_invoice_id         -- 更新する一括請求書ID
-             ,xxil.invoice_detail_num = ( SELECT NVL(MAX(xxil.invoice_detail_num),0) + 1
+-- Mod Ver1.02 Start
+             ,xxil.invoice_detail_num = ( SELECT NVL(MIN(xxil.invoice_detail_num),0 ) - 1
+--             ,xxil.invoice_detail_num = ( SELECT NVL(MAX(xxil.invoice_detail_num),0) + 1
+-- Mod Ver1.02 End
                                           FROM   xxcfr_invoice_lines xxil
                                           WHERE  xxil.invoice_id = in_xih_invoice_id ) -- インボイス明細番号の最大値+1
              ,invoice_id_bef            = in_xil_invoice_id          -- 一括請求書ID(最新請求先適用前)
@@ -1670,6 +1675,9 @@ AS
     lv_bill_acct_code    VARCHAR2(30);                      -- 
     lt_look_dict_word   fnd_lookup_values_vl.meaning%TYPE;
     lt_prof_name        fnd_profile_options_tl.user_profile_option_name%TYPE;
+-- Add Ver1.02 Start
+    ln_xih_request_id    NUMBER;                       -- 請求ヘッダ.要求ID
+-- Add Ver1.02 End
 --
 --    -- *** ローカル・カーソル ***
     --請求明細情報データロックカーソル
@@ -1709,7 +1717,10 @@ AS
     CURSOR get_header_inf_cur( p_bill_cust_account_id number
                               ,p_cutoff_date date )
     IS
-      SELECT  xxih.invoice_id                     AS xih_invoice_id             -- 請求明細.一括請求書ID
+      SELECT  xxih.invoice_id                     AS xih_invoice_id             -- 請求ヘッダ.一括請求書ID
+-- Add Ver1.02  Start
+             ,xxih.request_id                     AS xih_request_id             -- 請求ヘッダ.要求ID
+-- Add Ver1.02  End
       FROM    xxcfr_invoice_headers xxih
       WHERE   xxih.cutoff_date = p_cutoff_date
       AND     xxih.bill_cust_account_id  = p_bill_cust_account_id
@@ -1835,6 +1846,10 @@ AS
 --
       -- 請求ヘッダ.一括請求書ID
       ln_xih_invoice_id := get_header_inf_rec.xih_invoice_id;
+-- Add Ver1.02 Start
+      -- 請求ヘッダ.要求ID
+      ln_xih_request_id := get_header_inf_rec.xih_request_id;
+-- Add Ver1.02 End
 --
       IF ( iv_bill_acct_code IS NULL ) THEN
         lv_bill_acct_code := get_target_inv_rec.mst_bill_account_number;
@@ -1961,6 +1976,31 @@ AS
         -- 請求ヘッダ移植 E
       END IF;
       CLOSE get_header_inf_cur;
+--
+-- Add Ver1.02 Start
+      -- 移動先ヘッダの要求IDが受け渡しテーブルの要求IDと異なっていたら更新
+      IF ( ln_xih_request_id IS NOT NULL AND ln_xih_request_id != gt_target_request_id ) THEN
+        BEGIN
+          UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
+          SET    xxih.request_id     = gt_target_request_id                 -- 要求ID
+          WHERE  xxih.cutoff_date    = get_target_inv_rec.xih_cutoff_date   -- 締日
+          AND    xxih.bill_cust_code = lv_bill_acct_code                    -- 請求先顧客コード
+          ;
+        EXCEPTION
+         WHEN OTHERS THEN
+           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                   iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                  ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                                  ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                  ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih))
+                                                                            -- 請求ヘッダ情報テーブル
+                                ,1
+                                ,5000);
+           lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+           RAISE global_process_expt;
+        END;
+      END IF;
+-- Add Ver1.02 End
 --
       -- 請求明細更新(A-6)
       update_invoice_lines_id(
@@ -2323,6 +2363,42 @@ AS
         lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
         RAISE global_process_expt;
     END;
+-- Add Ver1.02 Start
+    --==============================================================
+    -- 請求明細情報テーブル請求金額更新
+    --==============================================================
+    BEGIN
+--
+      UPDATE  xxcfr_invoice_lines  xxil   -- 請求明細情報テーブル
+      SET     xxil.tax_gap_amount        = NULL         -- 税差額
+             ,xxil.tax_amount_sum        = NULL         -- 税額合計１
+             ,xxil.tax_amount_sum2       = NULL         -- 税額合計２
+             ,xxil.inv_gap_amount        = NULL         -- 本体差額
+             ,xxil.inv_amount_sum        = NULL         -- 税抜合計１
+             ,xxil.inv_amount_sum2       = NULL         -- 税抜合計２
+             ,xxil.category              = NULL         -- 内訳分類
+             ,xxil.invoice_printing_unit = NULL         -- 請求書印刷単位
+             ,xxil.customer_for_sum      = NULL         -- 顧客(集計用)
+      WHERE   xxil.invoice_id IN
+      ( SELECT xxih.invoice_id
+        FROM xxcfr_invoice_headers xxih
+        WHERE xxih.request_id = gt_target_request_id )
+      ;
+--
+    EXCEPTION
+    -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                               ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                               ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                               ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxil)) -- 請求明細情報テーブル
+                               ,1
+                               ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_process_expt;
+    END;
+-- Add Ver1.02 End
 --
     --==============================================================
     --請求明細情報更新処理
@@ -2620,7 +2696,6 @@ AS
          (( NVL(in_tax_gap_amount,0) <> 0 ) OR ( NVL(lt_inv_gap_amount,0) <> 0 )) ) THEN
       lt_tax_diff_amount_create_flg := '0';
     END IF;
--- Ver1.190 Add End
 --
     -- 請求ヘッダ情報テーブル請求金額更新
     BEGIN
@@ -2632,9 +2707,19 @@ AS
             ,xxih.inv_amount_includ_tax       =  lt_inv_amount_includ_tax  -- 税込請求金額合計
             ,xxih.inv_gap_amount              =  lt_inv_gap_amount         -- 本体差額
             ,xxih.invoice_tax_div             =  iv_invoice_tax_div        -- 請求書消費税積上げ計算方式
-            ,xxih.tax_diff_amount_create_flg  =  lt_tax_diff_amount_create_flg  -- 消費税差額作成フラグ
+-- Mod Ver1.02 Start
+            ,xxih.tax_diff_amount_create_flg  =  DECODE(xxih.tax_diff_amount_create_flg,'1', '0', lt_tax_diff_amount_create_flg)
+                                                                           -- 消費税差額作成フラグ
+--            ,xxih.tax_diff_amount_create_flg  =  lt_tax_diff_amount_create_flg  -- 消費税差額作成フラグ
+-- Mod Ver1.02 End
             ,xxih.tax_rounding_rule           =  cv_tax_rounding_rule_down      -- 税金－端数処理
             ,xxih.output_format               =  iv_output_format          -- 請求書出力形式
+-- Add Ver1.02 Start
+            ,xxih.tax_gap_amount_sent         =  DECODE(xxih.tax_diff_amount_create_flg,'1', xxih.tax_gap_amount, NULL)
+                                                                           -- 送信済税差額
+            ,xxih.inv_gap_amount_sent         =  DECODE(xxih.tax_diff_amount_create_flg,'1', xxih.inv_gap_amount, NULL)
+                                                                           -- 送信済本体差額
+-- Add Ver1.02 End
       WHERE   xxih.invoice_id = in_invoice_id          -- 請求書ID
       ;
 --
@@ -2785,9 +2870,9 @@ AS
           --(エラー処理)
           RAISE global_process_expt;
         END IF;
-    END LOOP for_loop;
+      END LOOP for_loop;
 --
-      END IF;
+    END IF;
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ###################################
