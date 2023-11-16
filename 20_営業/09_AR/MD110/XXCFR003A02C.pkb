@@ -7,7 +7,7 @@ AS
  * Description      : 請求ヘッダデータ作成
  * MD.050           : MD050_CFR_003_A02_請求ヘッダデータ作成
  * MD.070           : MD050_CFR_003_A02_請求ヘッダデータ作成
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2012/11/09    1.11 SCSK 小野塚 香織 障害「E_本稼動_10090」対応
  *  2013/01/10    1.12 SCSK 中野 徹也   障害「E_本稼動_09964」対応
  *  2013/06/10    1.13 SCSK 中野 徹也   障害「E_本稼動_09964再対応」対応
+ *  2023/11/14    1.14 SCSK 赤地 学     障害「E_本稼動_19546」対応
  *
  *****************************************************************************************/
 --
@@ -3468,19 +3469,41 @@ AS
 -- Modify 2009.07.21 Ver1.03 start
     -- *** 一意制約例外ハンドラ ***
       WHEN uniq_expt THEN
-        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
-                               iv_application  => cv_msg_kbn_cfr    
-                              ,iv_name         => cv_msg_cfr_00077  
-                              ,iv_token_name1  => cv_tkn_cut_date  
-                              ,iv_token_value1 => TO_CHAR(id_cutoff_date, 'YYYY/MM/DD')
-                              ,iv_token_name2  => cv_tkn_cust_code  
-                              ,iv_token_value2 => iv_cust_acct_code
-                              ,iv_token_name3  => cv_tkn_cust_name  
-                              ,iv_token_value3 => iv_cust_acct_name)
-                              ,1
-                              ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
-        ov_retcode := cv_status_warn;
+-- Mod Ver1.14 Start
+--        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_msg_kbn_cfr    
+--                              ,iv_name         => cv_msg_cfr_00077  
+--                              ,iv_token_name1  => cv_tkn_cut_date  
+--                              ,iv_token_value1 => TO_CHAR(id_cutoff_date, 'YYYY/MM/DD')
+--                              ,iv_token_name2  => cv_tkn_cust_code  
+--                              ,iv_token_value2 => iv_cust_acct_code
+--                              ,iv_token_name3  => cv_tkn_cust_name  
+--                              ,iv_token_value3 => iv_cust_acct_name)
+--                              ,1
+--                              ,5000);
+--        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+--        ov_retcode := cv_status_warn;
+        BEGIN
+          UPDATE xxcfr_invoice_headers  xxih  -- 請求ヘッダ情報テーブル
+          SET    xxih.request_id     = cn_request_id        -- 要求ID
+                ,xxih.parallel_type  = 1                    -- パラレル実行区分
+          WHERE  xxih.cutoff_date    = id_cutoff_date       -- 締日
+          AND    xxih.bill_cust_code = iv_cust_acct_code    -- 請求先顧客コード
+          ;
+        EXCEPTION
+         WHEN OTHERS THEN
+           lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                   iv_application  => cv_msg_kbn_cfr        -- 'XXCFR'
+                                  ,iv_name         => cv_msg_cfr_00017      -- データ更新エラー
+                                  ,iv_token_name1  => cv_tkn_table          -- トークン'TABLE'
+                                  ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_table_xxih)) 
+                                                                            -- 請求ヘッダ情報テーブル
+                                  ,1
+                                  ,5000);
+           lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+           RAISE global_process_expt;
+        END;
+-- Mod Ver1.14 End
         RETURN;
 -- Modify 2009.07.21 Ver1.03 end
     -- *** OTHERS例外ハンドラ ***
