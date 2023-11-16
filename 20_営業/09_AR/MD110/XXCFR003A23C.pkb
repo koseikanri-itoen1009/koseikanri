@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFR003A23C_pkb(body)
  * Description      : Á”ïÅ·Šzì¬ˆ—
  * MD.050           : MD050_CFR_003_A23_Á”ïÅ·Šzì¬ˆ—.doc
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/07/25    1.0   R.Oikawa         V‹Kì¬(E_–{‰Ò“®_18983)
+ *  2023/11/14    1.1   M.Akachi         E_–{‰Ò“®_19546 ƒTƒCƒNƒ‹Œ×‚¬‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1294,8 +1295,14 @@ AS
     IS
       SELECT  xih.invoice_id                 AS invoice_id                    -- ˆêŠ‡¿‹‘ID
              ,xih.set_of_books_id            AS set_of_books_id               -- ‰ïŒv’ •ëID
-             ,xih.inv_gap_amount             AS inv_gap_amount                -- –{‘Ì·Šz
-             ,xih.tax_gap_amount             AS tax_gap_amount                -- Å·Šz
+-- Mod Ver1.1 Start
+             ,xih.inv_gap_amount  - NVL(xih.inv_gap_amount_sent, 0)
+                                             AS inv_gap_amount                -- –{‘Ì·Šz
+             ,xih.tax_gap_amount  - NVL(xih.tax_gap_amount_sent, 0)
+                                             AS tax_gap_amount                -- Å·Šz
+--             ,xih.inv_gap_amount             AS inv_gap_amount                -- –{‘Ì·Šz
+--             ,xih.tax_gap_amount             AS tax_gap_amount                -- Å·Šz
+-- Mod Ver1.1 End
              ,xih.term_name                  AS term_name                     -- x•¥ğŒ
              ,xih.bill_cust_account_id       AS bill_cust_account_id          -- ¿‹æŒÚ‹qID
              ,xih.bill_cust_acct_site_id     AS bill_cust_acct_site_id        -- ¿‹æŒÚ‹qŠİ’nID
