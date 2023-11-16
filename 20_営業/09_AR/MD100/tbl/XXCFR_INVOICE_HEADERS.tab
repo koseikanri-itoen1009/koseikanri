@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
  * Description     : 請求ヘッダ情報テーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -16,6 +16,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
  *  2012/11/13    1.2  SCSK 中村 健一 [E_本稼動_10090]対応
  *  2013/06/13    1.3  SCSK 中野 徹也 [E_本稼動_09964]再対応
  *  2023/04/13    1.4  SCSK 吉川 啓介 [E_本稼動_18983]請求差額の自動連携
+ *  2023/11/14    1.5  SCSK 郭 有司   [E_本稼動_19546]請求書の消費税額訂正
  ************************************************************************/
 ( 
   invoice_id                 NUMBER         NOT NULL  ,-- 一括請求書ID
@@ -88,6 +89,10 @@ CREATE TABLE xxcfr.xxcfr_invoice_headers
   program_application_id     NUMBER(15)               ,-- コンカレント・プログラム・アプリケーションID
   program_id                 NUMBER(15)               ,-- コンカレント・プログラムID
   program_update_date        DATE                     ,-- プログラム更新日
+/* 2023.11.14 Ver1.5 Add START */
+  tax_gap_amount_sent        NUMBER                   ,-- 送信済税差額
+  inv_gap_amount_sent        NUMBER                   ,-- 送信済本体差額
+/* 2023.11.14 Ver1.5 Add END */
   CONSTRAINT xxcfr_invoice_headers_pk PRIMARY KEY ( invoice_id )
   USING INDEX TABLESPACE xxidx2
 )
@@ -166,5 +171,9 @@ COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.request_id             IS '要求ID'
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.program_id             IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.program_update_date    IS 'プログラム更新日';
+/* 2023.11.14 Ver1.5 Add START */
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.tax_gap_amount_sent    IS '送信済税差額';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.inv_gap_amount_sent    IS '送信済本体差額';
+/* 2023.11.14 Ver1.5 Add END */
 --
 COMMENT ON TABLE  xxcfr.xxcfr_invoice_headers IS '請求ヘッダ情報テーブル';
