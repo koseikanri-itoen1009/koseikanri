@@ -13,15 +13,17 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
  *  Name                             Description
  * -------------------------------- ----------------------------------------------------------
  *  init                             初期処理 (A-1)
- *  get_bank_acct_chk_fb_line        FB作成明細データの取得（振込口座事前チェック用FB作成処理）(A-2)
- *  get_fb_line                      FB作成明細データの取得（本振用FBデータ作成処理）(A-3)
+-- Ver.1.13 DEL START
+-- *  get_bank_acct_chk_fb_line        FB作成明細データの取得（振込口座事前チェック用FB作成処理）(A-2)
+-- *  get_fb_line                      FB作成明細データの取得（本振用FBデータ作成処理）(A-3)
+-- Ver.1.13 DEL END
  *  get_fb_header                    FB作成ヘッダーデータの取得(A-4)
  *  storage_fb_header                FB作成ヘッダーデータの格納(A-5)
  *  storage_bank_acct_chk_fb_line    FB作成明細データの格納（振込口座事前チェック用FB作成処理）(A-7)
@@ -35,7 +37,11 @@ AS
  *                                   FB作成トレーラレコードの出力(A-13)
  *                                   FB作成エンドレコードの出力(A-15)
  *  upd_carried_forward_data         翌月繰り越しデータの更新(A-17)
- *  dmy_acct_chk                     FB作成対象外ダミー口座判定(A-10)
+ *  dmy_acct_chk                     FB作成対象外ダミー口座判定
+-- Ver.1.13 ADD START
+ *  insert_data                      FBデータ明細ワークテーブル登録(A-10B)
+ *  delete_data                      ワークテーブルデータ削除(A-18)
+-- Ver.1.13 ADD END
  *  submain                          メイン処理プロシージャ
  *  main                             コンカレント実行ファイル登録プロシージャ
  *
@@ -63,7 +69,7 @@ AS
  *                                                           金額確定ステータスが確定済のレコードのみ対象とするように修正
  *  2018/08/07    1.11  K.Nara           [E_本稼動_15203対応]本振用FBデータ作成で振込先がダミー口座は作成対象外とする
  *  2023/06/06    1.12  Y.Ooyama         [E_本稼動_19179対応]インボイス対応（BM関連）
- *
+ *  2023/10/25    1.13  T.Okuyama        [E_本稼動_19540対応]「振り分け上手」アプリの代替え対応
  *****************************************************************************************/
 --
   --===============================
@@ -80,6 +86,11 @@ AS
   cn_request_id               CONSTANT NUMBER        := fnd_global.conc_request_id;         -- REQUEST_ID
   cn_program_application_id   CONSTANT NUMBER        := fnd_global.prog_appl_id;            -- PROGRAM_APPLICATION_ID
   cn_program_id               CONSTANT NUMBER        := fnd_global.conc_program_id;         -- PROGRAM_ID
+-- Ver.1.13 ADD START
+  cd_creation_date            CONSTANT DATE          := SYSDATE;                            -- CREATION_DATE
+  cd_last_update_date         CONSTANT DATE          := SYSDATE;                            -- LAST_UPDATE_DATE
+  cd_program_update_date      CONSTANT DATE          := SYSDATE;                            -- PROGRAM_UPDATE_DATE
+-- Ver.1.13 ADD END
   --
   cv_msg_part                 CONSTANT VARCHAR2(3)   := ' : ';                              -- コロン
   cv_msg_cont                 CONSTANT VARCHAR2(3)   := '.';                                -- ピリオド
@@ -134,6 +145,11 @@ AS
   cv_msg_cok_10453            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10453';    -- FBデータの支払金額0円以下警告
   cv_msg_ccp_90003            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90003';    -- スキップ件数メッセージ
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Ver.1.13 ADD START
+  cv_msg_cok_10861            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10861';    -- データ登録エラー
+  cv_msg_cok_10862            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10862';    -- データ削除エラー
+  cv_msg_cok_10863            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10863';    -- テーブルロック取得エラー
+-- Ver.1.13 ADD END
   -- メッセージ・トークン
   cv_token_proc_type          CONSTANT VARCHAR2(15)  := 'PROC_TYPE';           -- 処理パラメータ
   cv_token_profile            CONSTANT VARCHAR2(15)  := 'PROFILE';             -- カスタムプロファイルの物理名
@@ -151,6 +167,11 @@ AS
   cv_token_account_type      CONSTANT VARCHAR2(15)  := 'ACCOUNT_TYPE';         -- 預金種別
   cv_token_account_num       CONSTANT VARCHAR2(20)  := 'ACCOUNT_NUM';          -- 銀行口座番号
 -- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
+-- Ver.1.13 ADD START
+  cv_tkn_tbl                 CONSTANT VARCHAR2(30)  := 'TABLE';                -- テーブル名
+  cv_tkn_err_msg             CONSTANT VARCHAR2(30)  := 'ERR_MSG';              -- エラーメッセージ
+  cv_tbl_nm                  CONSTANT VARCHAR2(100) := 'FBデータ明細ワークテーブル';
+-- Ver.1.13 ADD END
   -- 値セット
   cv_value_cok_fb_proc_type   CONSTANT VARCHAR2(30)  := 'XXCOK1_FB_PROC_TYPE'; -- 値セット名
   -- 定数
@@ -2397,6 +2418,265 @@ AS
       ov_retcode := cv_status_error;
   END dmy_acct_chk;
 -- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
+-- Ver.1.13 ADD START
+  /**********************************************************************************
+   * Procedure Name   : insert_data
+   * Description      : FBデータ明細ワークテーブル登録(A-10B)
+   ***********************************************************************************/
+  PROCEDURE insert_data(
+     ov_errbuf          OUT NOCOPY VARCHAR2                      -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode         OUT NOCOPY VARCHAR2                      -- リターン・コード              --# 固定 #
+    ,ov_errmsg          OUT NOCOPY VARCHAR2                      -- ユーザー・エラー・メッセージ  --# 固定 #
+    ,it_bank_number     IN  ap_bank_branches.bank_number%TYPE    -- 仕向金融機関番号
+    ,in_transfer_amount IN  NUMBER                               -- 振込金額
+    ,i_fb_line_rec      IN  fb_line_cur%ROWTYPE                  -- FB作成明細レコード
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'insert_data';     -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_header_rec_type   CONSTANT VARCHAR2(1)   := '1';      -- ヘッダーレコード区分
+    cv_date_rec_type     CONSTANT VARCHAR2(1)   := '2';      -- データレコード区分
+    cv_code_type         CONSTANT VARCHAR2(1)   := '0';      -- コード区分
+    cv_zero              CONSTANT VARCHAR2(1)   := '0';      -- '0'
+    cv_space             CONSTANT VARCHAR2(1)   := ' ';      -- スペース1文字
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    BEGIN
+      -- ワークテーブルに登録
+      INSERT INTO xxcok_fb_lines_work
+        (  internal_bank_number                    -- 仕向金融機関番号
+          ,header_data_type                        -- ヘッダーレコード区分
+          ,type_code                               -- 種別コード
+          ,code_type                               -- コード区分
+          ,pay_date                                -- 振込指定日
+          ,data_type                               -- データレコード区分
+          ,bank_number                             -- 被仕向金融機関番号
+          ,bank_name_alt                           -- 被仕向金融機関名
+          ,bank_num                                -- 被仕向支店番号
+          ,bank_branch_name_alt                    -- 被仕向支店名
+          ,clearinghouse_no                        -- 手形交換所番号
+          ,bank_account_type                       -- 預金種目
+          ,bank_account_num                        -- 口座番号
+          ,account_holder_name_alt                 -- 受取人名
+          ,transfer_amount                         -- 振込金額
+          ,record_type                             -- 新規レコード
+          ,base_code                               -- 拠点コード
+          ,supplier_code                           -- 仕入先コード
+          ,implemented_flag                        -- FB振分実行済区分
+          ,created_by                              -- 作成者
+          ,creation_date                           -- 作成日
+          ,last_updated_by                         -- 最終更新者
+          ,last_update_date                        -- 最終更新日
+          ,last_update_login                       -- 最終更新ログイン
+          ,request_id                              -- 要求ID
+          ,program_application_id                  -- アプリケーションID
+          ,program_id                              -- プログラムID
+          ,program_update_date                     -- プログラム更新日
+        )
+      VALUES
+        (  SUBSTRB(it_bank_number, 1,4)                                            -- 仕向金融機関番号
+          ,cv_header_rec_type                                                      -- ヘッダーレコード区分
+          ,LPAD( gt_values_type_code, 2, cv_zero )                                 -- 種別コード
+          ,cv_code_type                                                            -- コード区分
+          ,TO_CHAR( gd_pay_date, 'MMDD' )                                          -- 振込指定日
+          ,cv_date_rec_type                                                        -- データレコード区分
+          ,LPAD( NVL( i_fb_line_rec.bank_number, cv_zero ), 4, cv_zero )           -- 被仕向金融機関番号
+          ,RPAD( NVL( i_fb_line_rec.bank_name_alt, cv_space ), 15 )                -- 被仕向金融機関名
+          ,LPAD( NVL( i_fb_line_rec.bank_num, cv_zero ), 3, cv_zero )              -- 被仕向支店番号
+          ,RPAD( NVL( i_fb_line_rec.bank_branch_name_alt, cv_space ), 15 )         -- 被仕向支店名
+          ,LPAD( cv_space, 4 )                                                     -- 手形交換所番号
+          ,SUBSTRB(NVL( i_fb_line_rec.bank_account_type, cv_zero ), 1, 1)          -- 預金種目
+          ,LPAD( NVL( i_fb_line_rec.bank_account_num, cv_zero ), 7, cv_zero )      -- 口座番号
+          ,RPAD( NVL( i_fb_line_rec.account_holder_name_alt, cv_space ), 30 )      -- 受取人名
+          ,in_transfer_amount                                                      -- 振込金額
+          ,cv_zero                                                                 -- 新規レコード
+          ,LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 10 , cv_zero )          -- 拠点コード
+          ,LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 10 , cv_zero )      -- 仕入先コード
+          ,NULL                                                                    -- FB振分実行済区分
+          ,cn_created_by                                                           -- 作成者
+          ,cd_creation_date                                                        -- 作成日
+          ,cn_last_updated_by                                                      -- 最終更新者
+          ,cd_last_update_date                                                     -- 最終更新日
+          ,cn_last_update_login                                                    -- 最終更新ログイン
+          ,cn_request_id                                                           -- 要求ID
+          ,cn_program_application_id                                               -- アプリケーションID
+          ,cn_program_id                                                           -- プログラムID
+          ,cd_program_update_date                                                  -- プログラム更新日
+        );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appli_xxcok                       --アプリケーション短縮名
+                 ,iv_name         => cv_msg_cok_10861                     --メッセージコード
+                 ,iv_token_name1  => cv_tkn_tbl                           --トークンコード1
+                 ,iv_token_value1 => cv_tbl_nm                            --トークン値1
+                 ,iv_token_name2  => cv_tkn_err_msg                       --トークンコード2
+                 ,iv_token_value2 => SQLERRM                              --トークン値2
+                );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+  EXCEPTION
+    -- *** 処理例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END insert_data;
+-- Ver.1.13 ADD END
+--
+-- Ver.1.13 ADD START
+  /**********************************************************************************
+   * Procedure Name   : delete_data
+   * Description      : ワークテーブルデータ削除(A-18)
+   ***********************************************************************************/
+  PROCEDURE delete_data(
+    ov_errbuf        OUT VARCHAR2  -- エラー・メッセージ
+  , ov_retcode       OUT VARCHAR2  -- リターン・コード
+  , ov_errmsg        OUT VARCHAR2  -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'delete_data';     -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    CURSOR fb_lines_cur
+    IS
+      SELECT 'X'
+      FROM   xxcok_fb_lines_work  xflw
+      WHERE  xflw.request_id < cn_request_id
+      FOR UPDATE OF xflw.request_id NOWAIT;
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+    -- ===============================================
+    -- FBデータ明細ワークテーブルロック取得
+    -- ===============================================
+    OPEN  fb_lines_cur;
+    CLOSE fb_lines_cur;
+    -- ===============================================
+    -- FBデータ明細ワークテーブルデータ削除
+    -- ===============================================
+    BEGIN
+      DELETE FROM xxcok_fb_lines_work  xflw
+      WHERE  xflw.request_id <> cn_request_id
+      ;
+--
+    EXCEPTION
+      -- *** 削除処理エラー ***
+      WHEN OTHERS THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appli_xxcok                       --アプリケーション短縮名
+                 ,iv_name         => cv_msg_cok_10862                     --メッセージコード
+                 ,iv_token_name1  => cv_tkn_tbl                           --トークンコード1
+                 ,iv_token_value1 => cv_tbl_nm                            --トークン値1
+                 ,iv_token_name2  => cv_tkn_err_msg                       --トークンコード2
+                 ,iv_token_value2 => SQLERRM                              --トークン値2
+                );
+        lv_errbuf := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_error;
+    END;
+--
+  EXCEPTION
+  --*** ロックエラー ***
+  WHEN global_lock_err_expt THEN
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => CHR(10)
+    );
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                iv_application  => cv_appli_xxcok                       --アプリケーション短縮名
+               ,iv_name         => cv_msg_cok_10863                     --メッセージコード
+               ,iv_token_name1  => cv_tkn_tbl                           --トークンコード1
+               ,iv_token_value1 => cv_tbl_nm                            --トークン値1
+               ,iv_token_name2  => cv_tkn_err_msg                       --トークンコード2
+               ,iv_token_value2 => SQLERRM                              --トークン値2
+              );
+      lv_errbuf := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+  END delete_data;
+-- Ver.1.13 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -2680,6 +2960,22 @@ AS
           IF( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
+-- Ver.1.13 ADD START
+          -- ========================================
+          -- A-10B.FBデータ明細ワークテーブル登録
+          -- ========================================
+          insert_data(
+             ov_errbuf              => lv_errbuf              -- エラー・メッセージ
+           , ov_retcode             => lv_retcode             -- リターン・コード
+           , ov_errmsg              => lv_errmsg              -- ユーザー・エラー・メッセージ
+           , it_bank_number         => lt_bank_number         -- 仕向金融機関番号
+           , in_transfer_amount     => ln_transfer_amount     -- 振込金額
+           , i_fb_line_rec          => fb_line_rec            -- FB作成明細レコード
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+-- Ver.1.13 ADD END
           --==================================================
           -- A-11.FB作成データ出力結果の更新
           --==================================================
@@ -2809,6 +3105,19 @@ AS
       RAISE global_process_expt;
     END IF;
 -- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+-- Ver.1.13 ADD START
+    -- ===============================================
+    -- ワークテーブルデータ削除(A-18)
+    -- ===============================================
+    delete_data(
+      ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+    , ov_retcode  => lv_retcode  -- リターン・コード
+    , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+-- Ver.1.13 ADD END
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
