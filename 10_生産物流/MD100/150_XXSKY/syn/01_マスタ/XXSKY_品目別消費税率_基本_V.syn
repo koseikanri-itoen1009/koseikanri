@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_品目別消費税率_基本_V FOR APPS.XXSKY_品目別消費税率_基本_V
+/
