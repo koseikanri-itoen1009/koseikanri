@@ -1,0 +1,101 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2023. All rights reserved.
+ *
+ * Table Name  : xxcok_fb_lines_work
+ * Description : FBデータ明細ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2023/10/25    1.0   T.Okuyama        [E_本稼動_19540] 新規作成
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_fb_lines_work (
+     internal_bank_number           VARCHAR2(4)
+    ,header_data_type               VARCHAR2(1)
+    ,type_code                      VARCHAR2(2)
+    ,code_type                      VARCHAR2(1)
+    ,pay_date                       VARCHAR2(4)
+    ,data_type                      VARCHAR2(1)
+    ,bank_number                    VARCHAR2(4)
+    ,bank_name_alt                  VARCHAR2(15)
+    ,bank_num                       VARCHAR2(3)
+    ,bank_branch_name_alt           VARCHAR2(15)
+    ,clearinghouse_no               VARCHAR2(4)
+    ,bank_account_type              VARCHAR2(1)
+    ,bank_account_num               VARCHAR2(7)
+    ,account_holder_name_alt        VARCHAR2(30)
+    ,transfer_amount                NUMBER(15)
+    ,record_type                    VARCHAR2(1)
+    ,base_code                      VARCHAR2(10)
+    ,supplier_code                  VARCHAR2(10)
+    ,implemented_flag               VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcok.xxcok_fb_lines_work IS 'FBデータ明細ワークテーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.internal_bank_number                       IS '仕向金融機関番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.header_data_type                           IS 'ヘッダーレコード区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.type_code                                  IS '種別コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.code_type                                  IS 'コード区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.pay_date                                   IS '振込指定日'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.data_type                                  IS 'データレコード区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.bank_number                                IS '被仕向金融機関番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.bank_name_alt                              IS '被仕向金融機関名'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.bank_num                                   IS '被仕向支店番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.bank_branch_name_alt                       IS '被仕向支店名'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.clearinghouse_no                           IS '手形交換所番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.bank_account_type                          IS '預金種目'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.bank_account_num                           IS '口座番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.account_holder_name_alt                    IS '受取人名'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.transfer_amount                            IS '振込金額'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.record_type                                IS '新規レコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.base_code                                  IS '拠点コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.supplier_code                              IS '仕入先コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.implemented_flag                           IS 'FB振分実行済区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.created_by                                 IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.creation_date                              IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.last_updated_by                            IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.last_update_date                           IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.last_update_login                          IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.request_id                                 IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.program_id                                 IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.program_update_date                        IS 'プログラム更新日'
+/
