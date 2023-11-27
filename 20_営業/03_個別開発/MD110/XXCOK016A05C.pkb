@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/11/15    1.0   T.Okuyama        [E_本稼動_19540対応] 新規作成
+ *  2023/11/24    1.1   T.Okuyama        [E_本稼動_19540対応] 新規作成
  *
  *****************************************************************************************/
 --
@@ -828,7 +829,7 @@ AS
 --
       BEGIN
         UPDATE fnd_lookup_values flv
-        SET    flv.attribute11  = TO_CHAR(ln_in_cnt)
+        SET    flv.attribute11  = TO_CHAR(ln_in_cnt, '999,999')
         WHERE  flv.lookup_type  = cv_lookup_type_fb
         AND    flv.lookup_code  = lv_in_code
         AND    flv.enabled_flag = cv_yes
@@ -1677,7 +1678,7 @@ AS
           BEGIN
             UPDATE fnd_lookup_values flv
             SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
-                  ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '9,999,999,999')
+                  ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
             WHERE  flv.lookup_type  = cv_lookup_type_fb
             AND    flv.lookup_code  = lv_bank_code
             AND    flv.enabled_flag = cv_yes
@@ -1807,7 +1808,7 @@ AS
       -- 明細レコード件数（按分件数）、明細合計金額の登録
       UPDATE fnd_lookup_values flv
       SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
-            ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '9,999,999,999')
+            ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
       WHERE  flv.lookup_type  = cv_lookup_type_fb
       AND    flv.lookup_code  = lv_bank_code
       AND    flv.enabled_flag = cv_yes
@@ -2172,12 +2173,12 @@ AS
           ln_bank_cnt     := lt_result_log_rec.defaut_bank_count;
           ln_bank_amount  := lt_result_log_rec.defaut_bank_amount;
           ln_bank_zan_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999') - ln_bank_cnt;
-          ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999') - ln_bank_amount;
+          ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999') - ln_bank_amount;
           lt_result_log_rec.attribute11 := TO_CHAR(ln_bank_cnt,    '999,999');
-          lt_result_log_rec.attribute12 := TO_CHAR(ln_bank_amount, '9,999,999,999');
+          lt_result_log_rec.attribute12 := TO_CHAR(ln_bank_amount, '999,999,999,999');
         ELSE
           ln_bank_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999');
-          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999');
+          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999');
         END IF;
         ln_c_percentage := ln_bank_cnt    / gn_out_cnt    * 100;
         ln_a_percentage := ln_bank_amount / gn_out_amount * 100;
@@ -2247,7 +2248,7 @@ AS
                    ,iv_token_name1  => cv_token_count
                    ,iv_token_value1 => TO_CHAR( gn_out_cnt, '999,999' )
                    ,iv_token_name2  => cv_token_amount
-                   ,iv_token_value2 => TO_CHAR( gn_out_amount, '9,999,999,999' )
+                   ,iv_token_value2 => TO_CHAR( gn_out_amount, '999,999,999,999' )
                   );
     lb_retcode := xxcok_common_pkg.put_message_f(
                     in_which    => FND_FILE.LOG      -- 出力区分
