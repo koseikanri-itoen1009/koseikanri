@@ -32,7 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/11/15    1.0   T.Okuyama        [E_本稼動_19540対応] 新規作成
  *  2023/11/24    1.1   T.Okuyama        [E_本稼動_19540対応] 新規作成
- *
+ *  2023/12/04    1.2   T.Okuyama        [E_本稼動_19540対応] 新規作成
  *****************************************************************************************/
 --
   --===============================
@@ -268,7 +268,10 @@ AS
     AND    abaa.account_type(+)     = gt_prof_acc_type_internal   -- 口座使用（'INTERNAL'）
     AND    abaa.eft_requester_id(+) IS NOT NULL
     AND    flv.lookup_type          = cv_lookup_type_fb
-    AND    flv.lookup_code          = abb.bank_number
+--  Ver1.2 T.Okuyama Mod Start
+--    AND    flv.lookup_code          = abb.bank_number
+    AND    flv.attribute1           = abb.bank_number
+--  Ver1.2 T.Okuyama Mod End
     AND   (flv.attribute9   = cv_yes                              -- 仕向銀行自動振分区分
       OR   flv.attribute10  = cv_yes)                             -- 他行分振分け対象区分
     AND    flv.enabled_flag = cv_yes
@@ -279,33 +282,58 @@ AS
     ORDER BY flv.attribute1
     ;
 --
-    -- 10.FB他行分仕向銀行情報と銀行口座マスタの整合性チェックカーソル
-    CURSOR fb_bank_accounts_ck_cur
+--  Ver1.2 T.Okuyama Mod Start
+--    -- 10.FB他行分仕向銀行情報と銀行口座マスタの整合性チェックカーソル
+--    CURSOR fb_bank_accounts_ck_cur
+--    IS
+--    SELECT flv.lookup_code AS  internal_bank                      -- 被仕向銀行振分け銀行
+--    FROM    ap_bank_accounts_all          abaa                    -- 銀行口座マスタ
+--           ,ap_bank_branches              abb                     -- 銀行支店マスタ
+--           ,fnd_lookup_values             flv
+--    WHERE  abaa.bank_branch_id    = abb.bank_branch_id
+--    AND    abaa.org_id            = TO_NUMBER( gt_prof_org_id )   -- 営業単位
+--    AND    abaa.account_type      = gt_prof_acc_type_internal     -- 口座使用（'INTERNAL'）
+--    AND    abaa.eft_requester_id IS NOT NULL
+--    AND    flv.lookup_type        = cv_lookup_type_fb
+--    AND    flv.lookup_code        = abb.bank_number
+--    AND   (abb.bank_number              <> flv.attribute1         -- 銀行番号
+--      OR   abb.bank_name_alt            <> flv.attribute2         -- 銀行名カナ
+--      OR   abb.bank_num                 <> flv.attribute3         -- 支店番号
+--      OR   abb.bank_branch_name_alt     <> flv.attribute4         -- 銀行支店名カナ
+--      OR   abaa.bank_account_type       <> flv.attribute5         -- 銀行口座種別
+--      OR   abaa.bank_account_num        <> flv.attribute6         -- 口座番号
+--      OR   abaa.eft_requester_id        <> flv.attribute7         -- 依頼人コード
+--      OR   abaa.account_holder_name_alt <> flv.attribute8)        -- 口座名義人カナ（依頼人名）
+--    AND    flv.enabled_flag = cv_yes
+--    AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
+--                                AND NVL(flv.end_date_active, gd_proc_date)
+--    AND    flv.language     = USERENV('LANG')
+--    ORDER BY flv.lookup_code
+--    ;
+--
+    -- 10.参照表（FB他行分仕向銀行）FB口座と銀行口座マスタの整合性チェックカーソル
+    CURSOR fb_bank_lookup_cur
     IS
-    SELECT flv.lookup_code AS  internal_bank                      -- 被仕向銀行振分け銀行
-    FROM    ap_bank_accounts_all          abaa                    -- 銀行口座マスタ
-           ,ap_bank_branches              abb                     -- 銀行支店マスタ
-           ,fnd_lookup_values             flv
-    WHERE  abaa.bank_branch_id    = abb.bank_branch_id
-    AND    abaa.org_id            = TO_NUMBER( gt_prof_org_id )   -- 営業単位
-    AND    abaa.account_type      = gt_prof_acc_type_internal     -- 口座使用（'INTERNAL'）
-    AND    abaa.eft_requester_id IS NOT NULL
-    AND    flv.lookup_type        = cv_lookup_type_fb
-    AND    flv.lookup_code        = abb.bank_number
-    AND   (abb.bank_number              <> flv.attribute1         -- 銀行番号
-      OR   abb.bank_name_alt            <> flv.attribute2         -- 銀行名カナ
-      OR   abb.bank_num                 <> flv.attribute3         -- 支店番号
-      OR   abb.bank_branch_name_alt     <> flv.attribute4         -- 銀行支店名カナ
-      OR   abaa.bank_account_type       <> flv.attribute5         -- 銀行口座種別
-      OR   abaa.bank_account_num        <> flv.attribute6         -- 口座番号
-      OR   abaa.eft_requester_id        <> flv.attribute7         -- 依頼人コード
-      OR   abaa.account_holder_name_alt <> flv.attribute8)        -- 口座名義人カナ（依頼人名）
+    SELECT flv.attribute1  AS fb_dff1
+          ,flv.attribute2  AS fb_dff2
+          ,flv.attribute3  AS fb_dff3
+          ,flv.attribute4  AS fb_dff4
+          ,flv.attribute5  AS fb_dff5
+          ,flv.attribute6  AS fb_dff6
+          ,flv.attribute7  AS fb_dff7
+          ,flv.attribute8  AS fb_dff8
+    FROM   fnd_lookup_values flv
+    WHERE  flv.lookup_type  = cv_lookup_type_fb
+    AND   (flv.attribute9   = cv_yes                              -- 仕向銀行自動振分区分
+      OR   flv.attribute10  = cv_yes)                             -- 他行分振分け対象区分
     AND    flv.enabled_flag = cv_yes
     AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
                                 AND NVL(flv.end_date_active, gd_proc_date)
     AND    flv.language     = USERENV('LANG')
-    ORDER BY flv.lookup_code
+    GROUP BY flv.attribute1, flv.attribute2, flv.attribute3, flv.attribute4, flv.attribute5, flv.attribute6, flv.attribute7, flv.attribute8
+    ORDER BY flv.attribute1
     ;
+--  Ver1.2 T.Okuyama Mod End
 --
     --===============================
     -- ローカル例外
@@ -616,28 +644,73 @@ AS
       RAISE init_othes_expt;
     END IF;
 --
+--  Ver1.1 T.Okuyama Mod Start
+--    --======================================================================
+--    --10.参照表（FB他行分仕向銀行）登録情報と銀行口座マスタの整合性チェック
+--    --======================================================================
+--    ln_errout := 0;
+--    <<fb_bank_ck_loop>>
+--    FOR lt_bank_accounts_rec in fb_bank_accounts_ck_cur LOOP
+--      IF( lt_bank_accounts_rec.internal_bank IS NOT NULL ) THEN
+--        -- 銀行口座マスタ整合性エラー
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_appli_xxcok
+--                        ,iv_name         => cv_msg_cok_10871
+--                        ,iv_token_name1  => cv_token_dist_bank
+--                        ,iv_token_value1 => lt_bank_accounts_rec.internal_bank
+--                       );
+--        lb_retcode := xxcok_common_pkg.put_message_f(
+--                        in_which    => FND_FILE.LOG      -- 出力区分
+--                       ,iv_message  => lv_errmsg         -- メッセージ
+--                       ,in_new_line => 0                 -- 改行
+--                      );
+--        ln_errout := ln_errout + 1;
+--      END IF;
+--    END LOOP fb_bank_ck_loop;
+--
     --======================================================================
-    --10.参照表（FB他行分仕向銀行）登録情報と銀行口座マスタの整合性チェック
+    --10.参照表（FB他行分仕向銀行）FB口座と銀行口座マスタの整合性チェック
     --======================================================================
     ln_errout := 0;
-    <<fb_bank_ck_loop>>
-    FOR lt_bank_accounts_rec in fb_bank_accounts_ck_cur LOOP
-      IF( lt_bank_accounts_rec.internal_bank IS NOT NULL ) THEN
-        -- 銀行口座マスタ整合性エラー
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appli_xxcok
-                        ,iv_name         => cv_msg_cok_10871
-                        ,iv_token_name1  => cv_token_dist_bank
-                        ,iv_token_value1 => lt_bank_accounts_rec.internal_bank
-                       );
-        lb_retcode := xxcok_common_pkg.put_message_f(
-                        in_which    => FND_FILE.LOG      -- 出力区分
-                       ,iv_message  => lv_errmsg         -- メッセージ
-                       ,in_new_line => 0                 -- 改行
-                      );
-        ln_errout := ln_errout + 1;
-      END IF;
-    END LOOP fb_bank_ck_loop;
+    <<fb_bank_lookup_ck_loop>>
+    FOR lt_bank_lookup_rec in fb_bank_lookup_cur LOOP
+      BEGIN
+        SELECT abb.bank_number              AS bank_number                -- 銀行番号
+        INTO   lv_bank_code
+        FROM    ap_bank_accounts_all          abaa                        -- 銀行口座マスタ
+               ,ap_bank_branches              abb                         -- 銀行支店マスタ
+        WHERE  abaa.bank_branch_id    = abb.bank_branch_id
+        AND    abaa.org_id            = TO_NUMBER( gt_prof_org_id )       -- 営業単位
+        AND    abaa.account_type      = gt_prof_acc_type_internal         -- 口座使用（'INTERNAL'）
+        AND    abaa.eft_requester_id IS NOT NULL
+        AND    abb.bank_number              = lt_bank_lookup_rec.fb_dff1  -- 銀行番号
+        AND    abb.bank_name_alt            = lt_bank_lookup_rec.fb_dff2  -- 銀行名カナ
+        AND    abb.bank_num                 = lt_bank_lookup_rec.fb_dff3  -- 支店番号
+        AND    abb.bank_branch_name_alt     = lt_bank_lookup_rec.fb_dff4  -- 銀行支店名カナ
+        AND    abaa.bank_account_type       = lt_bank_lookup_rec.fb_dff5  -- 銀行口座種別
+        AND    abaa.bank_account_num        = lt_bank_lookup_rec.fb_dff6  -- 口座番号
+        AND    abaa.eft_requester_id        = lt_bank_lookup_rec.fb_dff7  -- 依頼人コード
+        AND    abaa.account_holder_name_alt = lt_bank_lookup_rec.fb_dff8  -- 口座名義人カナ（依頼人名）
+        AND    ROWNUM = 1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 銀行口座マスタ整合性エラー
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appli_xxcok
+                          ,iv_name         => cv_msg_cok_10871
+                          ,iv_token_name1  => cv_token_dist_bank
+                          ,iv_token_value1 => lt_bank_lookup_rec.fb_dff1
+                         );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.LOG      -- 出力区分
+                         ,iv_message  => lv_errmsg         -- メッセージ
+                         ,in_new_line => 0                 -- 改行
+                        );
+          ln_errout := ln_errout + 1;
+      END;
+    END LOOP fb_bank_lookup_ck_loop;
+--  Ver1.1 T.Okuyama Mod End
 --
     IF ln_errout > 0 THEN
       lv_errmsg := NULL;
@@ -829,7 +902,10 @@ AS
 --
       BEGIN
         UPDATE fnd_lookup_values flv
+--  Ver1.1 T.Okuyama Mod Start
+--        SET    flv.attribute11  = TO_CHAR(ln_in_cnt)
         SET    flv.attribute11  = TO_CHAR(ln_in_cnt, '999,999')
+--  Ver1.1 T.Okuyama Mod End
         WHERE  flv.lookup_type  = cv_lookup_type_fb
         AND    flv.lookup_code  = lv_in_code
         AND    flv.enabled_flag = cv_yes
@@ -1678,7 +1754,10 @@ AS
           BEGIN
             UPDATE fnd_lookup_values flv
             SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
+--  Ver1.1 T.Okuyama Mod Start
+--                  ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '9,999,999,999')
                   ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
+--  Ver1.1 T.Okuyama Mod End
             WHERE  flv.lookup_type  = cv_lookup_type_fb
             AND    flv.lookup_code  = lv_bank_code
             AND    flv.enabled_flag = cv_yes
@@ -1808,7 +1887,10 @@ AS
       -- 明細レコード件数（按分件数）、明細合計金額の登録
       UPDATE fnd_lookup_values flv
       SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
+--  Ver1.1 T.Okuyama Mod Start
+--            ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '9,999,999,999')
             ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
+--  Ver1.1 T.Okuyama Mod End
       WHERE  flv.lookup_type  = cv_lookup_type_fb
       AND    flv.lookup_code  = lv_bank_code
       AND    flv.enabled_flag = cv_yes
@@ -2171,22 +2253,38 @@ AS
         IF lt_result_log_rec.internal_bank = gv_default_bank_code
           AND  lt_result_log_rec.attribute11 <> TO_CHAR(lt_result_log_rec.defaut_bank_count, '999,999') THEN  -- FBデフォルト銀行
           ln_bank_cnt     := lt_result_log_rec.defaut_bank_count;
-          ln_bank_amount  := lt_result_log_rec.defaut_bank_amount;
+--  Ver1.2 T.Okuyama Mod Start
+--          ln_bank_amount  := lt_result_log_rec.defaut_bank_amount;
+          ln_bank_amount  := NVL(lt_result_log_rec.defaut_bank_amount, 0);
+--  Ver1.2 T.Okuyama Mod End
           ln_bank_zan_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999') - ln_bank_cnt;
+--  Ver1.1 T.Okuyama Mod Start
+--          ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999') - ln_bank_amount;
           ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999') - ln_bank_amount;
+--  Ver1.1 T.Okuyama Mod End
           lt_result_log_rec.attribute11 := TO_CHAR(ln_bank_cnt,    '999,999');
+--  Ver1.1 T.Okuyama Mod Start
+--          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999');
           lt_result_log_rec.attribute12 := TO_CHAR(ln_bank_amount, '999,999,999,999');
+--  Ver1.1 T.Okuyama Mod End
         ELSE
           ln_bank_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999');
+--  Ver1.1 T.Okuyama Mod Start
+--          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999');
           ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999');
+--  Ver1.1 T.Okuyama Mod End
         END IF;
         ln_c_percentage := ln_bank_cnt    / gn_out_cnt    * 100;
         ln_a_percentage := ln_bank_amount / gn_out_amount * 100;
         lv_errmsg := TO_CHAR(ln_line_no) || cv_msg_cont
                     || cv_bank   || lt_result_log_rec.internal_bank || cv_space || lt_result_log_rec.internal_bank_name || CHR(9)
                     || cv_count  || lt_result_log_rec.attribute11 || cv_c_percentage
-                    || TO_CHAR(TRUNC(ln_c_percentage, 2)) || cv_percentage || CHR(9)
-                    || cv_amount || lt_result_log_rec.attribute12 || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2))
+--  Ver1.1 T.Okuyama Mod Start
+--                    || TO_CHAR(TRUNC(ln_c_percentage, 2)) || cv_percentage || CHR(9)
+--                    || cv_amount || lt_result_log_rec.attribute12 || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2))
+                    || TO_CHAR(TRUNC(ln_c_percentage, 2), 'FM990.90') || cv_percentage || CHR(9)
+                    || cv_amount || lt_result_log_rec.attribute12 || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2), 'FM990.90')
+--  Ver1.1 T.Okuyama Mod End
                     || cv_percentage;
         lb_retcode := xxcok_common_pkg.put_message_f(
                         in_which    => FND_FILE.LOG      -- 出力区分
@@ -2207,7 +2305,10 @@ AS
         lv_errmsg := cv_none_proc || CHR(9)
                     || cv_count  || TO_CHAR(ln_bank_zan_cnt, '999,999') || cv_c_percentage
                     || TO_CHAR(TRUNC(ln_c_percentage, 2)) || cv_percentage || CHR(9)
-                    || cv_amount || TO_CHAR(ln_bank_zan_amount, '9,999,999,999') || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2))
+--  Ver1.2 T.Okuyama Mod Start
+--                    || cv_amount || TO_CHAR(ln_bank_zan_amount, '9,999,999,999') || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2))
+                    || cv_amount || TO_CHAR(ln_bank_zan_amount, '999,999,999,999') || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2))
+--  Ver1.2 T.Okuyama Mod End
                     || cv_percentage;
       lb_retcode := xxcok_common_pkg.put_message_f(
                       in_which    => FND_FILE.LOG      -- 出力区分
@@ -2248,7 +2349,10 @@ AS
                    ,iv_token_name1  => cv_token_count
                    ,iv_token_value1 => TO_CHAR( gn_out_cnt, '999,999' )
                    ,iv_token_name2  => cv_token_amount
+--  Ver1.1 T.Okuyama Mod Start
+--                   ,iv_token_value2 => TO_CHAR( gn_out_amount, '9,999,999,999' )
                    ,iv_token_value2 => TO_CHAR( gn_out_amount, '999,999,999,999' )
+--  Ver1.1 T.Okuyama Mod End
                   );
     lb_retcode := xxcok_common_pkg.put_message_f(
                     in_which    => FND_FILE.LOG      -- 出力区分
