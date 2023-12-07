@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A04C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用赤黒データファイル作成
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/02/18    1.0   K.Yoshikawa      新規作成  E_本稼動_17680
  *  2023/08/31    1.1   Y.Ooyama         E_本稼動_19179（インボイス対応（BM関連））
+ *  2023/11/30    1.2   R.Oikawa         E_本稼動_19707
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
   gn_error_cnt               NUMBER DEFAULT 0;                                  -- エラー件数
   gn_skip_cnt                NUMBER DEFAULT 0;                                  -- スキップ件数
   gd_process_date            DATE   DEFAULT NULL;                               -- 業務処理日付
+-- Ver.1.2 ADD START
+  gv_process_ym              VARCHAR2(6) DEFAULT NULL;                          -- 業務処理年月
+-- Ver.1.2 ADD END
   gn_org_id                  NUMBER;                                            -- 営業単位ID
 -- Ver.1.1 ADD START
   gv_i_regnum_prompt         fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- インフォマート_登録番号プロンプト（末尾に半角スペース付加）
@@ -241,6 +245,9 @@ AS
             (    xiwh.rev           = '4'
              AND xiwh.payment_amt   <  0  )
            )
+-- Ver.1.2 ADD START
+     AND   xiwh.snapshot_create_ym  = gv_process_ym
+-- Ver.1.2 ADD END
      ORDER BY
            vendor_code
     ;
@@ -321,9 +328,15 @@ AS
                       (    xiwh.rev           = '4'
                        AND xiwh.payment_amt   <  0  )
                      )
+-- Ver.1.2 ADD START
+              AND    xiwh.snapshot_create_ym  = gv_process_ym
+-- Ver.1.2 ADD END
                    )
      AND    xiwc.rev            = it_rev
      AND    xiwc.check_result   = '0'
+-- Ver.1.2 ADD START
+     AND    xiwc.snapshot_create_ym  = gv_process_ym
+-- Ver.1.2 ADD END
      ORDER BY xiwc.cust_code
              ,xiwc.calc_sort
              ,xiwc.bottle_code
@@ -1022,6 +1035,12 @@ AS
       RAISE init_fail_expt;
     END IF;
 --
+-- Ver.1.2 ADD START
+    -- ===============================================
+    -- 業務日付年月取得
+    -- ===============================================
+    gv_process_ym   := TO_CHAR( gd_process_date,'YYYYMM' );
+-- Ver.1.2 ADD END
     -- ===============================================
     -- 2.プロファイル取得(組織ID)
     -- ===============================================
