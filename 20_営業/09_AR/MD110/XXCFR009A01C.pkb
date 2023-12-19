@@ -7,7 +7,7 @@ AS
  * Description      : 営業員別払日別入金予定表
  * MD.050           : MD050_CFR_009_A01_営業員別払日別入金予定表
  * MD.070           : MD050_CFR_009_A01_営業員別払日別入金予定表
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/09/29    1.6  SCS T.KANEDA     [共通課題IE542] 拠点並び順変更
  *  2010/01/21    1.7  SCS T.KANEDA     [本稼動_01145] 支払方法の取得先を顧客マスタに変更する
  *  2011/08/17    1.8  SCS T.ISHIWATA   [本稼動_08140] パフォーマンス改善
+ *  2023/12/15    1.9  伊藤園 小西      E_本稼動_19713 インボイス対応（消費税差額表示位置修正）
  *
  *****************************************************************************************/
 --
@@ -135,7 +136,10 @@ AS
   cv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
 -- Modify 2009.02.19 Ver1.1 Start
   cv_prof_trx_source     CONSTANT fnd_profile_options_tl.profile_option_name%TYPE 
-                                      := 'XXCFR1_TAX_DIFF_TRX_SOURCE';          -- 税差額取引ソース
+--Modify 2023.12.15 Ver1.9 Start
+--                                      := 'XXCFR1_TAX_DIFF_TRX_SOURCE';          -- 税差額取引ソース
+                                        := 'XXCFR1_RA_TRX_TYPE_TAX';              -- 消費税差額作成
+--Modify 2023.12.15 Ver1.9 End
 -- Modify 2009.02.19 Ver1.1 End
 -- 2011/08/17 Ver1.8 Add Start
   cv_prf_min_date    CONSTANT VARCHAR2(30) := 'XXCFR1_MIN_DATE';      -- XXCFR:MIN日付
@@ -807,17 +811,30 @@ AS
 --                              apsa.amount_due_remaining / apsa.amount_due_original * apsa.tax_original ) )
 --                                                  tax_due_remaining,      -- 未回収税額
 --
-               SUM ( DECODE ( rbsa.name,
-                              gt_taxd_trx_source,apsa.amount_due_original,
+--Modify 2023.12.15 Ver1.9 Start
+--               SUM ( DECODE ( rbsa.name,
+--                              gt_taxd_trx_source,apsa.amount_due_original,
+--                              apsa.tax_original ) )          tax_original,           -- 当初税額
+--               SUM ( DECODE ( apsa.amount_due_remaining, 
+--                              apsa.amount_due_original, DECODE ( rbsa.name,
+--                                                                 gt_taxd_trx_source,apsa.amount_due_original,
+--                                                                 apsa.tax_original ),
+--                              apsa.amount_due_remaining / apsa.amount_due_original
+--                                                              * DECODE ( rbsa.name,
+--                                                                         gt_taxd_trx_source,apsa.amount_due_original,
+--                                                                         apsa.tax_original ) ) )
+               SUM ( DECODE ( rbsa.name||substrb(rcta.trx_number,1,2),
+                              gt_taxd_trx_source||'TX',apsa.amount_due_original,
                               apsa.tax_original ) )          tax_original,           -- 当初税額
                SUM ( DECODE ( apsa.amount_due_remaining, 
-                              apsa.amount_due_original, DECODE ( rbsa.name,
-                                                                 gt_taxd_trx_source,apsa.amount_due_original,
+                              apsa.amount_due_original, DECODE ( rbsa.name||substrb(rcta.trx_number,1,2),
+                                                                 gt_taxd_trx_source||'TX',apsa.amount_due_original,
                                                                  apsa.tax_original ),
                               apsa.amount_due_remaining / apsa.amount_due_original
                                                               * DECODE ( rbsa.name,
                                                                          gt_taxd_trx_source,apsa.amount_due_original,
                                                                          apsa.tax_original ) ) )
+--Modify 2023.12.15 Ver1.9 End                                                                         
 --                              apsa.amount_due_remaining / apsa.amount_due_original * apsa.tax_original ) )
 -- Modify 2010.01.21 Ver1.7 Start
 --                                                  tax_due_remaining,      -- 未回収税額
