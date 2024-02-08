@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細請求先顧客反映
  * MD.050           : MD050_CFR_003_A24_請求明細請求先顧客反映
  * MD.070           : MD050_CFR_003_A24_請求明細請求先顧客反映
- * Version          : 1.02
+ * Version          : 1.03
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2023/10/20    1.00  SCSK 赤地 学     初回作成 [E_本稼動_19546] 請求書の消費税額訂正
  *  2023/10/27    1.01  SCSK 赤地 学     [E_本稼動_19546] 請求書の消費税額訂正 修正
  *  2023/11/14    1.02  SCSK 赤地 学     [E_本稼動_19546] サイクル跨ぎ対応
+ *  2024/02/02    1.03  SCSK 郭 有司     [E_本稼動_19782] インボイス請求書差額作成の対象から中止客を除外
  *
  *****************************************************************************************/
 --
@@ -2224,7 +2225,14 @@ AS
                                               customer_for_sum       -- 顧客(集計用)
              ,xxih.invoice_output_form        output_format          -- 請求書出力形式
              ,xxil.tax_rate                   tax_rate               -- 消費税率
-             ,NVL(xxca.invoice_tax_div,'N')   invoice_tax_div        -- 請求書消費税積上げ計算方式
+-- 2024/02/02 Ver1.03 MOD Start
+             ,CASE
+                WHEN  xcal14.stop_approval_date < xxih.cutoff_date
+                  THEN  'Y'
+                  ELSE  NVL(xxca.invoice_tax_div,'N')
+              END                             invoice_tax_div        -- 請求書消費税積上げ計算方式
+--             ,NVL(xxca.invoice_tax_div,'N')   invoice_tax_div        -- 請求書消費税積上げ計算方式
+-- 2024/02/02 Ver1.03 MOD End
              ,xxca.tax_div                    tax_div                -- 消費税区分
              ,xcal.invoice_printing_unit      invoice_printing_unit  -- 請求書印刷単位
       FROM    xxcfr_invoice_headers xxih                          -- 請求ヘッダ情報テーブル
@@ -2258,7 +2266,14 @@ AS
                       'C',xxih.bill_cust_code,'D',xxil.ship_cust_code, null)
               ,xxih.invoice_output_form        -- 請求書出力形式
               ,xxil.tax_rate                   -- 税率
-              ,NVL(xxca.invoice_tax_div,'N')   -- 請求書消費税積上げ計算方式
+-- 2024/02/02 Ver1.03 MOD Start
+              ,CASE
+                 WHEN  xcal14.stop_approval_date < xxih.cutoff_date
+                   THEN  'Y'
+                   ELSE  NVL(xxca.invoice_tax_div,'N')
+               END                             -- 請求書消費税積上げ計算方式
+--              ,NVL(xxca.invoice_tax_div,'N')   -- 請求書消費税積上げ計算方式
+-- 2024/02/02 Ver1.03 MOD End
               ,xxca.tax_div                    -- 消費税区分
               ,xcal.invoice_printing_unit      -- 請求書印刷単位
       ORDER BY 
