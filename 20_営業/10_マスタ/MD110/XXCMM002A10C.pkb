@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A10C (body)
  * Description      : 社員データIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_002_A10_社員データIF抽出_EBSコンカレント
- * Version          : 1.20
+ * Version          : 1.21
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -47,6 +47,7 @@ AS
  *  2023-07-06    1.18  F.Hasebe         E_本稼働_19314対応
  *  2023-09-21    1.19  Y.Koh            E_本稼動_19311【マスタ】ERP銀行口座 対応
  *  2023-12-22    1.20  K.Sudo           E_本稼働_19379【マスタ】新規従業員判別フラグの初期化対応
+ *  2024-01-30    1.21  K.Sudo           E_本稼動_19791【マスタ】経費口座紐づけ（ERP)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4187,142 +4188,266 @@ AS
     --------------------------------------
     CURSOR bank_acc_cur
     IS
+-- Ver1.21 Mod Start
+--      SELECT
+--          papf.employee_number          AS employee_number         -- 従業員番号
+--        , abb.bank_number               AS bank_number             -- 銀行番号
+--        , abb.bank_num                  AS bank_num                -- 銀行支店番号
+--        , abb.bank_name                 AS bank_name               -- 銀行名
+--        , abb.bank_branch_name          AS bank_branch_name        -- 銀行支店名
+--        , abaa.bank_account_type        AS bank_account_type       -- 口座種別
+--        , abaa.bank_account_num         AS bank_account_num        -- 口座番号
+---- Ver1.1 Mod Start
+----        , abb.country                   AS country                 -- 国
+----        , abaa.currency_code            AS currency_code           -- 通貨コード
+--        , NVL(abb.country, cv_jp)       AS country                 -- 国
+---- Ver1.7 Mod Start
+----        , NVL(abaa.currency_code, cv_yen) AS currency_code         -- 通貨コード
+--        , cv_nvl_v                      AS currency_code           -- 通貨コード
+---- Ver1.7 Mod End
+---- Ver1.1 Mod End
+--        , abaa.account_holder_name      AS account_holder_name     -- 口座名義人
+--        , abaa.account_holder_name_alt  AS account_holder_name_alt -- 口座名義人カナ
+--        , (CASE
+--             WHEN abaa.inactive_date <= gt_if_dest_date THEN
+--               cv_y
+--             ELSE
+---- Ver1.9 Mod Start
+----               NULL
+--               cv_n
+---- Ver1.9 Mod End
+--           END)                         AS inactive_flag           -- 非アクティブ
+--        , (CASE
+--             WHEN ROW_NUMBER() OVER(
+--                    PARTITION BY abb.bank_number
+--                               , abb.bank_num
+---- Ver1.11 Add Start
+--                               , abb.bank_name
+--                               , abb.bank_branch_name
+---- Ver1.11 Add End
+--                               , abaa.bank_account_type
+--                               , abaa.bank_account_num
+---- Ver1.1 Mod Start
+----                               , abaa.currency_code
+----                               , abb.country
+--                               , NVL(abaa.currency_code, cv_yen)
+--                               , NVL(abb.country, cv_jp)
+---- Ver1.1 Mod End
+--                    ORDER BY  abb.bank_number
+--                            , abb.bank_num
+---- Ver1.11 Add Start
+--                            , abb.bank_name
+--                            , abb.bank_branch_name
+---- Ver1.11 Add End
+--                            , abaa.bank_account_type
+--                            , abaa.bank_account_num
+---- Ver1.1 Mod Start
+----                            , abaa.currency_code
+----                            , abb.country
+--                            , NVL(abaa.currency_code, cv_yen)
+--                            , NVL(abb.country, cv_jp)
+---- Ver1.1 Mod End
+--                            , abaua.bank_account_uses_id
+--                  ) = 1 THEN
+--               cv_y
+--             ELSE
+--               cv_n
+--           END)                         AS primary_flag             -- プライマリフラグ
+--        , abaua.primary_flag            AS expense_primary_flag     -- 経費プライマリフラグ
+--      FROM
+--          per_all_people_f           papf  -- 従業員マスタ
+--        , po_vendors                 pv    -- 仕入先マスタ
+--        , po_vendor_sites_all        pvsa  -- 仕入先サイトマスタ
+--        , ap_bank_accounts_all       abaa  -- 銀行口座マスタ
+--        , ap_bank_branches           abb   -- 銀行支店マスタ
+--        , ap_bank_account_uses_all   abaua -- 銀行口座使用マスタ 
+--      WHERE
+--          papf.attribute3 IN (cv_emp_kbn_internal, cv_emp_kbn_dummy)  -- 従業員区分（1:内部、4:ダミー）
+---- Ver1.9 Add Start
+--      AND papf.attribute4 IS NULL    -- 仕入先コード
+--      AND papf.attribute5 IS NULL    -- 運送業者
+---- Ver1.9 Add End
+--      AND papf.employee_number NOT IN (cv_not_get_emp1, cv_not_get_emp2, cv_not_get_emp3, cv_not_get_emp4, 
+--                                       cv_not_get_emp5, cv_not_get_emp6, cv_not_get_emp7, cv_not_get_emp8)  -- 従業員番号
+--      AND papf.effective_start_date = 
+--              (SELECT
+--                   MAX(papf2.effective_start_date)
+--               FROM
+--                   per_all_people_f  papf2 -- 従業員マスタ
+--               WHERE
+--                   papf2.person_id = papf.person_id
+--              )
+--      AND papf.person_id                 = pv.employee_id
+--      AND pv.vendor_type_lookup_code     = cv_vd_type_employee
+--      AND pv.vendor_id                   = pvsa.vendor_id
+---- Ver1.2(E056) Add Start
+--      AND pvsa.vendor_site_code          = cv_site_code_comp
+---- Ver1.2(E056) Add End
+--      AND pvsa.vendor_id                 = abaua.vendor_id
+--      AND pvsa.vendor_site_id            = abaua.vendor_site_id
+--      AND abaua.external_bank_account_id = abaa.bank_account_id
+--      AND abaa.account_type              = cv_acct_type_sup
+--      AND abaa.bank_branch_id            = abb.bank_branch_id
+---- Ver1.18 Mod Start
+----      AND (   abaua.creation_date   >= gt_pre_process_date
+----           OR abaa.last_update_date >= gt_pre_process_date
+----           OR abaa.inactive_date    =  gt_if_dest_date)
+--      AND (
+--               (      abaua.creation_date   >= gt_pre_process_date
+--                  AND abaua.creation_date   <  gt_cur_process_date
+--               )
+--           OR  (
+--                      abaa.last_update_date >= gt_pre_process_date
+--                  AND abaa.last_update_date <  gt_cur_process_date
+--               )
+---- Ver1.19 Add Start
+--           OR  (
+--                      abb.last_update_date  >= gt_pre_process_date
+--                  AND abb.last_update_date  <  gt_cur_process_date
+--               )
+---- Ver1.19 Add End
+--           OR         abaa.inactive_date    =  gt_if_dest_date
+--          )
+---- Ver1.18 Mod End
+--      ORDER BY
+--          abb.bank_number
+--        , abb.bank_num
+---- Ver1.11 Add Start
+--        , abb.bank_name
+--        , abb.bank_branch_name
+---- Ver1.11 Add End
+--        , abaa.bank_account_type
+--        , abaa.bank_account_num
+---- Ver1.1 Mod Start
+----        , abaa.currency_code
+----        , abb.country
+--        , NVL(abaa.currency_code, cv_yen)
+--        , NVL(abb.country, cv_jp)
+---- Ver1.1 Mod End
+--        , abaua.bank_account_uses_id
+
       SELECT
-          papf.employee_number          AS employee_number         -- 従業員番号
-        , abb.bank_number               AS bank_number             -- 銀行番号
-        , abb.bank_num                  AS bank_num                -- 銀行支店番号
-        , abb.bank_name                 AS bank_name               -- 銀行名
-        , abb.bank_branch_name          AS bank_branch_name        -- 銀行支店名
-        , abaa.bank_account_type        AS bank_account_type       -- 口座種別
-        , abaa.bank_account_num         AS bank_account_num        -- 口座番号
--- Ver1.1 Mod Start
---        , abb.country                   AS country                 -- 国
---        , abaa.currency_code            AS currency_code           -- 通貨コード
-        , NVL(abb.country, cv_jp)       AS country                 -- 国
--- Ver1.7 Mod Start
---        , NVL(abaa.currency_code, cv_yen) AS currency_code         -- 通貨コード
-        , cv_nvl_v                      AS currency_code           -- 通貨コード
--- Ver1.7 Mod End
--- Ver1.1 Mod End
-        , abaa.account_holder_name      AS account_holder_name     -- 口座名義人
-        , abaa.account_holder_name_alt  AS account_holder_name_alt -- 口座名義人カナ
-        , (CASE
-             WHEN abaa.inactive_date <= gt_if_dest_date THEN
-               cv_y
-             ELSE
--- Ver1.9 Mod Start
---               NULL
-               cv_n
--- Ver1.9 Mod End
-           END)                         AS inactive_flag           -- 非アクティブ
-        , (CASE
-             WHEN ROW_NUMBER() OVER(
-                    PARTITION BY abb.bank_number
-                               , abb.bank_num
--- Ver1.11 Add Start
-                               , abb.bank_name
-                               , abb.bank_branch_name
--- Ver1.11 Add End
-                               , abaa.bank_account_type
-                               , abaa.bank_account_num
--- Ver1.1 Mod Start
---                               , abaa.currency_code
---                               , abb.country
-                               , NVL(abaa.currency_code, cv_yen)
-                               , NVL(abb.country, cv_jp)
--- Ver1.1 Mod End
-                    ORDER BY  abb.bank_number
-                            , abb.bank_num
--- Ver1.11 Add Start
-                            , abb.bank_name
-                            , abb.bank_branch_name
--- Ver1.11 Add End
-                            , abaa.bank_account_type
-                            , abaa.bank_account_num
--- Ver1.1 Mod Start
---                            , abaa.currency_code
---                            , abb.country
-                            , NVL(abaa.currency_code, cv_yen)
-                            , NVL(abb.country, cv_jp)
--- Ver1.1 Mod End
-                            , abaua.bank_account_uses_id
-                  ) = 1 THEN
-               cv_y
-             ELSE
-               cv_n
-           END)                         AS primary_flag             -- プライマリフラグ
-        , abaua.primary_flag            AS expense_primary_flag     -- 経費プライマリフラグ
+          abset.employee_number          AS employee_number         -- 1.従業員番号
+        , abset.bank_number              AS bank_number             -- 2.銀行番号
+        , abset.bank_num                 AS bank_num                -- 3.銀行支店番号
+        , abset.bank_name                AS bank_name               -- 4.銀行名
+        , abset.bank_branch_name         AS bank_branch_name        -- 5.銀行支店名
+        , abset.bank_account_type        AS bank_account_type       -- 6.口座種別
+        , abset.bank_account_num         AS bank_account_num        -- 7.口座番号
+        , abset.country                  AS country                 -- 8.国コード
+        , abset.currency_code            AS currency_code           -- 9.通貨コード
+        , abset.account_holder_name      AS account_holder_name     -- 10.口座名義人
+        , abset.account_holder_name_alt  AS account_holder_name_alt -- 11.口座名義人カナ
+        , abset.inactive_flag            AS inactive_flag           -- 12.非アクティブ
+        , abset.primary_flag             AS primary_flag            -- 13.プライマリフラグ
+        , abset.expense_primary_flag     AS expense_primary_flag    -- 14.経費プライマリフラグ
       FROM
-          per_all_people_f           papf  -- 従業員マスタ
-        , po_vendors                 pv    -- 仕入先マスタ
-        , po_vendor_sites_all        pvsa  -- 仕入先サイトマスタ
-        , ap_bank_accounts_all       abaa  -- 銀行口座マスタ
-        , ap_bank_branches           abb   -- 銀行支店マスタ
-        , ap_bank_account_uses_all   abaua -- 銀行口座使用マスタ 
+          (
+            SELECT
+                papf.employee_number          AS employee_number         -- 1.従業員番号
+              , abb.bank_number               AS bank_number             -- 2.銀行番号
+              , abb.bank_num                  AS bank_num                -- 3.銀行支店番号
+              , abb.bank_name                 AS bank_name               -- 4.銀行名
+              , abb.bank_branch_name          AS bank_branch_name        -- 5.銀行支店名
+              , abaa.bank_account_type        AS bank_account_type       -- 6.口座種別
+              , abaa.bank_account_num         AS bank_account_num        -- 7.口座番号
+              , NVL(abb.country, cv_jp)       AS country                 -- 8.国コード
+              , cv_nvl_v                      AS currency_code           -- 9.通貨コード
+              , abaa.account_holder_name      AS account_holder_name     -- 10.口座名義人
+              , abaa.account_holder_name_alt  AS account_holder_name_alt -- 11.口座名義人カナ
+              , (CASE
+                   WHEN abaa.inactive_date <= gt_if_dest_date THEN
+                     cv_y
+                   ELSE
+                     cv_n
+                 END)                         AS inactive_flag           -- 12.非アクティブ
+              , (CASE
+                   WHEN ROW_NUMBER() OVER(
+                          PARTITION BY abb.bank_number
+                                     , abb.bank_num
+                                     , abb.bank_name
+                                     , abb.bank_branch_name
+                                     , abaa.bank_account_type
+                                     , abaa.bank_account_num
+                                     , NVL(abaa.currency_code, cv_yen)
+                                     , NVL(abb.country, cv_jp)
+                          ORDER BY  abb.bank_number
+                                  , abb.bank_num
+                                  , abb.bank_name
+                                  , abb.bank_branch_name
+                                  , abaa.bank_account_type
+                                  , abaa.bank_account_num
+                                  , NVL(abaa.currency_code, cv_yen)
+                                  , NVL(abb.country, cv_jp)
+                                  , abaua.bank_account_uses_id
+                        ) = 1 THEN
+                     cv_y
+                   ELSE
+                     cv_n
+                 END)                         AS primary_flag             -- 13.プライマリフラグ
+              , abaua.primary_flag            AS expense_primary_flag     -- 14.経費プライマリフラグ
+              , abaua.bank_account_uses_id    AS bank_account_uses_id     -- 15.口座ユーザーID
+              , abaua.creation_date           AS abaua_creation_date      -- 16.銀行口座使用マスタの作成日付
+              , abaa.last_update_date         AS abaa_last_update_date    -- 17.銀行口座マスタの最終更新日
+              , abb.last_update_date          AS abb_last_update_date     -- 18.銀行支店マスタの最終更新日
+              , abaa.inactive_date            AS abaa_inactive_date       -- 19.銀行口座マスタの無効日
+            FROM
+                per_all_people_f           papf  -- 従業員マスタ
+              , po_vendors                 pv    -- 仕入先マスタ
+              , po_vendor_sites_all        pvsa  -- 仕入先サイトマスタ
+              , ap_bank_accounts_all       abaa  -- 銀行口座マスタ
+              , ap_bank_branches           abb   -- 銀行支店マスタ
+              , ap_bank_account_uses_all   abaua -- 銀行口座使用マスタ 
+            WHERE
+                papf.attribute3 IN (cv_emp_kbn_internal, cv_emp_kbn_dummy)  -- 従業員区分（1:内部、4:ダミー）
+            AND papf.attribute4 IS NULL    -- 仕入先コード
+            AND papf.attribute5 IS NULL    -- 運送業者
+            AND papf.employee_number NOT IN (cv_not_get_emp1, cv_not_get_emp2, cv_not_get_emp3, cv_not_get_emp4, 
+                                             cv_not_get_emp5, cv_not_get_emp6, cv_not_get_emp7, cv_not_get_emp8)  -- 従業員番号
+            AND papf.effective_start_date = 
+                    (SELECT
+                         MAX(papf2.effective_start_date)
+                     FROM
+                         per_all_people_f  papf2  -- 従業員マスタ
+                     WHERE
+                         papf2.person_id = papf.person_id
+                    )
+            AND papf.person_id                 = pv.employee_id
+            AND pv.vendor_type_lookup_code     = cv_vd_type_employee
+            AND pv.vendor_id                   = pvsa.vendor_id
+            AND pvsa.vendor_site_code          = cv_site_code_comp
+            AND pvsa.vendor_id                 = abaua.vendor_id
+            AND pvsa.vendor_site_id            = abaua.vendor_site_id
+            AND abaua.external_bank_account_id = abaa.bank_account_id
+            AND abaa.account_type              = cv_acct_type_sup
+            AND abaa.bank_branch_id            = abb.bank_branch_id
+          )  abset  -- 銀行口座関連テーブル
       WHERE
-          papf.attribute3 IN (cv_emp_kbn_internal, cv_emp_kbn_dummy)  -- 従業員区分（1:内部、4:ダミー）
--- Ver1.9 Add Start
-      AND papf.attribute4 IS NULL    -- 仕入先コード
-      AND papf.attribute5 IS NULL    -- 運送業者
--- Ver1.9 Add End
-      AND papf.employee_number NOT IN (cv_not_get_emp1, cv_not_get_emp2, cv_not_get_emp3, cv_not_get_emp4, 
-                                       cv_not_get_emp5, cv_not_get_emp6, cv_not_get_emp7, cv_not_get_emp8)  -- 従業員番号
-      AND papf.effective_start_date = 
-              (SELECT
-                   MAX(papf2.effective_start_date)
-               FROM
-                   per_all_people_f  papf2 -- 従業員マスタ
-               WHERE
-                   papf2.person_id = papf.person_id
-              )
-      AND papf.person_id                 = pv.employee_id
-      AND pv.vendor_type_lookup_code     = cv_vd_type_employee
-      AND pv.vendor_id                   = pvsa.vendor_id
--- Ver1.2(E056) Add Start
-      AND pvsa.vendor_site_code          = cv_site_code_comp
--- Ver1.2(E056) Add End
-      AND pvsa.vendor_id                 = abaua.vendor_id
-      AND pvsa.vendor_site_id            = abaua.vendor_site_id
-      AND abaua.external_bank_account_id = abaa.bank_account_id
-      AND abaa.account_type              = cv_acct_type_sup
-      AND abaa.bank_branch_id            = abb.bank_branch_id
--- Ver1.18 Mod Start
---      AND (   abaua.creation_date   >= gt_pre_process_date
---           OR abaa.last_update_date >= gt_pre_process_date
---           OR abaa.inactive_date    =  gt_if_dest_date)
-      AND (
-               (      abaua.creation_date   >= gt_pre_process_date
-                  AND abaua.creation_date   <  gt_cur_process_date
+          (
+               (      abset.abaua_creation_date   >= gt_pre_process_date
+                  AND abset.abaua_creation_date   <  gt_cur_process_date
                )
            OR  (
-                      abaa.last_update_date >= gt_pre_process_date
-                  AND abaa.last_update_date <  gt_cur_process_date
+                      abset.abaa_last_update_date >= gt_pre_process_date
+                  AND abset.abaa_last_update_date <  gt_cur_process_date
                )
--- Ver1.19 Add Start
            OR  (
-                      abb.last_update_date  >= gt_pre_process_date
-                  AND abb.last_update_date  <  gt_cur_process_date
+                      abset.abb_last_update_date  >= gt_pre_process_date
+                  AND abset.abb_last_update_date  <  gt_cur_process_date
                )
--- Ver1.19 Add End
-           OR         abaa.inactive_date    =  gt_if_dest_date
+           OR         abset.abaa_inactive_date    =  gt_if_dest_date
           )
--- Ver1.18 Mod End
       ORDER BY
-          abb.bank_number
-        , abb.bank_num
--- Ver1.11 Add Start
-        , abb.bank_name
-        , abb.bank_branch_name
--- Ver1.11 Add End
-        , abaa.bank_account_type
-        , abaa.bank_account_num
--- Ver1.1 Mod Start
---        , abaa.currency_code
---        , abb.country
-        , NVL(abaa.currency_code, cv_yen)
-        , NVL(abb.country, cv_jp)
--- Ver1.1 Mod End
-        , abaua.bank_account_uses_id
+          abset.bank_number
+        , abset.bank_num
+        , abset.bank_name
+        , abset.bank_branch_name
+        , abset.bank_account_type
+        , abset.bank_account_num
+        , abset.currency_code
+        , abset.country
+        , abset.bank_account_uses_id
+-- Ver1.21 Mod End
     ;
 --
     -- *** ローカル・レコード ***
