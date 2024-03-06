@@ -1,0 +1,6 @@
+/dev/sda2 on /boot type xfs (rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota)
+/dev/sda1 on /boot/efi type vfat (rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro)
+/dev/sdc1 on /jp1 type xfs (rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota)
+/dev/sdb1 on /backup type xfs (rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota,_netdev)
+/dev/sde1 on /paasif type xfs (rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota)
+/dev/sdd1 on /uspg type xfs (rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota,_netdev)
