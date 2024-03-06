@@ -1,0 +1,9 @@
+/usr/sbin/atd
+crond
+irqbalance
+/usr/sbin/mcelog
+dbus-daemon
+rpcbind
+/usr/sbin/rsyslogd
+/usr/sbin/sshd
+
