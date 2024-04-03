@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *                                                      適用開始日および業務日付時点の年度の標準原価を作成する
  *  2019/06/04    1.23  N.Abe            E_本稼動_15472 INPUT用CSV、品目一括登録ワークへの軽減税率用税種別の追加
  *  2019/07/02    1.24  N.Abe            E_本稼動_15625 品目詳細ステータス、備考の追加
+ *  2024/03/26    1.25  M.Akachi         E_本稼動_19854 標準原価を小数点で入力可能にする
  *
  *****************************************************************************************/
 --
@@ -4734,57 +4735,84 @@ AS
 --            lv_check_flag := cv_status_error;
 --          END IF;
           --
-          -- 資材品目(品名コードの一桁目が'5','6')の場合
-          IF ( SUBSTRB( i_wk_item_rec.item_code, 1, 1) IN ( cv_leaf_material, cv_drink_material ) ) THEN
-            -- 標準原価合計値が小数点三桁以上の場合
-            IF ( ln_opm_cost_total <> TRUNC( ln_opm_cost_total, 2 ) ) THEN
-              -- 標準原価エラー
-              lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
-                            ,iv_name         => cv_msg_xxcmm_00438                          -- メッセージコード
-                            ,iv_token_name1  => cv_tkn_opm_cost                             -- トークンコード1
-                            ,iv_token_value1 => ln_opm_cost_total                           -- トークン値1
-                            ,iv_token_name2  => cv_tkn_input_line_no                        -- トークンコード1
-                            ,iv_token_value2 => i_wk_item_rec.line_no                       -- トークン値1
-                            ,iv_token_name3  => cv_tkn_input_item_code                      -- トークンコード2
-                            ,iv_token_value3 => i_wk_item_rec.item_code                     -- トークン値2
-                           );
-              -- メッセージ出力
-              xxcmm_004common_pkg.put_message(
-                iv_message_buff => lv_errmsg
-               ,ov_errbuf       => lv_errbuf
-               ,ov_retcode      => lv_retcode
-               ,ov_errmsg       => lv_errmsg
-              );
-              lv_check_flag := cv_status_error;
-            END IF;
-          -- 資材品目以外の場合
-          ELSE
-            -- 小数点が含まれている場合
-            IF ( ln_opm_cost_total <> TRUNC(ln_opm_cost_total) ) THEN
-              -- 標準原価エラー
-              lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
-                            ,iv_name         => cv_msg_xxcmm_00438                          -- メッセージコード
-                            ,iv_token_name1  => cv_tkn_opm_cost                             -- トークンコード1
-                            ,iv_token_value1 => ln_opm_cost_total                           -- トークン値1
-                            ,iv_token_name2  => cv_tkn_input_line_no                        -- トークンコード1
-                            ,iv_token_value2 => i_wk_item_rec.line_no                       -- トークン値1
-                            ,iv_token_name3  => cv_tkn_input_item_code                      -- トークンコード2
-                            ,iv_token_value3 => i_wk_item_rec.item_code                     -- トークン値2
-                           );
-              -- メッセージ出力
-              xxcmm_004common_pkg.put_message(
-                iv_message_buff => lv_errmsg
-               ,ov_errbuf       => lv_errbuf
-               ,ov_retcode      => lv_retcode
-               ,ov_errmsg       => lv_errmsg
-              );
-              lv_check_flag := cv_status_error;
-            END IF;
+-- Ver1.25 Add Start
+          -- 標準原価合計値が小数点三桁以上の場合
+          IF ( ln_opm_cost_total <> TRUNC( ln_opm_cost_total, 2 ) ) THEN
+            -- 標準原価エラー
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_00438                          -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_opm_cost                             -- トークンコード1
+                          ,iv_token_value1 => ln_opm_cost_total                           -- トークン値1
+                          ,iv_token_name2  => cv_tkn_input_line_no                        -- トークンコード1
+                          ,iv_token_value2 => i_wk_item_rec.line_no                       -- トークン値1
+                          ,iv_token_name3  => cv_tkn_input_item_code                      -- トークンコード2
+                          ,iv_token_value3 => i_wk_item_rec.item_code                     -- トークン値2
+                         );
+            -- メッセージ出力
+            xxcmm_004common_pkg.put_message(
+              iv_message_buff => lv_errmsg
+             ,ov_errbuf       => lv_errbuf
+             ,ov_retcode      => lv_retcode
+             ,ov_errmsg       => lv_errmsg
+            );
+            lv_check_flag := cv_status_error;
           END IF;
--- 2009/08/07 Ver1.14 障害0000862 modify start by Y.Kuboshima
           --
+-- Ver1.25 Add End
+-- Ver1.25 Del Start
+--          -- 資材品目(品名コードの一桁目が'5','6')の場合
+--          IF ( SUBSTRB( i_wk_item_rec.item_code, 1, 1) IN ( cv_leaf_material, cv_drink_material ) ) THEN
+--            -- 標準原価合計値が小数点三桁以上の場合
+--            IF ( ln_opm_cost_total <> TRUNC( ln_opm_cost_total, 2 ) ) THEN
+--              -- 標準原価エラー
+--              lv_errmsg := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+--                            ,iv_name         => cv_msg_xxcmm_00438                          -- メッセージコード
+--                            ,iv_token_name1  => cv_tkn_opm_cost                             -- トークンコード1
+--                            ,iv_token_value1 => ln_opm_cost_total                           -- トークン値1
+--                            ,iv_token_name2  => cv_tkn_input_line_no                        -- トークンコード1
+--                            ,iv_token_value2 => i_wk_item_rec.line_no                       -- トークン値1
+--                            ,iv_token_name3  => cv_tkn_input_item_code                      -- トークンコード2
+--                            ,iv_token_value3 => i_wk_item_rec.item_code                     -- トークン値2
+--                           );
+--              -- メッセージ出力
+--              xxcmm_004common_pkg.put_message(
+--                iv_message_buff => lv_errmsg
+--               ,ov_errbuf       => lv_errbuf
+--               ,ov_retcode      => lv_retcode
+--               ,ov_errmsg       => lv_errmsg
+--              );
+--              lv_check_flag := cv_status_error;
+--            END IF;
+--          -- 資材品目以外の場合
+--          ELSE
+--            -- 小数点が含まれている場合
+--            IF ( ln_opm_cost_total <> TRUNC(ln_opm_cost_total) ) THEN
+--              -- 標準原価エラー
+--              lv_errmsg := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+--                            ,iv_name         => cv_msg_xxcmm_00438                          -- メッセージコード
+--                            ,iv_token_name1  => cv_tkn_opm_cost                             -- トークンコード1
+--                            ,iv_token_value1 => ln_opm_cost_total                           -- トークン値1
+--                            ,iv_token_name2  => cv_tkn_input_line_no                        -- トークンコード1
+--                            ,iv_token_value2 => i_wk_item_rec.line_no                       -- トークン値1
+--                            ,iv_token_name3  => cv_tkn_input_item_code                      -- トークンコード2
+--                            ,iv_token_value3 => i_wk_item_rec.item_code                     -- トークン値2
+--                           );
+--              -- メッセージ出力
+--              xxcmm_004common_pkg.put_message(
+--                iv_message_buff => lv_errmsg
+--               ,ov_errbuf       => lv_errbuf
+--               ,ov_retcode      => lv_retcode
+--               ,ov_errmsg       => lv_errmsg
+--              );
+--              lv_check_flag := cv_status_error;
+--            END IF;
+--          END IF;
+---- 2009/08/07 Ver1.14 障害0000862 modify start by Y.Kuboshima
+--          --
+-- Ver1.25 Del End
 --Ver1.12  2009/07/07  Add  標準原価計と営業原価の比較処理を追加
           -- 営業原価計 >= 営業原価の場合
           IF ( ln_opm_cost_total > TO_NUMBER( NVL( i_wk_item_rec.business_price, 0 ))) THEN
