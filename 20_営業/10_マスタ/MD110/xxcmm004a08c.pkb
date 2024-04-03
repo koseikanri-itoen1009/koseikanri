@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた標準原価データを
  *                  : OPM標準原価テーブルに反映します。
  * MD.050           : 標準原価一括改定    MD050_CMM_004_A08
- * Version          : Issue3.1
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/05/14    1.2   H.Yoshikawa      障害T1_0569 対応
  *  2009/07/07    1.3   H.Yoshikawa      障害0000364対応(未設定標準原価0円登録、08～10の登録を追加)
  *  2009/08/19    1.4   Y.Kuboshima      障害0000862,0000894対応(業務日付対応、標準原価小数点対応)
+ *  2024/03/26    1.5   M.Akachi         E_本稼動_19854 標準原価を小数点で入力可能にする
  *
  *****************************************************************************************/
 --
@@ -1092,18 +1093,23 @@ AS
       --
       --==============================================================
       --A-4.6 標準原価チェック
-      -- 項目レベルで小数点以下チェックがあるので不要かも。
       --==============================================================
       lv_step := 'A-4.6';
       IF ( l_opm_cost_rec.cmpntcost_total < 0 )
--- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
---      OR ( l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) THEN
-        -- 資材品目(頭一桁目が'5','6')の場合、小数点３桁以上はエラー
-        -- または資材品目以外の場合、小数点以下が設定されている場合はエラー
-        OR ( (  SUBSTRB( i_opm_cost_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material)
-            AND l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total, 2 ) )
-          OR (  SUBSTRB( i_opm_cost_rec.item_no, 1, 1 ) NOT IN ( cv_leaf_material, cv_drink_material)
-            AND l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) )
+-- Ver1.5 Add Start
+        -- 標準原価合計値が小数点３桁以上の場合はエラー
+        OR ( l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total, 2 ) )
+-- Ver1.5 Add End
+-- Ver1.5 Del Start
+---- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
+----      OR ( l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) THEN
+--        -- 資材品目(頭一桁目が'5','6')の場合、小数点３桁以上はエラー
+--        -- または資材品目以外の場合、小数点以下が設定されている場合はエラー
+--        OR ( (  SUBSTRB( i_opm_cost_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material)
+--            AND l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total, 2 ) )
+--          OR (  SUBSTRB( i_opm_cost_rec.item_no, 1, 1 ) NOT IN ( cv_leaf_material, cv_drink_material)
+--            AND l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) )
+-- Ver1.5 Del End
       THEN
 -- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
         -- 標準原価チェックエラー
