@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.16
+ * Version          : 1.23
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2017/08/04    1.20  N.Watanabe       障害対応(本稼動_14300) 品目ステータスDにおけるチェック条件変更
  *  2019/06/04    1.21  N.Abe            障害対応(本稼動_15472) 軽減税率対応
  *  2019/07/22    1.22  N.Abe            障害対応(本稼動_15825) 子品目の場合に親の政策群を参照するよう修正
+ *  2024/03/26    1.23  M.Akachi         障害対応(本稼動_19854) 標準原価を小数点で入力可能にする
  *
  *****************************************************************************************/
 --
@@ -3368,22 +3369,31 @@ AS
           RAISE opm_cost_chk_expt;
 -- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
         ELSE
-          -- 資材品目の場合
-          IF ( SUBSTRB( i_update_item_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material )  ) THEN
-            -- 標準原価が小数点三桁以上の場合
-            IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum, 2 ) ) THEN
-              -- 標準原価エラー
-              RAISE cost_decimal_chk_expt;
-            END IF;
-          -- 資材品目以外の場合
-          ELSE
-            -- 標準原価が整数以外の場合
-            IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum ) ) THEN
-              -- 標準原価エラー
-              RAISE cost_decimal_chk_expt;
-            END IF;
+-- Ver1.23 Add Start
+          -- 標準原価が小数点三桁以上の場合
+          IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum, 2 ) ) THEN
+            -- 標準原価エラー
+            RAISE cost_decimal_chk_expt;
           END IF;
--- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+-- Ver1.23 Add End
+-- Ver1.23 Del Start
+--          -- 資材品目の場合
+--          IF ( SUBSTRB( i_update_item_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material )  ) THEN
+--            -- 標準原価が小数点三桁以上の場合
+--            IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum, 2 ) ) THEN
+--              -- 標準原価エラー
+--              RAISE cost_decimal_chk_expt;
+--            END IF;
+--          -- 資材品目以外の場合
+--          ELSE
+--            -- 標準原価が整数以外の場合
+--            IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum ) ) THEN
+--              -- 標準原価エラー
+--              RAISE cost_decimal_chk_expt;
+--            END IF;
+--          END IF;
+---- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+-- Ver1.23 Del End
         END IF;
         --
       END IF;
