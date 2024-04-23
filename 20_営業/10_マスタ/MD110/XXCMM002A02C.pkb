@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A02C(body)
  * Description      : 社員データ連携(自販機)
  * MD.050           : 社員データ連携(自販機) MD050_CMM_002_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *                                       ( 4(ダミー)以外 -> 1(社員)または3(派遣社員) )
  *  2016/02/24    1.2   SCSK 小路 恭弘   E_本稼動_13456対応
  *  2016/03/24    1.3   SCSK 岡田 英輝   E_本稼動_13456追加対応
+ *  2024/04/16    1.4   SCSK 奥山 徹     E_本稼動_19873対応
  *
  *****************************************************************************************/
 --
@@ -1196,7 +1197,11 @@ AS
           ELSE
             -- 退職データ
             IF ((gd_select_end_date >= gt_data_tbl(ln_loop_cnt).actual_termination_date)
-              AND (gt_data_tbl(ln_loop_cnt).ass_attribute17 <= TO_CHAR(gt_data_tbl(ln_loop_cnt).actual_termination_date,'YYYYMMDD') || '23:59:59'))
+-- Ver1.4 Mod Start
+--              AND (gt_data_tbl(ln_loop_cnt).ass_attribute17 <= TO_CHAR(gt_data_tbl(ln_loop_cnt).actual_termination_date,'YYYYMMDD') || '23:59:59'))
+              AND ((gt_data_tbl(ln_loop_cnt).ass_attribute17 IS NULL)
+              OR (gt_data_tbl(ln_loop_cnt).ass_attribute17 <= TO_CHAR(gt_data_tbl(ln_loop_cnt).actual_termination_date,'YYYYMMDD') || '23:59:59')))
+-- Ver1.4 Mod End
             THEN
               -- 処理区分に対象をセット
               lv_kbn := cv_u;
