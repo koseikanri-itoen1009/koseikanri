@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO013A03C(body)
  * Description      : 固定資産の物件をリース・FA領域に連携するOIFデータを作成します。
  * MD.050           : CSI→FAインタフェース：（OUT）固定資産資産情報 <MD050_CSO_013_A03>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * 2014/06/10    1.0   Kazuyuki Kiriu   新規作成
  * 2016/02/09    1.1   H.Okada          E_本稼動_13456対応
  * 2023/04/05    1.2   M.Akachi         E_本稼動_18758対応
+ * 2024/04/19    1.3   M.Akachi         E_本稼動_19496対応
  *
  *****************************************************************************************/
 --
@@ -147,13 +148,18 @@ AS
   cv_prf_cust_cd_dammy      CONSTANT VARCHAR2(30)  := 'XXCSO1_AFF_CUST_CODE';       -- XXCSO:AFF顧客コード（定義なし）
   cv_prof_org_id            CONSTANT VARCHAR2(30)  := 'ORG_ID';                     -- MO:営業単位
   cv_attribute_level        CONSTANT VARCHAR2(30)  := 'XXCSO1_IB_ATTRIBUTE_LEVEL';  -- XXCSO:IB拡張属性テンプレートアクセスレベル
-  cv_withdraw_base_code     CONSTANT VARCHAR2(30)  := 'XXCSO1_WITHDRAW_BASE_CODE';  -- XXCSO:引揚拠点コード
+-- Ver.1.3 Del Start
+--  cv_withdraw_base_code     CONSTANT VARCHAR2(30)  := 'XXCSO1_WITHDRAW_BASE_CODE';  -- XXCSO:引揚拠点コード
+-- Ver.1.3 Del End
   -- 参照タイプ
   cv_xxcso1_instance_status CONSTANT VARCHAR2(30)  := 'XXCSO1_INSTANCE_STATUS';
   cv_csi_inst_type_code     CONSTANT VARCHAR2(30)  := 'CSI_INST_TYPE_CODE';
   cv_xxcoi_mfg_fctory_cd    CONSTANT VARCHAR2(30)  := 'XXCOI_MFG_FCTORY_CD';
   cv_xxcso_csi_maker_code   CONSTANT VARCHAR2(30)  := 'XXCSO_CSI_MAKER_CODE';
   cv_xxcso1_owner_company   CONSTANT VARCHAR2(30)  := 'XXCSO1_OWNER_COMPANY';
+-- Ver.1.3 Add Start
+  cv_cp_withdraw_base_code  CONSTANT VARCHAR2(30)  := 'XXCSO1_COMP_WITHDRAW_BASE_CODE';  -- 会社別引揚拠点コード
+-- Ver.1.3 Add End
   --値セット
   cv_xxcff_owner_company    CONSTANT VARCHAR2(30)  := 'XXCFF_OWNER_COMPANY';       --本社/工場区分
   cv_xxcff_mng_place        CONSTANT VARCHAR2(30)  := 'XXCFF_MNG_PLACE';           --事業所
@@ -232,6 +238,12 @@ AS
   g_new_data_rec       g_check_rtype;
   -- インターフェース登録データ格納用レコード型
   g_if_rec             xxcff_vd_object_mng_if%ROWTYPE;
+-- Ver.1.3 Add Start
+  -- 会社別引揚拠点コード取得用配列定義
+  TYPE gt_comp_withdraw_base_cd_ttype IS TABLE OF fnd_lookup_values_vl.attribute1%TYPE INDEX BY BINARY_INTEGER;
+  -- 会社別引揚拠点コード取得用配列変数
+  g_comp_withdraw_base_code  gt_comp_withdraw_base_cd_ttype;
+-- Ver.1.3 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -245,7 +257,9 @@ AS
   gv_customer_code_dammy      hz_cust_accounts_all.account_number%TYPE;      -- XXCSO:AFF顧客コード（定義なし）
   gn_org_id                   NUMBER;                                        -- MO:営業単位
   gt_attribute_level          csi_i_extended_attribs.attribute_level%TYPE;   -- XXCSO:IB拡張属性テンプレートアクセスレベル
-  gt_withdraw_base_code       csi_i_extended_attribs.attribute_level%TYPE;   -- XXCSO:引揚拠点コード
+-- Ver.1.3 Del Start
+--  gt_withdraw_base_code       csi_i_extended_attribs.attribute_level%TYPE;   -- XXCSO:引揚拠点コード
+-- Ver.1.3 Del End
   -- その他
   gn_instance_status_id       csi_instance_statuses.instance_status_id%TYPE; --物件ステータスID
 --
@@ -647,19 +661,21 @@ AS
       RAISE global_api_expt;
     END IF;
     --
-    -- 引揚拠点コード取得
-    gt_withdraw_base_code := fnd_profile.value( cv_withdraw_base_code );
-    -- 取得エラーチェック
-    IF ( gt_withdraw_base_code IS NULL ) THEN
-      --引揚拠点コード取得に失敗した場合（戻り値NULL）
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_name          --アプリケーション短縮名
-                    ,iv_name         => cv_msg_prof_err      --メッセージコード
-                    ,iv_token_name1  => cv_tkn_prof_name
-                    ,iv_token_value1 => cv_withdraw_base_code
-                   );
-      RAISE global_api_expt;
-    END IF;
+-- Ver.1.3 Del Start
+--    -- 引揚拠点コード取得
+--    gt_withdraw_base_code := fnd_profile.value( cv_withdraw_base_code );
+--    -- 取得エラーチェック
+--    IF ( gt_withdraw_base_code IS NULL ) THEN
+--      --引揚拠点コード取得に失敗した場合（戻り値NULL）
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_app_name          --アプリケーション短縮名
+--                    ,iv_name         => cv_msg_prof_err      --メッセージコード
+--                    ,iv_token_name1  => cv_tkn_prof_name
+--                    ,iv_token_value1 => cv_withdraw_base_code
+--                   );
+--      RAISE global_api_expt;
+--    END IF;
+-- Ver.1.3 Del End
 --
     -- =============================
     -- インスタンスステータスID取得
@@ -768,6 +784,67 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Ver.1.3 Add Start
+    -- =========================
+    -- 会社別引揚拠点コード取得
+    -- =========================
+    BEGIN
+      --全件取得
+      SELECT flvv.attribute1  AS  comp_withdraw_base_code  -- 会社別引揚拠点コード
+      BULK COLLECT INTO
+             g_comp_withdraw_base_code
+      FROM   fnd_lookup_values_vl flvv
+      WHERE  flvv.lookup_type = cv_cp_withdraw_base_code
+      AND    gd_process_date  BETWEEN TRUNC( NVL(flvv.start_date_active, gd_process_date) )
+                              AND     TRUNC( NVL(flvv.end_date_active,   gd_process_date) )
+      AND    flvv.enabled_flag = cv_yes
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- トークン取得
+        lv_msg_tkn_1 :=  xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name         --アプリケーション短縮名
+                          ,iv_name         => cv_msg_lookup_type  --メッセージコード
+                         );
+        lv_msg_tkn_2 :=  xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name         --アプリケーション短縮名
+                          ,iv_name         => cv_cp_withdraw_base_code --参照タイプ
+                         );
+        --メッセージ編集
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name             --アプリケーション短縮名
+                      ,iv_name         => cv_msg_lookup_err       --メッセージコード
+                      ,iv_token_name1  => cv_tkn_task_name
+                      ,iv_token_value1 => lv_msg_tkn_1
+                      ,iv_token_name2  => cv_tkn_lookup_type_name
+                      ,iv_token_value2 => lv_msg_tkn_2
+                      ,iv_token_name3  => cv_tkn_err_msg
+                      ,iv_token_value3 => SQLERRM
+                     );
+        RAISE global_api_expt;
+    END;
+    --
+    -- 会社別引揚拠点コードが0件の場合
+    IF ( g_comp_withdraw_base_code.COUNT = 0 ) THEN
+      lv_msg_tkn_1 :=  xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name         --アプリケーション短縮名
+                        ,iv_name         => cv_msg_lookup_type  --メッセージコード
+                       );
+      lv_msg_tkn_2 :=  xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name         --アプリケーション短縮名
+                        ,iv_name         => cv_cp_withdraw_base_code --参照タイプ
+                       );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name               --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_lookup_no_err      --メッセージコード
+                    ,iv_token_name1  => cv_tkn_task_name
+                    ,iv_token_value1 => lv_msg_tkn_1
+                    ,iv_token_name2  => cv_tkn_lookup_type_name
+                    ,iv_token_value2 => lv_msg_tkn_2
+                   );
+      RAISE global_api_expt;
+    END IF;
+-- Ver.1.3 Add End
   EXCEPTION
     -- *** 処理エラー例外 ***
     WHEN global_api_expt THEN
@@ -1417,6 +1494,10 @@ AS
     lv_msg_tkn_1   VARCHAR2(100);  -- メッセージトークン取得用1
     lv_msg_tkn_2   VARCHAR2(100);  -- メッセージトークン取得用2
     lv_msg_tkn_4   VARCHAR2(100);  -- メッセージトークン取得用4
+-- Ver.1.3 Add Start
+    lv_chk_base_new_flag   VARCHAR2(1); -- 新データ拠点コードチェックフラグ
+    lv_chk_base_old_flag   VARCHAR2(1); -- 旧データ拠点コードチェックフラグ
+-- Ver.1.3 Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1465,6 +1546,10 @@ AS
     -- 初期化
     on_change_ptn := cn_1;  -- 変更チェックフラグにデフォルト値1(修正)を設定
     ld_move_date  := NULL;  -- 移動日
+-- Ver.1.3 Add Start
+    lv_chk_base_new_flag := cv_no;
+    lv_chk_base_old_flag := cv_no;
+-- Ver.1.3 Add End
     --
     --------------------------
     -- 移動となる変更チェック
@@ -1478,10 +1563,24 @@ AS
       -- 作業による判定
       -------------------------------------
       -- 旧台設置か引揚の場合
-      IF ( iv_new_data.base_code = gt_withdraw_base_code )  -- 新拠点が引揚拠点=引揚
-         OR
-         ( iv_old_data.base_code = gt_withdraw_base_code )  -- 旧拠点が引揚拠点=旧台設置
-      THEN
+-- Ver.1.3 Mod Start
+--      IF ( iv_new_data.base_code = gt_withdraw_base_code )  -- 新拠点が引揚拠点=引揚
+--         OR
+--         ( iv_old_data.base_code = gt_withdraw_base_code )  -- 旧拠点が引揚拠点=旧台設置
+--      THEN
+      <<loop_comp_withdraw_base_cd_chk>>
+      FOR i IN 1..g_comp_withdraw_base_code.LAST LOOP
+        -- 新データの拠点コードが会社別引揚拠点コードと同じ（引揚）
+        IF (iv_new_data.base_code = g_comp_withdraw_base_code(i)) THEN
+          lv_chk_base_new_flag := cv_yes;
+        -- 旧データの拠点コードが会社別引揚拠点コードと同じ（旧台設置）
+        ELSIF (iv_old_data.base_code = g_comp_withdraw_base_code(i)) THEN
+          lv_chk_base_old_flag := cv_yes;
+        END IF;
+      END LOOP loop_comp_withdraw_base_cd_chk;
+      --
+      IF ( lv_chk_base_new_flag = cv_yes OR lv_chk_base_old_flag = cv_yes ) THEN
+-- Ver.1.3 Mod End
 /* 2016.02.09 H.Okada E_本稼働_13456 MOD START */
 --        -- EBSより連携された作業の最新より実作業日を取得
 --        OPEN  get_act_date;
