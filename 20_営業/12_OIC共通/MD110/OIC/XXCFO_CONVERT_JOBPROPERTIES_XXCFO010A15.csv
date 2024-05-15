@@ -1,0 +1,5 @@
+﻿DVM,XXCFO_CONVERT_JOBPROPERTIES_XXCFO010A15,XXCFO010A15インプットファイルパスからプロパティファイルの値を返すテーブル
+Key,DataAccessSet,JournalSource,AccountingBook,GroupId
+/01,SALES-SOB,会社間振替,SALES-SOB,2001
+/02,SALES-SOB,会社間振替,SALES-SOB,2002
+/03,SALES-SOB,会社間振替,SALES-SOB,2003
