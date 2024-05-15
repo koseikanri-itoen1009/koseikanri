@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A05C(body)
  * Description      : 仕入先マスタデータ連携
  * MD.050           : 仕入先マスタデータ連携 MD050_CMM_002_A05
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                        ・仕入先マスタの無効日の設定の変更
  *  2019/04/04    1.6   SCSK 佐々木大和   E_本稼動_15620 経費精算を4つの支払グループに分割
  *  2019/09/03    1.7   SCSK 佐々木宏之   E_本稼動_15845 新規登録時の支払グループ決定
+ *  2024/04/17    1.8   SCSK 大山 洋介    E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -109,8 +110,10 @@ AS
 -- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
 --  cv_pay_bumon_nm           CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BUMON_NM';      -- 本社総振込支払部門名称
 -- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
-  cv_pay_method_nm          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_METHOD_NM';     -- 本社総振込支払方法名称
-  cv_pay_bank               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BANK';          -- 本社総振込支払窓口銀行支店
+-- Ver1.8 Del Start
+--  cv_pay_method_nm          CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_METHOD_NM';     -- 本社総振込支払方法名称
+--  cv_pay_bank               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_BANK';          -- 本社総振込支払窓口銀行支店
+-- Ver1.8 Del End
   cv_koguti_genkin_nm       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_KOGUTI_GENKIN_NM';  -- 小口現金支払方法名称
 -- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
 --  cv_pay_type_nm            CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PAY_TYPE_NM';       -- 支払種類名称
@@ -261,6 +264,11 @@ AS
   cv_i_flag                 CONSTANT VARCHAR2(1)   := 'I';                          -- Iフラグ
   cv_dummy                  CONSTANT VARCHAR2(1)   := '*';                          -- ダミー値(*)
 --
+-- Ver1.8 Add Start
+  cv_pay_grp_dummy          CONSTANT VARCHAR2(3)   := 'DMY';                        -- 支払グループ種別:ダミー支払グループ
+  cv_pay_grp_default        CONSTANT VARCHAR2(3)   := 'DEF';                        -- 支払グループ種別:デフォルト支払グループ
+-- Ver1.8 Add End
+--
 -- Ver1.1 2009/03/03 Mod  コンテキストにORG_IDを設定
   -- ORG_ID
   gn_org_id                 CONSTANT NUMBER        := FND_GLOBAL.ORG_ID;
@@ -292,8 +300,10 @@ AS
 -- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
 --  gv_pay_bumon_nm           VARCHAR2(50);         -- 本社総振込支払部門名称
 -- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
-  gv_pay_method_nm          VARCHAR2(50);         -- 本社総振込支払方法名称
-  gv_pay_bank               VARCHAR2(50);         -- 本社総振込支払窓口銀行支店
+-- Ver1.8 Del Start
+--  gv_pay_method_nm          VARCHAR2(50);         -- 本社総振込支払方法名称
+--  gv_pay_bank               VARCHAR2(50);         -- 本社総振込支払窓口銀行支店
+-- Ver1.8 Del End
   gv_koguti_genkin_nm       VARCHAR2(50);         -- 小口現金支払方法名称
 -- 2009/10/02 Ver1.4 delete start by Yutaka.Kuboshima
 --  gv_pay_type_nm            VARCHAR2(50);         -- 支払種類名称
@@ -450,6 +460,10 @@ AS
             ,s.end_date_active AS end_date_active
             ,pvs.attribute5 AS attribute5
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
+-- Ver1.8 Add Start
+            ,xbdciv.company_code_bd      AS drafting_company        -- 伝票作成会社
+            ,xbdciv_pre.company_code_bd  AS drafting_company_pre    -- 伝票作成会社(前日：業務日付)
+-- Ver1.8 Add End
     FROM     per_periods_of_service t,
              per_all_assignments_f a,
 -- Ver1.2  2009/04/21  Add  障害：T1_0388対応  従業員仕入先サイト対応
@@ -462,6 +476,10 @@ AS
               FROM     per_all_people_f pp
               WHERE    pp.current_emp_or_apl_flag = 'Y'
               GROUP BY pp.person_id) pp
+-- Ver1.8 Add Start
+            ,xxcfr_bd_dept_comp_info_v  xbdciv      -- 基準日部門会社情報ビュー
+            ,xxcfr_bd_dept_comp_info_v  xbdciv_pre  -- 基準日部門会社情報ビュー(前日：業務日付)
+-- Ver1.8 Add End
     WHERE    pp.person_id = p.person_id
     AND      pp.effective_start_date = p.effective_start_date
     AND      (p.attribute3 = gv_jyugyoin_kbn_s OR p.attribute3 = gv_jyugyoin_kbn_d)
@@ -476,6 +494,18 @@ AS
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
     AND      p.last_update_date BETWEEN gd_process_date AND SYSDATE
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
+-- Ver1.8 Add Start
+    AND      xbdciv.set_of_books_id = gv_bks_id
+    AND      (gd_process_date + 1)
+             BETWEEN NVL(xbdciv.comp_start_date, TO_DATE('1900/01/01','YYYY/MM/DD'))
+             AND     NVL(xbdciv.comp_end_date, TO_DATE('9999/12/31','YYYY/MM/DD'))
+    AND      xbdciv.dept_code = a.ass_attribute3
+    AND      xbdciv_pre.set_of_books_id = gv_bks_id
+    AND      (gd_process_date)
+             BETWEEN NVL(xbdciv_pre.comp_start_date, TO_DATE('1900/01/01','YYYY/MM/DD'))
+             AND     NVL(xbdciv_pre.comp_end_date, TO_DATE('9999/12/31','YYYY/MM/DD'))
+    AND      xbdciv_pre.dept_code = a.ass_attribute3
+-- Ver1.8 Add End
     ORDER BY p.employee_number
   ;
   TYPE g_u_people_data_ttype IS TABLE OF get_u_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -492,6 +522,9 @@ AS
 -- Ver1.2  2009/04/24  Add  仕入先登録済み、サイト「会社」未登録対応
             ,s.vendor_id AS vendor_id                               -- 仕入先ID
 -- End Ver1.2
+-- Ver1.8 Add Start
+            ,xbdciv.company_code_bd AS drafting_company             -- 伝票作成会社
+-- Ver1.8 Add End
     FROM     po_vendors s,
              per_periods_of_service t,
              per_all_assignments_f a,
@@ -501,6 +534,9 @@ AS
               FROM     per_all_people_f pp
               WHERE    pp.current_emp_or_apl_flag = 'Y'
               GROUP BY pp.person_id) pp
+-- Ver1.8 Add Start
+            ,xxcfr_bd_dept_comp_info_v  xbdciv  -- 基準日部門会社情報ビュー
+-- Ver1.8 Add End
     WHERE    pp.person_id = p.person_id
     AND      pp.effective_start_date = p.effective_start_date
     AND      (p.attribute3 = gv_jyugyoin_kbn_s OR p.attribute3 = gv_jyugyoin_kbn_d)
@@ -518,16 +554,27 @@ AS
 -- End Ver1.2
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
     AND      p.last_update_date BETWEEN gd_process_date AND SYSDATE
+-- Ver1.8 Add Start
+    AND      xbdciv.set_of_books_id = gv_bks_id
+    AND      (gd_process_date + 1)
+             BETWEEN NVL(xbdciv.comp_start_date, TO_DATE('1900/01/01','YYYY/MM/DD'))
+             AND     NVL(xbdciv.comp_end_date, TO_DATE('9999/12/31','YYYY/MM/DD'))
+    AND      xbdciv.dept_code = a.ass_attribute3
+-- Ver1.8 Add End
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
     ORDER BY p.employee_number
   ;
   TYPE g_i_people_data_ttype IS TABLE OF get_i_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_i_people_data            g_i_people_data_ttype;
 -- v1.6 Y.Sasaki Added START
-  -- 支払グループを取得(4大銀行およびダミー)
+  -- 支払グループを取得(大手銀行・ダミー銀行の支払グループ、およびダミー・デフォルト支払グループ)
   CURSOR get_pay_group_cur IS
     SELECT  flv.lookup_code       AS  pay_group   -- 支払グループ
-          , flv.attribute4        AS  bank_num    -- 銀行コード
+-- Ver1.8 Mod Start
+--          , flv.attribute4        AS  bank_num    -- 銀行コード
+          , flv.attribute5 || '-' || flv.attribute4
+                                  AS  search_key  -- 検索キー([伝票作成会社]-[銀行コード])
+-- Ver1.8 Mod End
     FROM    fnd_lookup_values flv
     WHERE   flv.lookup_type       = cv_pay_group  -- 参照表:支払グループ
     AND     flv.attribute4        IS NOT NULL
@@ -536,11 +583,36 @@ AS
     AND     (flv.attribute3       IS NULL
                OR
              flv.attribute3       = cv_n_flag)
-    AND     flv.start_date_active <= gd_process_date
-    AND     gd_process_date       <= NVL( flv.end_date_active, gd_process_date )
+-- Ver1.8 Mod Start
+--    AND     flv.start_date_active <= gd_process_date
+--    AND     gd_process_date       <= NVL( flv.end_date_active, gd_process_date )
+    AND     flv.start_date_active <= gd_process_date + 1
+    AND     gd_process_date + 1   <= NVL( flv.end_date_active, gd_process_date + 1 )
+    AND     flv.attribute5        IS NOT NULL
+-- Ver1.8 Mod End
+-- Ver1.8 Add Start
+    UNION ALL
+    SELECT  flv.lookup_code       AS  pay_group   -- 支払グループ
+          , flv.attribute5 || '-' || flv.attribute6
+                                  AS  search_key  -- 検索キー([伝票作成会社]-[支払グループ種別])
+    FROM    fnd_lookup_values flv
+    WHERE   flv.lookup_type       = cv_pay_group  -- 参照表:支払グループ
+    AND     flv.language          = USERENV( 'LANG' )
+    AND     flv.enabled_flag      = cv_y_flag
+    AND     (flv.attribute3       IS NULL
+               OR
+             flv.attribute3       = cv_n_flag)
+    AND     flv.start_date_active <= gd_process_date + 1
+    AND     gd_process_date + 1   <= NVL( flv.end_date_active, gd_process_date + 1 )
+    AND     flv.attribute5        IS NOT NULL
+    AND     flv.attribute6        IS NOT NULL
+-- Ver1.8 Add End
     ;
   get_pay_group_rec      get_pay_group_cur%ROWTYPE;
-  TYPE g_pay_group_ttype IS TABLE OF get_pay_group_cur%ROWTYPE INDEX BY VARCHAR2(4);
+-- Ver1.8 Mod Start
+--  TYPE g_pay_group_ttype IS TABLE OF get_pay_group_cur%ROWTYPE INDEX BY VARCHAR2(4);
+  TYPE g_pay_group_ttype IS TABLE OF get_pay_group_cur%ROWTYPE INDEX BY VARCHAR2(20);
+-- Ver1.8 Mod End
   gt_pay_group_data           g_pay_group_ttype;
 -- v1.6 Y.Sasaki Added START
 --
@@ -687,16 +759,18 @@ AS
 --      RAISE global_process_expt;
 --    END IF;
 -- 2009/10/02 Ver1.4 delete end by Yutaka.Kuboshima
-    gv_pay_method_nm := fnd_profile.value(cv_pay_method_nm);
-    IF (gv_pay_method_nm IS NULL) THEN
-      lv_tkn_nm := cv_tkn_pay_method_nm;
-      RAISE global_process_expt;
-    END IF;
-    gv_pay_bank := fnd_profile.value(cv_pay_bank);
-    IF (gv_pay_bank IS NULL) THEN
-      lv_tkn_nm := cv_tkn_pay_bank_nm;
-      RAISE global_process_expt;
-    END IF;
+-- Ver1.8 Del Start
+--    gv_pay_method_nm := fnd_profile.value(cv_pay_method_nm);
+--    IF (gv_pay_method_nm IS NULL) THEN
+--      lv_tkn_nm := cv_tkn_pay_method_nm;
+--      RAISE global_process_expt;
+--    END IF;
+--    gv_pay_bank := fnd_profile.value(cv_pay_bank);
+--    IF (gv_pay_bank IS NULL) THEN
+--      lv_tkn_nm := cv_tkn_pay_bank_nm;
+--      RAISE global_process_expt;
+--    END IF;
+-- Ver1.8 Del End
     gv_koguti_genkin_nm := fnd_profile.value(cv_koguti_genkin_nm);
     IF (gv_koguti_genkin_nm IS NULL) THEN
       lv_tkn_nm := cv_tkn_koguti_genkin_nm;
@@ -1051,7 +1125,10 @@ AS
     -- =========================================================
     gt_pay_group_data.DELETE;
     FOR get_pay_group_rec IN get_pay_group_cur LOOP
-      gt_pay_group_data(get_pay_group_rec.bank_num) :=  get_pay_group_rec;
+-- Ver1.8 Mod Start
+--      gt_pay_group_data(get_pay_group_rec.bank_num) :=  get_pay_group_rec;
+      gt_pay_group_data(get_pay_group_rec.search_key) :=  get_pay_group_rec;
+-- Ver1.8 Mod End
     END LOOP;
 --
 -- V1.6 Y.Sasaki Added END
@@ -1235,6 +1312,9 @@ AS
     lv_account_holder_name_alt  VARCHAR2(150);    -- 口座名義カナ
     ln_count                    NUMBER;           -- カウンタ
 -- V1.6 Y.Sasaki Added END
+-- Ver1.8 Add Start
+    lv_drafting_company         VARCHAR2(3);      -- 伝票作成会社
+-- Ver1.8 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1272,6 +1352,9 @@ AS
 -- Ver1.2  2009/04/21  Add  障害：T1_0388対応
       gn_s_vendor_site_id := gt_u_people_data(ln_loop_cnt).vendor_site_id;
 -- End Ver1.2
+-- Ver1.8 Add Start
+      lv_drafting_company := gt_u_people_data(ln_loop_cnt).drafting_company;
+-- Ver1.8 Add End
       --========================================
       -- 従業員番号重複チェック(A-3-1)
       --========================================
@@ -1472,11 +1555,20 @@ AS
           END;
           --
 --          -- 取得した銀行コードに紐付く支払グループを取得
-          IF (gt_pay_group_data.EXISTS(lv_pay_bank)) THEN
-            lv_new_pay_group  :=  gt_pay_group_data(lv_pay_bank).pay_group;
+-- Ver1.8 Mod Start
+--          IF (gt_pay_group_data.EXISTS(lv_pay_bank)) THEN
+--            lv_new_pay_group  :=  gt_pay_group_data(lv_pay_bank).pay_group;
+--          ELSE
+--            lv_new_pay_group  :=  gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+--          END IF;
+          IF (gt_pay_group_data.EXISTS(lv_drafting_company || '-' || lv_pay_bank)) THEN
+            -- 伝票作成会社＋銀行コードに紐づく支払グループを設定
+            lv_new_pay_group  :=  gt_pay_group_data(lv_drafting_company || '-' || lv_pay_bank).pay_group;
           ELSE
-            lv_new_pay_group  :=  gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+            -- 伝票作成会社のデフォルト支払グループを設定
+            lv_new_pay_group  :=  gt_pay_group_data(lv_drafting_company || '-' || cv_pay_grp_default).pay_group;
           END IF;
+-- Ver1.8 Mod End
         END IF;
 --
 -- V1.6 Y.Sasaki Added END
@@ -1510,11 +1602,23 @@ AS
         ELSIF ((lv_old_pay_group = lv_new_pay_group)
 -- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
 --          OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_nm))
-          -- 比較対象を本社総振込支払部門名称 -> 本社総振込支払部門コードに変更
-          OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_cd))
+-- Ver1.8 Mod Start
+--          -- 比較対象を本社総振込支払部門名称 -> 本社総振込支払部門コードに変更
+--          OR (lv_pay_flg = 'N' AND SUBSTRB(lv_old_pay_group,1,INSTRB(lv_old_pay_group,'-')-1) = gv_pay_bumon_cd))
+          -- 小口現金支払ではない、かつ、以前の支払グループの部門＝現在の支払グループの部門
+          OR (lv_pay_flg = 'N'
+              AND
+              SUBSTRB(lv_old_pay_group, 1, 4) = SUBSTRB(lv_new_pay_group, 1, 4)))
+-- Ver1.8 Mod End
 -- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add start by Y.Kuboshima
-          OR (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gt_u_people_data(ln_loop_cnt).attribute5)
+-- Ver1.8 Mod Start
+--          OR (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gt_u_people_data(ln_loop_cnt).attribute5)
+          -- ( 勤務地拠点コード(新) = 問合せ担当拠点、かつ、伝票作成会社 = 伝票作成会社(前日：業務日付) )
+          OR (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gt_u_people_data(ln_loop_cnt).attribute5
+              AND
+              lv_drafting_company = gt_u_people_data(ln_loop_cnt).drafting_company_pre)
+-- Ver1.8 Mod End
 -- 2010/04/12 Ver1.5 E_本稼動_02240 add end by Y.Kuboshima
         THEN
 -- 2010/04/12 Ver1.5 E_本稼動_02240 modify start by Y.Kuboshima
@@ -2853,6 +2957,9 @@ AS
 --  V1.7 Added START
     ln_count            NUMBER;                   --  本社振込対象部署取得件数
 --  V1.7 Added END
+-- Ver1.8 Add Start
+    lv_drafting_company VARCHAR2(3);              -- 伝票作成会社
+-- Ver1.8 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2873,6 +2980,9 @@ AS
     -- ***************************************
     <<i_out_loop>>
     FOR ln_loop_cnt IN gt_i_people_data.FIRST..gt_i_people_data.LAST LOOP
+-- Ver1.8 Add Start
+      lv_drafting_company := gt_i_people_data(ln_loop_cnt).drafting_company;
+-- Ver1.8 Add End
       --========================================
       -- 従業員番号重複チェック(A-8-1)
       --========================================
@@ -2972,7 +3082,10 @@ AS
           --  ①部門が「PAY GROUP」に登録されている
           IF ( ln_count > 0 ) THEN
             --  ②本社振込対象部署として登録されている場合は、ダミー支払グループを設定
-            lv_pay_group  :=  gt_pay_group_data( gv_bank_num ).pay_group;
+-- Ver1.8 Mod Start
+--            lv_pay_group  :=  gt_pay_group_data( gv_bank_num ).pay_group;
+            lv_pay_group  :=  gt_pay_group_data( lv_drafting_company || '-' || cv_pay_grp_dummy ).pay_group;
+-- Ver1.8 Mod End
           ELSE
             --  ②本社振込対象部署と定義されていない場合、部門ごとの小口支払を設定
             lv_pay_group  :=  gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
@@ -2986,7 +3099,10 @@ AS
 --            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
 ---- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
             --  ①部門が「PAY GROUP」に登録されていない場合、ダミー支払グループを設定
-            lv_pay_group  :=  gt_pay_group_data( gv_bank_num ).pay_group;
+-- Ver1.8 Mod Start
+--            lv_pay_group  :=  gt_pay_group_data( gv_bank_num ).pay_group;
+            lv_pay_group  :=  gt_pay_group_data( lv_drafting_company || '-' || cv_pay_grp_dummy ).pay_group;
+-- Ver1.8 Mod End
 --  V1.7 Modified END
           WHEN OTHERS THEN
             RAISE global_api_others_expt;
