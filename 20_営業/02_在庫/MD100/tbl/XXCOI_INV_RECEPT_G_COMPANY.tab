@@ -1,0 +1,89 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2024. All rights reserved.
+ *
+ * Table Name  : XXCOI_INV_RECEPT_G_COMPANY
+ * Description : 在庫受払表（Ｇ会社）テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2024/03/06    1.0   R.Oikawa         新規作成 [E_本稼動_19496]グループ会社対応
+ *
+ **************************************************************************************/
+CREATE TABLE XXCOI.XXCOI_INV_RECEPT_G_COMPANY (
+     company_code                 VARCHAR2(3)
+    ,grcp_adj_dept_code           VARCHAR2(4)
+    ,transaction_date             DATE          NOT NULL
+    ,item_code                    VARCHAR2(40)
+    ,subinventory_code            VARCHAR2(10)
+    ,quantity                     NUMBER
+    ,purchase_unit_price          NUMBER(11,2)
+    ,purchase_amount              NUMBER(11,2)
+    ,transaction_type_name        VARCHAR2(80)
+    ,slip_number                  VARCHAR2(20)
+    ,transfer_ownership_flg       VARCHAR2(1)
+    ,transfer_subinventory        VARCHAR2(10)
+    ,sales_base_code              VARCHAR2(4)
+    ,standard_cost                NUMBER
+    ,created_by                   NUMBER(15)    NOT NULL
+    ,creation_date                DATE          NOT NULL
+    ,last_updated_by              NUMBER(15)    NOT NULL
+    ,last_update_date             DATE          NOT NULL
+    ,last_update_login            NUMBER(15)
+    ,request_id                   NUMBER(15)
+    ,program_application_id       NUMBER(15)
+    ,program_id                   NUMBER(15)
+    ,program_update_date          DATE
+)
+  STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_inv_recept_g_company IS '在庫受払表（Ｇ会社）テーブル';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.company_code                            IS '会社コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.grcp_adj_dept_code                      IS '計上拠点'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.transaction_date                        IS '取引日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.item_code                               IS '品目コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.subinventory_code                       IS '保管場所';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.quantity                                IS '数量';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.purchase_unit_price                     IS '購入単価';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.purchase_amount                         IS '購入金額';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.transaction_type_name                   IS '取引タイプ名';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.slip_number                             IS '伝票番号';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.transfer_ownership_flg                  IS '所有権移転取引フラグ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.transfer_subinventory                   IS '移動元保管場所';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.sales_base_code                         IS '売上拠点';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.standard_cost                           IS '元標準原価';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.created_by                              IS '作成者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.creation_date                           IS '作成日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.last_updated_by                         IS '最終更新者';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.last_update_date                        IS '最終更新日';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.last_update_login                       IS '最終更新ログイン';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.request_id                              IS '要求ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.program_id                              IS 'コンカレント・プログラムID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_inv_recept_g_company.program_update_date                     IS 'プログラム更新日';
+/
