@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF018A01C (body)
  * Description      : 償却シミュレーション結果リスト
  * MD.050           : 償却シミュレーション結果リスト (MD050_CFF_018_A01)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-12-18    1.0   K.Kanada         新規作成  E_本稼動_08122対応
+ *  2024-02-09    1.1   Y.Sato           E_本稼動_19496対応
  *
  *****************************************************************************************/
 --
@@ -107,9 +108,15 @@ AS
   cv_msg_cff_50277            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50277';          -- メッセージ用トークン(WHATIFリクエストID)
   cv_msg_cff_50278            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50278';          -- メッセージ用トークン(開始期間)
   cv_msg_cff_50279            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50279';          -- メッセージ用トークン(期間数)
+-- Ver1.1 Add Start
+  cv_msg_cff_50267            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50267';          -- メッセージ用トークン(本社/工場区分)
+-- Ver1.1 Add End
   cv_msg_cff_50280            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50280';          -- 償却シミュレーション結果リストヘッダ用トークン1
   cv_msg_cff_50281            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50281';          -- 償却シミュレーション結果リストヘッダ用トークン2(減価償却額)
   cv_msg_cff_50282            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-50282';          -- 償却シミュレーション結果リスト対象データ無し
+-- Ver1.1 Add Start
+  cv_msg_cff_00062            CONSTANT VARCHAR2(50)  := 'APP-XXCFF1-00062';          -- 対象データ無し
+-- Ver1.1 Add End
   cv_msg_cff_90000            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90000';          -- 対象件数メッセージ
   cv_msg_cff_90001            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90001';          -- 成功件数メッセージ
   cv_msg_cff_90002            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90002';          -- エラー件数メッセージ
@@ -132,6 +139,9 @@ AS
   gn_whatif_request_id               NUMBER;         -- 1.WHATIFリクエストID
   gd_period_date                     DATE;           -- 2.開始期間（日付型変換）
   gn_loop_cnt                        NUMBER;         -- ループ回数（3.期間数－1）
+-- Ver1.1 Add Start
+  gv_owner_company                   VARCHAR2(20);   -- 4.本社/工場区分
+-- Ver1.1 Add End
   gv_book_type_code                  XX01_SIM_ADDITIONS.BOOK_TYPE_CODE%TYPE ;           -- 固定資産台帳
 --
   -- ===============================
@@ -147,6 +157,9 @@ AS
      iv_whatif_request_id            IN  VARCHAR2     -- 1.WHATIFリクエストID
     ,iv_period_date                  IN  VARCHAR2     -- 2.開始期間
     ,iv_num_periods                  IN  VARCHAR2     -- 3.期間数
+-- Ver1.1 Add Start
+    ,iv_owner_company                IN  VARCHAR2     -- 4.本社/工場区分
+-- Ver1.1 Add End
     ,ov_errbuf                       OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
     ,ov_retcode                      OUT VARCHAR2     -- リターン・コード             --# 固定 #
     ,ov_errmsg                       OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -174,9 +187,15 @@ AS
     lv_param_name1                  VARCHAR2(1000);  -- 入力パラメータ名1
     lv_param_name2                  VARCHAR2(1000);  -- 入力パラメータ名2
     lv_param_name3                  VARCHAR2(1000);  -- 入力パラメータ名3
+-- Ver1.1 Add Start
+    lv_param_name4                  VARCHAR2(1000);  -- 入力パラメータ名4
+-- Ver1.1 Add End
     lv_param_1                      VARCHAR2(1000);  -- 1.WHATIFリクエストID
     lv_param_2                      VARCHAR2(1000);  -- 2.開始期間
     lv_param_3                      VARCHAR2(1000);  -- 3.期間数
+-- Ver1.1 Add Start
+    lv_param_4                      VARCHAR2(1000);  -- 4.本社/工場区分
+-- Ver1.1 Add End
     lv_csv_header                   VARCHAR2(5000);  -- CSVヘッダ項目出力用
     lv_csv_header_1                 VARCHAR2(5000);  -- 固定部
     lv_csv_header_depr_amt          VARCHAR2(20);    -- 文字「減価償却額」
@@ -204,6 +223,9 @@ AS
     gn_whatif_request_id            := TO_NUMBER(iv_whatif_request_id) ;           -- 1.WHATIFリクエストID
     gd_period_date                  := TO_DATE(iv_period_date,cv_format_period) ;  -- 2.開始期間（日付型変換）  ついたち
     gn_loop_cnt                     := TO_NUMBER(iv_num_periods) - 1 ;             -- ループ回数（3.期間数－1）
+-- Ver1.1 Add Start
+    gv_owner_company                := iv_owner_company ;                          -- 4.本社/工場区分
+-- Ver1.1 Add End
     --
     -- 1.WHATIFリクエストID
     lv_param_name1 := xxccp_common_pkg.get_msg(
@@ -245,6 +267,21 @@ AS
                        ,iv_token_value2 => iv_num_periods                 -- トークン値2
                       );
     --
+-- Ver1.1 Add Start
+    -- 4.本社/工場区分
+    lv_param_name4 := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_name_xxcff             -- アプリケーション短縮名
+                       ,iv_name         => cv_msg_cff_50267               -- メッセージコード
+                      );
+    lv_param_4  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_name_xxcff             -- アプリケーション短縮名
+                       ,iv_name         => cv_msg_cff_00220               -- メッセージコード   入力パラメータ「PARAM_NAME ：  PARAM_VALUE」
+                       ,iv_token_name1  => cv_tkn_param_name              -- トークンコード1
+                       ,iv_token_value1 => lv_param_name4                -- トークン値1
+                       ,iv_token_name2  => cv_tkn_param_value             -- トークンコード2
+                       ,iv_token_value2 => iv_owner_company               -- トークン値2
+                      );
+-- Ver1.1 Add End
     -- ログに出力
     FND_FILE.PUT_LINE(
        which  => FND_FILE.LOG
@@ -252,6 +289,9 @@ AS
                  lv_param_1  || chr(10) ||      -- 1.WHATIFリクエストID
                  lv_param_2  || chr(10) ||      -- 2.開始期間
                  lv_param_3  || chr(10) ||      -- 3.期間数
+-- Ver1.1 Add Start
+                 lv_param_4  || chr(10) ||      -- 4.本社/工場区分
+-- Ver1.1 Add End
                  ''
     );
 --
@@ -462,6 +502,9 @@ AS
                     ||chr(10)|| 'AND xsa.expense_code_combination_id = deprn_acct_code.code_combination_id'
                     ||chr(10)|| 'AND xsa.whatif_request_id = ' || gn_whatif_request_id
                     ||chr(10)|| 'AND xsa.book_type_code = ''' || gv_book_type_code || ''' '
+-- Ver1.1 Add Start
+                    ||chr(10)|| 'AND locate.segment5 = ''' || gv_owner_company ||''' '
+-- Ver1.1 Add End
                     ||chr(10)|| 'ORDER BY xsa.book_type_code'
                     ||chr(10)|| '        ,xsa.asset_number'
                     ||chr(10) ;
@@ -493,6 +536,16 @@ AS
     -- 対象件数
     gn_target_cnt := l_sql_val_tab.COUNT ;
 --
+-- Ver1.1 Add Start
+    IF (gn_target_cnt = 0)
+    THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcff             -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_cff_00062               -- 対象データ無し
+                     );
+      RAISE chk_no_data_found_expt;
+    END IF;
+-- Ver1.1 Add End
     -- ===============================
     -- CSV出力(A-3)
     -- ===============================
@@ -524,6 +577,14 @@ AS
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
+-- Ver1.1 Add Start
+    -- *** ０件の場合のエラーハンドラ ***
+    WHEN chk_no_data_found_expt THEN
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+-- Ver1.1 Add End
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       -- エラー件数
@@ -542,6 +603,9 @@ AS
      iv_whatif_request_id            IN  VARCHAR2     -- 1.WHATIFリクエストID
     ,iv_period_date                  IN  VARCHAR2     -- 2.開始期間
     ,iv_num_periods                  IN  VARCHAR2     -- 3.期間数
+-- Ver1.1 Add Start
+    ,iv_owner_company                IN  VARCHAR2     -- 4.本社/工場区分
+-- Ver1.1 Add End
     ,ov_errbuf                       OUT VARCHAR2     -- エラー・メッセージ           --# 固定 #
     ,ov_retcode                      OUT VARCHAR2     -- リターン・コード             --# 固定 #
     ,ov_errmsg                       OUT VARCHAR2     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -597,6 +661,9 @@ AS
        iv_whatif_request_id           => iv_whatif_request_id           -- 1.WHATIFリクエストID
       ,iv_period_date                 => iv_period_date                 -- 2.開始期間
       ,iv_num_periods                 => iv_num_periods                 -- 3.期間数
+-- Ver1.1 Add Start
+      ,iv_owner_company               => iv_owner_company               -- 4.本社/工場区分
+-- Ver1.1 Add End
       ,ov_errbuf                      => lv_errbuf                      -- エラー・メッセージ           --# 固定 #
       ,ov_retcode                     => lv_retcode                     -- リターン・コード             --# 固定 #
       ,ov_errmsg                      => lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -665,6 +732,9 @@ AS
    ,iv_whatif_request_id            IN     VARCHAR2      -- 1.WHATIFリクエストID (数値)
    ,iv_period_date                  IN     VARCHAR2      -- 2.開始期間 (YYYY-MM)
    ,iv_num_periods                  IN     VARCHAR2      -- 3.期間数 (数値)
+-- Ver1.1 Add Start
+   ,iv_owner_company                IN     VARCHAR2      -- 4.本社/工場区分
+-- Ver1.1 Add End
   )
 --
 --###########################  固定部 START   ###########################
@@ -711,6 +781,9 @@ AS
        iv_whatif_request_id           => iv_whatif_request_id           -- 1.WHATIFリクエストID
       ,iv_period_date                 => iv_period_date                 -- 2.開始期間
       ,iv_num_periods                 => iv_num_periods                 -- 3.期間数
+-- Ver1.1 Add Start
+      ,iv_owner_company               => iv_owner_company               -- 4.本社/工場区分
+-- Ver1.1 Add End
       ,ov_errbuf                      => lv_errbuf                      -- エラー・メッセージ           --# 固定 #
       ,ov_retcode                     => lv_retcode                     -- リターン・コード             --# 固定 #
       ,ov_errmsg                      => lv_errmsg                      -- ユーザー・エラー・メッセージ --# 固定 #

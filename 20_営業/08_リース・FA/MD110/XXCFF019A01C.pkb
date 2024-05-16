@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF019A01C(body)
  * Description      : 固定資産データアップロード
  * MD.050           : MD050_CFF_019_A01_固定資産データアップロード
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/10/31    1.0   S.Niki           E_本稼動_14502対応（新規作成）
+ *  2024/02/09    1.1   Y.Sato           E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -106,8 +107,10 @@ AS
   -- プロファイル
   cv_prf_cmp_cd_itoen CONSTANT VARCHAR2(30)  := 'XXCFF1_COMPANY_CD_ITOEN';       -- 会社コード_本社
   cv_prf_fixd_ast_reg CONSTANT VARCHAR2(30)  := 'XXCFF1_FIXED_ASSET_REGISTER';   -- 台帳種類_固定資産台帳
-  cv_prf_own_itoen    CONSTANT VARCHAR2(30)  := 'XXCFF1_OWN_COMP_ITOEN';         -- 本社工場区分_本社
-  cv_prf_own_sagara   CONSTANT VARCHAR2(30)  := 'XXCFF1_OWN_COMP_SAGARA';        -- 本社工場区分_工場
+-- Ver1.1 Del Start
+--  cv_prf_own_itoen    CONSTANT VARCHAR2(30)  := 'XXCFF1_OWN_COMP_ITOEN';         -- 本社工場区分_本社
+--  cv_prf_own_sagara   CONSTANT VARCHAR2(30)  := 'XXCFF1_OWN_COMP_SAGARA';        -- 本社工場区分_工場
+-- Ver1.1 Del End
   cv_prf_feed_sys_nm  CONSTANT VARCHAR2(30)  := 'XXCFF1_FEEDER_SYSTEM_NAME_FA';  -- 供給システム名_FAアップロード
   cv_prf_cat_dep_ifrs CONSTANT VARCHAR2(30)  := 'XXCFF1_CAT_DEPRN_IFRS';         -- IFRS償却方法
 --
@@ -137,6 +140,9 @@ AS
   cv_msg_name_00104   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00104';      -- 削除エラー
   cv_msg_name_00266   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00266';      -- 追加OIF登録メッセージ
   cv_msg_name_00267   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00267';      -- 修正OIF登録メッセージ
+--Ver1.1 Add Start
+  cv_msg_name_00189   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00189';      -- 参照タイプ取得エラー
+--Ver1.1 Add End
 --
   -- メッセージ名(トークン)
   cv_tkn_val_50295    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50295';      -- 固定資産データ
@@ -147,8 +153,10 @@ AS
   cv_tkn_val_50175    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50175';      -- ファイルアップロードI/Fテーブル
   cv_tkn_val_50076    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50076';      -- XXCFF:会社コード_本社
   cv_tkn_val_50228    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50228';      -- XXCFF:台帳種類_固定資産台帳
-  cv_tkn_val_50095    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50095';      -- XXCFF:本社工場区分_本社
-  cv_tkn_val_50096    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50096';      -- XXCFF:本社工場区分_工場
+-- Ver1.1 Del Start
+--  cv_tkn_val_50095    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50095';      -- XXCFF:本社工場区分_本社
+--  cv_tkn_val_50096    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50096';      -- XXCFF:本社工場区分_工場
+-- Ver1.1 Del End
   cv_tkn_val_50305    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50305';      -- XXCFF:供給システム名_FAアップロード
   cv_tkn_val_50318    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50318';      -- XXCFF:IFRS償却方法
   cv_tkn_val_50296    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50296';      -- 固定資産アップロードワーク
@@ -184,6 +192,9 @@ AS
   cv_tkn_val_50319    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50319';      -- 追加OIF
   cv_tkn_val_50320    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50320';      -- 修正OIF
   cv_tkn_val_50321    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50321';      -- IFRS取得価額合計値
+-- Ver1.1 Add Start
+  cv_tkn_val_50331    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50331';      -- 本社/工場区分コード  
+-- Ver1.1 Add End
 --
   -- トークン名
   cv_tkn_file_name    CONSTANT VARCHAR2(100) := 'FILE_NAME';             -- ファイル名
@@ -203,6 +214,9 @@ AS
   cv_tkn_err_msg      CONSTANT VARCHAR2(100) := 'ERR_MSG';               -- エラーメッセージ
   cv_tkn_table_name   CONSTANT VARCHAR2(100) := 'TABLE_NAME';            -- テーブル名
   cv_tkn_info         CONSTANT VARCHAR2(100) := 'INFO';                  -- 詳細情報
+--Ver1.1 Add Start
+  cv_tkn_lookup_type  CONSTANT VARCHAR2(100) := 'LOOKUP_TYPE';           -- 参照タイプ名
+--Ver1.1 Add End
 --
   -- 値セット名
   cv_ffv_dclr_dprn    CONSTANT VARCHAR2(100) := 'XXCFF_DCLR_DPRN';       -- 償却申告
@@ -212,6 +226,10 @@ AS
   cv_ffv_dclr_place   CONSTANT VARCHAR2(100) := 'XXCFF_DCLR_PLACE';      -- 申告地
   cv_ffv_mng_place    CONSTANT VARCHAR2(100) := 'XXCFF_MNG_PLACE';       -- 事業所
 --
+--Ver1.1 Add Start 
+  -- 参照タイプ・コード
+  cv_flvv_own_comp_cd CONSTANT VARCHAR2(100) := 'XXCFF1_OWNER_COMPANY_CODE'; -- 本社/工場区分コード
+--Ver1.1 Add End
   -- 出力タイプ
   cv_file_type_out    CONSTANT VARCHAR2(10)  := 'OUTPUT';                -- 出力
   cv_file_type_log    CONSTANT VARCHAR2(10)  := 'LOG';                   -- ログ
@@ -379,8 +397,10 @@ AS
   -- プロファイル値
   gv_company_cd_itoen          VARCHAR2(100);                                    -- 会社コード_本社
   gv_fixed_asset_register      VARCHAR2(100);                                    -- 台帳種類_固定資産台帳
-  gv_own_comp_itoen            VARCHAR2(100);                                    -- 本社工場区分_本社
-  gv_own_comp_sagara           VARCHAR2(100);                                    -- 本社工場区分_工場
+-- Ver1.1 Del Start
+--  gv_own_comp_itoen            VARCHAR2(100);                                    -- 本社工場区分_本社
+--  gv_own_comp_sagara           VARCHAR2(100);                                    -- 本社工場区分_工場
+-- Ver1.1 Del End
   gv_feed_sys_nm               VARCHAR2(100);                                    -- 供給システム名_FAアップロード
   gv_cat_dep_ifrs              VARCHAR2(100);                                    -- IFRS償却方法
 --
@@ -596,34 +616,36 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
---
-    -- XXCFF:本社工場区分_本社
-    gv_own_comp_itoen := FND_PROFILE.VALUE(cv_prf_own_itoen);
-    -- 取得値がNULLの場合
-    IF ( gv_own_comp_itoen IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_msg_kbn_cff         -- アプリケーション短縮名
-                     ,iv_name         => cv_msg_name_00020      -- メッセージ
-                     ,iv_token_name1  => cv_tkn_prof_name       -- トークンコード1
-                     ,iv_token_value1 => cv_tkn_val_50095       -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- XXCFF:本社工場区分_工場
-    gv_own_comp_sagara := FND_PROFILE.VALUE(cv_prf_own_sagara);
-    -- 取得値がNULLの場合
-    IF ( gv_own_comp_sagara IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_msg_kbn_cff         -- アプリケーション短縮名
-                     ,iv_name         => cv_msg_name_00020      -- メッセージ
-                     ,iv_token_name1  => cv_tkn_prof_name       -- トークンコード1
-                     ,iv_token_value1 => cv_tkn_val_50096       -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- Ver1.1 Del Start
+----
+--    -- XXCFF:本社工場区分_本社
+--    gv_own_comp_itoen := FND_PROFILE.VALUE(cv_prf_own_itoen);
+--    -- 取得値がNULLの場合
+--    IF ( gv_own_comp_itoen IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_msg_kbn_cff         -- アプリケーション短縮名
+--                     ,iv_name         => cv_msg_name_00020      -- メッセージ
+--                     ,iv_token_name1  => cv_tkn_prof_name       -- トークンコード1
+--                     ,iv_token_value1 => cv_tkn_val_50095       -- トークン値1
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- XXCFF:本社工場区分_工場
+--    gv_own_comp_sagara := FND_PROFILE.VALUE(cv_prf_own_sagara);
+--    -- 取得値がNULLの場合
+--    IF ( gv_own_comp_sagara IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_msg_kbn_cff         -- アプリケーション短縮名
+--                     ,iv_name         => cv_msg_name_00020      -- メッセージ
+--                     ,iv_token_name1  => cv_tkn_prof_name       -- トークンコード1
+--                     ,iv_token_value1 => cv_tkn_val_50096       -- トークン値1
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- Ver1.1 Del End
 --
     -- XXCFF:供給システム名_FAアップロード
     gv_feed_sys_nm := FND_PROFILE.VALUE(cv_prf_feed_sys_nm);
@@ -3229,14 +3251,39 @@ AS
       -- ===============================
       -- 事業所CCID取得
       -- ===============================
-      -- 本社工場区分の判定
-      IF ( g_upload_tab(in_rec_no).company_code = gv_company_cd_itoen ) THEN
-        -- 本社工場区分_本社
-        lv_segment5 := gv_own_comp_itoen;
-      ELSE
-        -- 本社工場区分_工場
-        lv_segment5 := gv_own_comp_sagara;
-      END IF;
+-- Ver1.1 Mod Start
+--      -- 本社工場区分の判定
+--      IF ( g_upload_tab(in_rec_no).company_code = gv_company_cd_itoen ) THEN
+--        -- 本社工場区分_本社
+--        lv_segment5 := gv_own_comp_itoen;
+--      ELSE
+--        -- 本社工場区分_工場
+--        lv_segment5 := gv_own_comp_sagara;
+--      END IF;
+      -- 本社工場区分
+      BEGIN
+        SELECT flvv.description AS segment5                   --会社名
+        INTO   lv_segment5
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type   = cv_flvv_own_comp_cd
+        AND    flvv.lookup_code   = g_upload_tab(in_rec_no).company_code
+        AND    flvv.enabled_flag  = cv_yes
+        AND    gd_process_date   >= NVL(flvv.start_date_active ,gd_process_date)
+        AND    gd_process_date   <= NVL(flvv.end_date_active ,gd_process_date)
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+        -- 参照タイプ・コードが取得できない場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  =>cv_msg_kbn_cff
+                         ,iv_name         => cv_msg_name_00189
+                         ,iv_token_name1  => cv_tkn_lookup_type
+                         ,iv_token_value1 => cv_tkn_val_50331
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+-- Ver1.1 Mod End
 --
       -- 事業所マスタチェック
       xxcff_common1_pkg.chk_fa_location(
