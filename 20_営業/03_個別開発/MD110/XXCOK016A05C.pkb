@@ -8,7 +8,7 @@ AS
  *                    仕向銀行の振り分け処理を行います。
  *
  * MD.050           : FBデータファイル振り分け処理 MD050_COK_016_A05
- * Version          : 1.0
+ * Version          : 1.4
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  fb_data_record                   FBデータレコードの出力(A-7)
  *  fb_trailer_record                FBトレーラレコードの出力(A-8)
  *  fb_end_record                    FBエンドレコードの出力(A-9)
+ *  update_distribute_result         FBデータ振り分け履歴更新(A-10)
  *  submain                          メイン処理プロシージャ
  *  main                             コンカレント実行ファイル登録プロシージャ
  *
@@ -33,6 +34,8 @@ AS
  *  2023/11/15    1.0   T.Okuyama        [E_本稼動_19540対応] 新規作成
  *  2023/11/24    1.1   T.Okuyama        [E_本稼動_19540対応] 新規作成
  *  2023/12/04    1.2   T.Okuyama        [E_本稼動_19540対応] 新規作成
+ *  2024/02/02    1.3   T.Okuyama        [E_本稼動_19496対応] グループ会社対応
+ *  2024/04/05    1.4   T.Okuyama        [E_本稼動_19496対応] FB振り分け未済データのログ表示不具合対応
  *****************************************************************************************/
 --
   --===============================
@@ -79,6 +82,12 @@ AS
   cv_msg_cok_10877            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10877';    -- 成功件数、合計金額メッセージ
   cv_msg_cok_10863            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10863';    -- テーブルロック取得エラー
   cv_msg_cok_10864            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10864';    -- テーブル更新エラー
+-- Ver.1.3 Add Start
+  cv_msg_cok_10860            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10860';    -- コンカレント入力パラメータ出力メッセージ
+  cv_msg_cok_10878            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10878';    -- コンカレント入力パラメータ（会社コード）
+  cv_msg_cok_10879            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10879';    -- 会社コード取得エラーメッセージ
+  cv_msg_cok_10880            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10880';    -- FBファイル出力対象データなし警告
+-- Ver.1.3 Add End
   cv_msg_cok_00003            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00003';    -- プロファイル値取得エラーメッセージ
   cv_msg_cok_00028            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00028';    -- 業務処理日付取得エラーメッセージ
   cv_msg_ccp_90000            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90000';    -- 抽出件数メッセージ
@@ -105,6 +114,9 @@ AS
   cv_token_profile            CONSTANT VARCHAR2(15)  := 'PROFILE';                -- カスタムプロファイルの物理名
   cv_token_count              CONSTANT VARCHAR2(15)  := 'COUNT';                  -- 件数
   cv_token_amount             CONSTANT VARCHAR2(15)  := 'AMOUNT';                 -- 合計金額
+-- Ver.1.3 Add Start
+  cv_token_company_code       CONSTANT VARCHAR2(15)  := 'COMPANY_CODE';           -- 会社コード・パラメータ
+-- Ver.1.3 Add End
   -- 定数
   cv_log                      CONSTANT VARCHAR2(3)   := 'LOG';                    -- ログ出力指定
   cv_yes                      CONSTANT VARCHAR2(1)   := 'Y';                      -- フラグ:'Y'
@@ -116,8 +128,13 @@ AS
   cv_manual                   CONSTANT VARCHAR2(1)   := 'M';                      -- 手動振り分け実行フラグ:'M'
   cv_tkn_tbl                  CONSTANT VARCHAR2(30)  := 'TABLE';                  -- テーブル名
   cv_tkn_err_msg              CONSTANT VARCHAR2(30)  := 'ERR_MSG';                -- エラーメッセージ
-  cv_loopup_type              CONSTANT VARCHAR2(30)  := 'LOOPUP_TYPE';            -- 参照タイプ
-  cv_loopup_tbl_nm            CONSTANT VARCHAR2(100) := '参照表（FB他行分仕向銀行）';
+-- Ver.1.3 Mod/Add Start
+--  cv_loopup_type              CONSTANT VARCHAR2(30)  := 'LOOPUP_TYPE';            -- 参照タイプ
+--  cv_loopup_tbl_nm            CONSTANT VARCHAR2(100) := '参照表（FB他行分仕向銀行）';
+  cv_lookup_type              CONSTANT VARCHAR2(30)  := 'LOOKUP_TYPE';            -- 参照タイプ
+  cv_lookup_tbl_nm            CONSTANT VARCHAR2(100) := '参照表（FB他行分仕向銀行）';
+  cv_underscore               CONSTANT VARCHAR2(1)   := '_';                      -- アンダースコア
+-- Ver.1.3 Mod/Add End
   cv_wk_tbl_nm                CONSTANT VARCHAR2(100) := 'FBデータ明細ワークテーブル';
   cv_lookup_type_fb           CONSTANT VARCHAR2(50)  := 'XXCMM_FB_DISTRIBUTION_BANK';   -- 参照タイプ：FB他行分仕向銀行
   cv_lookup_type_bank         CONSTANT VARCHAR2(50)  := 'XXCOK1_BM_BANK_ACCOUNT';       -- 参照タイプ：当社銀行口座情報
@@ -135,7 +152,13 @@ AS
   gn_out_amount               NUMBER         DEFAULT 0;                               -- FB明細合計金額
   gn_request_id               xxcok_fb_lines_work.request_id%TYPE  DEFAULT NULL;      -- 処理対象要求ID
   gv_default_bank_code        fnd_lookup_values.lookup_code%TYPE   DEFAULT NULL;      -- FBデータ作成時の自社銀行
-
+-- Ver.1.3 Add Start
+  gv_lookup_type_fb           fnd_lookup_values.lookup_type%TYPE   DEFAULT NULL;      -- FBデータ作成時の参照タイプ
+  gv_lookup_type_fb_nm        fnd_lookup_values.meaning%TYPE       DEFAULT NULL;      -- FBデータ作成時の参照表名
+  gv_company_code             xxcfo_company_v.company_code%TYPE;                      -- パラメータ.会社コード
+  gv_fb_output_bank           fnd_lookup_values.attribute1%TYPE    DEFAULT NULL;      -- FBデータ出力銀行
+  gv_fb_output_mode           VARCHAR2(1)    DEFAULT NULL;                            -- FBデータファイル出力時
+-- Ver.1.3 Add End
   -- プロファイル
   gt_prof_org_id              fnd_profile_option_values.profile_option_value%TYPE;    -- 営業単位
   gt_prof_acc_type_internal   fnd_profile_option_values.profile_option_value%TYPE;    -- XXCOK:販売手数料_当社_口座使用
@@ -166,7 +189,13 @@ AS
     ov_errbuf          OUT VARCHAR2     -- エラー・メッセージ
   , ov_retcode         OUT VARCHAR2     -- リターン・コード
   , ov_errmsg          OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+-- Ver.1.3 Add Start
+  , iv_company_code    IN  VARCHAR2     -- パラメータ：会社コード
+-- Ver.1.3 Add End
   , in_request_id      IN  NUMBER       -- パラメータ：FBデータファイル作成時の要求ID
+-- Ver.1.3 Add Start
+  , iv_fb_output_bank  IN  VARCHAR2     -- パラメータ：FBファイル出力銀行
+-- Ver.1.3 Add End
   , iv_internal_bank1  IN  VARCHAR2     -- パラメータ：他行分仕向銀行1
   , in_bank_cnt1       IN  NUMBER       -- パラメータ：仕向銀行1への按分件数
   , iv_internal_bank2  IN  VARCHAR2     -- パラメータ：他行分仕向銀行2
@@ -208,7 +237,10 @@ AS
     SELECT MAX(flv.lookup_code) AS  internal_bank       -- 被仕向銀行振分け銀行
           ,MAX(flv.meaning)     AS  internal_bank_name  -- 被仕向銀行振分け銀行名
     FROM   fnd_lookup_values flv
-    WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    WHERE  flv.lookup_type  = cv_lookup_type_fb
+    WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
     AND    flv.lookup_code  = iv_code                   -- 入力パラメータ銀行
     AND    flv.attribute10  = cv_yes                    -- 他行分振分け対象区分
     AND    flv.enabled_flag = cv_yes
@@ -223,7 +255,10 @@ AS
     IS
     SELECT MIN(flv.lookup_code) AS  internal_bank       -- 被仕向銀行振分け銀行
     FROM   fnd_lookup_values flv
-    WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    WHERE  flv.lookup_type  = cv_lookup_type_fb
+    WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
     AND   (flv.attribute1 IS NULL
       OR   flv.attribute2 IS NULL
       OR   flv.attribute3 IS NULL
@@ -245,7 +280,10 @@ AS
           ,abb.bank_number AS  bank_number              -- 銀行番号
     FROM   fnd_lookup_values flv                        -- 参照表（FB他行分仕向銀行）
           ,ap_bank_branches  abb                        -- 銀行支店マスタ
-    WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    WHERE  flv.lookup_type  = cv_lookup_type_fb
+    WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
     AND    flv.lookup_code  = abb.bank_number(+)        -- 銀行番号
     AND    flv.enabled_flag = cv_yes
     AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
@@ -267,7 +305,10 @@ AS
     AND    abaa.org_id(+)           = TO_NUMBER( gt_prof_org_id ) -- 営業単位
     AND    abaa.account_type(+)     = gt_prof_acc_type_internal   -- 口座使用（'INTERNAL'）
     AND    abaa.eft_requester_id(+) IS NOT NULL
-    AND    flv.lookup_type          = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    AND    flv.lookup_type          = cv_lookup_type_fb
+    AND    flv.lookup_type          = gv_lookup_type_fb
+-- Ver.1.3 Mod End
 --  Ver1.2 T.Okuyama Mod Start
 --    AND    flv.lookup_code          = abb.bank_number
     AND    flv.attribute1           = abb.bank_number
@@ -323,7 +364,10 @@ AS
           ,flv.attribute7  AS fb_dff7
           ,flv.attribute8  AS fb_dff8
     FROM   fnd_lookup_values flv
-    WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    WHERE  flv.lookup_type  = cv_lookup_type_fb
+    WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
     AND   (flv.attribute9   = cv_yes                              -- 仕向銀行自動振分区分
       OR   flv.attribute10  = cv_yes)                             -- 他行分振分け対象区分
     AND    flv.enabled_flag = cv_yes
@@ -347,75 +391,177 @@ AS
   BEGIN
     -- ステータス初期化
     ov_retcode := cv_status_normal;
+-- Ver.1.3 Add Start
     --==========================================================
-    --1.入力パラメータチェック
+    --1.業務処理日付取得
     --==========================================================
+    gd_proc_date := xxccp_common_pkg2.get_process_date;
+    IF( gd_proc_date IS NULL ) THEN
+      -- 業務処理日付取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appli_xxcok
+                      ,iv_name         => cv_msg_cok_00028
+                     );
+      RAISE init_fail_expt;
+    END IF;
+-- Ver.1.3 Add End
+    --==========================================================
+    --2.入力パラメータチェック
+    --==========================================================
+-- Ver.1.3 Add Start
+    -- 会社コードチェック
+    BEGIN
+      SELECT company_code AS company_code INTO gv_company_code
+      FROM   xxcfo_company_v
+      WHERE  company_code  = iv_company_code;
+    EXCEPTION 
+      WHEN NO_DATA_FOUND THEN
+        gv_company_code := NULL;
+      WHEN OTHERS THEN
+        gv_company_code := NULL;
+    END;
+    IF( gv_company_code IS NULL ) THEN
+      -- 会社コード取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_xxcok
+                     ,iv_name         => cv_msg_cok_10879
+                     ,iv_token_name1  => cv_token_company_code
+                     ,iv_token_value1 => iv_company_code
+                    );
+      RAISE init_fail_expt;
+    END IF;
+-- Ver.1.3 Add End
+--
     -- FBファイル作成要求ID
     IF( in_request_id IS NULL ) THEN
       -- ジョブ起動の時
-      SELECT MAX(request_id) INTO gn_request_id FROM xxcok_fb_lines_work;
-      IF( gn_request_id IS NULL ) THEN
-        -- FBファイル作成要求IDが取得出来ない時、警告終了
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appli_xxcok
-                        ,iv_name         => cv_msg_cok_10872
-                        ,iv_token_name1  => cv_token_request_id
-                        ,iv_token_value1 => TO_CHAR(gn_request_id)
-                       );
-        RAISE init_warning_expt;
-      END IF;
+-- Ver.1.3 Mod/Add Start
+--      SELECT MAX(request_id) INTO gn_request_id FROM xxcok_fb_lines_work;
+      SELECT MAX(request_id) INTO gn_request_id FROM xxcok_fb_lines_work WHERE company_code = gv_company_code;
     ELSE
       -- 随時実行
-      SELECT MAX(request_id) INTO gn_request_id FROM xxcok_fb_lines_work WHERE request_id = in_request_id;
-      IF( gn_request_id IS NULL ) THEN
-        -- パラメータ指定のFBファイル作成要求IDが取得出来ない時、エラー終了
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_appli_xxcok
-                        ,iv_name         => cv_msg_cok_10867
-                        ,iv_token_name1  => cv_token_request_id
-                        ,iv_token_value1 => TO_CHAR(gn_request_id)
-                       );
-        RAISE init_fail_expt;
-      END IF;
+      SELECT MAX(request_id) INTO gn_request_id FROM xxcok_fb_lines_work WHERE request_id = in_request_id AND company_code = gv_company_code;
     END IF;
+-- Ver.1.3 Mod/Add End
+    IF( gn_request_id IS NULL ) THEN
+      -- FBファイル作成要求IDが取得出来ない時、警告終了
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appli_xxcok
+                      ,iv_name         => cv_msg_cok_10872
+                      ,iv_token_name1  => cv_token_request_id
+-- Ver.1.3 Mod Start
+--                      ,iv_token_value1 => TO_CHAR(gn_request_id)
+                      ,iv_token_value1 => TO_CHAR(in_request_id)
+-- Ver.1.3 Mod End
+                     );
+      RAISE init_warning_expt;
+    END IF;
+-- Ver.1.3 Del Start
+--    ELSE
+--      -- 随時実行
+--      SELECT MAX(request_id) INTO gn_request_id FROM xxcok_fb_lines_work WHERE request_id = in_request_id;
+--      IF( gn_request_id IS NULL ) THEN
+--        -- パラメータ指定のFBファイル作成要求IDが取得出来ない時、エラー終了
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_appli_xxcok
+--                        ,iv_name         => cv_msg_cok_10867
+--                        ,iv_token_name1  => cv_token_request_id
+--                        ,iv_token_value1 => TO_CHAR(gn_request_id)
+--                       );
+--        RAISE init_fail_expt;
+--      END IF;
+--    END IF;
+-- Ver.1.3 Del End
+--
+    --======================
+    --3.会社別参照タイプ取得
+    --======================
+    gv_lookup_type_fb    := cv_lookup_type_fb || cv_underscore || iv_company_code;  -- 各社参照タイプ（'XXCMM_FB_DISTRIBUTION_BANK + 会社コード'）
+    gv_lookup_type_fb_nm := cv_lookup_tbl_nm  || cv_underscore || iv_company_code;  -- 各社参照表（'FB他行分仕向銀行 + 会社コード'）
+    gv_fb_output_bank    := iv_fb_output_bank;                                      -- FBデータ出力銀行
+--
+-- Ver.1.3 Add End
     --==========================================================
-    --2.コンカレント・プログラム入力項目メッセージ出力
+    --4.コンカレント・プログラム入力項目メッセージ出力
     --==========================================================
+-- Ver.1.3 Add Start
     lv_errmsg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_appli_xxcok
-                   ,iv_name         => cv_msg_cok_10865
+                   ,iv_name         => cv_msg_cok_10860
+                   -- 会社コード
+                   ,iv_token_name1  => cv_token_company_code
+                   ,iv_token_value1 => iv_company_code
                    -- FBファイル作成要求ID
-                   ,iv_token_name1  => cv_token_request_id
-                   ,iv_token_value1 => TO_CHAR(gn_request_id)
-                   -- 1.他行分仕訳銀行、按分件数
-                   ,iv_token_name2  => cv_token_fb_bank1
-                   ,iv_token_value2 => iv_internal_bank1
-                   ,iv_token_name3  => cv_token_fb_bank_cnt1
-                   ,iv_token_value3 => TO_CHAR(in_bank_cnt1)
-                   -- 2.他行分仕訳銀行、按分件数
-                   ,iv_token_name4  => cv_token_fb_bank2
-                   ,iv_token_value4 => iv_internal_bank2
-                   ,iv_token_name5  => cv_token_fb_bank_cnt2
-                   ,iv_token_value5 => TO_CHAR(in_bank_cnt2)
-                   -- 3.他行分仕訳銀行、按分件数
-                   ,iv_token_name6  => cv_token_fb_bank3
-                   ,iv_token_value6 => iv_internal_bank3
-                   ,iv_token_name7  => cv_token_fb_bank_cnt3
-                   ,iv_token_value7 => TO_CHAR(in_bank_cnt3)
-                   -- 4.他行分仕訳銀行、按分件数
-                   ,iv_token_name8  => cv_token_fb_bank4
-                   ,iv_token_value8 => iv_internal_bank4
-                   ,iv_token_name9  => cv_token_fb_bank_cnt4
-                   ,iv_token_value9 => TO_CHAR(in_bank_cnt4)
+                   ,iv_token_name2  => cv_token_request_id
+                   ,iv_token_value2 => TO_CHAR(gn_request_id)
+                   -- FBファイル出力銀行
+                   ,iv_token_name3  => cv_token_dist_bank
+                   ,iv_token_value3 => iv_fb_output_bank
                   );
     lb_retcode := xxcok_common_pkg.put_message_f(
                     in_which    => FND_FILE.LOG        -- 出力区分
                    ,iv_message  => lv_errmsg           -- メッセージ
                    ,in_new_line => 0                   -- 改行
                   );
-    --==========================================================
-    --3.コンカレント・プログラム入力拡張項目メッセージ出力
-    --==========================================================
+-- Ver.1.3 Add End
+-- Ver.1.3 Mod Start
+    IF ( iv_fb_output_bank ) IS NULL THEN              -- FB振り分け処理の時
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appli_xxcok
+                   ,iv_name         => cv_msg_cok_10865
+--                   -- FBファイル作成要求ID
+--                   ,iv_token_name1  => cv_token_request_id
+--                   ,iv_token_value1 => TO_CHAR(gn_request_id)
+--                   -- 1.他行分仕訳銀行、按分件数
+--                   ,iv_token_name2  => cv_token_fb_bank1
+--                   ,iv_token_value2 => iv_internal_bank1
+--                   ,iv_token_name3  => cv_token_fb_bank_cnt1
+--                   ,iv_token_value3 => TO_CHAR(in_bank_cnt1)
+--                   -- 2.他行分仕訳銀行、按分件数
+--                   ,iv_token_name4  => cv_token_fb_bank2
+--                   ,iv_token_value4 => iv_internal_bank2
+--                   ,iv_token_name5  => cv_token_fb_bank_cnt2
+--                   ,iv_token_value5 => TO_CHAR(in_bank_cnt2)
+--                   -- 3.他行分仕訳銀行、按分件数
+--                   ,iv_token_name6  => cv_token_fb_bank3
+--                   ,iv_token_value6 => iv_internal_bank3
+--                   ,iv_token_name7  => cv_token_fb_bank_cnt3
+--                   ,iv_token_value7 => TO_CHAR(in_bank_cnt3)
+--                   -- 4.他行分仕訳銀行、按分件数
+--                   ,iv_token_name8  => cv_token_fb_bank4
+--                   ,iv_token_value8 => iv_internal_bank4
+--                   ,iv_token_name9  => cv_token_fb_bank_cnt4
+--                   ,iv_token_value9 => TO_CHAR(in_bank_cnt4)
+--
+                   -- 1.他行分仕訳銀行、按分件数
+                   ,iv_token_name1  => cv_token_fb_bank1
+                   ,iv_token_value1 => iv_internal_bank1
+                   ,iv_token_name2  => cv_token_fb_bank_cnt1
+                   ,iv_token_value2 => TO_CHAR(in_bank_cnt1)
+                   -- 2.他行分仕訳銀行、按分件数
+                   ,iv_token_name3  => cv_token_fb_bank2
+                   ,iv_token_value3 => iv_internal_bank2
+                   ,iv_token_name4  => cv_token_fb_bank_cnt2
+                   ,iv_token_value4 => TO_CHAR(in_bank_cnt2)
+                   -- 3.他行分仕訳銀行、按分件数
+                   ,iv_token_name5  => cv_token_fb_bank3
+                   ,iv_token_value5 => iv_internal_bank3
+                   ,iv_token_name6  => cv_token_fb_bank_cnt3
+                   ,iv_token_value6 => TO_CHAR(in_bank_cnt3)
+                   -- 4.他行分仕訳銀行、按分件数
+                   ,iv_token_name7  => cv_token_fb_bank4
+                   ,iv_token_value7 => iv_internal_bank4
+                   ,iv_token_name8  => cv_token_fb_bank_cnt4
+                   ,iv_token_value8 => TO_CHAR(in_bank_cnt4)
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which    => FND_FILE.LOG        -- 出力区分
+                   ,iv_message  => lv_errmsg           -- メッセージ
+                   ,in_new_line => 0                   -- 改行
+                  );
+    END IF;
+-- Ver.1.3 Mod End
+    --コンカレント・プログラム入力拡張項目メッセージ出力
     IF (iv_internal_bank5 || iv_internal_bank6) IS NOT NULL THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_appli_xxcok
@@ -443,18 +589,20 @@ AS
                    ,iv_message  => NULL                 -- メッセージ
                    ,in_new_line => 1                    -- 改行
                   );
-    --==========================================================
-    --4.業務処理日付取得
-    --==========================================================
-    gd_proc_date := xxccp_common_pkg2.get_process_date;
-    IF( gd_proc_date IS NULL ) THEN
-      -- 業務処理日付取得エラーメッセージ
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_appli_xxcok
-                      ,iv_name         => cv_msg_cok_00028
-                     );
-      RAISE init_fail_expt;
-    END IF;
+-- Ver.1.3 Del Start
+--    --==========================================================
+--    --4.業務処理日付取得
+--    --==========================================================
+--    gd_proc_date := xxccp_common_pkg2.get_process_date;
+--    IF( gd_proc_date IS NULL ) THEN
+--      -- 業務処理日付取得エラーメッセージ
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_appli_xxcok
+--                      ,iv_name         => cv_msg_cok_00028
+--                     );
+--      RAISE init_fail_expt;
+--    END IF;
+-- Ver.1.3 Del End
     --==========================================================
     --5.プロファイルの取得
     --6.カスタム・プロファイルの取得
@@ -689,8 +837,12 @@ AS
         AND    abb.bank_branch_name_alt     = lt_bank_lookup_rec.fb_dff4  -- 銀行支店名カナ
         AND    abaa.bank_account_type       = lt_bank_lookup_rec.fb_dff5  -- 銀行口座種別
         AND    abaa.bank_account_num        = lt_bank_lookup_rec.fb_dff6  -- 口座番号
-        AND    abaa.eft_requester_id        = lt_bank_lookup_rec.fb_dff7  -- 依頼人コード
-        AND    abaa.account_holder_name_alt = lt_bank_lookup_rec.fb_dff8  -- 口座名義人カナ（依頼人名）
+-- Ver.1.3 Mod Start
+--        AND    abaa.eft_requester_id        = lt_bank_lookup_rec.fb_dff7  -- 依頼人コード
+--        AND    abaa.account_holder_name_alt = lt_bank_lookup_rec.fb_dff8  -- 口座名義人カナ（依頼人名）
+        AND    abaa.attribute3              = lt_bank_lookup_rec.fb_dff7  -- 依頼人コード
+        AND    abaa.attribute2              = lt_bank_lookup_rec.fb_dff8  -- 口座名義人カナ（依頼人名）
+-- Ver.1.3 Mod End
         AND    ROWNUM = 1
         ;
       EXCEPTION
@@ -806,7 +958,10 @@ AS
     IS
       SELECT 'X'
       FROM   fnd_lookup_values flv
-      WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--      WHERE  flv.lookup_type  = cv_lookup_type_fb
+      WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
       FOR UPDATE OF flv.lookup_code NOWAIT;
 --
     CURSOR fb_lines_cur
@@ -834,10 +989,19 @@ AS
     -- ステータス初期化
     -- ===============================================
     ov_retcode := cv_status_normal;
-     -- ========================================================
+-- Ver.1.3 Add Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_bank IS NOT NULL ) THEN
+      RETURN;
+    END IF;
+-- Ver.1.3 Add End
+    -- ========================================================
     -- 1.参照表（FB他行分仕向銀行）テーブルへの按分件数の登録
     -- =========================================================
-    lv_tbl_nm := cv_loopup_tbl_nm;
+-- Ver.1.3 Mod Start
+--    lv_tbl_nm := cv_loopup_tbl_nm;
+    lv_tbl_nm := gv_lookup_type_fb_nm;
+-- Ver.1.3 Mod End
 --
     -- ===============================================
     -- 参照表（FB他行分仕向銀行）ロック取得
@@ -852,7 +1016,10 @@ AS
       UPDATE fnd_lookup_values flv
       SET    flv.attribute11  = NULL
             ,flv.attribute12  = NULL
-      WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--      WHERE  flv.lookup_type  = cv_lookup_type_fb
+      WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
       AND    flv.enabled_flag = cv_yes
       AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
                                   AND NVL(flv.end_date_active, gd_proc_date)
@@ -865,7 +1032,10 @@ AS
                   iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
                  ,iv_name         => cv_msg_cok_10864                     -- メッセージコード
                  ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
-                 ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
+-- Ver.1.3 Mod Start
+--                 ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
+                 ,iv_token_value1 => gv_lookup_type_fb_nm                 -- トークン値1
+-- Ver.1.3 Mod End
                  ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
                  ,iv_token_value2 => SQLERRM                              -- トークン値2
                 );
@@ -906,7 +1076,10 @@ AS
 --        SET    flv.attribute11  = TO_CHAR(ln_in_cnt)
         SET    flv.attribute11  = TO_CHAR(ln_in_cnt, '999,999')
 --  Ver1.1 T.Okuyama Mod End
-        WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--        WHERE  flv.lookup_type  = cv_lookup_type_fb
+        WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
         AND    flv.lookup_code  = lv_in_code
         AND    flv.enabled_flag = cv_yes
         AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
@@ -944,7 +1117,10 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appli_xxcok
                       ,iv_name         => cv_msg_cok_10873
-                      ,iv_token_name1  => cv_loopup_type
+-- Ver.1.3 Mod Start
+--                      ,iv_token_name1  => cv_loopup_type
+                      ,iv_token_name1  => cv_lookup_type
+-- Ver.1.3 Mod End
                       ,iv_token_value1 => cv_lookup_type_bank
                      );
       lb_retcode := xxcok_common_pkg.put_message_f(
@@ -965,8 +1141,8 @@ AS
       -- ===============================================
       BEGIN
         UPDATE xxcok_fb_lines_work  xflw
-        SET    xflw.internal_bank_number = gv_default_bank_code
-              ,xflw.implemented_flag     = NULL
+        SET    xflw.internal_bank_number = gv_default_bank_code  -- 仕向金融機関番号
+              ,xflw.implemented_flag     = NULL                  -- FB振分実行済区分
         WHERE  xflw.request_id = gn_request_id
         AND    xflw.implemented_flag IS NOT NULL
         ;
@@ -1073,7 +1249,10 @@ AS
     FROM   xxcok_fb_lines_work  xflw
           ,fnd_lookup_values    flv
     WHERE xflw.request_id = gn_request_id
-    AND   flv.lookup_type = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    AND   flv.lookup_type = cv_lookup_type_fb
+    AND   flv.lookup_type = gv_lookup_type_fb
+-- Ver.1.3 Mod End
     AND   flv.lookup_code = xflw.bank_number
     AND   NVL(flv.attribute9, cv_no) = cv_yes
     AND   flv.enabled_flag = cv_yes
@@ -1089,6 +1268,13 @@ AS
     -- ステータス初期化
     -- ===============================================
     ov_retcode := cv_status_normal;
+--
+-- Ver.1.3 Add Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_bank IS NOT NULL ) THEN
+      RETURN;
+    END IF;
+-- Ver.1.3 Add End
     -- ===============================================
     -- FBデータ明細ワークテーブルロック取得
     -- ===============================================
@@ -1215,7 +1401,10 @@ AS
     SELECT flv.attribute1                          AS  bank_number       -- 他行分仕向銀行
           ,TO_NUMBER(flv.attribute11, '999,999')   AS  distribute_cnt    -- 按分件数
     FROM   fnd_lookup_values flv
-    WHERE  flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod Start
+--    WHERE  flv.lookup_type  = cv_lookup_type_fb
+    WHERE  flv.lookup_type  = gv_lookup_type_fb
+-- Ver.1.3 Mod End
     AND    NVL(flv.attribute10, cv_no) = cv_yes              -- 他行分振分け対象区分
     AND    flv.attribute11  IS NOT NULL                      -- 按分件数
     AND    flv.enabled_flag = cv_yes
@@ -1231,6 +1420,13 @@ AS
     -- ステータス初期化
     -- ===============================================
     ov_retcode := cv_status_normal;
+--
+-- Ver.1.3 Add Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_bank IS NOT NULL ) THEN
+      RETURN;
+    END IF;
+-- Ver.1.3 Add End
     -- ===============================================
     -- FBデータ明細ワークテーブルロック取得
     -- ===============================================
@@ -1384,11 +1580,19 @@ AS
     --=======================================================
     -- FBヘッダーレコード出力
     --=======================================================
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                    in_which    => FND_FILE.OUTPUT     -- 出力区分
-                   ,iv_message  => lv_fb_header_data   -- メッセージ
-                   ,in_new_line => 0                   -- 改行
-                  );
+-- Ver.1.3 Add/Mod Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_bank IS NOT NULL AND gv_fb_output_bank = lv_bank_number ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT     -- 出力区分
+                     ,iv_message  => lv_fb_header_data   -- メッセージ
+                     ,in_new_line => 0                   -- 改行
+                    );
+      gv_fb_output_mode := cv_yes;
+    ELSE 
+      gv_fb_output_mode := cv_no;
+    END IF;
+-- Ver.1.3 Add/Mod End
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1426,6 +1630,7 @@ AS
     ,it_record_type             IN  xxcok_fb_lines_work.record_type%TYPE               -- 新規レコード
     ,it_base_code               IN  xxcok_fb_lines_work.base_code%TYPE                 -- 拠点コード
     ,it_supplier_code           IN  xxcok_fb_lines_work.supplier_code%TYPE             -- 仕入先コード
+    ,it_settlement_priority     IN  xxcok_fb_lines_work.settlement_priority%TYPE       -- 振込指定区分（決済優先度）
   )
   IS
     -- ===============================
@@ -1452,7 +1657,10 @@ AS
     lv_transfer_amount := TO_CHAR( NVL( it_transfer_amount, cn_zero ), 'FM0000000000');    -- 振込金額
     lv_base_code       := LPAD( NVL( it_base_code, cv_space ), 10 , cv_zero );             -- 拠点コード
     lv_supplier_code   := LPAD( NVL( it_supplier_code, cv_space ), 10 , cv_zero );         -- 仕入先コード
-    lv_dummy           := LPAD( cv_space, 9, cv_space );                                   -- ダミー
+-- Ver.1.3 Mod Start
+--    lv_dummy           := LPAD( cv_space, 9, cv_space );                                   -- ダミー
+    lv_dummy           := LPAD( cv_space, 8, cv_space );                                   -- ダミー
+-- Ver.1.3 Mod End
 --
     lv_fb_line_data    := it_data_type               ||         -- データ区分
                           it_bank_number             ||         -- 被仕向金融機関番号
@@ -1467,15 +1675,23 @@ AS
                           it_record_type             ||         -- 新規レコード
                           lv_base_code               ||         -- 拠点コード
                           lv_supplier_code           ||         -- 仕入先コード
+-- Ver.1.3 Add Start
+                          it_settlement_priority     ||         -- 振込指定区分（決済優先度）
+-- Ver.1.3 Add End
                           lv_dummy;                             -- ダミー
     --=======================================================
     -- FBデータレコード出力
     --=======================================================
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                    in_which    => FND_FILE.OUTPUT     -- 出力区分
-                   ,iv_message  => lv_fb_line_data     -- メッセージ
-                   ,in_new_line => 0                   -- 改行
-                  );
+-- Ver.1.3 Add/Mod Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_mode = cv_yes ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT     -- 出力区分
+                     ,iv_message  => lv_fb_line_data     -- メッセージ
+                     ,in_new_line => 0                   -- 改行
+                    );
+    END IF;
+-- Ver.1.3 Add/Mod End
   EXCEPTION
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
@@ -1533,11 +1749,16 @@ AS
     --=======================================================
     -- FBトレーラレコード出力
     --=======================================================
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                    in_which    => FND_FILE.OUTPUT     -- 出力区分
-                   ,iv_message  => lv_fb_trailer       -- メッセージ
-                   ,in_new_line => 0                   -- 改行
-                  );
+-- Ver.1.3 Add/Mod Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_mode = cv_yes ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT     -- 出力区分
+                     ,iv_message  => lv_fb_trailer       -- メッセージ
+                     ,in_new_line => 0                   -- 改行
+                    );
+    END IF;
+-- Ver.1.3 Add/Mod End
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1599,11 +1820,16 @@ AS
     --=======================================================
     -- FBエンドレコード出力
     --=======================================================
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                    in_which    => FND_FILE.OUTPUT     -- 出力区分
-                   ,iv_message  => lv_fb_end           -- メッセージ
-                   ,in_new_line => 0                   -- 改行
-                  );
+-- Ver.1.3 Add/Mod Start
+    -- FBデータファイル出力時
+    IF ( gv_fb_output_mode = cv_yes ) THEN
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT     -- 出力区分
+                     ,iv_message  => lv_fb_end           -- メッセージ
+                     ,in_new_line => 0                   -- 改行
+                    );
+    END IF;
+-- Ver.1.3 Add/Mod End
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1619,6 +1845,138 @@ AS
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
   END fb_end_record;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_distribute_result
+   * Description      : FBデータ振り分け履歴更新(A-10)
+   ***********************************************************************************/
+  PROCEDURE update_distribute_result(
+     ov_errbuf                  OUT VARCHAR2     -- エラー・メッセージ
+    ,ov_retcode                 OUT VARCHAR2     -- リターン・コード
+    ,ov_errmsg                  OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+    ,iv_fb_lines                IN  VARCHAR2     -- FBデータ明細更新処理区分
+    ,iv_bank_code               IN  VARCHAR2     -- 仕向銀行
+    ,in_transfer_cnt            IN  NUMBER       -- FB明細レコード件数
+    ,in_transfer_amount         IN  NUMBER       -- FB明細合計金額
+  )
+  IS
+    --===============================
+    -- ローカル定数
+    --===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_distribute_result';                 -- プログラム名
+    --================================
+    -- ローカル変数
+    --================================
+    lv_errbuf                   VARCHAR2(5000) DEFAULT NULL;                            -- エラー・メッセージ
+    lv_retcode                  VARCHAR2(1)    DEFAULT NULL;                            -- リターン・コード
+    lv_errmsg                   VARCHAR2(5000) DEFAULT NULL;                            -- ユーザー・エラー・メッセージ
+    lb_retcode                  BOOLEAN;                                                -- リターン・コード
+    lv_tbl_nm                   VARCHAR2(100)  DEFAULT NULL;                            -- テーブル名
+--
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    CURSOR fb_lookup_cur
+    IS
+      SELECT 'X'
+      FROM   fnd_lookup_values flv
+      WHERE  flv.lookup_type  = gv_lookup_type_fb
+      FOR UPDATE OF flv.lookup_code NOWAIT;
+--
+    CURSOR fb_lines_cur
+    IS
+      SELECT 'X'
+      FROM   xxcok_fb_lines_work  xflw
+      WHERE  xflw.request_id = gn_request_id
+      FOR UPDATE OF xflw.request_id NOWAIT;
+--
+  BEGIN
+    -- ステータス初期化
+    ov_retcode := cv_status_normal;
+--
+    -- 参照表（FB他行分仕向銀行）ロック取得
+    OPEN  fb_lookup_cur;
+    CLOSE fb_lookup_cur;
+    lv_tbl_nm := gv_lookup_type_fb;
+--
+    -- ===========================================================
+    -- 参照表：明細レコード件数（按分件数）、明細合計金額の登録
+    -- ===========================================================
+    BEGIN
+      UPDATE fnd_lookup_values flv
+      SET    flv.attribute11 = TO_CHAR(in_transfer_cnt,    '999,999')
+            ,flv.attribute12 = TO_CHAR(in_transfer_amount, '999,999,999,999')
+      WHERE  flv.lookup_type  = gv_lookup_type_fb
+      AND    flv.lookup_code  = iv_bank_code
+      AND    flv.enabled_flag = cv_yes
+      AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
+                                  AND NVL(flv.end_date_active, gd_proc_date)
+      AND    flv.language     = USERENV('LANG')
+      ;
+--
+      --- FBデータ明細ワークテーブル更新
+      IF ( iv_fb_lines = cv_yes ) THEN
+        -- FBデータ明細ワークテーブルロック取得
+        OPEN  fb_lines_cur;
+        CLOSE fb_lines_cur;
+        lv_tbl_nm := cv_wk_tbl_nm;
+--
+        -- ===============================================
+        --  FBデータ明細ワークテーブルWHO列更新
+        -- ===============================================
+        UPDATE xxcok_fb_lines_work  xflw
+        SET    created_by              = cn_created_by                      -- 作成者
+              ,creation_date           = cd_creation_date                   -- 作成日
+              ,last_updated_by         = cn_last_updated_by                 -- 最終更新者
+              ,last_update_date        = cd_last_update_date                -- 最終更新日
+              ,last_update_login       = cn_last_update_login               -- 最終更新ログイン
+              ,request_id              = cn_request_id                      -- 要求ID
+              ,program_application_id  = cn_program_application_id          -- アプリケーションID
+              ,program_id              = cn_program_id                      -- プログラムID
+              ,program_update_date     = cd_program_update_date             -- プログラム更新日
+        WHERE  xflw.request_id = gn_request_id
+        ;
+      END IF;
+--
+    EXCEPTION
+      -- *** 更新処理エラー ***
+      WHEN OTHERS THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
+                 ,iv_name         => cv_msg_cok_10864                     -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
+                 ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
+                 ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
+                 ,iv_token_value2 => SQLERRM                              -- トークン値2
+                );
+        lv_errbuf := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_error;
+    END;
+--
+  EXCEPTION
+    --*** ロックエラー ***
+    WHEN global_lock_err_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
+                 ,iv_name         => cv_msg_cok_10863                     -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
+                 ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
+                 ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
+                 ,iv_token_value2 => SQLERRM                              -- トークン値2
+                );
+      lv_errbuf := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+  END update_distribute_result;
 --
   /**********************************************************************************
    * Procedure Name   : output_fb_proc
@@ -1675,6 +2033,9 @@ AS
           ,xflw.record_type              AS record_type                   -- 新規レコード
           ,xflw.base_code                AS base_code                     -- 拠点コード
           ,xflw.supplier_code            AS supplier_code                 -- 仕入先コード
+-- Ver.1.3 Add Start
+          ,xflw.settlement_priority      AS settlement_priority           -- 振込指定区分（決済優先度）
+-- Ver.1.3 Add End
           ,flv.lookup_code               AS lookup_code                   -- 振り分け銀行
           ,flv.meaning                   AS meaning                       -- 振り分け銀行名
           ,flv.attribute1                AS attribute1                    -- FB他行分仕向銀行
@@ -1688,7 +2049,11 @@ AS
     FROM   xxcok_fb_lines_work xflw    -- FBデータ明細ワークテーブル
           ,fnd_lookup_values   flv     -- 参照表（FB他行分仕向銀行）
     WHERE  xflw.request_id  = gn_request_id
-    AND    flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.3 Mod/Add Start
+--    AND    flv.lookup_type  = cv_lookup_type_fb
+    AND    flv.lookup_type  = gv_lookup_type_fb
+    AND    xflw.internal_bank_number  = NVL(gv_fb_output_bank, xflw.internal_bank_number)
+-- Ver.1.3 Mod/Add End
     AND    flv.lookup_code  = xflw.internal_bank_number
     AND    flv.enabled_flag = cv_yes
     AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
@@ -1696,30 +2061,32 @@ AS
     AND    flv.language     = USERENV('LANG')
     ORDER BY xflw.internal_bank_number, xflw.base_code, xflw.supplier_code
     ;
+-- Ver.1.3 Del Start
+--    CURSOR fb_lookup_cur
+--    IS
+--      SELECT 'X'
+--      FROM   fnd_lookup_values flv
+--      WHERE  flv.lookup_type  = cv_lookup_type_fb
+--      FOR UPDATE OF flv.lookup_code NOWAIT;
 --
-    CURSOR fb_lookup_cur
-    IS
-      SELECT 'X'
-      FROM   fnd_lookup_values flv
-      WHERE  flv.lookup_type  = cv_lookup_type_fb
-      FOR UPDATE OF flv.lookup_code NOWAIT;
---
-    CURSOR fb_lines_cur
-    IS
-      SELECT 'X'
-      FROM   xxcok_fb_lines_work  xflw
-      WHERE  xflw.request_id = gn_request_id
-      FOR UPDATE OF xflw.request_id NOWAIT;
---
+--    CURSOR fb_lines_cur
+--    IS
+--      SELECT 'X'
+--      FROM   xxcok_fb_lines_work  xflw
+--      WHERE  xflw.request_id = gn_request_id
+--      FOR UPDATE OF xflw.request_id NOWAIT;
+-- Ver.1.3 Del End
   BEGIN
     -- ステータス初期化
     ov_retcode := cv_status_normal;
-    -- ===============================================
-    -- 参照表（FB他行分仕向銀行）ロック取得
-    -- ===============================================
-    OPEN  fb_lookup_cur;
-    CLOSE fb_lookup_cur;
-    lv_tbl_nm := cv_loopup_tbl_nm;
+-- Ver.1.3 Del Start
+--    -- ===============================================
+--    -- 参照表（FB他行分仕向銀行）ロック取得
+--    -- ===============================================
+--    OPEN  fb_lookup_cur;
+--    CLOSE fb_lookup_cur;
+--    lv_tbl_nm := cv_loopup_tbl_nm;
+-- Ver.1.3 Del End
 --
     << fb_loop >>
     FOR fb_data_rec IN fb_data_cur(gn_request_id) LOOP
@@ -1750,37 +2117,56 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- 明細レコード件数（按分件数）、明細合計金額の登録
-          BEGIN
-            UPDATE fnd_lookup_values flv
-            SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
+-- Ver.1.3 Add/Del Start
+          IF ( gv_fb_output_mode <> cv_yes ) THEN  -- FBデータ振り分け処理時
+            --================================================
+            -- FBデータ振り分け履歴更新(A-10)
+            --================================================
+            update_distribute_result(
+              ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+            , ov_retcode                 => lv_retcode                    -- リターン・コード
+            , ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+            , iv_fb_lines                => cv_no                         -- FBデータ明細更新処理区分 N:更新しない
+            , iv_bank_code               => lv_bank_code                  -- 仕向銀行
+            , in_transfer_cnt            => ln_total_transfer_cnt         -- FB明細レコード件数
+            , in_transfer_amount         => ln_total_transfer_amount      -- FB明細合計金額
+            );
+            IF( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+--
+--          -- 明細レコード件数（按分件数）、明細合計金額の登録
+--          BEGIN
+--            UPDATE fnd_lookup_values flv
+--            SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
 --  Ver1.1 T.Okuyama Mod Start
 --                  ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '9,999,999,999')
-                  ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
+--                  ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
 --  Ver1.1 T.Okuyama Mod End
-            WHERE  flv.lookup_type  = cv_lookup_type_fb
-            AND    flv.lookup_code  = lv_bank_code
-            AND    flv.enabled_flag = cv_yes
-            AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
-                                        AND NVL(flv.end_date_active, gd_proc_date)
-            AND    flv.language     = USERENV('LANG')
-            ;
-          EXCEPTION
-            -- *** 更新処理エラー ***
-            WHEN OTHERS THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
-                       ,iv_name         => cv_msg_cok_10864                     -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
-                       ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
-                       ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
-                       ,iv_token_value2 => SQLERRM                              -- トークン値2
-                      );
-              lv_errbuf := lv_errmsg;
-              ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-              ov_retcode := cv_status_error;
-          END;
---
+--            WHERE  flv.lookup_type  = cv_lookup_type_fb
+--            AND    flv.lookup_code  = lv_bank_code
+--            AND    flv.enabled_flag = cv_yes
+--            AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
+--                                        AND NVL(flv.end_date_active, gd_proc_date)
+--            AND    flv.language     = USERENV('LANG')
+--            ;
+--          EXCEPTION
+--            -- *** 更新処理エラー ***
+--            WHEN OTHERS THEN
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
+--                       ,iv_name         => cv_msg_cok_10864                     -- メッセージコード
+--                       ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
+--                       ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
+--                       ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
+--                       ,iv_token_value2 => SQLERRM                              -- トークン値2
+--                      );
+--              lv_errbuf := lv_errmsg;
+--              ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--              ov_retcode := cv_status_error;
+--          END;
+-- Ver.1.3 Add/Del End
           -- 振込金額合計、レコード件数クリア
           ln_total_transfer_amount := 0;
           ln_total_transfer_cnt    := 0;
@@ -1833,6 +2219,9 @@ AS
         , it_record_type             => fb_data_rec.record_type               -- 新規レコード
         , it_base_code               => fb_data_rec.base_code                 -- 拠点コード
         , it_supplier_code           => fb_data_rec.supplier_code             -- 仕入先コード
+-- Ver.1.3 Add Start
+        , it_settlement_priority     => fb_data_rec.settlement_priority       -- 振込指定区分（決済優先度）
+-- Ver.1.3 Add End
         );
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -1840,23 +2229,51 @@ AS
         -- 仕向銀行別：振込金額合計、レコード件数
         ln_total_transfer_amount := ln_total_transfer_amount + fb_data_rec.transfer_amount;
         ln_total_transfer_cnt    := ln_total_transfer_cnt    + 1;
-        -- 成功件数
-        gn_target_cnt := gn_target_cnt + 1;
-        gn_out_cnt    := gn_out_cnt    + 1;                             -- FB総合振込金額合計
-        gn_out_amount := gn_out_amount + fb_data_rec.transfer_amount;   -- FBレコード総件数
+-- Ver.1.4 Del Start
+--        -- 成功件数
+--        gn_target_cnt := gn_target_cnt + 1;
+--        gn_out_cnt    := gn_out_cnt    + 1;                             -- FB総合振込金額合計
+--        gn_out_amount := gn_out_amount + fb_data_rec.transfer_amount;   -- FBレコード総件数
+-- Ver.1.4 Del End
       END;
     END LOOP fb_loop;
+-- Ver.1.4 Add Start
+    SELECT NVL(SUM(xflw.TRANSFER_AMOUNT), 0), COUNT(*)
+      INTO gn_out_amount                    , gn_target_cnt    -- FB対象データ件数取得
+    FROM   xxcok_fb_lines_work xflw                            -- FBデータ明細ワークテーブル
+    WHERE  xflw.request_id   = gn_request_id
+    ;
+    gn_out_cnt := gn_target_cnt;
+-- Ver.1.4 Add End
     --======================================================
     -- 参照表（FB他行分仕向銀行）情報エラー
     --======================================================
     IF( gn_target_cnt = 0 ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_appli_xxcok
-                      ,iv_name         => cv_msg_cok_10876
-                      ,iv_token_name1  => cv_loopup_type
-                      ,iv_token_value1 => cv_lookup_type_fb
-                    );
-      RAISE output_warning_expt;
+-- Ver.1.3 Add/Mod Start
+      -- FBデータファイル出力時
+      IF ( gv_fb_output_bank IS NOT NULL ) THEN
+        -- FBファイル出力対象データなし警告
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appli_xxcok
+                        ,iv_name         => cv_msg_cok_10880
+                        ,iv_token_name1  => cv_token_dist_bank
+                        ,iv_token_value1 => gv_fb_output_bank
+                       );
+        RAISE output_warning_expt;
+      ELSE
+        -- FB他行分仕向銀行整合性エラー
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appli_xxcok
+                        ,iv_name         => cv_msg_cok_10876
+--                        ,iv_token_name1  => cv_loopup_type
+                        ,iv_token_name1  => cv_lookup_type
+--                        ,iv_token_value1 => cv_lookup_type_fb
+                        ,iv_token_value1 => gv_lookup_type_fb
+                      );
+--        RAISE global_process_expt;
+        RAISE global_api_expt;
+      END IF;
+-- Ver.1.3 Add/Mod End
     END IF;
     --==================================================
     -- A-8.FBトレーラレコードの出力(A-8)
@@ -1883,77 +2300,104 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    BEGIN
-      -- 明細レコード件数（按分件数）、明細合計金額の登録
-      UPDATE fnd_lookup_values flv
-      SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
+-- Ver.1.3 Add/Del Start
+    IF ( gv_fb_output_mode <> cv_yes ) THEN  -- FBデータ振り分け処理時
+      --================================================
+      -- FBデータ振り分け履歴更新(A-10)
+      --================================================
+      update_distribute_result(
+        ov_errbuf                  => lv_errbuf                     -- エラー・メッセージ
+      , ov_retcode                 => lv_retcode                    -- リターン・コード
+      , ov_errmsg                  => lv_errmsg                     -- ユーザー・エラー・メッセージ
+      , iv_fb_lines                => cv_yes                        -- FBデータ明細更新処理区分 Y:更新する
+      , iv_bank_code               => lv_bank_code                  -- 仕向銀行
+      , in_transfer_cnt            => ln_total_transfer_cnt         -- FB明細レコード件数
+      , in_transfer_amount         => ln_total_transfer_amount      -- FB明細合計金額
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--    BEGIN
+--      -- 明細レコード件数（按分件数）、明細合計金額の登録
+--      UPDATE fnd_lookup_values flv
+--      SET    flv.attribute11 = TO_CHAR(ln_total_transfer_cnt, '999,999')
 --  Ver1.1 T.Okuyama Mod Start
 --            ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '9,999,999,999')
-            ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
+--            ,flv.attribute12 = TO_CHAR(ln_total_transfer_amount, '999,999,999,999')
 --  Ver1.1 T.Okuyama Mod End
-      WHERE  flv.lookup_type  = cv_lookup_type_fb
-      AND    flv.lookup_code  = lv_bank_code
-      AND    flv.enabled_flag = cv_yes
-      AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
-                                  AND NVL(flv.end_date_active, gd_proc_date)
-      AND    flv.language     = USERENV('LANG')
-      ;
+--      WHERE  flv.lookup_type  = cv_lookup_type_fb
+--      AND    flv.lookup_code  = lv_bank_code
+--      AND    flv.enabled_flag = cv_yes
+--      AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
+--                                  AND NVL(flv.end_date_active, gd_proc_date)
+--      AND    flv.language     = USERENV('LANG')
+--      ;
 --
-      -- ===============================================
-      -- FBデータ明細ワークテーブルロック取得
-      -- ===============================================
-      OPEN  fb_lines_cur;
-      CLOSE fb_lines_cur;
-      lv_tbl_nm := cv_wk_tbl_nm;
+--      -- ===============================================
+--      -- FBデータ明細ワークテーブルロック取得
+--      -- ===============================================
+--      OPEN  fb_lines_cur;
+--      CLOSE fb_lines_cur;
+--      lv_tbl_nm := cv_wk_tbl_nm;
 --
-      --  FBデータ明細ワークテーブルWHO列更新
-      UPDATE xxcok_fb_lines_work  xflw
-      SET    created_by              = cn_created_by                      -- 作成者
-            ,creation_date           = cd_creation_date                   -- 作成日
-            ,last_updated_by         = cn_last_updated_by                 -- 最終更新者
-            ,last_update_date        = cd_last_update_date                -- 最終更新日
-            ,last_update_login       = cn_last_update_login               -- 最終更新ログイン
-            ,request_id              = cn_request_id                      -- 要求ID
-            ,program_application_id  = cn_program_application_id          -- アプリケーションID
-            ,program_id              = cn_program_id                      -- プログラムID
-            ,program_update_date     = cd_program_update_date             -- プログラム更新日
-      WHERE  xflw.request_id = gn_request_id
-      ;
-    EXCEPTION
-      -- *** 更新処理エラー ***
-      WHEN OTHERS THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
-                 ,iv_name         => cv_msg_cok_10864                     -- メッセージコード
-                 ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
-                 ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
-                 ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
-                 ,iv_token_value2 => SQLERRM                              -- トークン値2
-                );
-        lv_errbuf := lv_errmsg;
-        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-        ov_retcode := cv_status_error;
-    END;
---
+--      --  FBデータ明細ワークテーブルWHO列更新
+--      UPDATE xxcok_fb_lines_work  xflw
+--      SET    created_by              = cn_created_by                      -- 作成者
+--            ,creation_date           = cd_creation_date                   -- 作成日
+--            ,last_updated_by         = cn_last_updated_by                 -- 最終更新者
+--            ,last_update_date        = cd_last_update_date                -- 最終更新日
+--            ,last_update_login       = cn_last_update_login               -- 最終更新ログイン
+--            ,request_id              = cn_request_id                      -- 要求ID
+--            ,program_application_id  = cn_program_application_id          -- アプリケーションID
+--            ,program_id              = cn_program_id                      -- プログラムID
+--            ,program_update_date     = cd_program_update_date             -- プログラム更新日
+--      WHERE  xflw.request_id = gn_request_id
+--      ;
+--    EXCEPTION
+--      -- *** 更新処理エラー ***
+--      WHEN OTHERS THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
+--                 ,iv_name         => cv_msg_cok_10864                     -- メッセージコード
+--                 ,iv_token_name1  => cv_tkn_tbl                           -- トークンコード1
+--                 ,iv_token_value1 => lv_tbl_nm                            -- トークン値1
+--                 ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
+--                 ,iv_token_value2 => SQLERRM                              -- トークン値2
+--                );
+--        lv_errbuf := lv_errmsg;
+--        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--        ov_retcode := cv_status_error;
+--    END;
+-- Ver.1.3 Add/Del End
   EXCEPTION
-    --*** ロックエラー ***
-    WHEN global_lock_err_expt THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
-                 ,iv_name         => cv_msg_cok_10863                     -- メッセージコード
-                 ,iv_token_name1  => lv_tbl_nm                            -- トークンコード1
-                 ,iv_token_value1 => cv_loopup_tbl_nm                     -- トークン値1
-                 ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
-                 ,iv_token_value2 => SQLERRM                              -- トークン値2
-                );
-      lv_errbuf := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
+-- Ver.1.3 Del Start
+--    --*** ロックエラー ***
+--    WHEN global_lock_err_expt THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_appli_xxcok                       -- アプリケーション短縮名
+--                 ,iv_name         => cv_msg_cok_10863                     -- メッセージコード
+--                 ,iv_token_name1  => lv_tbl_nm                            -- トークンコード1
+--                 ,iv_token_value1 => cv_loopup_tbl_nm                     -- トークン値1
+--                 ,iv_token_name2  => cv_tkn_err_msg                       -- トークンコード2
+--                 ,iv_token_value2 => SQLERRM                              -- トークン値2
+--                );
+--      lv_errbuf := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+-- Ver.1.3 Del End
     -- *** FB出力処理警告終了 ***
     WHEN output_warning_expt THEN
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_warn;
+-- Ver.1.3 Add Start
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.3 Add End
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -1972,7 +2416,13 @@ AS
     ov_errbuf          OUT VARCHAR2     -- エラー・メッセージ
   , ov_retcode         OUT VARCHAR2     -- リターン・コード
   , ov_errmsg          OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+-- Ver.1.3 Add Start
+  , iv_company_code    IN  VARCHAR2     -- パラメータ：会社コード
+-- Ver.1.3 Add End
   , in_request_id      IN  NUMBER       -- パラメータ：FBデータファイル作成時の要求ID
+-- Ver.1.3 Add Start
+  , iv_fb_output_bank  IN  VARCHAR2     -- パラメータ：FBファイル出力銀行
+-- Ver.1.3 Add End
   , iv_internal_bank1  IN  VARCHAR2     -- パラメータ：他行分仕向銀行1
   , in_bank_cnt1       IN  NUMBER       -- パラメータ：仕向銀行1への按分件数
   , iv_internal_bank2  IN  VARCHAR2     -- パラメータ：他行分仕向銀行2
@@ -2018,7 +2468,13 @@ AS
       ov_errbuf         => lv_errbuf              -- エラー・メッセージ
     , ov_retcode        => lv_retcode             -- リターン・コード
     , ov_errmsg         => lv_errmsg              -- ユーザー・エラー・メッセージ
+-- Ver.1.3 Add Start
+    , iv_company_code   => iv_company_code        -- パラメータ：会社コード
+-- Ver.1.3 Add End
     , in_request_id     => in_request_id          -- 処理パラメータ
+-- Ver.1.3 Add Start
+    , iv_fb_output_bank => iv_fb_output_bank      -- パラメータ：FBファイル出力銀行
+-- Ver.1.3 Add End
     , iv_internal_bank1 => iv_internal_bank1      -- パラメータ：他行分仕向銀行1
     , in_bank_cnt1      => in_bank_cnt1           -- パラメータ：仕向銀行1への按分件数
     , iv_internal_bank2 => iv_internal_bank2      -- パラメータ：他行分仕向銀行2
@@ -2117,7 +2573,13 @@ AS
   PROCEDURE main(
     errbuf             OUT VARCHAR2     -- エラーメッセージ
   , retcode            OUT VARCHAR2     -- エラーコード
+-- Ver.1.3 Add Start
+  , iv_company_code    IN  VARCHAR2     -- パラメータ：会社コード
+-- Ver.1.3 Add End
   , in_request_id      IN  NUMBER       -- パラメータ：FBデータファイル作成時の要求ID
+-- Ver.1.3 Add Start
+  , iv_fb_output_bank  IN  VARCHAR2     -- パラメータ：FBファイル出力銀行
+-- Ver.1.3 Add End
   , iv_internal_bank1  IN  VARCHAR2     -- パラメータ：他行分仕向銀行1
   , in_bank_cnt1       IN  NUMBER       -- パラメータ：仕向銀行1への按分件数
   , iv_internal_bank2  IN  VARCHAR2     -- パラメータ：他行分仕向銀行2
@@ -2143,7 +2605,7 @@ AS
     cv_a_percentage CONSTANT VARCHAR2(30)  := ' 円、 割合 : ';
     cv_percentage   CONSTANT VARCHAR2(30)  := ' %';
     cv_sub_title    CONSTANT VARCHAR2(50)  := 'FBデータ振り分け処理結果';
-    cv_sub_line     CONSTANT VARCHAR2(120) := '---------------------------------------------------------------------------------------------------------------';
+    cv_sub_line     CONSTANT VARCHAR2(120) := '----------------------------------------------------------------------------------------------------------------';
     cv_none_proc    CONSTANT VARCHAR2(50)  := '※仕向銀行振り分け未済';
     --===============================
     -- ローカル変数
@@ -2168,16 +2630,30 @@ AS
     IS
     SELECT flv.lookup_code                   AS  internal_bank       -- 振り分け銀行
           ,flv.meaning                       AS  internal_bank_name  -- 振り分け銀行名
-          ,flv.attribute11                   AS  attribute11         -- 振り分け件数
-          ,flv.attribute12                   AS  attribute12         -- 振り分け金額
-          ,COUNT(xflw.internal_bank_number)  AS defaut_bank_count    -- デフォルト銀行への振り分け件数
-          ,SUM(xflw.transfer_amount)         AS defaut_bank_amount   -- デフォルト銀行への振り分け金額合計
+-- Ver.1.4 Mod Start
+--          ,flv.attribute11                   AS  attribute11         -- 振り分け件数
+--          ,flv.attribute12                   AS  attribute12         -- 振り分け金額
+--          ,COUNT(xflw.internal_bank_number)  AS defaut_bank_count    -- デフォルト銀行への振り分け件数
+--          ,SUM(xflw.transfer_amount)         AS defaut_bank_amount   -- デフォルト銀行への振り分け金額合計
+          ,COUNT(xflw.internal_bank_number)  AS internal_bank_number   -- 振り分け済み件数
+          ,SUM(xflw.transfer_amount)         AS transfer_amount        -- 振り分け済み金額合計
+-- Ver.1.4 Mod End
     FROM   fnd_lookup_values flv
           ,xxcok_fb_lines_work xflw
-    WHERE  flv.lookup_code = xflw.INTERNAL_BANK_NUMBER(+)
-    AND    xflw.INTERNAL_BANK_NUMBER(+) = gv_default_bank_code
-    AND    xflw.IMPLEMENTED_FLAG(+) IS NOT NULL
-    AND    flv.lookup_type  = cv_lookup_type_fb
+-- Ver.1.4 Mod Start
+--    WHERE  flv.lookup_code = xflw.INTERNAL_BANK_NUMBER(+)
+--    AND    xflw.INTERNAL_BANK_NUMBER(+) = gv_default_bank_code
+--    AND    xflw.IMPLEMENTED_FLAG(+) IS NOT NULL
+-- Ver.1.3 Mod Start
+--    AND    flv.lookup_type    = cv_lookup_type_fb
+--    AND    flv.lookup_type      = gv_lookup_type_fb
+--    AND    xflw.company_code(+) = gv_company_code
+    WHERE  flv.lookup_code = xflw.INTERNAL_BANK_NUMBER
+    AND    xflw.IMPLEMENTED_FLAG IS NOT NULL
+    AND    flv.lookup_type      = gv_lookup_type_fb
+    AND    xflw.request_id      = cn_request_id
+-- Ver.1.3 Mod End
+-- Ver.1.4 Mod End
     AND    flv.attribute11 IS NOT NULL
     AND    flv.enabled_flag = cv_yes
     AND    gd_proc_date BETWEEN NVL(flv.start_date_active, gd_proc_date)
@@ -2205,7 +2681,13 @@ AS
        ov_errbuf         => lv_errbuf              -- エラー・メッセージ
      , ov_retcode        => lv_retcode             -- リターン・コード
      , ov_errmsg         => lv_errmsg              -- ユーザー・エラー・メッセージ
+-- Ver.1.3 Add Start
+     , iv_company_code   => iv_company_code        -- 会社コードパラメータ
+-- Ver.1.3 Add End
      , in_request_id     => in_request_id          -- 処理パラメータ
+-- Ver.1.3 Add Start
+     , iv_fb_output_bank => iv_fb_output_bank      -- パラメータ：FBファイル出力銀行
+-- Ver.1.3 Add End
      , iv_internal_bank1 => iv_internal_bank1      -- パラメータ：他行分仕向銀行1
      , in_bank_cnt1      => in_bank_cnt1           -- パラメータ：仕向銀行1への按分件数
      , iv_internal_bank2 => iv_internal_bank2      -- パラメータ：他行分仕向銀行2
@@ -2234,8 +2716,14 @@ AS
                     );
     END IF;
     --================================================
-    -- A-10.終了処理
+    -- A-11.終了処理
     --================================================
+-- Ver.1.3 Add Start
+    -- FBデータファイル出力時はログ出力なし
+    IF ( gv_fb_output_mode = cv_yes ) THEN
+      NULL;
+    ELSE
+-- Ver.1.3 Add End
     -- FBデータ振り分け処理結果ログ出力
     IF( gn_target_cnt > 0 AND gn_error_cnt <> 1) THEN
       lb_retcode := xxcok_common_pkg.put_message_f(
@@ -2248,42 +2736,66 @@ AS
                      ,cv_sub_line
                      ,0
                     );
+--  Ver1.4 Add Start
+      -- 仕向銀行振り分け未済のログ情報取得
+    SELECT NVL(SUM(xflw.TRANSFER_AMOUNT), 0), COUNT(*)
+      INTO ln_bank_zan_amount               , ln_bank_zan_cnt
+    FROM   xxcok_fb_lines_work xflw                            -- FBデータ明細ワークテーブル
+     WHERE xflw.request_id   = cn_request_id
+       AND xflw.company_code = gv_company_code
+       AND xflw.implemented_flag IS NULL;
+--  Ver1.4 Add End
       <<fb_result_loop>>
       FOR lt_result_log_rec in fb_result_log_cur LOOP
-        IF lt_result_log_rec.internal_bank = gv_default_bank_code
-          AND  lt_result_log_rec.attribute11 <> TO_CHAR(lt_result_log_rec.defaut_bank_count, '999,999') THEN  -- FBデフォルト銀行
-          ln_bank_cnt     := lt_result_log_rec.defaut_bank_count;
+--  Ver1.4 Del Start
+--        IF lt_result_log_rec.internal_bank = gv_default_bank_code
+--        IF lt_result_log_rec.internal_bank = gv_default_bank_code THEN
+--          AND  lt_result_log_rec.attribute11 <> TO_CHAR(lt_result_log_rec.defaut_bank_count, '999,999') THEN  -- FBデフォルト銀行
+--          ln_bank_cnt     := lt_result_log_rec.defaut_bank_count;
 --  Ver1.2 T.Okuyama Mod Start
 --          ln_bank_amount  := lt_result_log_rec.defaut_bank_amount;
-          ln_bank_amount  := NVL(lt_result_log_rec.defaut_bank_amount, 0);
+--          ln_bank_amount  := NVL(lt_result_log_rec.defaut_bank_amount, 0);
 --  Ver1.2 T.Okuyama Mod End
-          ln_bank_zan_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999') - ln_bank_cnt;
+--          ln_bank_zan_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999') - ln_bank_cnt;
 --  Ver1.1 T.Okuyama Mod Start
 --          ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999') - ln_bank_amount;
-          ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999') - ln_bank_amount;
+--          ln_bank_zan_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999') - ln_bank_amount;
 --  Ver1.1 T.Okuyama Mod End
-          lt_result_log_rec.attribute11 := TO_CHAR(ln_bank_cnt,    '999,999');
+--  Ver1.4 Mod End
+--          lt_result_log_rec.attribute11 := TO_CHAR(ln_bank_cnt,    '999,999');
 --  Ver1.1 T.Okuyama Mod Start
 --          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999');
-          lt_result_log_rec.attribute12 := TO_CHAR(ln_bank_amount, '999,999,999,999');
+--          lt_result_log_rec.attribute12 := TO_CHAR(ln_bank_amount, '999,999,999,999');
 --  Ver1.1 T.Okuyama Mod End
-        ELSE
-          ln_bank_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999');
+--        ELSE
+--          ln_bank_cnt     := TO_NUMBER(lt_result_log_rec.attribute11, '999,999');
 --  Ver1.1 T.Okuyama Mod Start
 --          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '9,999,999,999');
-          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999');
+--          ln_bank_amount  := TO_NUMBER(lt_result_log_rec.attribute12, '999,999,999,999');
 --  Ver1.1 T.Okuyama Mod End
-        END IF;
+--        END IF;
+--  Ver1.4 Del End
+--  Ver1.4 Add Start
+        -- 振り分け済み件数、金額合計を取得
+        ln_bank_cnt     := lt_result_log_rec.internal_bank_number;
+        ln_bank_amount  := NVL(lt_result_log_rec.transfer_amount, 0);
+--  Ver1.4 Add End
         ln_c_percentage := ln_bank_cnt    / gn_out_cnt    * 100;
         ln_a_percentage := ln_bank_amount / gn_out_amount * 100;
         lv_errmsg := TO_CHAR(ln_line_no) || cv_msg_cont
                     || cv_bank   || lt_result_log_rec.internal_bank || cv_space || lt_result_log_rec.internal_bank_name || CHR(9)
-                    || cv_count  || lt_result_log_rec.attribute11 || cv_c_percentage
+--  Ver1.4 Mod Start
+--                    || cv_count  || lt_result_log_rec.attribute11 || cv_c_percentage
+                    || cv_count  || TO_CHAR(ln_bank_cnt, '999,999') || cv_c_percentage
+--  Ver1.4 Mod End
 --  Ver1.1 T.Okuyama Mod Start
 --                    || TO_CHAR(TRUNC(ln_c_percentage, 2)) || cv_percentage || CHR(9)
 --                    || cv_amount || lt_result_log_rec.attribute12 || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2))
                     || TO_CHAR(TRUNC(ln_c_percentage, 2), 'FM990.90') || cv_percentage || CHR(9)
-                    || cv_amount || lt_result_log_rec.attribute12 || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2), 'FM990.90')
+--  Ver1.4 Mod Start
+--                    || cv_amount || lt_result_log_rec.attribute12 || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2), 'FM990.90')
+                    || cv_amount || TO_CHAR(ln_bank_amount, '999,999,999,999') || cv_a_percentage || TO_CHAR(TRUNC(ln_a_percentage, 2), 'FM990.90')
+--  Ver1.4 Mod End
 --  Ver1.1 T.Okuyama Mod End
                     || cv_percentage;
         lb_retcode := xxcok_common_pkg.put_message_f(
@@ -2330,6 +2842,9 @@ AS
                      ,1
                     );
     END IF;
+-- Ver.1.3 Add Start
+   END IF;
+-- Ver.1.3 Add End
     --対象件数
     lv_errmsg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_appli_xxccp

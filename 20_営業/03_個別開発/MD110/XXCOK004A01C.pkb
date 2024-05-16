@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK004A01C(body)
  * Description      : 顧客移行日に顧客マスタの釣銭金額に基づき仕訳情報を作成します。
  * MD.050           : VD釣銭の振替仕訳作成 (MD050_COK_004_A01)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ----------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/02/02    1.1   K.Suenaga        [障害COK_002]夜バッチ対応/言語取得
  *  2009/06/09    1.2   K.Yamaguchi      [障害T1_1335]貸借逆修正
  *  2009/10/06    1.3   S.Moriyama       [障害E_T3_00632]伝票入力者対応
+ *  2024/02/09    1.4   Y.Sato           [E_本稼動_19496]グループ会社統合対応
  * 
  *****************************************************************************************/
 -- ====================
@@ -206,14 +207,37 @@ AS
 -- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD START
          , xcsi.emp_code          AS xcsi_emp_code              -- 顧客移行登録従業員
 -- 2009/10/06 Ver.1.3 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- Ver.1.4 Add Start
+         , NVL(xbdcivp.company_code_bd, gv_prof_company_code) AS xbdcivp_company_code_bd
+                                                                -- 旧担当拠点会社コード
+         , NVL(xbdcivn.company_code_bd, gv_prof_company_code) AS xbdcivn_company_code_bd
+                                                                -- 新担当拠点会社コード
+-- Ver.1.4 Add End
       FROM xxcok_cust_shift_info  xcsi                          -- 顧客移行情報テーブル
          , hz_cust_accounts       hca                           -- 顧客マスタ
          , xxcmm_cust_accounts    xca                           -- 顧客マスタアドオン
+-- Ver.1.4 Add Start
+         , xxcfr_bd_dept_comp_info_v xbdcivp                    -- 旧担当拠点会社情報ビュー
+         , xxcfr_bd_dept_comp_info_v xbdcivn                    -- 新担当拠点会社情報ビュー
+-- Ver.1.4 Add End
      WHERE xcsi.status             =  cv_xcsi_status_desist     -- ステータス='A'
        AND xcsi.cust_shift_date    <= TRUNC( id_process_date )  -- 顧客移行日=業務処理日付
        AND xcsi.create_chg_je_flag =  cv_chg_je_flag_yet        -- 釣銭仕訳作成フラグ=未作成
        AND xcsi.cust_code          =  hca.account_number        -- 顧客コード
-       AND hca.cust_account_id     =  xca.customer_id;          -- 顧客ID
+-- Ver.1.4 Mod Start
+--       AND hca.cust_account_id     =  xca.customer_id;          -- 顧客ID
+       AND hca.cust_account_id     =  xca.customer_id           -- 顧客ID
+       AND xbdcivp.set_of_books_id =  gn_set_of_books_id        -- 旧:会計帳簿ID
+       AND xcsi.prev_base_code     =  xbdcivp.dept_code         -- 旧:担当拠点
+       AND xcsi.cust_shift_date    >= xbdcivp.comp_start_date   -- 旧:会社開始日<=顧客移行日
+       AND xcsi.cust_shift_date    <= NVL(xbdcivp.comp_end_date, xcsi.cust_shift_date)
+                                                                -- 旧:顧客移行日<=会社終了日
+       AND xbdcivn.set_of_books_id =  gn_set_of_books_id        -- 新:会計帳簿ID
+       AND xcsi.new_base_code      =  xbdcivn.dept_code         -- 新:担当拠点
+       AND xcsi.cust_shift_date    >= xbdcivn.comp_start_date   -- 新:会社開始日<=顧客移行日
+       AND xcsi.cust_shift_date    <= NVL(xbdcivn.comp_end_date, xcsi.cust_shift_date);
+                                                                -- 新:顧客移行日<=会社終了日
+-- Ver.1.4 Mod End
 --
   -- =============================
   -- グローバルテーブル
@@ -363,7 +387,10 @@ AS
     , cv_glif_actual_flag                             -- 'A'
     , gv_prof_category_change                         -- 釣銭振替の仕訳カテゴリ
     , gv_prof_source_cok                              -- 個別開発の仕訳ソース
-    , gv_prof_company_code                            -- 会社コード
+-- Ver.1.4 Mod Start
+--    , gv_prof_company_code                            -- 会社コード
+    , g_cust_info_tab( in_idx ).xbdcivn_company_code_bd -- 新担当拠点会社コード
+-- Ver.1.4 Mod End
 -- 2009/06/09 Ver.1.2 [障害T1_1335] SCS K.Yamaguchi REPAIR START
 --    , g_cust_info_tab( in_idx ).xcsi_prev_base_code   -- 旧担当拠点
     , g_cust_info_tab( in_idx ).xcsi_new_base_code    -- 新担当拠点
@@ -430,7 +457,10 @@ AS
     , cv_glif_actual_flag                             -- 'A'
     , gv_prof_category_change                         -- 釣銭振替の仕訳カテゴリ
     , gv_prof_source_cok                              -- 個別開発の仕訳ソース
-    , gv_prof_company_code                            -- 会社コード
+-- Ver.1.4 Mod Start
+--    , gv_prof_company_code                            -- 会社コード
+    , g_cust_info_tab( in_idx ).xbdcivp_company_code_bd -- 旧担当拠点会社コード
+-- Ver.1.4 Mod End
 -- 2009/06/09 Ver.1.2 [障害T1_1335] SCS K.Yamaguchi REPAIR START
 --    , g_cust_info_tab( in_idx ).xcsi_new_base_code    -- 新担当拠点
     , g_cust_info_tab( in_idx ).xcsi_prev_base_code   -- 旧担当拠点

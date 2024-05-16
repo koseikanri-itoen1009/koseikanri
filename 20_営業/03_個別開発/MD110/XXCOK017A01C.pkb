@@ -7,7 +7,7 @@ AS
  * Description      : 「本振用FBデータ作成」にて支払対象となった
  *                     自販機販売手数料に関する仕訳を作成し、GLモジュールへ連携
  * MD.050           : GLインターフェイス（GL I/F） MD050_COK_017_A01
- * Version          : 1.6
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,7 +37,8 @@ AS
  *                                                        起票部門は仕入先の問合せ担当拠点とする
  *                                                        販手残高テーブルに項目「伝票番号」追加、採番された伝票番号で更新する
  *  2010/04/26    1.7   S.Arizumi        [E_本稼動_02268] 自販機販売手数料に対する課税時の勘定科目は、課税仕入5％を設定する。
- *
+ *  2023/05/29    1.8   Y.Ooyama         [E_本稼動_19179] インボイス対応（BM関連）
+ *  2024/02/09    1.9   Y.Sato           [E_本稼動_19496] グループ会社統合対応
  *****************************************************************************************/
 --
 -- 2010/03/02 Ver.1.6 [E_本稼動_01596] SCS K.Yamaguchi REPAIR START
@@ -2585,6 +2586,11 @@ AS
 -- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi ADD END
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCMM_CHAIN_CODE';                    -- チェーン店コード
+-- Ver1.9 Add Start
+  cv_lookup_type_02                CONSTANT VARCHAR2(30)    := 'XXCFO1_CONV_DEPT_CODE';               -- 部門コード変換
+  cv_lookup_type_03                CONSTANT VARCHAR2(30)    := 'XXCFO1_CONV_ACCONT_CODE';             -- 勘定科目・補助科目コード変換
+  cv_lookup_type_04                CONSTANT VARCHAR2(30)    := 'XXCOK1_ADVANCE_FLAG';                 -- BM支払立替フラグ
+-- Ver1.9 Add End
   -- 会計期間ステータス
   cv_closing_status_open           CONSTANT VARCHAR2(1)     := 'O'; -- オープン
   -- 有効フラグ
@@ -2604,6 +2610,16 @@ AS
   cv_je_status_new                 CONSTANT VARCHAR2(3)     := 'NEW'; -- 新規
   -- 残高タイプ
   cv_balance_type_result           CONSTANT VARCHAR2(1)     := 'A'; -- 実績
+-- Ver.1.8 ADD START
+  cv_pay_kbn_5                     CONSTANT VARCHAR2(1)     := '5';      -- 支払区分：なし
+  cv_tax_calc_kbn_line             CONSTANT VARCHAR2(1)     := '2';      -- 税計算区分：明細単位
+  cv_tax_kbn_with_tax              CONSTANT VARCHAR2(1)     := '1';      -- 税区分：税込み
+  cv_snapshot_timing_2_bd          CONSTANT VARCHAR2(1)     := '1';      -- スナップショットタイミング：2営
+  cv_tax_rounding_rule_down        CONSTANT VARCHAR2(4)     := 'DOWN';   -- 端数処理区分：切捨て
+-- Ver.1.8 ADD END
+-- Ver1.9 Add Start
+  cv_language_ja                   CONSTANT VARCHAR2(2)     := 'JA';     -- 言語：日本語
+-- Ver1.9 Add End
   --==================================================
   -- グローバル変数
   --==================================================
@@ -2705,11 +2721,35 @@ AS
          , NVL( SUM( xbb.electric_amt      ), 0 )      AS electric_amt                    -- 電気料
          , NVL( SUM( xbb.electric_amt_tax  ), 0 )      AS electric_amt_tax                -- 電気料（消費税額）
          , NVL( SUM( xbb.payment_amt_tax   ), 0 )      AS payment_amt_tax                 -- 支払額（税込）
+-- Ver1.9 Add Start
+         , xbdcive.company_code_bd                     AS base_company_code               -- 会社コード(売上拠点)
+         , CASE WHEN flvaf.enabled_flag = cv_enable THEN gv_prof_aff1_company_code
+                ELSE xbdcivi.company_code_bd END       AS section_company_code            -- 会社コード(起票部門)
+         , CASE WHEN flvaf.enabled_flag = cv_enable THEN gv_prof_aff2_dept_fin
+                ELSE flvdc.attribute3 END              AS management_dept_code            -- 管理部門コード
+         , flvre.attribute4                            AS vm_rebate_account_code          -- 自販機販売手数料(自販リベート)勘定科目コード
+         , flvre.attribute5                            AS vm_rebate_subacct_code          -- 自販リベート補助科目コード
+         , flvec.attribute4                            AS vm_etax_account_code            -- 自販機販売手数料(電気料)勘定科目コード
+         , flvec.attribute5                            AS vm_etax_subacct_code            -- 販売手数料(消費税額)補助科目コード
+         , CASE WHEN flvaf.enabled_flag = cv_enable THEN gv_prof_aff3_current_account
+                ELSE flvca.attribute4 END              AS checking_account_code           -- 当座預金勘定科目コード
+         , CASE WHEN flvaf.enabled_flag = cv_enable THEN gv_prof_aff4_company_account
+                ELSE flvca.attribute5 END              AS checking_subacct_code           -- 当座預金_当社口座補助科目コード
+-- Ver1.9 Add End
     FROM xxcok_backmargin_balance       xbb       -- 販手残高
        , po_vendors                     pv        -- 仕入先
        , po_vendor_sites                pvs       -- 仕入先サイト
        , hz_cust_accounts               hca       -- 顧客マスタ
        , xxcmm_cust_accounts            xca       -- 顧客追加情報
+-- Ver1.9 Add Start
+       , xxcfr_bd_dept_comp_info_v      xbdcive   -- 売上部門会社情報ビュー
+       , xxcfr_bd_dept_comp_info_v      xbdcivi   -- 起票部門会社情報ビュー
+       , fnd_lookup_values              flvdc     -- 管理部門コード変換
+       , fnd_lookup_values              flvre     -- 勘定科目変換_自販機リベート
+       , fnd_lookup_values              flvec     -- 勘定科目変換_自販電気料
+       , fnd_lookup_values              flvca     -- 勘定科目変換_当座預金
+       , fnd_lookup_values              flvaf     -- BM支払立替フラグ
+-- Ver1.9 Add End
     WHERE xbb.supplier_code           = pv.segment1
       AND xbb.supplier_site_code      = pvs.vendor_site_code
       AND pv.vendor_id                = pvs.vendor_id
@@ -2723,6 +2763,46 @@ AS
                                     AND LAST_DAY( gd_process_date )
       AND xbb.fb_interface_status     = cv_interface_status_fb
       AND xbb.gl_interface_status     = cv_gl_if_status_before
+-- Ver1.9 Add Start
+      AND xbdcive.set_of_books_id     = TO_NUMBER( gn_prof_set_of_books_id )
+      AND xca.sale_base_code          = xbdcive.dept_code
+      AND xbb.publication_date       >= xbdcive.comp_start_date
+      AND xbb.publication_date       <= NVL( xbdcive.comp_end_date, xbb.publication_date )
+      AND xbdcivi.set_of_books_id     = TO_NUMBER( gn_prof_set_of_books_id )
+      AND pvs.attribute5              = xbdcivi.dept_code
+      AND xbb.publication_date       >= xbdcivi.comp_start_date
+      AND xbb.publication_date       <= NVL( xbdcivi.comp_end_date, xbb.publication_date )
+      AND flvdc.attribute1            = xbdcivi.company_code_bd
+      AND flvdc.attribute2            = gv_prof_aff2_dept_fin
+      AND xbb.publication_date       >= flvdc.start_date_active
+      AND xbb.publication_date       <= NVL( flvdc.end_date_active, xbb.publication_date )
+      AND flvdc.lookup_type           = cv_lookup_type_02
+      AND flvdc.language              = cv_language_ja
+      AND flvre.attribute1            = xbdcive.company_code_bd
+      AND flvre.attribute2            = gv_prof_aff3_bm
+      AND flvre.attribute3            = gv_prof_aff4_rebate
+      AND xbb.publication_date       >= flvre.start_date_active
+      AND xbb.publication_date       <= NVL( flvre.end_date_active, xbb.publication_date )
+      AND flvre.lookup_type           = cv_lookup_type_03
+      AND flvre.language              = cv_language_ja
+      AND flvec.attribute1            = xbdcive.company_code_bd
+      AND flvec.attribute2            = gv_prof_aff3_bm
+      AND flvec.attribute3            = gv_prof_aff4_elec_cost
+      AND xbb.publication_date       >= flvec.start_date_active
+      AND xbb.publication_date       <= NVL( flvec.end_date_active, xbb.publication_date )
+      AND flvec.lookup_type           = cv_lookup_type_03
+      AND flvec.language              = cv_language_ja
+      AND flvca.attribute1            = xbdcivi.company_code_bd
+      AND flvca.attribute2            = gv_prof_aff3_current_account
+      AND flvca.attribute3            = gv_prof_aff4_company_account
+      AND xbb.publication_date       >= flvca.start_date_active
+      AND xbb.publication_date       <= NVL( flvca.end_date_active, xbb.publication_date )
+      AND flvca.lookup_type           = cv_lookup_type_03
+      AND flvca.language              = cv_language_ja
+      AND flvaf.lookup_code(+)        = flvdc.attribute1
+      AND flvaf.lookup_type(+)        = cv_lookup_type_04
+      AND flvaf.language(+)           = cv_language_ja
+-- Ver1.9 Add End
     GROUP BY xbb.supplier_code
            , xbb.supplier_site_code
            , xbb.cust_code
@@ -2730,10 +2810,40 @@ AS
            , xca.sale_base_code
 -- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi DELETE START
 --           , xbb.tax_code
+-- Ver1.9 Add Start
+           , gv_prof_tax_code
+-- Ver1.9 Add End
 -- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi DELETE END
            , pvs.bank_charge_bearer
            , pvs.payment_currency_code
            , pvs.attribute5
+-- Ver1.9 Add Start
+           , xbdcive.company_code_bd
+           , CASE
+               WHEN flvaf.enabled_flag = cv_enable
+                 THEN gv_prof_aff1_company_code
+               ELSE xbdcivi.company_code_bd
+             END
+           , CASE
+               WHEN flvaf.enabled_flag = cv_enable
+                 THEN gv_prof_aff2_dept_fin
+               ELSE flvdc.attribute3
+             END
+           , flvre.attribute4
+           , flvre.attribute5
+           , flvec.attribute4
+           , flvec.attribute5
+           , CASE
+               WHEN flvaf.enabled_flag = cv_enable
+                THEN gv_prof_aff3_current_account
+               ELSE flvca.attribute4
+             END
+           , CASE
+               WHEN flvaf.enabled_flag = cv_enable
+                THEN gv_prof_aff4_company_account
+               ELSE flvca.attribute5
+             END
+-- Ver1.9 Add End
     ORDER BY xbb.supplier_code
            , NVL( SUM( xbb.payment_amt_tax   ), 0 ) DESC
            , xbb.cust_code
@@ -2850,6 +2960,9 @@ AS
   , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
   , it_accounting_date             gl_interface.accounting_date       %TYPE
   , it_currency_code               gl_interface.currency_code         %TYPE
+-- Ver1.9 Add Start
+  , it_aff1_company                gl_interface.segment1              %TYPE
+-- Ver1.9 Add End
   , it_aff2_department             gl_interface.segment2              %TYPE
   , it_aff3_account                gl_interface.segment3              %TYPE
   , it_aff4_sub_account            gl_interface.segment4              %TYPE
@@ -2926,7 +3039,10 @@ AS
     , cv_balance_type_result         -- 残高タイプ
     , gv_prof_gl_category_bm         -- 仕訳カテゴリ名
     , gv_prof_gl_source_cok          -- 仕訳ソース名
-    , gv_prof_aff1_company_code      -- 会社
+-- Ver1.9 Mod Start
+--    , gv_prof_aff1_company_code      -- 会社
+    , it_aff1_company                -- 会社
+-- Ver1.9 Mod End
     , it_aff2_department             -- 部門
     , it_aff3_account                -- 勘定科目
     , it_aff4_sub_account            -- 補助科目
@@ -3017,6 +3133,52 @@ AS
     lt_section_code                gl_interface.attribute3%TYPE                 DEFAULT NULL; -- 起票部門
     ln_transfer_amount             NUMBER                                       DEFAULT 0;    -- 振込額
     ln_consumption_tax             NUMBER                                       DEFAULT 0;    -- 仮払消費税額
+-- Ver.1.8 ADD START
+    ln_pay_amt_no_tax              NUMBER                                       DEFAULT 0;    -- 支払額（税抜）
+    lv_pay_kbn                     po_vendor_sites_all.attribute4%TYPE          DEFAULT NULL; -- 支払区分
+    lv_tax_calc_kbn                xxcok_bm_balance_snap.tax_calc_kbn%TYPE      DEFAULT NULL; -- 税計算区分
+    lv_tax_kbn                     po_vendor_sites_all.attribute6%TYPE          DEFAULT NULL; -- 税区分
+    ln_recalc_pay_amt_no_tax       NUMBER                                       DEFAULT 0;    -- 算出後支払金額（税抜）
+    ln_recalc_pay_amt_tax          NUMBER                                       DEFAULT 0;    -- 算出後支払金額（消費税）
+    ln_recalc_pay_amt_with_tax     NUMBER                                       DEFAULT 0;    -- 算出後支払金額（税込）
+    ln_bm_diff_amt                 NUMBER                                       DEFAULT 0;    -- 自販機販売手数料差額
+-- Ver.1.8 ADD END
+-- Ver1.9 Add Start
+    lt_base_company_code           gl_interface.segment1%TYPE                   DEFAULT NULL; -- 会社コード(売上拠点)
+    lt_section_company_code        gl_interface.segment1%TYPE                   DEFAULT NULL; -- 会社コード(起票部門)
+    lt_management_dept_code        gl_interface.segment2%TYPE                   DEFAULT NULL; -- 管理部門コード
+    lt_vm_rebate_account_code      gl_interface.segment3%TYPE                   DEFAULT NULL; -- 自販機販売手数料(自販リベート)勘定科目コード
+    lt_vm_rebate_subacct_code      gl_interface.segment4%TYPE                   DEFAULT NULL; -- 自販リベート補助科目コード
+    lt_vm_etax_account_code        gl_interface.segment3%TYPE                   DEFAULT NULL; -- 自販機販売手数料(電気料)勘定科目コード
+    lt_vm_etax_subacct_code        gl_interface.segment4%TYPE                   DEFAULT NULL; -- 販売手数料(消費税額)補助科目コード
+    lt_checking_account_code       gl_interface.segment3%TYPE                   DEFAULT NULL; -- 当座預金勘定科目コード
+    lt_checking_subacct_code       gl_interface.segment4%TYPE                   DEFAULT NULL; -- 当座預金_当社口座補助科目コード
+-- Ver1.9 Add End
+--
+-- Ver.1.8 ADD START
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR recalc_info_cur(
+      pv_supplier_code        IN VARCHAR2    -- 仕入先コード
+    )
+    IS
+      SELECT NVL( MAX( pvsa.attribute4 )   , cv_pay_kbn_5 )           AS bm_paymet_kbn  -- BM支払区分  ※NULLの場合：なし
+            ,NVL( MAX( xbbs.tax_calc_kbn ) , cv_tax_calc_kbn_line )   AS tax_calc_kbn   -- 税計算区分  ※NULLの場合：明細単位
+            ,NVL( MAX( pvsa.attribute6 )   , cv_tax_kbn_with_tax )    AS bm_tax_kbn     -- BM税区分    ※NULLの場合：税込み
+      FROM   po_vendors             pv       -- 仕入先マスタ
+            ,po_vendor_sites_all    pvsa     -- 仕入先サイトマスタ
+            ,xxcok_bm_balance_snap  xbbs     -- 販手残高テーブルスナップショット
+      WHERE pv.segment1                    = pv_supplier_code
+      AND   pv.vendor_id                   = pvsa.vendor_id
+      AND   pvsa.org_id                    = gn_prof_org_id
+      AND   pv.segment1                    = xbbs.supplier_code(+)
+      AND   xbbs.snapshot_create_ym(+)     = TO_CHAR(gd_process_date, 'YYYYMM')    -- スナップショット作成年月   = 業務日付の年月
+      AND   xbbs.snapshot_timing(+)        = cv_snapshot_timing_2_bd               -- スナップショットタイミング = 2営
+      GROUP BY
+            pv.segment1    -- 仕入先コード
+    ;
+-- Ver.1.8 ADD END
 --
   BEGIN
     --==================================================
@@ -3043,34 +3205,89 @@ AS
         -- 支払先単位仕訳作成(A-5)
         --==================================================
         IF( lt_break_supplier_code IS NOT NULL ) THEN
+-- Ver.1.8 ADD START
+          -- 支払金額再計算に必要な情報を取得
+          << recalc_info_data_loop >>
+          FOR recalc_info_rec IN recalc_info_cur( lt_break_supplier_code ) LOOP
+            lv_pay_kbn         := recalc_info_rec.bm_paymet_kbn;  -- 支払区分
+            lv_tax_calc_kbn    := recalc_info_rec.tax_calc_kbn;   -- 税計算区分
+            lv_tax_kbn         := recalc_info_rec.bm_tax_kbn;     -- 税区分
+            --
+            EXIT;
+          END LOOP recalc_info_data_loop;
+          --
+          -- 支払金額再計算
+          xxcok_common_pkg.recalc_pay_amt_p(
+            ov_errbuf               =>  lv_errbuf                     -- エラー・バッファ
+          , ov_retcode              =>  lv_retcode                    -- リターンコード
+          , ov_errmsg               =>  lv_errmsg                     -- エラー・メッセージ
+          , iv_pay_kbn              =>  lv_pay_kbn                    -- 支払区分
+          , iv_tax_calc_kbn         =>  lv_tax_calc_kbn               -- 税計算区分
+          , iv_tax_kbn              =>  lv_tax_kbn                    -- 税区分
+          , iv_tax_rounding_rule    =>  cv_tax_rounding_rule_down     -- 端数処理区分
+          , in_tax_rate             =>  gn_prof_bm_tax_rate           -- 税率
+          , in_pay_amt_no_tax       =>  ln_pay_amt_no_tax             -- 支払金額（税抜）
+          , in_pay_amt_tax          =>  ln_consumption_tax            -- 支払金額（消費税）
+          , in_pay_amt_with_tax     =>  ln_transfer_amount            -- 支払金額（税込）
+          , on_pay_amt_no_tax       =>  ln_recalc_pay_amt_no_tax      -- 算出後支払金額（税抜）
+          , on_pay_amt_tax          =>  ln_recalc_pay_amt_tax         -- 算出後支払金額（消費税）
+          , on_pay_amt_with_tax     =>  ln_recalc_pay_amt_with_tax    -- 算出後支払金額（税込）
+          );
+          -- リターンコード確認
+          IF ( lv_retcode <> cv_status_normal ) THEN
+              lv_end_retcode := cv_status_error;
+              RAISE global_process_expt;
+          END IF;
+-- Ver.1.8 ADD END
+--
           -- 振込手数料設定
           IF( lt_bank_charge_bearer = cv_chrg_flag_i ) THEN
             ln_fee_no_tax := 0;
             ln_fee_tax    := 0;
-          ELSIF( ln_transfer_amount >= gn_prof_bank_fee_standard ) THEN
+-- Ver.1.8 MOD START
+--          ELSIF( ln_transfer_amount >= gn_prof_bank_fee_standard ) THEN
+          ELSIF( ln_recalc_pay_amt_with_tax >= gn_prof_bank_fee_standard ) THEN
+-- Ver.1.8 MOD END
             ln_fee_no_tax := gn_prof_bank_fee_more;
             ln_fee_tax    := gn_prof_bank_fee_more * gn_prof_bm_tax_rate / 100;
           ELSE
             ln_fee_no_tax := gn_prof_bank_fee_less;
             ln_fee_tax    := gn_prof_bank_fee_less * gn_prof_bm_tax_rate / 100;
           END IF;
-          ln_transfer_amount := ln_transfer_amount - ln_fee_no_tax - ln_fee_tax;
-          ln_consumption_tax := ln_consumption_tax - ln_fee_tax;
+-- Ver.1.8 MOD START
+--          ln_transfer_amount := ln_transfer_amount - ln_fee_no_tax - ln_fee_tax;
+--          ln_consumption_tax := ln_consumption_tax - ln_fee_tax;
+          ln_recalc_pay_amt_with_tax := ln_recalc_pay_amt_with_tax - ln_fee_no_tax - ln_fee_tax;
+          ln_recalc_pay_amt_tax      := ln_recalc_pay_amt_tax - ln_fee_tax;
+-- Ver.1.8 MOD END
+--
           -- 振込額
-          IF( ln_transfer_amount <> 0 ) THEN
+-- Ver.1.8 MOD START
+--          IF( ln_transfer_amount <> 0 ) THEN
+          IF( ln_recalc_pay_amt_with_tax <> 0 ) THEN
+-- Ver.1.8 MOD END
             insert_gi(
               ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
             , ov_retcode                  => lv_retcode                 -- リターン・コード
             , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
             , it_accounting_date          => lt_publication_date
             , it_currency_code            => lt_currency_code
-            , it_aff2_department          => gv_prof_aff2_dept_fin
-            , it_aff3_account             => gv_prof_aff3_current_account
-            , it_aff4_sub_account         => gv_prof_aff4_company_account
+-- Ver1.9 Mod Start
+            , it_aff1_company             => lt_section_company_code
+--            , it_aff2_department          => gv_prof_aff2_dept_fin
+--            , it_aff3_account             => gv_prof_aff3_current_account
+--            , it_aff4_sub_account         => gv_prof_aff4_company_account
+            , it_aff2_department          => lt_management_dept_code
+            , it_aff3_account             => lt_checking_account_code
+            , it_aff4_sub_account         => lt_checking_subacct_code
+-- Ver1.9 Mod End
             , it_aff5_customer            => gv_prof_aff5_dummy
             , it_aff6_enterprise          => gv_prof_aff6_dummy
             , it_entered_dr               => NULL
-            , it_entered_cr               => ln_transfer_amount
+-- Ver.1.8 MOD START
+--            , it_entered_cr               => ln_transfer_amount
+            , it_entered_cr               => ln_recalc_pay_amt_with_tax
+-- Ver.1.8 MOD END
 -- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR START
 --            , it_tax_code                 => lt_tax_code
             , it_tax_code                 => NULL
@@ -3085,19 +3302,29 @@ AS
             END IF;
           END IF;
           -- 仮払消費税
-          IF( ln_consumption_tax <> 0 ) THEN
+-- Ver.1.8 MOD START
+--          IF( ln_consumption_tax <> 0 ) THEN
+          IF( ln_recalc_pay_amt_tax <> 0 ) THEN
+-- Ver.1.8 MOD END
             insert_gi(
               ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
             , ov_retcode                  => lv_retcode                 -- リターン・コード
             , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
             , it_accounting_date          => lt_publication_date
             , it_currency_code            => lt_currency_code
-            , it_aff2_department          => gv_prof_aff2_dept_fin
+-- Ver1.9 Mod Start
+            , it_aff1_company             => lt_section_company_code
+--            , it_aff2_department          => gv_prof_aff2_dept_fin
+            , it_aff2_department          => lt_management_dept_code
+-- Ver1.9 Mod End
             , it_aff3_account             => gv_prof_aff3_tax
             , it_aff4_sub_account         => gv_prof_aff4_dummy
             , it_aff5_customer            => gv_prof_aff5_dummy
             , it_aff6_enterprise          => gv_prof_aff6_dummy
-            , it_entered_dr               => ln_consumption_tax
+-- Ver.1.8 MOD START
+--            , it_entered_dr               => ln_consumption_tax
+            , it_entered_dr               => ln_recalc_pay_amt_tax
+-- Ver.1.8 MOD END
             , it_entered_cr               => NULL
             , it_tax_code                 => lt_tax_code
             , it_slip_number              => lt_slip_number
@@ -3117,7 +3344,11 @@ AS
             , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
             , it_accounting_date          => lt_publication_date
             , it_currency_code            => lt_currency_code
-            , it_aff2_department          => gv_prof_aff2_dept_fin
+-- Ver1.9 Mod Start
+            , it_aff1_company             => lt_section_company_code
+--            , it_aff2_department          => gv_prof_aff2_dept_fin
+            , it_aff2_department          => lt_management_dept_code
+-- Ver1.9 Mod End
             , it_aff3_account             => gv_prof_aff3_fee
             , it_aff4_sub_account         => gv_prof_aff4_transfer_fee
             , it_aff5_customer            => gv_prof_aff5_dummy
@@ -3134,6 +3365,38 @@ AS
               RAISE global_process_expt;
             END IF;
           END IF;
+-- Ver.1.8 ADD START
+          -- 自販機販売手数料差額 = 支払額（税抜）<集計額> + 仮払消費税 - 振込額 - 振込手数料
+          ln_bm_diff_amt := ln_pay_amt_no_tax + ln_recalc_pay_amt_tax - ln_recalc_pay_amt_with_tax - ln_fee_no_tax;
+          IF( ln_bm_diff_amt <> 0 ) THEN
+            insert_gi(
+              ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+            , ov_retcode                  => lv_retcode                 -- リターン・コード
+            , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+            , it_accounting_date          => lt_publication_date
+            , it_currency_code            => lt_currency_code
+-- Ver1.9 Mod Start
+            , it_aff1_company             => lt_section_company_code
+--            , it_aff2_department          => gv_prof_aff2_dept_fin
+            , it_aff2_department          => lt_management_dept_code
+-- Ver1.9 Mod End
+            , it_aff3_account             => gv_prof_aff3_tax
+            , it_aff4_sub_account         => gv_prof_aff4_dummy
+            , it_aff5_customer            => gv_prof_aff5_dummy
+            , it_aff6_enterprise          => gv_prof_aff6_dummy
+            , it_entered_dr               => NULL
+            , it_entered_cr               => ln_bm_diff_amt
+            , it_tax_code                 => NULL
+            , it_slip_number              => lt_slip_number
+            , it_section                  => lt_section_code
+            , it_supplier_code            => lt_break_supplier_code
+            );
+            IF( lv_retcode = cv_status_error ) THEN
+              lv_end_retcode := cv_status_error;
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+-- Ver.1.8 ADD END
           --==================================================
           -- 連携結果の更新(A-6)
           --==================================================
@@ -3163,6 +3426,28 @@ AS
         ln_consumption_tax     := 0;
         ln_fee_no_tax          := 0;
         ln_fee_tax             := 0;
+-- Ver.1.8 ADD START
+        ln_pay_amt_no_tax      := 0;         -- 支払額（税抜）
+        lv_pay_kbn             := NULL;      -- 支払区分
+        lv_tax_calc_kbn        := NULL;      -- 税計算区分
+        lv_tax_kbn             := NULL;      -- 税区分
+        --
+        ln_recalc_pay_amt_no_tax   := 0;     -- 算出後支払金額（税抜）
+        ln_recalc_pay_amt_tax      := 0;     -- 算出後支払金額（消費税）
+        ln_recalc_pay_amt_with_tax := 0;     -- 算出後支払金額（税込）
+        ln_bm_diff_amt             := 0;     -- 自販機販売手数料差額
+-- Ver.1.8 ADD END
+-- Ver1.9 Add Start
+        lt_base_company_code       := get_bm_data_rec.base_company_code;       -- 会社コード(売上拠点)
+        lt_section_company_code    := get_bm_data_rec.section_company_code;    -- 会社コード(起票部門)
+        lt_management_dept_code    := get_bm_data_rec.management_dept_code;    -- 管理部門コード
+        lt_vm_rebate_account_code  := get_bm_data_rec.vm_rebate_account_code;  -- 自販機販売手数料(自販リベート)勘定科目コード
+        lt_vm_rebate_subacct_code  := get_bm_data_rec.vm_rebate_subacct_code;  -- 自販リベート補助科目コード
+        lt_vm_etax_account_code    := get_bm_data_rec.vm_etax_account_code;    -- 自販機販売手数料(電気料)勘定科目コード
+        lt_vm_etax_subacct_code    := get_bm_data_rec.vm_etax_subacct_code;    -- 販売手数料(消費税額)補助科目コード
+        lt_checking_account_code   := get_bm_data_rec.checking_account_code;   -- 当座預金勘定科目コード
+        lt_checking_subacct_code   := get_bm_data_rec.checking_subacct_code;   -- 当座預金_当社口座補助科目コード
+-- Ver1.9 Add End
         -- 伝票番号取得
         lt_slip_number := xxcok_common_pkg.get_slip_number_f( cv_pkg_name );
         IF( lt_slip_number IS NULL ) THEN
@@ -3189,9 +3474,16 @@ AS
         , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
         , it_accounting_date          => get_bm_data_rec.publication_date
         , it_currency_code            => get_bm_data_rec.payment_currency_code
+-- Ver1.9 Add Start
+        , it_aff1_company             => get_bm_data_rec.base_company_code
+-- Ver1.9 Add End
         , it_aff2_department          => get_bm_data_rec.base_code
-        , it_aff3_account             => gv_prof_aff3_bm
-        , it_aff4_sub_account         => gv_prof_aff4_rebate
+-- Ver1.9 Mod Start
+--        , it_aff3_account             => gv_prof_aff3_bm
+--        , it_aff4_sub_account         => gv_prof_aff4_rebate
+        , it_aff3_account             => get_bm_data_rec.vm_rebate_account_code
+        , it_aff4_sub_account         => get_bm_data_rec.vm_rebate_subacct_code
+-- Ver1.9 Mod End
         , it_aff5_customer            => get_bm_data_rec.cust_code
         , it_aff6_enterprise          => get_bm_data_rec.enterprise_code
         , it_entered_dr               => get_bm_data_rec.backmargin
@@ -3214,9 +3506,16 @@ AS
         , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
         , it_accounting_date          => get_bm_data_rec.publication_date
         , it_currency_code            => get_bm_data_rec.payment_currency_code
+-- Ver1.9 Add Start
+        , it_aff1_company             => get_bm_data_rec.base_company_code
+-- Ver1.9 Add End
         , it_aff2_department          => get_bm_data_rec.base_code
-        , it_aff3_account             => gv_prof_aff3_bm
-        , it_aff4_sub_account         => gv_prof_aff4_elec_cost
+-- Ver1.9 Mod Start
+--        , it_aff3_account             => gv_prof_aff3_bm
+--        , it_aff4_sub_account         => gv_prof_aff4_elec_cost
+        , it_aff3_account             => get_bm_data_rec.vm_etax_account_code
+        , it_aff4_sub_account         => get_bm_data_rec.vm_etax_subacct_code
+-- Ver1.9 Mod End
         , it_aff5_customer            => get_bm_data_rec.cust_code
         , it_aff6_enterprise          => get_bm_data_rec.enterprise_code
         , it_entered_dr               => get_bm_data_rec.electric_amt
@@ -3234,16 +3533,25 @@ AS
         END IF;
       END IF;
       -- 支払先単位仕訳用集計
+      -- 支払額（税込）：振込額（仮）
       ln_transfer_amount := ln_transfer_amount
                           + get_bm_data_rec.backmargin
                           + get_bm_data_rec.backmargin_tax
                           + get_bm_data_rec.electric_amt
                           + get_bm_data_rec.electric_amt_tax
       ;
+      -- 支払額（消費税）：仮払消費税額（仮）
       ln_consumption_tax := ln_consumption_tax
                           + get_bm_data_rec.backmargin_tax
                           + get_bm_data_rec.electric_amt_tax
       ;
+-- Ver.1.8 ADD START
+      -- 支払額（税抜）
+      ln_pay_amt_no_tax  := ln_pay_amt_no_tax
+                          + get_bm_data_rec.backmargin
+                          + get_bm_data_rec.electric_amt
+      ;
+-- Ver.1.8 ADD END
       --==================================================
       -- 正常件数カウント
       --==================================================
@@ -3256,34 +3564,89 @@ AS
       --==================================================
       -- 支払先単位仕訳作成(A-5)
       --==================================================
+-- Ver.1.8 ADD START
+      -- 支払金額再計算に必要な情報を取得
+      << recalc_info_data_loop >>
+      FOR recalc_info_rec IN recalc_info_cur( lt_break_supplier_code ) LOOP
+        lv_pay_kbn         := recalc_info_rec.bm_paymet_kbn;  -- 支払区分
+        lv_tax_calc_kbn    := recalc_info_rec.tax_calc_kbn;   -- 税計算区分
+        lv_tax_kbn         := recalc_info_rec.bm_tax_kbn;     -- 税区分
+        --
+        EXIT;
+      END LOOP recalc_info_data_loop;
+      --
+      -- 支払金額再計算
+      xxcok_common_pkg.recalc_pay_amt_p(
+        ov_errbuf               =>  lv_errbuf                     -- エラー・バッファ
+      , ov_retcode              =>  lv_retcode                    -- リターンコード
+      , ov_errmsg               =>  lv_errmsg                     -- エラー・メッセージ
+      , iv_pay_kbn              =>  lv_pay_kbn                    -- 支払区分
+      , iv_tax_calc_kbn         =>  lv_tax_calc_kbn               -- 税計算区分
+      , iv_tax_kbn              =>  lv_tax_kbn                    -- 税区分
+      , iv_tax_rounding_rule    =>  cv_tax_rounding_rule_down     -- 端数処理区分
+      , in_tax_rate             =>  gn_prof_bm_tax_rate           -- 税率
+      , in_pay_amt_no_tax       =>  ln_pay_amt_no_tax             -- 支払金額（税抜）
+      , in_pay_amt_tax          =>  ln_consumption_tax            -- 支払金額（消費税）
+      , in_pay_amt_with_tax     =>  ln_transfer_amount            -- 支払金額（税込）
+      , on_pay_amt_no_tax       =>  ln_recalc_pay_amt_no_tax      -- 算出後支払金額（税抜）
+      , on_pay_amt_tax          =>  ln_recalc_pay_amt_tax         -- 算出後支払金額（消費税）
+      , on_pay_amt_with_tax     =>  ln_recalc_pay_amt_with_tax    -- 算出後支払金額（税込）
+      );
+      -- リターンコード確認
+      IF ( lv_retcode <> cv_status_normal ) THEN
+          lv_end_retcode := cv_status_error;
+          RAISE global_process_expt;
+      END IF;
+-- Ver.1.8 ADD END
+--
       -- 振込手数料設定
       IF( lt_bank_charge_bearer = cv_chrg_flag_i ) THEN
         ln_fee_no_tax := 0;
         ln_fee_tax    := 0;
-      ELSIF( ln_transfer_amount + ln_consumption_tax >= gn_prof_bank_fee_standard ) THEN
+-- Ver.1.8 MOD START
+--      ELSIF( ln_transfer_amount + ln_consumption_tax >= gn_prof_bank_fee_standard ) THEN
+      ELSIF( ln_recalc_pay_amt_with_tax >= gn_prof_bank_fee_standard ) THEN
+-- Ver.1.8 MOD END
         ln_fee_no_tax := gn_prof_bank_fee_more;
         ln_fee_tax    := gn_prof_bank_fee_more * gn_prof_bm_tax_rate / 100;
       ELSE
         ln_fee_no_tax := gn_prof_bank_fee_less;
         ln_fee_tax    := gn_prof_bank_fee_less * gn_prof_bm_tax_rate / 100;
       END IF;
-      ln_transfer_amount := ln_transfer_amount - ln_fee_no_tax - ln_fee_tax;
-      ln_consumption_tax := ln_consumption_tax - ln_fee_tax;
+-- Ver.1.8 MOD START
+--      ln_transfer_amount := ln_transfer_amount - ln_fee_no_tax - ln_fee_tax;
+--      ln_consumption_tax := ln_consumption_tax - ln_fee_tax;
+      ln_recalc_pay_amt_with_tax := ln_recalc_pay_amt_with_tax - ln_fee_no_tax - ln_fee_tax;
+      ln_recalc_pay_amt_tax      := ln_recalc_pay_amt_tax - ln_fee_tax;
+-- Ver.1.8 MOD END
+--
       -- 振込額
-      IF( ln_transfer_amount <> 0 ) THEN
+-- Ver.1.8 MOD START
+--      IF( ln_transfer_amount <> 0 ) THEN
+      IF( ln_recalc_pay_amt_with_tax <> 0 ) THEN
+-- Ver.1.8 MOD END
         insert_gi(
           ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
         , ov_retcode                  => lv_retcode                 -- リターン・コード
         , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
         , it_accounting_date          => lt_publication_date
         , it_currency_code            => lt_currency_code
-        , it_aff2_department          => gv_prof_aff2_dept_fin
-        , it_aff3_account             => gv_prof_aff3_current_account
-        , it_aff4_sub_account         => gv_prof_aff4_company_account
+-- Ver1.9 Mod Start
+        , it_aff1_company             => lt_section_company_code
+--        , it_aff2_department          => gv_prof_aff2_dept_fin
+--        , it_aff3_account             => gv_prof_aff3_current_account
+--        , it_aff4_sub_account         => gv_prof_aff4_company_account
+        , it_aff2_department          => lt_management_dept_code
+        , it_aff3_account             => lt_checking_account_code
+        , it_aff4_sub_account         => lt_checking_subacct_code
+-- Ver1.9 Mod End
         , it_aff5_customer            => gv_prof_aff5_dummy
         , it_aff6_enterprise          => gv_prof_aff6_dummy
         , it_entered_dr               => NULL
-        , it_entered_cr               => ln_transfer_amount
+-- Ver.1.8 MOD START
+--        , it_entered_cr               => ln_transfer_amount
+        , it_entered_cr               => ln_recalc_pay_amt_with_tax
+-- Ver.1.8 MOD END
 -- 2010/03/02 Ver.1.7 [E_本稼動_02268] SCS S.Arizumi REPAIR START
 --        , it_tax_code                 => lt_tax_code
         , it_tax_code                 => NULL
@@ -3298,19 +3661,29 @@ AS
         END IF;
       END IF;
       -- 仮払消費税
-      IF( ln_consumption_tax <> 0 ) THEN
+-- Ver.1.8 MOD START
+--      IF( ln_consumption_tax <> 0 ) THEN
+      IF( ln_recalc_pay_amt_tax <> 0 ) THEN
+-- Ver.1.8 MOD END
         insert_gi(
           ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
         , ov_retcode                  => lv_retcode                 -- リターン・コード
         , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
         , it_accounting_date          => lt_publication_date
         , it_currency_code            => lt_currency_code
-        , it_aff2_department          => gv_prof_aff2_dept_fin
+-- Ver1.9 Mod Start
+        , it_aff1_company             => lt_section_company_code
+--        , it_aff2_department          => gv_prof_aff2_dept_fin
+        , it_aff2_department          => lt_management_dept_code
+-- Ver1.9 Mod End
         , it_aff3_account             => gv_prof_aff3_tax
         , it_aff4_sub_account         => gv_prof_aff4_dummy
         , it_aff5_customer            => gv_prof_aff5_dummy
         , it_aff6_enterprise          => gv_prof_aff6_dummy
-        , it_entered_dr               => ln_consumption_tax
+-- Ver.1.8 MOD START
+--        , it_entered_dr               => ln_consumption_tax
+        , it_entered_dr               => ln_recalc_pay_amt_tax
+-- Ver.1.8 MOD END
         , it_entered_cr               => NULL
         , it_tax_code                 => lt_tax_code
         , it_slip_number              => lt_slip_number
@@ -3330,7 +3703,11 @@ AS
         , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
         , it_accounting_date          => lt_publication_date
         , it_currency_code            => lt_currency_code
-        , it_aff2_department          => gv_prof_aff2_dept_fin
+-- Ver1.9 Mod Start
+        , it_aff1_company             => lt_section_company_code
+--        , it_aff2_department          => gv_prof_aff2_dept_fin
+        , it_aff2_department          => lt_management_dept_code
+-- Ver1.9 Mod End
         , it_aff3_account             => gv_prof_aff3_fee
         , it_aff4_sub_account         => gv_prof_aff4_transfer_fee
         , it_aff5_customer            => gv_prof_aff5_dummy
@@ -3347,6 +3724,38 @@ AS
           RAISE global_process_expt;
         END IF;
       END IF;
+-- Ver.1.8 ADD START
+      -- 自販機販売手数料差額 = 支払額（税抜）<集計額> + 仮払消費税 - 振込額 - 振込手数料
+      ln_bm_diff_amt := ln_pay_amt_no_tax + ln_recalc_pay_amt_tax - ln_recalc_pay_amt_with_tax - ln_fee_no_tax;
+      IF( ln_bm_diff_amt <> 0 ) THEN
+        insert_gi(
+          ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+        , ov_retcode                  => lv_retcode                 -- リターン・コード
+        , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        , it_accounting_date          => lt_publication_date
+        , it_currency_code            => lt_currency_code
+-- Ver1.9 Mod Start
+        , it_aff1_company             => lt_section_company_code
+--        , it_aff2_department          => gv_prof_aff2_dept_fin
+        , it_aff2_department          => lt_management_dept_code
+-- Ver1.9 Mod End
+        , it_aff3_account             => gv_prof_aff3_tax
+        , it_aff4_sub_account         => gv_prof_aff4_dummy
+        , it_aff5_customer            => gv_prof_aff5_dummy
+        , it_aff6_enterprise          => gv_prof_aff6_dummy
+        , it_entered_dr               => NULL
+        , it_entered_cr               => ln_bm_diff_amt
+        , it_tax_code                 => NULL
+        , it_slip_number              => lt_slip_number
+        , it_section                  => lt_section_code
+        , it_supplier_code            => lt_break_supplier_code
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          lv_end_retcode := cv_status_error;
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+-- Ver.1.8 ADD END
       --==================================================
       -- 連携結果の更新(A-6)
       --==================================================
