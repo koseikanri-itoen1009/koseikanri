@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A02C (body)
  * Description      : 仕入先マスタIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_001_A02_仕入先マスタIF抽出_EBSコンカレント
- * Version          : 1.12
+ * Version          : 1.13
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -47,6 +47,7 @@ AS
  *  2023-06-20    1.10  F.Hasebe         初期流動障害No.4対応
  *  2023-07-03    1.11  Y.Sato           E_本稼動_19314対応
  *  2023-09-21    1.12  S.hosonuma       E_本稼動_19311対応
+ *  2024-02-09    1.13  Y.Sato           E_本稼動_19496対応
  *
  *****************************************************************************************/
 --
@@ -2271,6 +2272,12 @@ AS
         , pvsa.attribute5                                AS pvsa_attribute5                 -- 問合せ担当拠点コード
         , pvsa.attribute6                                AS pvsa_attribute6                 -- BM税区分
         , pvsa.attribute7                                AS pvsa_attribute7                 -- 仕入先サイトEメールアドレス
+-- Ver1.13 Add Start
+        , pvsa.attribute8                                AS pvsa_attribute8                 -- 適格請求書発行事業者登録
+        , pvsa.attribute9                                AS pvsa_attribute9                 -- 課税事業者番号
+        , pvsa.attribute10                               AS pvsa_attribute10                -- 税計算区分
+        , pvsa.attribute11                               AS pvsa_attribute11                -- 伝票作成会社
+-- Ver1.13 Add End
         , pvsa.vendor_site_id                            AS vendor_site_id                  -- 仕入先サイトID
         , pvsa.vendor_site_code                          AS pvsa_vendor_site_code           -- 仕入先サイトコード（マスタ）
         , xovse.vendor_site_code                         AS xovse_vendor_site_code          -- 仕入先サイトコード（退避テーブル）
@@ -2693,10 +2700,32 @@ AS
                         l_sup_site_rec.pvsa_attribute7
                       , l_sup_site_rec.status_code
                       );                                              --  99 : ATTRIBUTE7（仕入先サイトEメールアドレス）
-      lv_file_data := lv_file_data || cv_comma || NULL;               -- 100 : ATTRIBUTE8 (追加情報8)
-      lv_file_data := lv_file_data || cv_comma || NULL;               -- 101 : ATTRIBUTE9 (追加情報9)
-      lv_file_data := lv_file_data || cv_comma || NULL;               -- 102 : ATTRIBUTE10 (追加情報10)
-      lv_file_data := lv_file_data || cv_comma || NULL;               -- 103 : ATTRIBUTE11 (追加情報11)
+-- Ver1.13 Mod Start
+--      lv_file_data := lv_file_data || cv_comma || NULL;               -- 100 : ATTRIBUTE8 (追加情報8)
+--      lv_file_data := lv_file_data || cv_comma || NULL;               -- 101 : ATTRIBUTE9 (追加情報9)
+--      lv_file_data := lv_file_data || cv_comma || NULL;               -- 102 : ATTRIBUTE10 (追加情報10)
+--      lv_file_data := lv_file_data || cv_comma || NULL;               -- 103 : ATTRIBUTE11 (追加情報11)
+      lv_file_data := lv_file_data || cv_comma || 
+                      to_csv_string(
+                        l_sup_site_rec.pvsa_attribute8
+                      , l_sup_site_rec.status_code
+                      );                                              -- 100 : ATTRIBUTE8 (適格請求書発行事業者登録)
+      lv_file_data := lv_file_data || cv_comma || 
+                      to_csv_string(
+                        l_sup_site_rec.pvsa_attribute9
+                      , l_sup_site_rec.status_code
+                      );                                              -- 101 : ATTRIBUTE9 (課税事業者番号)
+      lv_file_data := lv_file_data || cv_comma || 
+                      to_csv_string(
+                        l_sup_site_rec.pvsa_attribute10
+                      , l_sup_site_rec.status_code
+                      );                                              -- 102 : ATTRIBUTE10 (税計算区分)
+      lv_file_data := lv_file_data || cv_comma || 
+                      to_csv_string(
+                        l_sup_site_rec.pvsa_attribute11
+                      , l_sup_site_rec.status_code
+                      );                                              -- 103 : ATTRIBUTE11 (伝票作成会社)
+-- Ver1.13 Mod Start
       lv_file_data := lv_file_data || cv_comma || NULL;               -- 104 : ATTRIBUTE12 (追加情報12)
       lv_file_data := lv_file_data || cv_comma || NULL;               -- 105 : ATTRIBUTE13 (追加情報13)
       lv_file_data := lv_file_data || cv_comma || NULL;               -- 106 : ATTRIBUTE14 (追加情報14)
