@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2010/11/01    1.13  K.Kiriu          [E_本稼動_05350]日中化対応に伴う対象外データ更新判定追加
  *  2011/01/17    1.14  K.Kiriu          [E_本稼動_01762]入出庫データの拠点コード設定見直し対応
  *  2021/04/07    1.15  T.Nishikawa      [E_本稼動_16026]収益認識対応
+ *  2024/01/30    1.16  R.Oikawa         [E_本稼動_19496]グループ会社対応
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,9 @@ AS
   cv_msg_prf_bulk_cnt       CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12822'; -- XXCOS:結果セット取得件数（バルク）
   cv_msg_sales_exp_target   CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12823'; -- 販売実績明細(処理対象データ)
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
+-- Ver1.16 ADD START
+  cv_msg_company_code_bd_err  CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12825'; -- 会社コード導出エラー
+-- Ver1.16 ADD END
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) := 'TABLE_NAME';           --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) := 'TABLE';                --テーブル名称(ロックエラー時用)
@@ -174,6 +178,9 @@ AS
   cv_tkn_nm_ent_cd          CONSTANT  VARCHAR2(100) := 'ENT_CODE';             --企業コード
   cv_tkn_nm_res1_cd         CONSTANT  VARCHAR2(100) := 'RES1_CODE';            --予備１コード
   cv_tkn_nm_res2_cd         CONSTANT  VARCHAR2(100) := 'RES2_CODE';            --予備２コード
+-- Ver1.16 ADD START
+  cv_tkn_base_code          CONSTANT  VARCHAR2(100) := 'BASE_CODE';            -- 売上拠点
+-- Ver1.16 ADD END
   --トークン値
   cv_msg_vl_key_request_id  CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00088';     --要求ID
   cv_msg_vl_min_date        CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00120';     --MIN日付
@@ -222,6 +229,9 @@ AS
   cv_prof_ent_dummy         CONSTANT  VARCHAR2(100) := 'XXCOK1_AFF6_COMPANY_DUMMY';     -- 企業コード_ダミー値
   cv_prof_res1_dummy        CONSTANT  VARCHAR2(100) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';-- 予備1_ダミー値
   cv_prof_res2_dummy        CONSTANT  VARCHAR2(100) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';-- 予備2_ダミー値
+-- Ver1.16 ADD START
+  cv_prof_set_of_books_id   CONSTANT  VARCHAR2(100) := 'GL_SET_OF_BKS_ID';              -- 会計帳簿ID
+-- Ver1.16 ADD END
 /* 2009/07/16 Ver1.7 Add Start */
   cv_prof_g_prd_class       CONSTANT  VARCHAR2(100) := 'XXCOI1_GOODS_PRODUCT_CLASS';    --商品製品区分カテゴリセット名
   --商品製品区分日付判定用
@@ -329,6 +339,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
     attribute6                  mtl_transactions_interface.attribute6%TYPE,              --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+    attribute7                  mtl_transactions_interface.attribute7%TYPE,              --DFF7(会社)
+-- Ver1.16 ADD END
     scheduled_flag              mtl_transactions_interface.scheduled_flag%TYPE,          --計画フラグ
     flow_schedule               mtl_transactions_interface.flow_schedule%TYPE,           --計画フロー
     created_by                  mtl_transactions_interface.created_by%TYPE,              --作成者ID
@@ -427,6 +440,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
   gt_last_attribute6                 mtl_transactions_interface.attribute6%TYPE;                 --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+  gt_last_attribute7                 mtl_transactions_interface.attribute7%TYPE;                 --DFF7(会社)
+-- Ver1.16 ADD END
   gt_last_scheduled_flag             mtl_transactions_interface.scheduled_flag%TYPE;             --計画フラグ
   gt_last_flow_schedule              mtl_transactions_interface.flow_schedule%TYPE;              --計画フロー
   gt_last_created_by                 mtl_transactions_interface.created_by%TYPE;                 --作成者ID
@@ -440,6 +456,9 @@ AS
   gt_last_program_update_date        mtl_transactions_interface.program_update_date%TYPE;        --プログラム更新日
   gt_last_dept_code                  VARCHAR2(20);                                               --部門コード
 --************************************* 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ****************************************
+-- Ver1.16 ADD START
+  gn_set_of_bks_id                   NUMBER;                                                     -- GL会計帳簿ID
+-- Ver1.16 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -901,6 +920,22 @@ AS
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 ADD  END  ************************ --
 --
 -- ************ 2009/07/29 N.Maeda 1.8 ADD  END  *********************** --
+-- Ver1.16 ADD START
+    --========================================
+    -- 15.会計帳簿IDの取得
+    --========================================
+    gn_set_of_bks_id := FND_PROFILE.VALUE( cv_prof_set_of_books_id );
+    IF ( gn_set_of_bks_id IS NULL ) THEN
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_prof_err,
+        iv_token_name1        =>  cv_tkn_nm_profile_s,
+        iv_token_value1       =>  cv_prof_set_of_books_id
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.16 ADD END
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2454,6 +2489,34 @@ AS
             g_mtl_txn_oif_tab(ln_mtl_txn_inx).attribute6              := g_sales_exp_tab(i).head_sales_branch;
             --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+          --DFF7(会社)
+          BEGIN
+            SELECT xbdciv.company_code_bd    company_code_bd                       -- 会社
+            INTO   g_mtl_txn_oif_tab(ln_mtl_txn_inx).attribute7
+            FROM   xxcfr_bd_dept_comp_info_v xbdciv                                -- 基準日部門会社情報ビュー
+            WHERE  xbdciv.dept_code        = g_sales_exp_tab(i).sales_base_code    -- 売上拠点コード
+            AND    xbdciv.set_of_books_id  = gn_set_of_bks_id                      -- 会計帳簿ID
+            AND    xbdciv.enabled_flag     = ct_enabled_flg_y
+            AND    g_sales_exp_tab(i).dlv_date BETWEEN NVL( xbdciv.comp_start_date, g_sales_exp_tab(i).dlv_date )
+                                     AND     NVL( xbdciv.comp_end_date, g_sales_exp_tab(i).dlv_date )
+            ;
+          EXCEPTION
+          WHEN OTHERS THEN
+            g_mtl_txn_oif_tab(ln_mtl_txn_inx).attribute7 := NULL;
+          END;
+          --
+          IF ( g_mtl_txn_oif_tab(ln_mtl_txn_inx).attribute7 IS NULL ) THEN
+            lv_errmsg               :=  xxccp_common_pkg.get_msg(
+              iv_application        =>  cv_xxcos_short_name,
+              iv_name               =>  cv_msg_company_code_bd_err,
+              iv_token_name1        =>  cv_tkn_base_code,
+              iv_token_value1       =>  g_sales_exp_tab(i).sales_base_code
+            );
+            lv_errbuf := lv_errmsg;
+            RAISE global_api_expt;
+          END IF;
+-- Ver1.16 ADD END
             --計画フラグ
             g_mtl_txn_oif_tab(ln_mtl_txn_inx).scheduled_flag          := cn_scheduled_flag;
             --計画フロー
@@ -2490,7 +2553,7 @@ AS
     --テーブルソート
     <<loop_make_sort_data>>
     FOR s IN 1..g_mtl_txn_oif_tab.COUNT LOOP
-      --ソートキーは保管場所、品目ID、取引日、部門コード、管轄拠点、販売実績明細ID
+      --ソートキーは保管場所、品目ID、取引日、部門コード、管轄拠点、会社、販売実績明細ID
       lv_idx_key := g_mtl_txn_oif_tab(s).subinventory_code
                     || g_mtl_txn_oif_tab(s).inventory_item_id
 -- ************************ 2009/09/14 S.Miyakoshi Var1.11 MOD START ************************ --
@@ -2501,6 +2564,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
                     || NVL( g_mtl_txn_oif_tab(s).attribute6, cv_h_s_branch_dummy )
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+                    || g_mtl_txn_oif_tab(s).attribute7
+-- Ver1.16 ADD END
                     || g_mtl_txn_oif_tab(s).sales_exp_line_id;
       g_mtl_txn_oif_tab_spare(lv_idx_key) := g_mtl_txn_oif_tab(s);
     END LOOP loop_make_sort_data;
@@ -2590,6 +2656,9 @@ AS
 /* 2011/01/17 Ver1.17 Add Start */
     lt_h_s_branch                mtl_transactions_interface.attribute6%TYPE;          --DFF6(管轄拠点)(ブレークキー)
 /* 2011/01/17 Ver1.17 Add End   */
+-- Ver1.16 ADD START
+    lt_company                   mtl_transactions_interface.attribute7%TYPE;          --DFF7(会社)(ブレークキー)
+-- Ver1.16 ADD END
     lt_type_id                   mtl_transactions_interface.transaction_type_id%TYPE; --取引タイプID
     ln_break_start               NUMBER;                                              --集約ブレーク開始
     ln_break_end                 NUMBER;                                              --集約ブレーク終了
@@ -2622,6 +2691,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
     lt_h_s_branch   := NVL( g_mtl_txn_oif_ins_tab(1).attribute6, cv_h_s_branch_dummy );
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+    lt_company      := g_mtl_txn_oif_ins_tab(1).attribute7;
+-- Ver1.16 ADD END
 --    lt_subinventory := g_mtl_txn_oif_tab(1).subinventory_code;
 --    lt_item_id      := g_mtl_txn_oif_tab(1).inventory_item_id;
 --    lt_txn_date     := g_mtl_txn_oif_tab(1).transaction_date;
@@ -2641,6 +2713,9 @@ AS
 /* 2011/01/17 Add Start */
          lt_h_s_branch   = NVL( gt_last_attribute6, cv_h_s_branch_dummy ) AND
 /* 2011/01/17 Add End   */
+-- Ver1.16 ADD START
+         lt_company      = gt_last_attribute7        AND
+-- Ver1.16 ADD END
          g_mtl_txn_oif_ins_tab(1).transaction_type_id = gt_last_transaction_type_id ) THEN
       --取引数量の集約
       g_mtl_txn_oif_ins_tab(1).transaction_quantity := g_mtl_txn_oif_ins_tab(1).transaction_quantity + gt_last_transaction_quantity;
@@ -2666,7 +2741,11 @@ AS
 /* 2011/01/17 Ver1.14 Mod Start */
 --             lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code )
              lt_dept_code    = g_mtl_txn_oif_ins_tab(i).dept_code         AND
-             lt_h_s_branch   = NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy )
+-- Ver1.16 MOD START
+--             lt_h_s_branch   = NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy )
+             lt_h_s_branch   = NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy ) AND
+             lt_company      =  g_mtl_txn_oif_ins_tab(i).attribute7
+-- Ver1.16 MOD END
            )
 /* 2011/01/17 Ver1.14 Mod End   */
            OR
@@ -2747,6 +2826,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
             g_mtl_txn_oif_ins_tab(i+1).attribute6                 := gt_last_attribute6;                   --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+            g_mtl_txn_oif_ins_tab(i+1).attribute7                 := gt_last_attribute7;                   --DFF7(会社)
+-- Ver1.16 ADD END
             g_mtl_txn_oif_ins_tab(i+1).scheduled_flag             := gt_last_scheduled_flag;               --計画フラグ
             g_mtl_txn_oif_ins_tab(i+1).flow_schedule              := gt_last_flow_schedule;                --計画フロー
             g_mtl_txn_oif_ins_tab(i+1).created_by                 := gt_last_created_by;                   --作成者ID
@@ -2767,6 +2849,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
                lt_h_s_branch   = NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy ) AND
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+               lt_company      = g_mtl_txn_oif_ins_tab(i).attribute7        AND
+-- Ver1.16 ADD END
                lt_type_id      = g_mtl_txn_oif_ins_tab(i).transaction_type_id ) THEN
             <<last_same_break_loop>>
             FOR j IN ln_break_start .. ln_break_end LOOP
@@ -2808,6 +2893,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
               gt_last_attribute6             := g_mtl_txn_oif_ins_tab( ln_last_data ).attribute6;                  --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+              gt_last_attribute7             := g_mtl_txn_oif_ins_tab( ln_last_data ).attribute7;                  --DFF7(会社)
+-- Ver1.16 ADD END
               gt_last_scheduled_flag         := g_mtl_txn_oif_ins_tab( ln_last_data ).scheduled_flag;              --計画フラグ
               gt_last_flow_schedule          := g_mtl_txn_oif_ins_tab( ln_last_data ).flow_schedule;               --計画フロー
               gt_last_created_by             := g_mtl_txn_oif_ins_tab( ln_last_data ).created_by;                  --作成者ID
@@ -2861,6 +2949,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
             gt_last_attribute6             := g_mtl_txn_oif_ins_tab( i ).attribute6;                  --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+            gt_last_attribute7             := g_mtl_txn_oif_ins_tab( i ).attribute7;                  --DFF7(会社)
+-- Ver1.16 ADD END
             gt_last_scheduled_flag         := g_mtl_txn_oif_ins_tab( i ).scheduled_flag;              --計画フラグ
             gt_last_flow_schedule          := g_mtl_txn_oif_ins_tab( i ).flow_schedule;               --計画フロー
             gt_last_created_by             := g_mtl_txn_oif_ins_tab( i ).created_by;                  --作成者ID
@@ -2926,6 +3017,9 @@ AS
 /* 2011/01/17  Ver1.14 Add Start */
         lt_h_s_branch   := NVL( g_mtl_txn_oif_ins_tab(i).attribute6, cv_h_s_branch_dummy );
 /* 2011/01/17  Ver1.14 Add End   */
+-- Ver1.16 ADD START
+        lt_company      := g_mtl_txn_oif_ins_tab(i).attribute7;
+-- Ver1.16 ADD END
         --次のブレーク開始Indexを設定します。
         ln_break_start := i;
       END IF;
@@ -2967,6 +3061,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
               attribute6,                    --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+              attribute7,                    --DFF7(会社)
+-- Ver1.16 ADD END
               scheduled_flag,                --計画フラグ
               flow_schedule,                 --計画フロー
               created_by,                    --作成者ID
@@ -3025,6 +3122,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
             g_mtl_txn_oif_ins_tab(l).attribute6,
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+            g_mtl_txn_oif_ins_tab(l).attribute7,
+-- Ver1.16 ADD END
             g_mtl_txn_oif_ins_tab(l).scheduled_flag,
             g_mtl_txn_oif_ins_tab(l).flow_schedule,
             g_mtl_txn_oif_ins_tab(l).created_by,
@@ -3680,6 +3780,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
           attribute6,                     --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+          attribute7,                     --DFF7(会社)
+-- Ver1.16 ADD END
           scheduled_flag,                 --計画フラグ
           flow_schedule,                  --計画フロー
           created_by,                     --作成者ID
@@ -3711,6 +3814,9 @@ AS
 /* 2011/01/17 Ver1.14 Add Start */
         gt_last_attribute6,               --DFF6(管轄拠点)
 /* 2011/01/17 Ver1.14 Add End   */
+-- Ver1.16 ADD START
+        gt_last_attribute7,               --DFF7(会社)
+-- Ver1.16 ADD END
         gt_last_scheduled_flag,           --計画フラグ
         gt_last_flow_schedule,            --計画フロー
         gt_last_created_by,               --作成者ID
