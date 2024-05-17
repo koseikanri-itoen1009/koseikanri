@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2019/09/11    1.14 SCSK桑子 駿介    障害対応[E_本稼動_15472]
  *  2019/10/07    1.15 SCSK佐々木宏之   障害対応[E_本稼動_15472]障害対応
  *  2021/06/04    1.16 SCSK Y.Koh       [E_本稼動_16026]
+ *  2024/05/17    1.17 SCSK R.Oikawa    [E_本稼動_19997]対応
  *
  *****************************************************************************************/
 --
@@ -163,6 +164,9 @@ AS
 -- Add 2011.04.19 Ver.1.11 Start
   cn_zero               CONSTANT NUMBER       := 0;            -- 基準単価（税込）,売上金額（税込）出力固定値
 -- Add 2011.04.19 Ver.1.11 End
+-- Ver1.17 ADD Start
+  cv_comp_code         CONSTANT VARCHAR2(3)  := '001';          -- 会社コード
+-- Ver1.17 ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -885,7 +889,10 @@ AS
 -- 2021/06/04 Ver1.16 ADD End
 --
         -- 出力文字列作成
-        lv_csv_text := cv_enclosed || gt_sales_data(ln_loop_cnt).comp_code || cv_enclosed || cv_delimiter
+-- Ver1.17 MOD Start
+--        lv_csv_text := cv_enclosed || gt_sales_data(ln_loop_cnt).comp_code || cv_enclosed || cv_delimiter
+        lv_csv_text := cv_enclosed || cv_comp_code || cv_enclosed || cv_delimiter
+-- Ver1.17 MOD End
 -- Modify 2009.12.13 Ver.1.10 Start
 --                    || TO_CHAR ( gt_sales_data(ln_loop_cnt).trx_date, cv_format_date_ymd ) || cv_delimiter
                     || TO_CHAR ( gt_sales_data(ln_loop_cnt).gl_date, cv_format_date_ymd ) || cv_delimiter  -- 納品日(GL記帳日)
