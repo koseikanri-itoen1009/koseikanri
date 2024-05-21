@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFR003A23C_pkb(body)
  * Description      : 消費税差額作成処理
  * MD.050           : MD050_CFR_003_A23_消費税差額作成処理.doc
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/07/25    1.0   R.Oikawa         新規作成(E_本稼動_18983)
  *  2023/11/14    1.1   M.Akachi         E_本稼動_19546 サイクル跨ぎ対応
+ *  2024/02/01    1.2   R.Oikawa         [E_本稼動_19496] 対応
  *
  *****************************************************************************************/
 --
@@ -47,7 +48,9 @@ AS
   cv_ra_trx_type_tax          CONSTANT VARCHAR2(30)         := 'XXCFR1_RA_TRX_TYPE_TAX';            -- 取引タイプ_消費税差額作成
   cv_other_tax_code           CONSTANT VARCHAR2(30)         := 'XXCFR1_OTHER_TAX_CODE';             -- 対象外消費税コード
   cv_aff1_company_code        CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF1_COMPANY_CODE';          -- 会社コード
-  cv_aff2_dept_fin            CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF2_DEPT_FIN';              -- 部門コード_財務経理部
+-- Ver.1.2 Del Start
+--  cv_aff2_dept_fin            CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF2_DEPT_FIN';              -- 部門コード_財務経理部
+-- Ver.1.2 Del End
   cv_aff3_receive_excise_tax  CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF3_RECEIVE_EXCISE_TAX';    -- 勘定科目_仮受消費税等
   cv_aff3_account_receivable  CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF3_ACCOUNT_RECEIVABLE';    -- 勘定科目_売掛金
   cv_aff4_subacct_dummy       CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF4_SUBACCT_DUMMY';         -- 補助科目_ダミー値
@@ -57,10 +60,14 @@ AS
   cv_aff8_preliminary2_dummy  CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF8_PRELIMINARY2_DUMMY';    -- 予備２_ダミー値
   cv_org_id                   CONSTANT VARCHAR2(30)         := 'ORG_ID';                            -- 営業単位
   cv_description              CONSTANT VARCHAR2(30)         := 'XXCFR1_DESCRIPTION';                -- 品目明細摘要_税差額
-  cv_header_attribute5        CONSTANT VARCHAR2(30)         := 'XXCFR1_INPUT_DPT';                  -- 起票部門_消費税差額
+-- Ver.1.2 Del Start
+--  cv_header_attribute5        CONSTANT VARCHAR2(30)         := 'XXCFR1_INPUT_DPT';                  -- 起票部門_消費税差額
+-- Ver.1.2 Del End
   cv_header_attribute6        CONSTANT VARCHAR2(30)         := 'XXCFR1_INPUT_USER';                 -- 伝票入力者_消費税差額
   cv_description_inv          CONSTANT VARCHAR2(30)         := 'XXCFR1_DESCRIPTION_INV';            -- 品目明細摘要_本体差額
-  cv_header_attribute5_inv    CONSTANT VARCHAR2(30)         := 'XXCFR1_INPUT_DPT_INV';              -- 起票部門_本体差額
+-- Ver.1.2 Del Start
+--  cv_header_attribute5_inv    CONSTANT VARCHAR2(30)         := 'XXCFR1_INPUT_DPT_INV';              -- 起票部門_本体差額
+-- Ver.1.2 Del End
   cv_header_attribute6_inv    CONSTANT VARCHAR2(30)         := 'XXCFR1_INPUT_USER_INV';             -- 伝票入力者_本体差額
   cv_aff3_rec_inv             CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF3_REC_INV';               -- 勘定科目_本体差額REC
   cv_aff3_rev_inv             CONSTANT VARCHAR2(30)         := 'XXCFR1_AFF3_REV_INV';               -- 勘定科目_本体差額REV
@@ -112,6 +119,13 @@ AS
   cv_currency_code            CONSTANT VARCHAR2(3)          := 'JPY';                                -- 通貨
   cv_user                     CONSTANT VARCHAR2(4)          := 'User';                               -- 換算タイプ
   cv_table_name               CONSTANT VARCHAR2(30)         := 'XXCFR_INVOICE_HEADERS';              -- テーブル名
+-- Ver.1.2 Add Start
+  cv_default_company          CONSTANT VARCHAR2(3)          := '001';                                -- 伊藤園
+  cv_flex_dept                CONSTANT VARCHAR2(30)         := 'XX03_DEPARTMENT';                    -- 部門
+  -- 参照タイプ
+  cv_drafting_company         CONSTANT VARCHAR2(30)         := 'XXCFR1_DRAFTING_COMPANY';            -- 各社部門情報（AR）
+  cv_trx_type_ar              CONSTANT VARCHAR2(30)         := 'XXCFR1_TRX_TYPE_AR';                 -- AR取引タイプ
+-- Ver.1.2 Add End
 --
   -- ==============================
   -- グローバル変数
@@ -125,7 +139,9 @@ AS
   gv_other_tax_code                    VARCHAR2(30);                                                -- 対象外消費税コード
   gn_org_id                            NUMBER;                                                      -- 営業単位
   gv_aff1_company_code                 VARCHAR2(30);                                                -- 会社コード
-  gv_aff2_dept_fin                     VARCHAR2(30);                                                -- 部門コード_財務経理部
+-- Ver.1.2 Del Start
+--  gv_aff2_dept_fin                     VARCHAR2(30);                                                -- 部門コード_財務経理部
+-- Ver.1.2 Del End
   gv_aff3_receive_excise_tax           VARCHAR2(30);                                                -- 勘定科目_仮受消費税等
   gv_aff3_account_receivable           VARCHAR2(30);                                                -- 勘定科目_売掛金
   gv_aff4_subacct_dummy                VARCHAR2(30);                                                -- 補助科目_ダミー値
@@ -134,10 +150,14 @@ AS
   gv_aff7_preliminary1_dummy           VARCHAR2(30);                                                -- 予備１_ダミー値
   gv_aff8_preliminary2_dummy           VARCHAR2(30);                                                -- 予備２_ダミー値
   gv_description                       VARCHAR2(30);                                                -- 品目明細摘要_税差額
-  gv_header_attribute5                 VARCHAR2(30);                                                -- 起票部門_消費税差額
+-- Ver.1.2 Del Start
+--  gv_header_attribute5                 VARCHAR2(30);                                                -- 起票部門_消費税差額
+-- Ver.1.2 Del End
   gv_header_attribute6                 VARCHAR2(30);                                                -- 伝票入力者_消費税差額
   gv_description_inv                   VARCHAR2(30);                                                -- 品目明細摘要_本体差額
-  gv_header_attribute5_inv             VARCHAR2(30);                                                -- 起票部門_本体差額
+-- Ver.1.2 Del Start
+--  gv_header_attribute5_inv             VARCHAR2(30);                                                -- 起票部門_本体差額
+-- Ver.1.2 Del End
   gv_header_attribute6_inv             VARCHAR2(30);                                                -- 伝票入力者_本体差額
   gv_aff3_rec_inv                      VARCHAR2(30);                                                -- 勘定科目_本体差額REC
   gv_aff3_rev_inv                      VARCHAR2(30);                                                -- 勘定科目_本体差額REV
@@ -231,18 +251,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 部門コード_財務経理部
-    gv_aff2_dept_fin := FND_PROFILE.VALUE( cv_aff2_dept_fin );
-    IF gv_aff2_dept_fin IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_appli_xxcfr_name
-                     ,cv_msg_cfr_00004
-                     ,cv_tkn_profile
-                     ,cv_aff2_dept_fin
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- Ver.1.2 Del Start
+--    -- 部門コード_財務経理部
+--    gv_aff2_dept_fin := FND_PROFILE.VALUE( cv_aff2_dept_fin );
+--    IF gv_aff2_dept_fin IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcfr_name
+--                     ,cv_msg_cfr_00004
+--                     ,cv_tkn_profile
+--                     ,cv_aff2_dept_fin
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- Ver.1.2 Del End
 --
     -- 勘定科目_仮受消費税等
     gv_aff3_receive_excise_tax := FND_PROFILE.VALUE( cv_aff3_receive_excise_tax );
@@ -361,18 +383,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 起票部門_消費税差額
-    gv_header_attribute5 := FND_PROFILE.VALUE( cv_header_attribute5 );
-    IF gv_header_attribute5 IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_appli_xxcfr_name
-                     ,cv_msg_cfr_00004
-                     ,cv_tkn_profile
-                     ,cv_header_attribute5
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- Ver.1.2 Del Start
+--    -- 起票部門_消費税差額
+--    gv_header_attribute5 := FND_PROFILE.VALUE( cv_header_attribute5 );
+--    IF gv_header_attribute5 IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcfr_name
+--                     ,cv_msg_cfr_00004
+--                     ,cv_tkn_profile
+--                     ,cv_header_attribute5
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- Ver.1.2 Del End
 --
     -- 伝票入力者_消費税差額
     gv_header_attribute6 := FND_PROFILE.VALUE( cv_header_attribute6 );
@@ -400,18 +424,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 起票部門_本体差額
-    gv_header_attribute5_inv := FND_PROFILE.VALUE( cv_header_attribute5_inv );
-    IF gv_header_attribute5_inv IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_appli_xxcfr_name
-                     ,cv_msg_cfr_00004
-                     ,cv_tkn_profile
-                     ,cv_header_attribute5_inv
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- Ver.1.2 Del Start
+--    -- 起票部門_本体差額
+--    gv_header_attribute5_inv := FND_PROFILE.VALUE( cv_header_attribute5_inv );
+--    IF gv_header_attribute5_inv IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcfr_name
+--                     ,cv_msg_cfr_00004
+--                     ,cv_tkn_profile
+--                     ,cv_header_attribute5_inv
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- Ver.1.2 Del End
 --
     -- 伝票入力者_本体差額
     gv_header_attribute6_inv := FND_PROFILE.VALUE( cv_header_attribute6_inv );
@@ -542,6 +568,13 @@ AS
   , in_bill_cust_acct_site_id   IN  NUMBER    -- 請求先顧客所在地ID
   , id_cutoff_date              IN  DATE      -- 締日
   , iv_receipt_location_code    IN  VARCHAR2  -- 入金拠点コード
+-- Ver.1.2 Add Start
+  , iv_company_code_bd          IN  VARCHAR2  -- 会社コード（基準日）
+  , iv_fin_dept                 IN  VARCHAR2  -- 起票部門（管理）
+  , iv_tax_dept                 IN  VARCHAR2  -- 起票部門（消費税差額）
+  , iv_base_dept                IN  VARCHAR2  -- 起票部門（本体差額）
+  , iv_ra_trx_type_tax_name     IN  VARCHAR2  -- 消費税差額作成
+-- Ver.1.2 Add End
   )
   IS
 --
@@ -626,7 +659,10 @@ AS
         gv_description                            , -- 品目明細摘要
         cv_currency_code                          , -- 通貨コード
         in_tax_gap_amount                         , -- 明細金額
-        gv_ra_trx_type_tax                        , -- 取引タイプ
+-- Ver.1.2 Mod Start
+--        gv_ra_trx_type_tax                        , -- 取引タイプ
+        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+-- Ver.1.2 Mod End
         iv_term_name                              , -- 支払条件
         in_bill_cust_account_id                   , -- 請求先顧客ID
         in_bill_cust_acct_site_id                 , -- 請求先顧客所在地参照ID
@@ -642,7 +678,10 @@ AS
         in_tax_gap_amount                         , -- 販売単価
         gv_other_tax_code                         , -- 税金コード
         gn_org_id                                 , -- ヘッダーDFFカテゴリ
-        gv_header_attribute5                      , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod Start
+--        gv_header_attribute5                      , -- ヘッダーDFF5(起票部門)
+        iv_tax_dept                               , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod End
         gv_header_attribute6                      , -- ヘッダーDFF6(伝票入力者)
         cv_hold                                   , -- ヘッダーDFF7(請求書保留ステータス)
         cv_waiting                                , -- ヘッダーDFF8(個別請求書印刷)
@@ -691,8 +730,12 @@ AS
         cv_rev                           , -- 勘定科目区分(配分タイプ)
         in_tax_gap_amount                , -- 金額(明細金額)
         cn_100                           , -- パーセント(割合)
-        gv_aff1_company_code             , -- 会社セグメント
-        gv_aff2_dept_fin                 , -- 部門セグメント
+-- Ver.1.2 Mod Start
+--        gv_aff1_company_code             , -- 会社セグメント
+--        gv_aff2_dept_fin                 , -- 部門セグメント
+        iv_company_code_bd               , -- 会社セグメント
+        iv_fin_dept                      , -- 部門セグメント
+-- Ver.1.2 Mod End
         gv_aff3_receive_excise_tax       , -- 勘定科目セグメント
         gv_aff4_subacct_dummy            , -- 補助科目セグメント
         gv_aff5_customer_dummy           , -- 顧客セグメント
@@ -762,7 +805,10 @@ AS
         gv_description                            , -- 品目明細摘要
         cv_currency_code                          , -- 通貨コード
         cn_0                                      , -- 明細金額
-        gv_ra_trx_type_tax                        , -- 取引タイプ
+-- Ver.1.2 Mod Start
+--        gv_ra_trx_type_tax                        , -- 取引タイプ
+        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+-- Ver.1.2 Mod End
         iv_term_name                              , -- 支払条件
         in_bill_cust_account_id                   , -- 請求先顧客ID
         in_bill_cust_acct_site_id                 , -- 請求先顧客所在地参照ID
@@ -778,7 +824,10 @@ AS
         NULL                                      , -- 販売単価
         gv_other_tax_code                         , -- 税金コード
         gn_org_id                                 , -- ヘッダーDFFカテゴリ
-        gv_header_attribute5                      , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod Start
+--        gv_header_attribute5                      , -- ヘッダーDFF5(起票部門)
+        iv_tax_dept                               , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod End
         gv_header_attribute6                      , -- ヘッダーDFF6(伝票入力者)
         cv_hold                                   , -- ヘッダーDFF7(請求書保留ステータス)
         cv_waiting                                , -- ヘッダーDFF8(個別請求書印刷)
@@ -827,8 +876,12 @@ AS
         cv_tax                           , -- 勘定科目区分(配分タイプ)
         cn_0                             , -- 金額(明細金額)
         cn_100                           , -- パーセント(割合)
-        gv_aff1_company_code             , -- 会社セグメント
-        gv_aff2_dept_fin                 , -- 部門セグメント
+-- Ver.1.2 Mod Start
+--        gv_aff1_company_code             , -- 会社セグメント
+--        gv_aff2_dept_fin                 , -- 部門セグメント
+        iv_company_code_bd               , -- 会社セグメント
+        iv_fin_dept                      , -- 部門セグメント
+-- Ver.1.2 Mod End
         gv_aff3_receive_excise_tax       , -- 勘定科目セグメント
         gv_aff4_subacct_dummy            , -- 補助科目セグメント
         gv_aff5_customer_dummy           , -- 顧客セグメント
@@ -877,8 +930,12 @@ AS
           cv_rec                           , -- 勘定科目区分(配分タイプ)
           NULL                             , -- 金額(明細金額)
           cn_100                           , -- パーセント(割合)
-          gv_aff1_company_code             , -- 会社セグメント
-          gv_aff2_dept_fin                 , -- 部門セグメント
+-- Ver.1.2 Mod Start
+--          gv_aff1_company_code             , -- 会社セグメント
+--          gv_aff2_dept_fin                 , -- 部門セグメント
+          iv_company_code_bd               , -- 会社セグメント
+          iv_fin_dept                      , -- 部門セグメント
+-- Ver.1.2 Mod End
           gv_aff3_account_receivable       , -- 勘定科目セグメント
           gv_aff4_subacct_dummy            , -- 補助科目セグメント
           gv_aff5_customer_dummy           , -- 顧客セグメント
@@ -959,7 +1016,10 @@ AS
         gv_description_inv                        , -- 品目明細摘要
         cv_currency_code                          , -- 通貨コード
         in_inv_gap_amount                         , -- 明細金額
-        gv_ra_trx_type_tax                        , -- 取引タイプ
+-- Ver.1.2 Mod Start
+--        gv_ra_trx_type_tax                        , -- 取引タイプ
+        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+-- Ver.1.2 Mod End
         iv_term_name                              , -- 支払条件
         in_bill_cust_account_id                   , -- 請求先顧客ID
         in_bill_cust_acct_site_id                 , -- 請求先顧客所在地参照ID
@@ -975,7 +1035,10 @@ AS
         in_inv_gap_amount                         , -- 販売単価
         gv_other_tax_code                         , -- 税金コード
         gn_org_id                                 , -- ヘッダーDFFカテゴリ
-        gv_header_attribute5_inv                  , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod Start
+--        gv_header_attribute5_inv                  , -- ヘッダーDFF5(起票部門)
+        iv_base_dept                              , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod End
         gv_header_attribute6_inv                  , -- ヘッダーDFF6(伝票入力者)
         cv_hold                                   , -- ヘッダーDFF7(請求書保留ステータス)
         cv_waiting                                , -- ヘッダーDFF8(個別請求書印刷)
@@ -1024,8 +1087,12 @@ AS
         cv_rev                           , -- 勘定科目区分(配分タイプ)
         in_inv_gap_amount                , -- 金額(明細金額)
         cn_100                           , -- パーセント(割合)
-        gv_aff1_company_code             , -- 会社セグメント
-        gv_header_attribute5_inv         , -- 部門セグメント
+-- Ver.1.2 Mod Start
+--        gv_aff1_company_code             , -- 会社セグメント
+--        gv_header_attribute5_inv         , -- 部門セグメント
+        iv_company_code_bd               , -- 会社セグメント
+        iv_base_dept                     , -- 部門セグメント
+-- Ver.1.2 Mod End
         gv_aff3_rev_inv                  , -- 勘定科目セグメント
         gv_aff4_rev_inv                  , -- 補助科目セグメント
         gv_aff5_customer_dummy           , -- 顧客セグメント
@@ -1095,7 +1162,10 @@ AS
         gv_description_inv                        , -- 品目明細摘要
         cv_currency_code                          , -- 通貨コード
         cn_0                                      , -- 明細金額
-        gv_ra_trx_type_tax                        , -- 取引タイプ
+-- Ver.1.2 Mod Start
+--        gv_ra_trx_type_tax                        , -- 取引タイプ
+        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+-- Ver.1.2 Mod End
         iv_term_name                              , -- 支払条件
         in_bill_cust_account_id                   , -- 請求先顧客ID
         in_bill_cust_acct_site_id                 , -- 請求先顧客所在地参照ID
@@ -1111,7 +1181,10 @@ AS
         NULL                                      , -- 販売単価
         gv_other_tax_code                         , -- 税金コード
         gn_org_id                                 , -- ヘッダーDFFカテゴリ
-        gv_header_attribute5_inv                  , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod Start
+--        gv_header_attribute5_inv                  , -- ヘッダーDFF5(起票部門)
+        iv_base_dept                              , -- ヘッダーDFF5(起票部門)
+-- Ver.1.2 Mod End
         gv_header_attribute6_inv                  , -- ヘッダーDFF6(伝票入力者)
         cv_hold                                   , -- ヘッダーDFF7(請求書保留ステータス)
         cv_waiting                                , -- ヘッダーDFF8(個別請求書印刷)
@@ -1160,8 +1233,12 @@ AS
         cv_tax                           , -- 勘定科目区分(配分タイプ)
         cn_0                             , -- 金額(明細金額)
         cn_100                           , -- パーセント(割合)
-        gv_aff1_company_code             , -- 会社セグメント
-        gv_aff2_dept_fin                 , -- 部門セグメント
+-- Ver.1.2 Add Start
+--        gv_aff1_company_code             , -- 会社セグメント
+--        gv_aff2_dept_fin                 , -- 部門セグメント
+        iv_company_code_bd               , -- 会社セグメント
+        iv_fin_dept                      , -- 部門セグメント
+-- Ver.1.2 Add End
         gv_aff3_tax_inv                  , -- 勘定科目セグメント
         gv_aff4_tax_inv                  , -- 補助科目セグメント
         gv_aff5_customer_dummy           , -- 顧客セグメント
@@ -1210,8 +1287,12 @@ AS
           cv_rec                           , -- 勘定科目区分(配分タイプ)
           NULL                             , -- 金額(明細金額)
           cn_100                           , -- パーセント(割合)
-          gv_aff1_company_code             , -- 会社セグメント
-          gv_aff2_dept_fin                 , -- 部門セグメント
+-- Ver.1.2 Add Start
+--          gv_aff1_company_code             , -- 会社セグメント
+--          gv_aff2_dept_fin                 , -- 部門セグメント
+          iv_company_code_bd               , -- 会社セグメント
+          iv_fin_dept                      , -- 部門セグメント
+-- Ver.1.2 Add End
           gv_aff3_rec_inv                  , -- 勘定科目セグメント
           gv_aff4_rec_inv                  , -- 補助科目セグメント
           gv_aff5_customer_dummy           , -- 顧客セグメント
@@ -1308,8 +1389,36 @@ AS
              ,xih.bill_cust_acct_site_id     AS bill_cust_acct_site_id        -- 請求先顧客所在地ID
              ,xih.cutoff_date                AS cutoff_date                   -- 締日
              ,xih.receipt_location_code      AS receipt_location_code         -- 入金拠点コード
+-- Ver.1.2 Add Start
+             ,flv_comp.company_code_bd       AS company_code_bd               -- 会社コード（基準日）
+             ,flv_comp.attribute3            AS fin_dept                      -- 起票部門（管理）
+             ,flv_comp.attribute4            AS tax_dept                      -- 起票部門（消費税差額）
+             ,flv_comp.attribute5            AS base_dept                     -- 起票部門（本体差額）
+             ,flv_trx.attribute6             AS ra_trx_type_tax_name          -- 消費税差額作成
+-- Ver.1.2 Add End
       FROM    xxcfr_invoice_headers xih
+-- Ver.1.2 Add Start
+             ,xxcmm_cust_accounts xca                                         -- 顧客追加情報
+             ,fnd_flex_value_sets     ffvs                                    -- 値セット
+             ,fnd_flex_values         ffv                                     -- 値セット値ビュー
+             ,xxcfr_bd_company_info_v flv_comp                                -- 各社部門情報（AR）
+             ,xxcfr_bd_company_info_v flv_trx                                 -- 取引タイプ（AR）
+-- Ver.1.2 Add End
       WHERE   xih.tax_diff_amount_create_flg = cv_not_created                 -- 未作成
+-- Ver.1.2 Add Start
+      AND     xih.bill_cust_account_id       = xca.customer_id
+      AND     xca.bill_base_code             = ffv.flex_value
+      AND     ffv.flex_value_set_id          = ffvs.flex_value_set_id
+      AND     ffvs.flex_value_set_name       = cv_flex_dept
+      AND     flv_comp.lookup_type           = cv_drafting_company
+      AND     flv_comp.company_code          = NVL(ffv.attribute10,cv_default_company)
+      AND     xih.cutoff_date BETWEEN NVL( flv_comp.start_date_active, xih.cutoff_date )
+                                AND     NVL( flv_comp.end_date_active, xih.cutoff_date )
+      AND     flv_trx.lookup_type            = cv_trx_type_ar
+      AND     flv_trx.company_code           = NVL(ffv.attribute10,cv_default_company)
+      AND     xih.cutoff_date BETWEEN NVL( flv_trx.start_date_active, xih.cutoff_date )
+                                AND     NVL( flv_trx.end_date_active, xih.cutoff_date )
+-- Ver.1.2 Add End
       FOR UPDATE NOWAIT
       ;
 --
@@ -1341,6 +1450,13 @@ AS
       , in_bill_cust_acct_site_id   =>  l_target_inv_rec.bill_cust_acct_site_id     -- 請求先顧客所在地ID
       , id_cutoff_date              =>  l_target_inv_rec.cutoff_date                -- 締日
       , iv_receipt_location_code    =>  l_target_inv_rec.receipt_location_code      -- 入金拠点コード
+-- Ver.1.2 Add Start
+      , iv_company_code_bd          =>  l_target_inv_rec.company_code_bd            -- 会社コード（基準日）
+      , iv_fin_dept                 =>  l_target_inv_rec.fin_dept                   -- 起票部門（管理）
+      , iv_tax_dept                 =>  l_target_inv_rec.tax_dept                   -- 起票部門（消費税差額）
+      , iv_base_dept                =>  l_target_inv_rec.base_dept                  -- 起票部門（本体差額）
+      , iv_ra_trx_type_tax_name     =>  l_target_inv_rec.ra_trx_type_tax_name       -- 消費税差額作成
+-- Ver.1.2 Add End
       );
 --
       IF ( lv_retcode  = cv_status_error ) THEN
