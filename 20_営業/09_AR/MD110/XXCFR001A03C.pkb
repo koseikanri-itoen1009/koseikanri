@@ -7,7 +7,7 @@ AS
  * Description      : 入金情報データ連携
  * MD.050           : MD050_CFR_001_A03_入金情報データ連携
  * MD.070           : MD050_CFR_001_A03_入金情報データ連携
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2010/01/06    1.2  SCS 安川 智博    障害「E_本稼動_00753」対応
  *  2010/03/08    1.3  SCS 安川 智博    障害「E_本稼動_01859」対応
  *  2014/11/20    1.4  SCSK依田 稲道    障害「E_本稼動_12579」対応
+ *  2024/05/29    1.5  SCSK 郭 有司     障害「E_本稼動_19997」対応
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,9 @@ AS
   cv_receivable_status_unid CONSTANT ar_receivable_applications_all.status%TYPE := 'UNID'; -- 不明入金ステータス
   cv_receivable_source_table CONSTANT ar_distributions_all.source_table%TYPE := 'CRH'; -- 会計情報内ソーステーブル名
 -- Modify 2010.03.08 Ver1.3 End
+-- 2024/05/29 Ver1.5 ADD Start
+  cv_comp_code         CONSTANT VARCHAR2(3)  := '001';          -- 会社コード
+-- 2024/05/29 Ver1.5 ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -256,7 +260,10 @@ AS
 */
       SELECT hca_b.account_number                          bill_to_account_number, -- 顧客コード（請求先顧客コード）
              jzabv.customer_id                             customer_id,            -- 会社コード
-             gcc.segment1                                  company_code,           -- 会社コード
+-- 2024/05/29 Ver1.5 MOD Start
+             cv_comp_code                                  company_code,           -- 会社コード
+--             gcc.segment1                                  company_code,           -- 会社コード
+-- 2024/05/29 Ver1.5 MOD End
              (
               SELECT 
               SUM( NVL(ada.amount_dr,0) - NVL(ada.amount_cr,0)) amount_applied
@@ -301,7 +308,10 @@ AS
             OR jzabv.period_net_entered_cr <> 0 )
         AND jzabv.customer_id = hca_b.cust_account_id
         AND jzabv.code_combination_id = gcc.code_combination_id
-      GROUP BY gcc.segment1,
+-- 2024/05/29 Ver1.5 MOD Start
+      GROUP BY
+--      GROUP BY gcc.segment1,
+-- 2024/05/29 Ver1.5 MOD End
                hca_b.account_number,
                jzabv.customer_id
       ORDER BY hca_b.account_number;
