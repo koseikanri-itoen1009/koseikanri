@@ -6,7 +6,7 @@ AS
  *
  * Package Name     : XXCCP008A07C(body)
  * Description      : 資産移管修正アップロード処理
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  * 2019/10/17    1.0   Y.Ohishi         E_本稼動_15982  新規作成
+ * 2024/05/28    1.1   M.Akachi         E_本稼動_19927対応
  *
  *****************************************************************************************/
 --
@@ -112,14 +113,17 @@ AS
              ,xdpw.condition_1          condition_1                             -- 条件1(資産番号)
              ,xdpw.condition_2          condition_2                             -- 条件2(台帳)
              ,xdpw.chr_column_1         chr_column_1                            -- 文字値1(振替日)
-             ,xdpw.chr_column_2         chr_column_2                            -- 文字値2(部門コード)
-             ,xdpw.chr_column_3         chr_column_3                            -- 文字値3(勘定科目)
-             ,xdpw.chr_column_4         chr_column_4                            -- 文字値4(補助科目)
-             ,xdpw.chr_column_5         chr_column_5                            -- 文字値5(申告地)
-             ,xdpw.chr_column_6         chr_column_6                            -- 文字値6(部門)
-             ,xdpw.chr_column_7         chr_column_7                            -- 文字値7(事業所)
-             ,xdpw.chr_column_8         chr_column_8                            -- 文字値8(場所)
-             ,xdpw.chr_column_9         chr_column_9                            -- 文字値9(本社工場区分)
+             ,xdpw.chr_column_2         chr_column_2                            -- 文字値2(会社コード)
+             ,xdpw.chr_column_3         chr_column_3                            -- 文字値3(部門コード)
+             ,xdpw.chr_column_4         chr_column_4                            -- 文字値4(勘定科目)
+             ,xdpw.chr_column_5         chr_column_5                            -- 文字値5(補助科目)
+             ,xdpw.chr_column_6         chr_column_6                            -- 文字値6(申告地)
+             ,xdpw.chr_column_7         chr_column_7                            -- 文字値7(部門)
+             ,xdpw.chr_column_8         chr_column_8                            -- 文字値8(事業所)
+             ,xdpw.chr_column_9         chr_column_9                            -- 文字値9(場所)
+-- Ver.1.1 Aad Start
+             ,xdpw.chr_column_10        chr_column_10                           -- 文字値10(本社工場区分)
+-- Ver.1.1 Aad End
     FROM     xxccp_data_patch_work      xdpw
     WHERE    xdpw.file_id = in_file_id
     ORDER BY xdpw.data_sequence;
@@ -273,10 +277,15 @@ AS
     -- *** ローカル定数 ***
     --参照タイプ用変数
     --CSV項目数
-    cn_csv_file_col_num       CONSTANT  NUMBER       := 11;                     -- CSVファイル項目数
+-- Ver.1.1 Mod Start
+--    cn_csv_file_col_num       CONSTANT  NUMBER       := 11;                     -- CSVファイル項目数
+    cn_csv_file_col_num       CONSTANT  NUMBER       := 12;                     -- CSVファイル項目数
+-- Ver.1.1 Mod End
     cn_trans_date_length      CONSTANT  NUMBER       := 8;                      -- 振替日桁数
     -- セグメント値
-    cv_segment1               CONSTANT VARCHAR2(30)  := '001';                  -- 会社コード
+-- Ver.1.1 Del Start
+--    cv_segment1               CONSTANT VARCHAR2(30)  := '001';                  -- 会社コード
+-- Ver.1.1 Del End
     cv_segment5               CONSTANT VARCHAR2(30)  := '000000000';            -- 顧客コード
     cv_segment6               CONSTANT VARCHAR2(30)  := '000000';               -- 企業コード
     cv_segment7               CONSTANT VARCHAR2(30)  := '0';                    -- 予備１
@@ -437,20 +446,26 @@ AS
         ,chr_column_7
         ,chr_column_8
         ,chr_column_9
+        -- Ver.1.1 Add Start
+        ,chr_column_10
+        -- Ver.1.1 Add End
       ) VALUES (
          ln_file_id                                         -- ファイルID
         ,lt_path_data_tab(ln_line_cnt)( 0)                  -- データシーケンス
         ,lt_path_data_tab(ln_line_cnt)( 1)                  -- 条件値1（資産番号）
         ,lt_path_data_tab(ln_line_cnt)( 2)                  -- 条件値2（台帳）
         ,lt_path_data_tab(ln_line_cnt)( 3)                  -- 文字値1（振替日）
-        ,lt_path_data_tab(ln_line_cnt)( 4)                  -- 文字値2（減価償却費勘定．部門）
-        ,lt_path_data_tab(ln_line_cnt)( 5)                  -- 文字値3（減価償却費勘定．勘定科目）
-        ,lt_path_data_tab(ln_line_cnt)( 6)                  -- 文字値4（減価償却費勘定．補助科目）
-        ,lt_path_data_tab(ln_line_cnt)( 7)                  -- 文字値5（事業所．申告地）
-        ,lt_path_data_tab(ln_line_cnt)( 8)                  -- 文字値6（事業所．管理部門）
-        ,lt_path_data_tab(ln_line_cnt)( 9)                  -- 文字値7（事業所．事業所）
-        ,lt_path_data_tab(ln_line_cnt)(10)                  -- 文字値8（事業所．場所）
-        ,lt_path_data_tab(ln_line_cnt)(11)                  -- 文字値9（事業所．本社/工場区分）
+        ,lt_path_data_tab(ln_line_cnt)( 4)                  -- 文字値2（減価償却費勘定．会社）
+        ,lt_path_data_tab(ln_line_cnt)( 5)                  -- 文字値3（減価償却費勘定．部門）
+        ,lt_path_data_tab(ln_line_cnt)( 6)                  -- 文字値4（減価償却費勘定．勘定科目）
+        ,lt_path_data_tab(ln_line_cnt)( 7)                  -- 文字値5（減価償却費勘定．補助科目）
+        ,lt_path_data_tab(ln_line_cnt)( 8)                  -- 文字値6（事業所．申告地）
+        ,lt_path_data_tab(ln_line_cnt)( 9)                  -- 文字値7（事業所．管理部門）
+        ,lt_path_data_tab(ln_line_cnt)(10)                  -- 文字値8（事業所．事業所）
+        ,lt_path_data_tab(ln_line_cnt)(11)                  -- 文字値9（事業所．場所）
+        -- Ver.1.1 Add Start
+        ,lt_path_data_tab(ln_line_cnt)(12)                  -- 文字値10（事業所．本社/工場区分）
+        -- Ver.1.1 Add End
       );
 --
       --対象件数カウント
@@ -534,9 +549,27 @@ AS
           ,buff   => lv_errmsg
         );
       END IF;
+-- Ver.1.1 Add Start
+--
+      -- 減価償却費勘定．会社チェック
+      IF ( data_rec.chr_column_2 IS NULL ) THEN
+        -- エラーフラグをYに設定
+        lv_err_flg := cv_flag_y;
+        -- メッセージ編集
+        lv_errmsg := '行番号：' || ln_record_cnt || ' 資産番号：' || data_rec.condition_1 || ' 減価償却費勘定．会社が未設定です。';
+        -- メッセージ出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => lv_errmsg
+        );
+      END IF;
+-- Ver.1.1 Add End
 --
       -- 減価償却費勘定．部門チェック
-      IF ( data_rec.chr_column_2 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_2 IS NULL ) THEN
+      IF ( data_rec.chr_column_3 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -549,7 +582,10 @@ AS
       END IF;
 --
       -- 減価償却費勘定．勘定科目チェック
-      IF ( data_rec.chr_column_3 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_3 IS NULL ) THEN
+      IF ( data_rec.chr_column_4 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -562,7 +598,10 @@ AS
       END IF;
 --
       -- 減価償却費勘定．補助科目チェック
-      IF ( data_rec.chr_column_4 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_4 IS NULL ) THEN
+      IF ( data_rec.chr_column_5 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -575,7 +614,10 @@ AS
       END IF;
 --
       -- 事業所．申告地チェック
-      IF ( data_rec.chr_column_5 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_5 IS NULL ) THEN
+      IF ( data_rec.chr_column_6 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -588,7 +630,10 @@ AS
       END IF;
 --
       -- 事業所．管理部門チェック
-      IF ( data_rec.chr_column_6 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_6 IS NULL ) THEN
+      IF ( data_rec.chr_column_7 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -601,7 +646,10 @@ AS
       END IF;
 --
       -- 事業所．事業所チェック
-      IF ( data_rec.chr_column_7 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_7 IS NULL ) THEN
+      IF ( data_rec.chr_column_8 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -614,7 +662,10 @@ AS
       END IF;
 --
       -- 事業所．場所チェック
-      IF ( data_rec.chr_column_8 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_8 IS NULL ) THEN
+      IF ( data_rec.chr_column_9 IS NULL ) THEN
+-- Ver.1.1 Mod End
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -627,7 +678,10 @@ AS
       END IF;
 --
       -- 事業所．本社/工場区分チェック
-      IF ( data_rec.chr_column_9 IS NULL ) THEN
+-- Ver.1.1 Mod Start
+--      IF ( data_rec.chr_column_9 IS NULL ) THEN
+      IF ( data_rec.chr_column_10 IS NULL ) THEN
+-- Ver.1.1 Mod Start
         -- エラーフラグをYに設定
         lv_err_flg := cv_flag_y;
         -- メッセージ編集
@@ -716,14 +770,24 @@ AS
       -- ===============================
       -- セグメント値配列初期化
       g_segments_tab.DELETE;
+-- Ver.1.1 Mod Start
+--      -- セグメント値配列設定(SEG1:会社)
+--      g_segments_tab(1) := cv_segment1;
+--      -- セグメント値配列設定(SEG2:部門コード)
+--      g_segments_tab(2) := data_rec.chr_column_2;
+--      -- セグメント値配列設定(SEG3:償却科目)
+--      g_segments_tab(3) := data_rec.chr_column_3;
+--      -- セグメント値配列設定(SEG4:補助科目)
+--      g_segments_tab(4) := data_rec.chr_column_4;
       -- セグメント値配列設定(SEG1:会社)
-      g_segments_tab(1) := cv_segment1;
+      g_segments_tab(1) := data_rec.chr_column_2;
       -- セグメント値配列設定(SEG2:部門コード)
-      g_segments_tab(2) := data_rec.chr_column_2;
+      g_segments_tab(2) := data_rec.chr_column_3;
       -- セグメント値配列設定(SEG3:償却科目)
-      g_segments_tab(3) := data_rec.chr_column_3;
+      g_segments_tab(3) := data_rec.chr_column_4;
       -- セグメント値配列設定(SEG4:補助科目)
-      g_segments_tab(4) := data_rec.chr_column_4;
+      g_segments_tab(4) := data_rec.chr_column_5;
+-- Ver.1.1 Mod End
       -- セグメント値配列設定(SEG5:顧客コード)
       g_segments_tab(5) := cv_segment5;
       -- セグメント値配列設定(SEG6:企業コード)
@@ -762,11 +826,18 @@ AS
       -- ===============================
       -- 事業所マスタチェック
       xxcff_common1_pkg.chk_fa_location(
-         iv_segment1      => data_rec.chr_column_5                -- 申告地
-        ,iv_segment2      => data_rec.chr_column_6                -- 部門
-        ,iv_segment3      => data_rec.chr_column_7                -- 事業所
-        ,iv_segment4      => data_rec.chr_column_8                -- 場所
-        ,iv_segment5      => data_rec.chr_column_9                -- 本社工場区分
+-- Ver.1.1 Mod Start
+--         iv_segment1      => data_rec.chr_column_5                -- 申告地
+--        ,iv_segment2      => data_rec.chr_column_6                -- 部門
+--        ,iv_segment3      => data_rec.chr_column_7                -- 事業所
+--        ,iv_segment4      => data_rec.chr_column_8                -- 場所
+--        ,iv_segment5      => data_rec.chr_column_9                -- 本社工場区分
+         iv_segment1      => data_rec.chr_column_6                -- 申告地
+        ,iv_segment2      => data_rec.chr_column_7                -- 部門
+        ,iv_segment3      => data_rec.chr_column_8                -- 事業所
+        ,iv_segment4      => data_rec.chr_column_9                -- 場所
+        ,iv_segment5      => data_rec.chr_column_10               -- 本社工場区分
+-- Ver.1.1 Mod End
         ,on_location_id   => lt_location_id                       -- 事業所CCID
         ,ov_errbuf        => lv_errbuf                            -- エラー・メッセージ           --# 固定 # 
         ,ov_retcode       => lv_retcode                           -- リターン・コード             --# 固定 #
@@ -838,19 +909,32 @@ AS
             ,ln_current_units                                               -- 単位変更
             ,cv_flg_yes                                                     -- 転記チェックフラグ(固定値Y)
             ,cv_pending                                                     -- ステータス(PENDING)
-            ,cv_segment1                                                    -- 減価償却費勘定セグメント1
-            ,data_rec.chr_column_2                                          -- 減価償却費勘定セグメント2
-            ,data_rec.chr_column_3                                          -- 減価償却費勘定セグメント3
-            ,data_rec.chr_column_4                                          -- 減価償却費勘定セグメント4
+-- Ver.1.1 Mod Start
+--            ,cv_segment1                                                    -- 減価償却費勘定セグメント1
+--            ,data_rec.chr_column_2                                          -- 減価償却費勘定セグメント2
+--            ,data_rec.chr_column_3                                          -- 減価償却費勘定セグメント3
+--            ,data_rec.chr_column_4                                          -- 減価償却費勘定セグメント4
+            ,data_rec.chr_column_2                                          -- 減価償却費勘定セグメント1
+            ,data_rec.chr_column_3                                          -- 減価償却費勘定セグメント2
+            ,data_rec.chr_column_4                                          -- 減価償却費勘定セグメント3
+            ,data_rec.chr_column_5                                          -- 減価償却費勘定セグメント4
+-- Ver.1.1 Mod End
             ,cv_segment5                                                    -- 減価償却費勘定セグメント5
             ,cv_segment6                                                    -- 減価償却費勘定セグメント6
             ,cv_segment7                                                    -- 減価償却費勘定セグメント7
             ,cv_segment8                                                    -- 減価償却費勘定セグメント8
-            ,data_rec.chr_column_5                                          -- 事業所フレックスフィールド1
-            ,data_rec.chr_column_6                                          -- 事業所フレックスフィールド2
-            ,data_rec.chr_column_7                                          -- 事業所フレックスフィールド3
-            ,data_rec.chr_column_8                                          -- 事業所フレックスフィールド4
-            ,data_rec.chr_column_9                                          -- 事業所フレックスフィールド5
+-- Ver.1.1 Mod Start
+--            ,data_rec.chr_column_5                                          -- 事業所フレックスフィールド1
+--            ,data_rec.chr_column_6                                          -- 事業所フレックスフィールド2
+--            ,data_rec.chr_column_7                                          -- 事業所フレックスフィールド3
+--            ,data_rec.chr_column_8                                          -- 事業所フレックスフィールド4
+--            ,data_rec.chr_column_9                                          -- 事業所フレックスフィールド5
+            ,data_rec.chr_column_6                                          -- 事業所フレックスフィールド1
+            ,data_rec.chr_column_7                                          -- 事業所フレックスフィールド2
+            ,data_rec.chr_column_8                                          -- 事業所フレックスフィールド3
+            ,data_rec.chr_column_9                                          -- 事業所フレックスフィールド4
+            ,data_rec.chr_column_10                                         -- 事業所フレックスフィールド5
+-- Ver.1.1 Mod End
           );
           -- 成功件数加算
           gn_normal_cnt := gn_normal_cnt + 1;
