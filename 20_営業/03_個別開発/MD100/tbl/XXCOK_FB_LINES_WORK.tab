@@ -3,16 +3,21 @@
  *
  * Table Name  : xxcok_fb_lines_work
  * Description : FBデータ明細ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2023/10/25    1.0   T.Okuyama        [E_本稼動_19540] 新規作成
+ *  2024/02/02    1.1   T.Okuyama        [E_本稼動_19496] グループ会社対応
  ****************************************************************************************/
 CREATE TABLE xxcok.xxcok_fb_lines_work (
-     internal_bank_number           VARCHAR2(4)
+-- Ver.1.1 Add/Mod Start
+     company_code                   VARCHAR2(30)
+    ,internal_bank_number           VARCHAR2(4)
+--     internal_bank_number           VARCHAR2(4)
+-- Ver.1.1 Add/Mod End
     ,header_data_type               VARCHAR2(1)
     ,type_code                      VARCHAR2(2)
     ,code_type                      VARCHAR2(1)
@@ -30,6 +35,9 @@ CREATE TABLE xxcok.xxcok_fb_lines_work (
     ,record_type                    VARCHAR2(1)
     ,base_code                      VARCHAR2(10)
     ,supplier_code                  VARCHAR2(10)
+-- Ver.1.1 Add Start
+    ,settlement_priority            VARCHAR2(1)
+-- Ver.1.1 Add End
     ,implemented_flag               VARCHAR2(1)
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
@@ -43,6 +51,10 @@ CREATE TABLE xxcok.xxcok_fb_lines_work (
 /
 COMMENT ON TABLE xxcok.xxcok_fb_lines_work IS 'FBデータ明細ワークテーブル'
 /
+--  Ver1.1 T.Okuyama Add Start
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.company_code                               IS '会社コード'
+/
+--  Ver1.1 T.Okuyama Add End
 COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.internal_bank_number                       IS '仕向金融機関番号'
 /
 COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.header_data_type                           IS 'ヘッダーレコード区分'
@@ -79,6 +91,10 @@ COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.base_code                           
 /
 COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.supplier_code                              IS '仕入先コード'
 /
+-- Ver.1.1 Add Start
+COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.settlement_priority                        IS '振込指定区分（決済優先度）'
+/
+-- Ver.1.1 Add End
 COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.implemented_flag                           IS 'FB振分実行済区分'
 /
 COMMENT ON COLUMN xxcok.xxcok_fb_lines_work.created_by                                 IS '作成者'
