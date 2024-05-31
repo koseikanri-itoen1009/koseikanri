@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *                                        事務センター案件（支払案内書、販売報告書一括出力）
  * 2021/06/17    1.6   Y.Koh            E_本稼動_16294対応
  *                                        自販機販売報告書の出力対象について
+ * 2024/01/30    1.7   R.Oikawa         E_本稼動_19496対応
+ *                                        グループ会社対応
  *
  *****************************************************************************************/
 --
@@ -185,6 +187,11 @@ AS
   cv_msg_date_from         CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14365';          -- 納品日FROM
   cv_msg_date_to           CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14366';          -- 納品日TO
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
+-- Ver.1.7 ADD START
+  cv_msg_tkn_bks_id        CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00060';          -- GL会計帳簿ID
+  cv_xml_format_msg        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-14370';          -- 各社XMLフォーマット取得エラー
+  cv_tkn_lookup_type       CONSTANT VARCHAR2(20)  := 'LOOKUP_TYPE';               -- 参照タイプ
+-- Ver.1.7 ADD END
 --
   --トークンコード
   cv_tkn_manager_flag      CONSTANT VARCHAR2(12)  := 'MANAGER_FLAG';              -- 管理者フラグ
@@ -228,6 +235,11 @@ AS
   cv_prf_org               CONSTANT VARCHAR2(6)   := 'ORG_ID';                    -- MO:営業単位
   cv_prf_organization      CONSTANT VARCHAR2(24)  := 'XXCOI1_ORGANIZATION_CODE';  -- XXCOI:在庫組織コード
   cv_prf_policy_group      CONSTANT VARCHAR2(24)  := 'XXCOS1_POLICY_GROUP_CODE';  -- XXCOS:政策群コード
+-- Ver.1.7 ADD START
+  cv_prf_set_of_books_id   CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_ID';          -- 会計帳簿ID
+  -- クイックコード
+  cv_xml_format            CONSTANT VARCHAR2(30)  := 'XXCOK1_XML_FORMAT';          -- 各社XMLフォーマット
+-- Ver.1.7 ADD END
   --ログ用
   cv_proc_end              CONSTANT VARCHAR2(3)   := 'END';
 --
@@ -315,6 +327,9 @@ AS
   gt_upload_cust_code     xxcok_bm_sales_rep_work.customer_code%TYPE DEFAULT NULL;  -- 顧客
   gt_upload_vendor_code   xxcok_bm_sales_rep_work.vendor_code%TYPE   DEFAULT NULL;  -- 支払先
 -- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- Ver.1.7 ADD START
+  gn_set_of_bks_id     NUMBER;                                    -- GL会計帳簿ID
+-- Ver.1.7 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -673,6 +688,33 @@ AS
       ov_retcode := cv_status_error;
     END IF;
 --
+-- Ver.1.7 ADD START
+    --------------------------------
+    --会計帳簿IDの取得
+    --------------------------------
+    gn_set_of_bks_id := FND_PROFILE.VALUE(cv_prf_set_of_books_id);
+    IF (gn_set_of_bks_id IS NULL) THEN
+      -- トークン取得
+      lv_msg_tnk := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_tkn_bks_id        -- GL会計帳簿ID
+                    );
+      -- メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_prf_err  -- メッセージコード
+                      ,iv_token_name1  => cv_tkn_prf
+                      ,iv_token_value1 => lv_msg_tnk      -- プロファイル名
+                    );
+      --ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_err_msg
+      );
+      --リターンコードにエラーを設定
+      ov_retcode := cv_status_error;
+    END IF;
+-- Ver.1.7 ADD END
     --=========================================
     -- 在庫組織IDの取得
     --=========================================
@@ -2589,6 +2631,12 @@ AS
     lv_msg_tnk       VARCHAR2(100);  -- メッセージトークン用
     lv_err_msg       VARCHAR2(5000); -- メッセージ用
 --
+-- Ver.1.7 ADD START
+    lv_customer_code  xxcos_rep_vd_sales_list.customer_code%TYPE;     -- 顧客コード
+    lv_vendor_code    xxcos_rep_vd_sales_list.vendor_code%TYPE;       -- 仕入先コード
+    ld_date_from      xxcos_rep_vd_sales_list.date_from%TYPE;         -- 対象期間開始日
+    lv_frm_file       VARCHAR2(20)  DEFAULT NULL;                     -- フォーム様式ファイル名
+-- Ver.1.7 ADD END
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -2618,6 +2666,154 @@ AS
                      TO_CHAR( cn_request_id )                       || -- 要求ID
                      cv_extension_pdf                                  -- 拡張子(PDF)
                      ;
+-- Ver.1.7 ADD START
+    --===========================================================
+    -- フォーム様式を決めるため顧客・仕入先・対象期間開始日を取得
+    --===========================================================
+    BEGIN
+      SELECT xrvsl.customer_code,   -- 顧客コード
+             xrvsl.vendor_code,     -- 仕入先コード
+             xrvsl.date_from        -- 対象期間開始日
+      INTO   lv_customer_code,
+             lv_vendor_code,
+             ld_date_from
+      FROM   xxcos_rep_vd_sales_list xrvsl
+      WHERE  xrvsl.request_id = cn_request_id
+      AND    rownum = 1
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_customer_code := NULL;
+        lv_vendor_code   := NULL;
+    END;
+--
+    --==================================================
+    -- フォーム様式名を取得
+    --==================================================
+    -- 対象データが無いときはデフォルトフォーム様式
+    IF ( lv_customer_code IS NULL
+      AND lv_vendor_code IS NULL ) THEN
+        lv_frm_file := cv_frm_name;   -- デフォルトのフォーム様式
+    ELSE
+      -- 実行区分が1(顧客指定で実行）、実行区分が4（アップロード指定で実行）で顧客指定の場合
+      IF ( g_input_rec.execute_type = cv_1
+        OR ( g_input_rec.execute_type = cv_4 AND gt_upload_cust_code IS NOT NULL ) ) THEN
+          BEGIN
+            SELECT flv.attribute2                   -- フォーム様式名
+            INTO   lv_frm_file
+            FROM   xxcmm_cust_accounts xca,          -- 顧客追加情報
+                   xxcfr_bd_dept_comp_info_v xbdciv, -- 基準日部門会社情報ビュー
+                   fnd_lookup_values   flv           -- 各会社XMLフォーマット
+            WHERE  xca.customer_code        = lv_customer_code
+            AND    xca.sale_base_code       = xbdciv.dept_code
+            AND    xbdciv.set_of_books_id   = gn_set_of_bks_id                   -- 会計帳簿ID
+            AND    xbdciv.enabled_flag      = cv_y
+            AND    ld_date_from BETWEEN NVL( xbdciv.comp_start_date, ld_date_from )
+                                     AND     NVL( xbdciv.comp_end_date, ld_date_from )
+            AND    flv.lookup_type          = cv_xml_format
+            AND    flv.lookup_code          = xbdciv.company_code_bd
+            AND    flv.language             = ct_lang
+            ;
+          EXCEPTION
+          WHEN OTHERS THEN
+            -- メッセージ取得
+            lv_err_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_xml_format_msg   -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_lookup_type
+                            ,iv_token_value1 => cv_xml_format       -- 各会社XMLフォーマット
+                          );
+            --ログへ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_err_msg
+            );
+            --ログの件数クリア
+            gn_target_cnt := 0;
+            gn_normal_cnt := 0;
+            --
+            RAISE global_api_expt;
+          END;
+      -- 実行区分が2(仕入先指定で実行時）、実行区分が4（アップロード指定で実行）で仕入先指定の場合
+      ELSIF ( g_input_rec.execute_type = cv_2
+        OR ( g_input_rec.execute_type = cv_4 AND gt_upload_cust_code IS NULL AND gt_upload_vendor_code IS NOT NULL ) ) THEN
+          BEGIN
+            SELECT flv.attribute2                    -- フォーム様式名
+            INTO   lv_frm_file
+            FROM   po_vendors pv,                    -- 仕入先マスタ
+                   po_vendor_sites_all pvs,          -- 仕入先サイトマスタ
+                   xxcfr_bd_dept_comp_info_v xbdciv, -- 基準日部門会社情報ビュー
+                   fnd_lookup_values   flv           -- 各会社XMLフォーマット
+            WHERE  pv.segment1              = lv_vendor_code
+            AND    pvs.vendor_id            = pv.vendor_id
+            AND    pvs.attribute5           = xbdciv.dept_code
+            AND    xbdciv.set_of_books_id   = gn_set_of_bks_id                   -- 会計帳簿ID
+            AND    xbdciv.enabled_flag      = cv_y
+            AND    ld_date_from BETWEEN NVL( xbdciv.comp_start_date, ld_date_from )
+                                     AND     NVL( xbdciv.comp_end_date, ld_date_from )
+            AND    flv.lookup_type          = cv_xml_format
+            AND    flv.lookup_code          = xbdciv.company_code_bd
+            AND    flv.language             = ct_lang
+            ;
+          EXCEPTION
+          WHEN OTHERS THEN
+            -- メッセージ取得
+            lv_err_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_xml_format_msg   -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_lookup_type
+                            ,iv_token_value1 => cv_xml_format       -- 各会社XMLフォーマット
+                          );
+            --ログへ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_err_msg
+            );
+            --ログの件数クリア
+            gn_target_cnt := 0;
+            gn_normal_cnt := 0;
+            --
+            RAISE global_api_expt;
+          END;
+      --実行区分が3（問合せ拠点指定で実行時）の場合
+      ELSIF ( g_input_rec.execute_type = cv_3 ) THEN
+          BEGIN
+            SELECT flv.attribute2                    -- フォーム様式名
+            INTO   lv_frm_file
+            FROM   xxcfr_bd_dept_comp_info_v xbdciv, -- 基準日部門会社情報ビュー
+                   fnd_lookup_values   flv           -- 各会社XMLフォーマット
+            WHERE  xbdciv.dept_code         = g_input_rec.sales_base_code
+            AND    xbdciv.set_of_books_id   = gn_set_of_bks_id                   -- 会計帳簿ID
+            AND    xbdciv.enabled_flag      = cv_y
+            AND    ld_date_from BETWEEN NVL( xbdciv.comp_start_date, ld_date_from )
+                                     AND     NVL( xbdciv.comp_end_date, ld_date_from )
+            AND    flv.lookup_type          = cv_xml_format
+            AND    flv.lookup_code          = xbdciv.company_code_bd
+            AND    flv.language             = ct_lang
+            ;
+          EXCEPTION
+          WHEN OTHERS THEN
+            -- メッセージ取得
+            lv_err_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                            ,iv_name         => cv_xml_format_msg   -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_lookup_type
+                            ,iv_token_value1 => cv_xml_format       -- 各会社XMLフォーマット
+                          );
+            --ログへ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_err_msg
+            );
+            --ログの件数クリア
+            gn_target_cnt := 0;
+            gn_normal_cnt := 0;
+            --
+            RAISE global_api_expt;
+          END;
+      END IF;
+    END IF;
+-- Ver.1.7 ADD END
     --==================================
     -- SVF起動
     --==================================
@@ -2632,7 +2828,10 @@ AS
       ,iv_file_name       => lv_file_name              -- 出力ファイル名
       ,iv_file_id         => cv_pkg_name               -- 帳票ID
       ,iv_output_mode     => cv_output_mode_pdf        -- 出力区分
-      ,iv_frm_file        => cv_frm_name               -- フォーム様式ファイル名
+-- Ver.1.7 MOD START
+--      ,iv_frm_file        => cv_frm_name               -- フォーム様式ファイル名
+      ,iv_frm_file        => lv_frm_file               -- フォーム様式ファイル名
+-- Ver.1.7 MOD END
       ,iv_vrq_file        => cv_vrq_name               -- クエリー様式ファイル名
       ,iv_org_id          => NULL                      -- ORG_ID
       ,iv_user_name       => NULL                      -- ログイン・ユーザ名

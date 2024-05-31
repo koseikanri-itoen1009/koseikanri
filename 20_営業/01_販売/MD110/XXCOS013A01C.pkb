@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.34
+ * Version          : 1.35
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -77,6 +77,7 @@ AS
  *  2013/02/25    1.32  T.Nakano         [E_本稼動_10410]支払条件変更時障害対応
  *  2013/07/18    1.33  T.Shimoji        [E_本稼動_10904]消費税増税対応
  *  2019/07/16    1.34  N.Miyamoto       [E_本稼動_15472]軽減税率対応
+ *  2024/01/30    1.35  R.Oikawa         [E_本稼動_19496]グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -237,6 +238,9 @@ AS
 --  cv_tkn_dlv_inp_user_msg   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-14001'; -- XXCOS:AR大手量販店伝票入力者
 --/* 2009/11/05 Ver1.26 Add End   */
 /* 2010/07/12 Ver1.28 Del End */
+-- Ver.1.35 Add Start
+  cv_drafting_company_msg   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-14007'; -- 各社部門情報（AR）取得エラー
+-- Ver.1.35 Add End
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -329,6 +333,11 @@ AS
   cv_qct_item_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_ITEM_DTL_MST_013_A01';    -- AR品目明細摘要特定マスタ
   cv_qct_jour_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_JOUR_CLS_MST_013_A01';    -- AR会計配分仕訳特定マスタ
   cv_out_tax_cls            CONSTANT  VARCHAR2(50) := 'XXCOS1_CONS_TAX_NO_APPLICABLE';  -- 消費税区分(対象外)
+-- Ver.1.35 Add Start
+  cv_flex_dept              CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';                -- 部門
+  cv_drafting_company       CONSTANT VARCHAR2(30)  := 'XXCFR1_DRAFTING_COMPANY';        -- 各社部門情報（AR）
+  cv_trx_type_ar            CONSTANT VARCHAR2(30)  := 'XXCFR1_TRX_TYPE_AR';             -- AR取引タイプ
+-- Ver.1.35 Add End
 --
   -- クイックコード
   cv_qcc_code               CONSTANT  VARCHAR2(50) := 'XXCOS_013_A01%';                 -- クイックコード
@@ -4776,22 +4785,32 @@ AS
 --
         lv_trx_idx := gt_sales_norm_tbl2( ln_trx_idx ).create_class
                    || gt_sales_norm_tbl2( ln_trx_idx ).dlv_invoice_class;
-        IF ( gt_sel_trx_type_tbl.EXISTS( lv_trx_idx ) ) THEN
-          lv_trx_type_nm := gt_sel_trx_type_tbl( lv_trx_idx ).attribute1;
-          lv_trx_sent_dv := gt_sel_trx_type_tbl( lv_trx_idx ).attribute2;
-        ELSE
+-- Ver.1.35 Del Start
+--        IF ( gt_sel_trx_type_tbl.EXISTS( lv_trx_idx ) ) THEN
+--          lv_trx_type_nm := gt_sel_trx_type_tbl( lv_trx_idx ).attribute1;
+--          lv_trx_sent_dv := gt_sel_trx_type_tbl( lv_trx_idx ).attribute2;
+--        ELSE
+-- Ver.1.35 Del End
           BEGIN
 /* 2009/07/27 Ver1.21 Mod Start */
 --            SELECT flvm.attribute1 || flvd.attribute1
             SELECT /*+ USE_NL( flvd ) */
-                   flvm.attribute1 || flvd.attribute1
-/* 2009/07/27 Ver1.21 Mod End   */
+-- Ver.1.35 Mod Start
+--                   flvm.attribute1 || flvd.attribute1
+--/* 2009/07/27 Ver1.21 Mod End   */
+                   flvm.attribute1 || flvd.attribute1 || flv_trx.attribute8
+-- Ver.1.35 Mod End
                  , rctt.attribute1
             INTO   lv_trx_type_nm
                  , lv_trx_sent_dv
             FROM   fnd_lookup_values              flvm                     -- 作成元区分特定マスタ
                  , fnd_lookup_values              flvd                     -- 納品伝票区分特定マスタ
                  , ra_cust_trx_types_all          rctt                     -- 取引タイプマスタ
+-- Ver.1.35 Add Start
+                 ,fnd_flex_value_sets     ffvs                                    -- 値セット
+                 ,fnd_flex_values         ffv                                     -- 値セット値ビュー
+                 ,xxcfr_bd_company_info_v flv_trx                                 -- 取引タイプ（AR）
+-- Ver.1.35 Add End
             WHERE  flvm.lookup_type               = cv_qct_mkorg_cls
               AND  flvd.lookup_type               = cv_qct_dlv_slp_cls
               AND  flvm.lookup_code               LIKE cv_qcc_code
@@ -4808,6 +4827,15 @@ AS
               AND  flvm.language                  = ct_lang
               AND  flvd.language                  = ct_lang
 /* 2009/07/27 Ver1.21 Mod End   */
+-- Ver.1.35 Add Start
+              AND  ffv.flex_value                 = gt_sales_norm_tbl2( ln_trx_idx ).sales_base_code
+              AND  ffv.flex_value_set_id          = ffvs.flex_value_set_id
+              AND  ffvs.flex_value_set_name       = cv_flex_dept
+              AND  flv_trx.lookup_type            = cv_trx_type_ar
+              AND  flv_trx.company_code           = NVL(ffv.attribute10, gv_company_code)
+              AND  gt_sales_norm_tbl2( ln_trx_idx ).delivery_date BETWEEN NVL( flv_trx.start_date_active, gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                     AND     NVL( flv_trx.end_date_active, gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+-- Ver.1.35 Add End
               AND  gd_process_date BETWEEN        NVL( flvm.start_date_active, gd_process_date )
                                    AND            NVL( flvm.end_date_active,   gd_process_date )
               AND  gd_process_date BETWEEN        NVL( flvd.start_date_active, gd_process_date )
@@ -4875,11 +4903,13 @@ AS
 --
           END;
 --
-          -- 取得した取引タイプをワークテーブルに設定する
-          gt_sel_trx_type_tbl( lv_trx_idx ).attribute1 := lv_trx_type_nm;
-          gt_sel_trx_type_tbl( lv_trx_idx ).attribute2 := lv_trx_sent_dv;
---
-        END IF;
+-- Ver.1.35 Del Start
+--          -- 取得した取引タイプをワークテーブルに設定する
+--          gt_sel_trx_type_tbl( lv_trx_idx ).attribute1 := lv_trx_type_nm;
+--          gt_sel_trx_type_tbl( lv_trx_idx ).attribute2 := lv_trx_sent_dv;
+----
+--        END IF;
+-- Ver.1.35 Del End
 --
         --=====================================================================
         -- ３．品目明細摘要の取得(「仮受消費税等」以外)
@@ -5715,6 +5745,12 @@ AS
     lv_err_flag         VARCHAR2(1);                                     -- エラー用フラグ
     lv_jour_flag        VARCHAR2(1);                                     -- エラー用フラグ
     ln_skip_idx         NUMBER DEFAULT 0;                                -- スキップ用インデックス;
+-- Ver.1.35 Add Start
+    lv_company_code_bd  xxcfr_bd_company_info_v.company_code_bd%TYPE;    -- 会社コード
+    lv_fin_dept         xxcfr_bd_company_info_v.attribute3%TYPE;         -- 起票部門（管理）
+    lv_segment1         gl_code_combinations.segment1%TYPE;              -- 会社コード
+    lv_segment2         gl_code_combinations.segment2%TYPE;              -- 部門コード
+-- Ver.1.35 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -5965,6 +6001,89 @@ AS
             -- 一回の集約に３レコードを作成する
             EXIT WHEN ( ln_jour_cnt > cn_jour_cnt );
 --
+-- Ver.1.35 Add Start
+            --エラーフラグ初期化
+            lv_err_flag := cv_n_flag;
+--
+            BEGIN
+              SELECT  flv_comp.company_code_bd       AS company_code_bd               -- 会社コード（基準日）
+                     ,flv_comp.attribute3            AS fin_dept                      -- 起票部門（管理）
+              INTO    lv_company_code_bd
+                     ,lv_fin_dept
+              FROM    fnd_flex_value_sets     ffvs                                    -- 値セット
+                     ,fnd_flex_values         ffv                                     -- 値セット値ビュー
+                     ,xxcfr_bd_company_info_v flv_comp                                -- 各社部門情報（AR）
+              WHERE   ffv.flex_value                 = gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code
+              AND     ffv.flex_value_set_id          = ffvs.flex_value_set_id
+              AND     ffvs.flex_value_set_name       = cv_flex_dept
+              AND     flv_comp.lookup_type           = cv_drafting_company
+              AND     flv_comp.company_code          = NVL(ffv.attribute10,gv_company_code)
+              AND     gt_sales_norm_tbl2( ln_dis_idx ).delivery_date BETWEEN NVL( flv_comp.start_date_active, gt_sales_norm_tbl2( ln_dis_idx ).delivery_date )
+                                        AND     NVL( flv_comp.end_date_active, gt_sales_norm_tbl2( ln_dis_idx ).delivery_date )
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+              -- クイックコード取得出来ない場合
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application   => cv_xxcos_short_nm
+                              , iv_name          => cv_drafting_company_msg
+                              , iv_token_name1   => cv_tkn_lookup_type
+                              , iv_token_value1  => cv_drafting_company
+                             );
+                lv_errbuf  := lv_errmsg;
+--
+                --エラーフラグON
+                lv_err_flag  := cv_y_flag;
+                gn_warn_flag := cv_y_flag;
+--
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+--
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_errmsg
+                );
+--
+                -- 空行出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => cv_blank
+                );
+--
+                 -- 空行出力
+                 FND_FILE.PUT_LINE(
+                    which  => FND_FILE.OUTPUT
+                   ,buff   => cv_blank
+                 );
+--
+                 -- メッセージ出力
+                 FND_FILE.PUT_LINE(
+                    which  => FND_FILE.OUTPUT
+                   ,buff   => lv_errmsg
+                 );
+--
+                 -- 空行出力
+                 FND_FILE.PUT_LINE(
+                    which  => FND_FILE.OUTPUT
+                   ,buff   => cv_blank
+                 );
+--
+            END;
+--
+            -- 会社・部門コード編集
+            -- 部門を固定で保持している場合は、会社から対象部門を判定
+            IF (gt_jour_cls_tbl( jcls_idx ).segment2 IS NOT NULL) THEN
+              lv_segment1 := lv_company_code_bd;
+              lv_segment2 := lv_fin_dept;
+            ELSE
+              lv_segment1 := lv_company_code_bd;
+              lv_segment2 := gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code;   -- 販売実績の売上拠点コード
+            END IF;
+-- Ver.1.35 Add End
             -- 勘定科目の編集
             lt_segment3 := gt_jour_cls_tbl( jcls_idx ).segment3;
 --
@@ -5972,10 +6091,15 @@ AS
             -- 2.勘定科目CCIDの取得
             --=====================================
             -- 勘定科目セグメント１～セグメント８よりCCID取得
-            lv_ccid_idx := gv_company_code                                   -- セグメント１(会社コード)
-                        || NVL( gt_jour_cls_tbl( jcls_idx ).segment2,        -- セグメント２（部門コード）
-                                gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
-                                                                             -- セグメント２(販売実績の売上拠点コード)
+-- Ver.1.35 Mod Start
+--            lv_ccid_idx := gv_company_code                                   -- セグメント１(会社コード)
+--                        || NVL( gt_jour_cls_tbl( jcls_idx ).segment2,        -- セグメント２（部門コード）
+--                                gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
+--                                                                             -- セグメント２(販売実績の売上拠点コード)
+            lv_ccid_idx := 
+                           lv_segment1                                       -- セグメント１(会社コード)
+                        || lv_segment2                                       -- セグメント２(部門コード)
+-- Ver.1.35 Mod End
                         || lt_segment3                                       -- セグメント３(勘定科目コード)
                         || gt_jour_cls_tbl( jcls_idx ).segment4              -- セグメント４(補助科目コード:現金のみ設定)
                         || gt_jour_cls_tbl( jcls_idx ).segment5              -- セグメント５(顧客コード)
@@ -5993,9 +6117,13 @@ AS
 --                             gd_process_date
                              gt_sales_norm_tbl2( ln_dis_idx ).inspect_date
 /* 2009/08/28 Ver1.23 Mod End   */
-                           , gv_company_code
-                           , NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
-                                  gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
+-- Ver.1.35 Mod Start
+--                           , gv_company_code
+--                           , NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
+--                                  gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
+                           , lv_segment1
+                           , lv_segment2
+-- Ver.1.35 Mod End
                            , lt_segment3
                            , gt_jour_cls_tbl( jcls_idx ).segment4
                            , gt_jour_cls_tbl( jcls_idx ).segment5
@@ -6004,18 +6132,26 @@ AS
                            , gt_jour_cls_tbl( jcls_idx ).segment8
                          );
 --
-              --エラーフラグOFF
-              lv_err_flag := cv_n_flag;
+-- Ver.1.35 Del Start
+--              --エラーフラグOFF
+--              lv_err_flag := cv_n_flag;
+-- Ver.1.35 Del End
               IF ( lt_ccid IS NULL ) THEN
                 -- CCIDが取得できない場合
                 lv_errmsg  := xxccp_common_pkg.get_msg(
                                   iv_application       => cv_xxcos_short_nm
                                 , iv_name              => cv_ccid_nodata_msg
                                 , iv_token_name1       => cv_tkn_segment1
-                                , iv_token_value1      => gv_company_code
+-- Ver.1.35 Mod Start
+--                                , iv_token_value1      => gv_company_code
+                                , iv_token_value1      => lv_segment1
+-- Ver.1.35 Mod End
                                 , iv_token_name2       => cv_tkn_segment2
-                                , iv_token_value2      => NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
-                                                               gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
+-- Ver.1.35 Mod Start
+--                                , iv_token_value2      => NVL( gt_jour_cls_tbl( jcls_idx ).segment2,
+--                                                               gt_sales_norm_tbl2( ln_dis_idx ).sales_base_code )
+                                , iv_token_value2      => lv_segment2
+-- Ver.1.35 Mod End
                                 , iv_token_name3       => cv_tkn_segment3
                                 , iv_token_value3      => lt_segment3
                                 , iv_token_name4       => cv_tkn_segment4

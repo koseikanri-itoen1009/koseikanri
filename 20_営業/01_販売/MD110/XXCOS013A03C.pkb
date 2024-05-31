@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.19
+ * Version          : 1.20
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -50,6 +50,7 @@ AS
  *                                                        Ver.1.6の対応は完全戻しであり、処理部分削除の為、修正履歴なし
  *  2017/10/24    1.18  N.Koyama         [E_本稼動_14674] VD未収金仮勘定｣の場合、消費税コードを｢0000｣とする
  *  2019/07/16    1.19  N.Miyamoto       [E_本稼動_15472]軽減税率対応
+ *  2024/02/09    1.20  Y.Sato           [E_本稼動_19496]グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -252,6 +253,9 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
   ct_qct_acnt_title_cd      CONSTANT  VARCHAR2(50) := 'XXCOS1_ACNT_TITLE_MST_013_A03';  --勘定科目特定マスタ
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
+-- Ver1.20 Add Start
+  ct_qct_draf_comp          CONSTANT  VARCHAR2(50) := 'XXCFO1_DRAFTING_COMPANY';        -- 各社部門情報マスタ
+-- Ver1.20 Add End
 --
   -- クイックコード
   ct_qcc_code               CONSTANT  VARCHAR2(50) := 'XXCOS_013_A03%';                 -- クイックコード
@@ -368,6 +372,12 @@ AS
 /* 2010/03/01 Ver1.13 Add Start */
     , item_code                 xxcos_sales_exp_lines.item_code%TYPE                -- 品目コード
 /* 2010/03/01 Ver1.13 Add End */
+-- Ver1.20 Add Start
+    , slip_election_company     xxcfr_bd_dept_comp_info_v.company_code_bd%TYPE
+                                                                                    -- 伝票起票会社
+    , company_code_bd           xxcfr_bd_dept_comp_info_v.company_code_bd%TYPE      -- 会社コード（基準日）
+    , management_base_code      fnd_lookup_values.attribute1%TYPE                   -- 部門コード_管理部門
+-- Ver1.20 Add End
   );
 --
   -- 仕訳パターンワークテーブル定義
@@ -544,6 +554,12 @@ AS
 /* 2010/03/01 Ver1.13 Add Start */
          , xsel.item_code                    item_code                -- 品目コード
 /* 2010/03/01 Ver1.13 Add End */
+-- Ver1.20 Add Start
+         , DECODE( xbdciv.company_code_bd, gv_company_code, gv_company_code, NULL )
+                                             slip_election_company    -- 伝票起票会社
+         , xbdciv.company_code_bd            company_code_bd          -- 会社コード（基準日）
+         , flvvd.attribute1                  management_base_code     -- 部門コード_管理部門
+-- Ver1.20 Add End
     FROM
            xxcos_sales_exp_headers           xseh                     -- 販売実績ヘッダテーブル
          , xxcos_sales_exp_lines             xsel                     -- 販売実績明細テーブル
@@ -555,6 +571,10 @@ AS
 --         , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
          ,                                   xchv                     -- WITH句で取得した顧客階層ビュー
 -- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
+-- Ver1.20 Add Start
+         , xxcfr_bd_dept_comp_info_v         xbdciv                   -- 基準日部門会社情報ビュー
+         , fnd_lookup_values_vl              flvvd                    -- 参照表
+-- Ver1.20 Add End
     WHERE
         xseh.sales_exp_header_id             = xsel.sales_exp_header_id
     AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
@@ -631,6 +651,15 @@ AS
     AND gcct.code_combination_id             = avta.tax_account_id
     AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
     AND avta.enabled_flag                    = ct_enabled_yes
+-- Ver1.20 Add Start
+    AND xbdciv.dept_code = xseh.sales_base_code
+    AND xbdciv.set_of_books_id               = TO_NUMBER(gv_set_bks_id)
+    AND xbdciv.comp_start_date               <= xseh.delivery_date
+    AND NVL(xbdciv.comp_end_date, xseh.delivery_date)
+                                             >= xseh.delivery_date
+    AND flvvd.lookup_code = xbdciv.company_code_bd
+    AND flvvd.lookup_type = ct_qct_draf_comp
+-- Ver1.20 Add End
 /* 2010/03/01 Ver1.13 Mod Start */
     ORDER BY  xseh.sales_exp_header_id
 -- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
@@ -1660,6 +1689,10 @@ AS
     lv_section_code         VARCHAR2(225);    -- 部門コード
     lv_category_name        VARCHAR2(225);    -- 仕訳カテゴリ名
 --****************************** 209/05/13 1.6 T.Kitajima ADD  END  ******************************--
+-- Ver1.20 Add Start
+    lv_vd_msg          VARCHAR2(225);                                      -- VD未収金仮勘定(勘定科目用)
+    lv_tax_msg         VARCHAR2(225);                                      -- 仮受消費税等(勘定科目用)
+-- Ver1.20 Add End
 --
     -- *** ローカル例外 ***
     non_ccid_expt           EXCEPTION;        -- CCID取得出来ないエラー
@@ -1958,14 +1991,43 @@ AS
         END IF;
       END IF;
     END IF;
+-- Ver1.20 Add Start
+    -- VD未収金仮勘定
+    lv_vd_msg        := xxccp_common_pkg.get_msg(
+                            iv_application => cv_xxcos_short_nm            -- アプリケーション短縮名
+                          , iv_name        => cv_vd_msg                    -- メッセージID(VD未収金仮勘定)
+                        );
+--
+    --仮受消費税等
+    lv_tax_msg        := xxccp_common_pkg.get_msg(
+                             iv_application => cv_xxcos_short_nm           -- アプリケーション短縮名
+                           , iv_name        => cv_tax_msg                  -- メッセージID(仮受消費税等)
+                         );
+-- Ver1.20 Add End
 --****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
 --****************************** 2009/05/13 1.6 T.Kitajima ADD START ******************************--
     --拠点コード
-    lv_section_code := NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2, gt_sales_exp_tbl( in_sale_idx ).sales_base_code);
+-- Ver1.20 Mod Start
+--    lv_section_code := NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2, gt_sales_exp_tbl( in_sale_idx ).sales_base_code);
+    IF ( gt_sales_exp_tbl( in_sale_idx ).company_code_bd = gv_company_code ) THEN
+      lv_section_code := NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2, gt_sales_exp_tbl( in_sale_idx ).sales_base_code);
+    ELSE
+      IF ( gt_jour_cls_tbl( in_jcls_idx ).gl_segment3_nm = lv_tax_msg ) THEN
+        lv_section_code := gt_sales_exp_tbl( in_sale_idx ).management_base_code;
+      ELSIF ( gt_jour_cls_tbl( in_jcls_idx ).gl_segment3_nm = lv_vd_msg ) THEN
+        lv_section_code := gt_sales_exp_tbl( in_sale_idx ).management_base_code;
+      ELSE
+        lv_section_code := NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2, gt_sales_exp_tbl( in_sale_idx ).sales_base_code);
+      END IF;
+    END IF;
+-- Ver1.20 Mod End
 --****************************** 2009/05/13 1.6 T.Kitajima ADD  END  ******************************--
 --
     -- 勘定科目セグメント１からセグメント８よりCCID取得
-    lv_ccid_idx            :=   gv_company_code
+-- Ver1.20 Mod Start
+--    lv_ccid_idx            :=   gv_company_code
+    lv_ccid_idx            :=   gt_sales_exp_tbl( in_sale_idx ).company_code_bd
+-- Ver1.20 Mod End
                                                                -- セグメント１(会社コード)
 --****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
 --                             || NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
@@ -1997,7 +2059,10 @@ AS
 --                     gd_process_date
                      gt_sales_exp_tbl( in_sale_idx ).delivery_date
 --****************************** 2009/08/25 1.8 M.Sano     MOD  END  ******************************--
-                   , gv_company_code
+-- Ver1.20 Mod Start
+--                   , gv_company_code
+                   , gt_sales_exp_tbl( in_sale_idx ).company_code_bd
+-- Ver1.20 Mod End
 --****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
 --                   , NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
 --                          gt_sales_exp_tbl( in_sale_idx ).sales_base_code )
@@ -2036,7 +2101,10 @@ AS
                         , iv_token_name1       => cv_tkn_segment1
                         , iv_token_value1      => gt_sales_exp_tbl( in_sale_idx ).dlv_invoice_number
                         , iv_token_name2       => cv_tkn_segment2
-                        , iv_token_value2      => gv_company_code
+-- Ver1.20 Mod Start
+--                        , iv_token_value2      => gv_company_code
+                        , iv_token_value2      => gt_sales_exp_tbl( in_sale_idx ).company_code_bd
+-- Ver1.20 Mod End
                         , iv_token_name3       => cv_tkn_segment3
 --****************************** 2009/05/13 1.6 T.Kitajima MOD START ******************************--
 --                        , iv_token_value3      => NVL( gt_jour_cls_tbl( in_jcls_idx ).segment2,
@@ -2152,6 +2220,10 @@ AS
       gt_gl_interface_tbl( in_gl_idx ).attribute8          := gt_sales_card_tbl ( in_card_idx ).sales_exp_header_id;
                                                               -- 属性8（販売実績ヘッダID）
 --****************************** 2012/08/15 1.14 T.Osawa ADD  END  ******************************--
+-- Ver1.20 Add Start
+      gt_gl_interface_tbl( in_gl_idx ).attribute15         := gt_sales_card_tbl ( in_card_idx ).slip_election_company;
+                                                              -- 属性15（伝票起票会社）
+-- Ver1.20 Add End
     ELSE
       gt_gl_interface_tbl( in_gl_idx ).accounting_date     := gt_sales_exp_tbl ( in_sale_idx ).delivery_date;
                                                               -- 記帳日
@@ -2193,6 +2265,10 @@ AS
       gt_gl_interface_tbl( in_gl_idx ).attribute8          := gt_sales_exp_tbl ( in_sale_idx ).sales_exp_header_id;
                                                               -- 属性8（販売実績ヘッダID）
 --****************************** 2012/08/15 1.14 T.Osawa ADD  END  ******************************--
+-- Ver1.20 Add Start
+      gt_gl_interface_tbl( in_gl_idx ).attribute15         := gt_sales_exp_tbl ( in_sale_idx ).slip_election_company;
+                                                              -- 属性15（伝票起票会社）
+-- Ver1.20 Add End
     END IF;
 --
     gt_gl_interface_tbl( in_gl_idx ).reference10           := lv_detail;
