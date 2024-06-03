@@ -6,12 +6,13 @@ AS
  * Package Name     : XXCOK016A03C(body)
  * Description      : EDIシステムにてインフォマート社へ送信するワークデータ作成
  * MD.050           : インフォマート用赤黒情報作成 MD050_COK_016_A03
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
  * --------------------------- ----------------------------------------------------------
+ *  ins_no_diff_header          差分なしの赤黒ヘッダー情報作成(FB後)(A-13)
  *  ins_debit_fb                赤データ作成（FB後）(A-10)
  *  ins_credit_header           新黒ヘッダー情報作成(A-9)
  *  ins_credit_custom           新黒カスタム明細情報作成２(A-8)
@@ -32,6 +33,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/02/01    1.0   H.Futamura       新規作成 E_本稼動_17680 インフォマートの電子帳簿保存法対応
  *  2022/10/21    1.1   K.Kanada         E_本稼動_18200 障害対応
+ *  2023/07/26    1.2   Y.Ooyama         E_本稼動_19179 障害対応
+ *  2024/02/05    1.3   M.Akachi         E_本稼動_19496 障害対応
  *
  *****************************************************************************************/
 --
@@ -87,10 +90,21 @@ AS
   cv_prof_bm_tax             CONSTANT VARCHAR2(13)    := 'XXCOK1_BM_TAX';                    -- 販売手数料_消費税率
   cv_prof_org_id             CONSTANT VARCHAR2(6)     := 'ORG_ID';                           -- MO: 営業単位
   cv_prof_elec_change_item   CONSTANT VARCHAR2(30)    := 'XXCOK1_ELEC_CHANGE_ITEM_CODE';     -- 電気料（変動）品目コード
+-- Ver.1.2 ADD START
+  cv_prof_snap_keep_months   CONSTANT VARCHAR2(30)    := 'XXCOK1_SNAPSHOT_KEEP_MONTHS';      -- スナップショット保持月数
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+  cv_set_of_books_id         CONSTANT VARCHAR2(30)    := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
+  cv_xxcok1_set_code         CONSTANT VARCHAR2(30)    := 'XXCOK1_SET_CODE';                  -- 通知書書式設定コード
+-- Ver.1.3 Add End
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(1)     := '.';
   cv_msg_canm                CONSTANT VARCHAR2(1)     := ',';
+-- Ver.1.2 ADD START
+  cv_tax_calc_kbn_line       CONSTANT VARCHAR2(1)     := '2';                   -- 税計算区分：明細単位
+  cv_tax_rounding_rule_down  CONSTANT VARCHAR2(4)     := 'DOWN';                -- 端数処理区分：切捨て
+-- Ver.1.2 ADD END
 --
   -- ===============================================
   -- グローバル変数
@@ -104,6 +118,9 @@ AS
   gd_process_date            DATE   DEFAULT NULL;                               -- 業務処理日付
   gv_process_ym              VARCHAR2(6) DEFAULT NULL;                          -- 業務処理年月
   gv_process_ym_pre          VARCHAR2(6) DEFAULT NULL;                          -- 業務処理前年月
+-- Ver.1.2 ADD START
+  gv_snap_keep_oldest_ym     VARCHAR2(6) DEFAULT NULL;                          -- スナップショット保持最古年月（YYYYMM）
+-- Ver.1.2 ADD END
   gd_operating_date          DATE   DEFAULT NULL;                               -- 締め支払日導出元日付
   gd_closing_date            DATE   DEFAULT NULL;                               -- 締め日
   gd_schedule_date           DATE   DEFAULT NULL;                               -- 支払予定日
@@ -113,6 +130,12 @@ AS
   gv_bank_fee_less           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 銀行手数料_基準額未満
   gv_bank_fee_more           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 銀行手数料_基準額以上
   gv_elec_change_item_code   fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 電気料（変動）品目コード
+-- Ver.1.2 ADD START
+  gv_snap_keep_months        fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- スナップショット保持月数
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+  gv_set_of_bks_id           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- GL会計帳簿ID
+-- Ver.1.3 Add End
   gn_bm_tax                  NUMBER;                                            -- 販売手数料_消費税率
   gn_tax_include_less        NUMBER;                                            -- 税込銀行手数料_基準額未満
   gn_tax_include_more        NUMBER;                                            -- 税込銀行手数料_基準額以上
@@ -159,6 +182,420 @@ AS
   global_api_others_expt          EXCEPTION;
 --
   PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+--
+-- Ver.1.2 ADD START
+  /**********************************************************************************
+   * Procedure Name   : ins_no_diff_header
+   * Description      : 差分なしの赤黒ヘッダー情報作成(FB後)(A-13)
+   *                  : ※差分なしの赤黒カスタム明細は作成しない
+   ***********************************************************************************/
+  PROCEDURE ins_no_diff_header(
+    iv_proc_div   IN  VARCHAR2
+   ,ov_errbuf     OUT VARCHAR2
+   ,ov_retcode    OUT VARCHAR2
+   ,ov_errmsg     OUT VARCHAR2
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name    CONSTANT VARCHAR2(20) := 'ins_no_diff_header';  -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf       VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+--
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    -- 差分なし（FB後の赤黒が存在しない）の元黒ヘッダー情報
+    CURSOR l_ins_no_diff_header_cur
+    IS
+      SELECT xirh.rowid               AS  row_id                 -- ROWID
+            ,pvsa.attribute4          AS  bm_payment_kbn         -- BM支払区分
+           ,(CASE
+               WHEN (pvsa.attribute8 IS NOT NULL AND pvsa.attribute9 IS NOT NULL) THEN
+                 -- 適格請求書発行事業者登録 ＋ 課税事業者番号
+                 pvsa.attribute8 || pvsa.attribute9
+               ELSE
+                 NULL
+             END)                     AS  vendor_invoice_regnum  -- 送付先インボイス登録番号
+      FROM   xxcok_info_rev_header    xirh     -- 元黒
+            ,po_vendors               pv       -- 仕入先マスタ
+            ,po_vendor_sites_all      pvsa     -- 仕入先サイト
+      WHERE  xirh.snapshot_create_ym  = gv_process_ym
+      AND    xirh.snapshot_timing     = '1' -- 2営
+      AND    xirh.rev                 = '1' -- 元黒（2営）
+      AND    xirh.vendor_code         = pv.segment1
+      AND    pv.vendor_id             = pvsa.vendor_id
+      AND    (pvsa.inactive_date > gd_process_date
+              OR
+              pvsa.inactive_date IS NULL)
+      AND    pvsa.org_id              = gn_org_id
+      AND    NOT EXISTS (
+                 SELECT 1
+                 FROM   xxcok_info_rev_header    xirh_fb
+                 WHERE  xirh_fb.snapshot_create_ym  = gv_process_ym
+                 AND    xirh_fb.snapshot_timing     = '2'  -- FB後
+                 AND    xirh_fb.vendor_code         = xirh.vendor_code
+             )
+      ;
+--
+    -- ===============================================
+    -- ローカル例外
+    -- ===============================================
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+--
+    << ins_no_diff_header_loop >>
+    FOR l_ins_no_diff_header_rec IN l_ins_no_diff_header_cur LOOP
+      -- ===============================================
+      -- ヘッダー情報登録(差分なしの赤)
+      -- ===============================================
+      INSERT INTO xxcok_info_rev_header(
+        snapshot_create_ym        -- スナップショット作成年月
+       ,snapshot_timing           -- スナップショットタイミング
+       ,rev                       -- REV
+       ,check_result              -- 妥当性チェック結果
+       ,row_id                    -- 元テーブルレコードID
+       ,edi_interface_date        -- 連携日（EDI支払案内書）
+       ,vendor_code               -- 送付先コード
+       ,set_code                  -- 通知書書式設定コード
+       ,cust_code                 -- 顧客コード
+       ,cust_name                 -- 会社名
+       ,dest_post_code            -- 郵便番号
+       ,dest_address1             -- 住所
+       ,dest_tel                  -- 電話番号
+       ,fax                       -- FAX番号
+       ,dept_name                 -- 部署名
+       ,send_post_code            -- 郵便番号（送付元）
+       ,send_address1             -- 住所（送付元）
+       ,send_tel                  -- 電話番号（送付元）
+       ,num                       -- 番号
+       ,payment_date              -- 支払日
+       ,closing_date              -- 締め日
+       ,closing_date_min          -- 最小締め日
+       ,notifi_amt                -- おもての通知金額
+       ,total_amt_no_tax_10       -- 10%合計金額（税抜）
+       ,tax_amt_10                -- 10%消費税額
+       ,total_amt_10              -- 10%合計金額（税込）
+       ,total_amt_no_tax_8        -- 軽減8%合計金額（税抜）
+       ,tax_amt_8                 -- 軽減8%消費税額
+       ,total_amt_8               -- 軽減8%合計金額（税込）
+       ,total_amt_no_tax_0        -- 非課税合計金額（税抜）
+       ,tax_amt_0                 -- 非課税消費税額
+       ,total_amt_0               -- 非課税合計金額（税込）
+       ,total_sales_qty           -- 販売本数合計
+       ,total_sales_amt           -- 販売金額合計
+       ,sales_fee                 -- 販売手数料
+       ,electric_amt              -- 電気代等合計　税抜
+       ,tax_amt                   -- 消費税
+       ,transfer_fee              -- 振込手数料 税込
+       ,payment_amt               -- お支払金額 税込
+       ,remarks                   -- おもて備考
+       ,bank_code                 -- 銀行コード
+       ,bank_name                 -- 銀行名
+       ,branch_code               -- 支店コード
+       ,branch_name               -- 支店名
+       ,bank_holder_name_alt      -- 口座名
+       ,tax_div                   -- 税区分
+       ,target_div                -- 対象区分
+       ,created_by                -- 作成者
+       ,creation_date             -- 作成日
+       ,last_updated_by           -- 最終更新者
+       ,last_update_date          -- 最終更新日
+       ,last_update_login         -- 最終更新ログイン
+       ,request_id                -- 要求ID
+       ,program_application_id    -- コンカレント・プログラム・アプリケーションID
+       ,program_id                -- コンカレント・プログラムID
+       ,program_update_date       -- プログラム更新日
+       ,bm_payment_kbn            -- BM支払区分
+       ,tax_calc_kbn              -- 税計算区分
+       ,bm_tax_kbn                -- BM税区分
+       ,bank_charge_bearer        -- 振込手数料負担者
+       ,sales_fee_no_tax          -- 販売手数料（税抜）
+       ,sales_fee_tax             -- 販売手数料（消費税）
+       ,sales_fee_with_tax        -- 販売手数料（税込）
+       ,electric_amt_no_tax       -- 電気代等（税抜）
+       ,electric_amt_tax          -- 電気代等（消費税）
+       ,electric_amt_with_tax     -- 電気代等（税込）
+       ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+       ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+       ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+       ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+       ,bank_trans_fee_tax        -- 振込手数料（消費税）
+       ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+       ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.3 Add Start
+       ,display_code              -- 表示コード
+       ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
+      )
+      SELECT
+          xirh.snapshot_create_ym                    AS  snapshot_create_ym        -- スナップショット作成年月
+         ,iv_proc_div                                AS  snapshot_timing           -- スナップショットタイミング
+         ,'2'                                        AS  rev                       -- REV（2:赤（FB）)
+         ,'1'                                        AS  check_result              -- 妥当性チェック結果（1:対象外）
+         ,NULL                                       AS  row_id                    -- 元テーブルレコードID
+         ,NULL                                       AS  edi_interface_date        -- 連携日（EDI支払案内書）
+         ,xirh.vendor_code                           AS  vendor_code               -- 送付先コード
+         ,xirh.set_code                              AS  set_code                  -- 通知書書式設定コード
+         ,xirh.cust_code                             AS  cust_code                 -- 顧客コード
+         ,xirh.cust_name                             AS  cust_name                 -- 会社名
+         ,xirh.dest_post_code                        AS  dest_post_code            -- 郵便番号
+         ,xirh.dest_address1                         AS  dest_address1             -- 住所
+         ,xirh.dest_tel                              AS  dest_tel                  -- 電話番号
+         ,xirh.fax                                   AS  fax                       -- FAX番号
+         ,xirh.dept_name                             AS  dept_name                 -- 部署名
+         ,xirh.send_post_code                        AS  send_post_code            -- 郵便番号（送付元）
+         ,xirh.send_address1                         AS  send_address1             -- 住所（送付元）
+         ,xirh.send_tel                              AS  send_tel                  -- 電話番号（送付元）
+         ,xirh.num                                   AS  num                       -- 番号
+         ,xirh.payment_date                          AS  payment_date              -- 支払日
+         ,xirh.closing_date                          AS  closing_date              -- 締め日
+         ,xirh.closing_date_min                      AS  closing_date_min          -- 最小締め日
+         ,(xirh.notifi_amt) * -1                     AS  notifi_amt                -- おもての通知金額
+         ,(xirh.total_amt_no_tax_10) * -1            AS  total_amt_no_tax_10       -- 10%合計金額（税抜）
+         ,(xirh.tax_amt_10) * -1                     AS  tax_amt_10                -- 10%消費税額
+         ,(xirh.total_amt_10) * -1                   AS  total_amt_10              -- 10%合計金額（税込）
+         ,(xirh.total_amt_no_tax_8) * -1             AS  total_amt_no_tax_8        -- 軽減8%合計金額（税抜）
+         ,(xirh.tax_amt_8) * -1                      AS  tax_amt_8                 -- 軽減8%消費税額
+         ,(xirh.total_amt_8) * -1                    AS  total_amt_8               -- 軽減8%合計金額（税込）
+         ,(xirh.total_amt_no_tax_0) * -1             AS  total_amt_no_tax_0        -- 非課税合計金額（税抜）
+         ,(xirh.tax_amt_0) * -1                      AS  tax_amt_0                 -- 非課税消費税額
+         ,(xirh.total_amt_0) * -1                    AS  total_amt_0               -- 非課税合計金額（税込）
+         ,(xirh.total_sales_qty) * -1                AS  total_sales_qty           -- 販売本数合計
+         ,(xirh.total_sales_amt) * -1                AS  total_sales_amt           -- 販売金額合計
+         ,(xirh.sales_fee) * -1                      AS  sales_fee                 -- 販売手数料
+         ,(xirh.electric_amt) * -1                   AS  electric_amt              -- 電気代等合計 税抜
+         ,(xirh.tax_amt) * -1                        AS  tax_amt                   -- 消費税
+         ,(xirh.transfer_fee) * -1                   AS  transfer_fee              -- 振込手数料 税込
+         ,(xirh.payment_amt) * -1                    AS  payment_amt               -- お支払金額 税込
+         ,'"'||SUBSTR(gv_remarks_fb_deb,1,500)||'"'  AS  remarks                   -- おもて備考
+         ,xirh.bank_code                             AS  bank_code                 -- 銀行コード
+         ,xirh.bank_name                             AS  bank_name                 -- 銀行名
+         ,xirh.branch_code                           AS  branch_code               -- 支店コード
+         ,xirh.branch_name                           AS  branch_name               -- 支店名
+         ,xirh.bank_holder_name_alt                  AS  bank_holder_name_alt      -- 口座名
+         ,xirh.tax_div                               AS  tax_div                   -- 税区分
+         ,xirh.target_div                            AS  target_div                -- 対象区分
+         ,cn_created_by                              AS  created_by                -- 作成者
+         ,SYSDATE                                    AS  creation_date             -- 作成日
+         ,cn_last_updated_by                         AS  last_updated_by           -- 最終更新者
+         ,SYSDATE                                    AS  last_update_date          -- 最終更新日
+         ,cn_last_update_login                       AS  last_update_login         -- 最終更新ログイン
+         ,cn_request_id                              AS  request_id                -- 要求ID
+         ,cn_program_application_id                  AS  program_application_id    -- コンカレント・プログラム・アプリケーションID
+         ,cn_program_id                              AS  program_id                -- コンカレント・プログラムID
+         ,SYSDATE                                    AS  program_update_date       -- プログラム更新日
+         ,xirh.bm_payment_kbn                        AS  bm_payment_kbn            -- BM支払区分
+         ,xirh.tax_calc_kbn                          AS  tax_calc_kbn              -- 税計算区分
+         ,xirh.bm_tax_kbn                            AS  bm_tax_kbn                -- BM税区分
+         ,xirh.bank_charge_bearer                    AS  bank_charge_bearer        -- 振込手数料負担者
+         ,(xirh.sales_fee_no_tax) * -1               AS  sales_fee_no_tax          -- 販売手数料（税抜）
+         ,(xirh.sales_fee_tax) * -1                  AS  sales_fee_tax             -- 販売手数料（消費税）
+         ,(xirh.sales_fee_with_tax) * -1             AS  sales_fee_with_tax        -- 販売手数料（税込）
+         ,(xirh.electric_amt_no_tax) * -1            AS  electric_amt_no_tax       -- 電気代等（税抜）
+         ,(xirh.electric_amt_tax) * -1               AS  electric_amt_tax          -- 電気代等（消費税）
+         ,(xirh.electric_amt_with_tax) * -1          AS  electric_amt_with_tax     -- 電気代等（税込）
+         ,(xirh.recalc_total_fee_no_tax) * -1        AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+         ,(xirh.recalc_total_fee_tax) * -1           AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+         ,(xirh.recalc_total_fee_with_tax) * -1      AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+         ,(xirh.bank_trans_fee_no_tax) * -1          AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+         ,(xirh.bank_trans_fee_tax) * -1             AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+         ,(xirh.bank_trans_fee_with_tax) * -1        AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+         ,xirh.vendor_invoice_regnum                 AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.3 Add Start
+         ,xirh.display_code                          AS  display_code              -- 表示コード
+         ,xirh.company_code_bd                       AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
+      FROM   xxcok_info_rev_header    xirh  -- 元黒
+      WHERE  xirh.rowid = l_ins_no_diff_header_rec.row_id
+      ;
+--
+      -- ===============================================
+      -- ヘッダー情報登録(差分なしの新黒)
+      -- ===============================================
+      INSERT INTO xxcok_info_rev_header(
+        snapshot_create_ym        -- スナップショット作成年月
+       ,snapshot_timing           -- スナップショットタイミング
+       ,rev                       -- REV
+       ,check_result              -- 妥当性チェック結果
+       ,row_id                    -- 元テーブルレコードID
+       ,edi_interface_date        -- 連携日（EDI支払案内書）
+       ,vendor_code               -- 送付先コード
+       ,set_code                  -- 通知書書式設定コード
+       ,cust_code                 -- 顧客コード
+       ,cust_name                 -- 会社名
+       ,dest_post_code            -- 郵便番号
+       ,dest_address1             -- 住所
+       ,dest_tel                  -- 電話番号
+       ,fax                       -- FAX番号
+       ,dept_name                 -- 部署名
+       ,send_post_code            -- 郵便番号（送付元）
+       ,send_address1             -- 住所（送付元）
+       ,send_tel                  -- 電話番号（送付元）
+       ,num                       -- 番号
+       ,payment_date              -- 支払日
+       ,closing_date              -- 締め日
+       ,closing_date_min          -- 最小締め日
+       ,notifi_amt                -- おもての通知金額
+       ,total_amt_no_tax_10       -- 10%合計金額（税抜）
+       ,tax_amt_10                -- 10%消費税額
+       ,total_amt_10              -- 10%合計金額（税込）
+       ,total_amt_no_tax_8        -- 軽減8%合計金額（税抜）
+       ,tax_amt_8                 -- 軽減8%消費税額
+       ,total_amt_8               -- 軽減8%合計金額（税込）
+       ,total_amt_no_tax_0        -- 非課税合計金額（税抜）
+       ,tax_amt_0                 -- 非課税消費税額
+       ,total_amt_0               -- 非課税合計金額（税込）
+       ,total_sales_qty           -- 販売本数合計
+       ,total_sales_amt           -- 販売金額合計
+       ,sales_fee                 -- 販売手数料
+       ,electric_amt              -- 電気代等合計　税抜
+       ,tax_amt                   -- 消費税
+       ,transfer_fee              -- 振込手数料　税込
+       ,payment_amt               -- お支払金額　税込
+       ,remarks                   -- おもて備考
+       ,bank_code                 -- 銀行コード
+       ,bank_name                 -- 銀行名
+       ,branch_code               -- 支店コード
+       ,branch_name               -- 支店名
+       ,bank_holder_name_alt      -- 口座名
+       ,tax_div                   -- 税区分
+       ,target_div                -- 対象区分
+       ,created_by                -- 作成者
+       ,creation_date             -- 作成日
+       ,last_updated_by           -- 最終更新者
+       ,last_update_date          -- 最終更新日
+       ,last_update_login         -- 最終更新ログイン
+       ,request_id                -- 要求ID
+       ,program_application_id    -- コンカレント・プログラム・アプリケーションID
+       ,program_id                -- コンカレント・プログラムID
+       ,program_update_date       -- プログラム更新日
+       ,bm_payment_kbn            -- BM支払区分
+       ,tax_calc_kbn              -- 税計算区分
+       ,bm_tax_kbn                -- BM税区分
+       ,bank_charge_bearer        -- 振込手数料負担者
+       ,sales_fee_no_tax          -- 販売手数料（税抜）
+       ,sales_fee_tax             -- 販売手数料（消費税）
+       ,sales_fee_with_tax        -- 販売手数料（税込）
+       ,electric_amt_no_tax       -- 電気代等（税抜）
+       ,electric_amt_tax          -- 電気代等（消費税）
+       ,electric_amt_with_tax     -- 電気代等（税込）
+       ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+       ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+       ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+       ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+       ,bank_trans_fee_tax        -- 振込手数料（消費税）
+       ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+       ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.3 Add Start
+       ,display_code              -- 表示コード
+       ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
+      )
+      SELECT
+          xirh.snapshot_create_ym                         AS  snapshot_create_ym        -- スナップショット作成年月
+         ,iv_proc_div                                     AS  snapshot_timing           -- スナップショットタイミング
+         ,'3'                                             AS  rev                       -- REV（3:新黒（FB）)
+         ,'1'                                             AS  check_result              -- 妥当性チェック結果（1:対象外）
+         ,NULL                                            AS  row_id                    -- 元テーブルレコードID
+         ,NULL                                            AS  edi_interface_date        -- 連携日（EDI支払案内書）
+         ,xirh.vendor_code                                AS  vendor_code               -- 送付先コード
+         ,xirh.set_code                                   AS  set_code                  -- 通知書書式設定コード
+         ,xirh.cust_code                                  AS  cust_code                 -- 顧客コード
+         ,xirh.cust_name                                  AS  cust_name                 -- 会社名
+         ,xirh.dest_post_code                             AS  dest_post_code            -- 郵便番号
+         ,xirh.dest_address1                              AS  dest_address1             -- 住所
+         ,xirh.dest_tel                                   AS  dest_tel                  -- 電話番号
+         ,xirh.fax                                        AS  fax                       -- FAX番号
+         ,xirh.dept_name                                  AS  dept_name                 -- 部署名
+         ,xirh.send_post_code                             AS  send_post_code            -- 郵便番号（送付元）
+         ,xirh.send_address1                              AS  send_address1             -- 住所（送付元）
+         ,xirh.send_tel                                   AS  send_tel                  -- 電話番号（送付元）
+         ,xirh.num                                        AS  num                       -- 番号
+         ,xirh.payment_date                               AS  payment_date              -- 支払日
+         ,xirh.closing_date                               AS  closing_date              -- 締め日
+         ,xirh.closing_date_min                           AS  closing_date_min          -- 最小締め日
+         ,xirh.notifi_amt                                 AS  notifi_amt                -- おもての通知金額
+         ,xirh.total_amt_no_tax_10                        AS  total_amt_no_tax_10       -- 10%合計金額（税抜）
+         ,xirh.tax_amt_10                                 AS  tax_amt_10                -- 10%消費税額
+         ,xirh.total_amt_10                               AS  total_amt_10              -- 10%合計金額（税込）
+         ,xirh.total_amt_no_tax_8                         AS  total_amt_no_tax_8        -- 軽減8%合計金額（税抜）
+         ,xirh.tax_amt_8                                  AS  tax_amt_8                 -- 軽減8%消費税額
+         ,xirh.total_amt_8                                AS  total_amt_8               -- 軽減8%合計金額（税込）
+         ,xirh.total_amt_no_tax_0                         AS  total_amt_no_tax_0        -- 非課税合計金額（税抜）
+         ,xirh.tax_amt_0                                  AS  tax_amt_0                 -- 非課税消費税額
+         ,xirh.total_amt_0                                AS  total_amt_0               -- 非課税合計金額（税込）
+         ,xirh.total_sales_qty                            AS  total_sales_qty           -- 販売本数合計
+         ,xirh.total_sales_amt                            AS  total_sales_amt           -- 販売金額合計
+         ,xirh.sales_fee                                  AS  sales_fee                 -- 販売手数料
+         ,xirh.electric_amt                               AS  electric_amt              -- 電気代等合計 税抜
+         ,xirh.tax_amt                                    AS  tax_amt                   -- 消費税
+         ,xirh.transfer_fee                               AS  transfer_fee              -- 振込手数料 税込
+         ,xirh.payment_amt                                AS  payment_amt               -- お支払金額 税込
+         ,'"'||SUBSTR(gv_remarks_new_cre,1,500)||'"'      AS  remarks                   -- おもて備考
+         ,xirh.bank_code                                  AS  bank_code                 -- 銀行コード
+         ,xirh.bank_name                                  AS  bank_name                 -- 銀行名
+         ,xirh.branch_code                                AS  branch_code               -- 支店コード
+         ,xirh.branch_name                                AS  branch_name               -- 支店名
+         ,xirh.bank_holder_name_alt                       AS  bank_holder_name_alt      -- 口座名
+         ,xirh.tax_div                                    AS  tax_div                   -- 税区分
+         ,xirh.target_div                                 AS  target_div                -- 対象区分
+         ,cn_created_by                                   AS  created_by                -- 作成者
+         ,SYSDATE                                         AS  creation_date             -- 作成日
+         ,cn_last_updated_by                              AS  last_updated_by           -- 最終更新者
+         ,SYSDATE                                         AS  last_update_date          -- 最終更新日
+         ,cn_last_update_login                            AS  last_update_login         -- 最終更新ログイン
+         ,cn_request_id                                   AS  request_id                -- 要求ID
+         ,cn_program_application_id                       AS  program_application_id    -- コンカレント・プログラム・アプリケーションID
+         ,cn_program_id                                   AS  program_id                -- コンカレント・プログラムID
+         ,SYSDATE                                         AS  program_update_date       -- プログラム更新日
+         ,l_ins_no_diff_header_rec.bm_payment_kbn         AS  bm_payment_kbn            -- BM支払区分
+         ,xirh.tax_calc_kbn                               AS  tax_calc_kbn              -- 税計算区分
+         ,xirh.bm_tax_kbn                                 AS  bm_tax_kbn                -- BM税区分
+         ,xirh.bank_charge_bearer                         AS  bank_charge_bearer        -- 振込手数料負担者
+         ,xirh.sales_fee_no_tax                           AS  sales_fee_no_tax          -- 販売手数料（税抜）
+         ,xirh.sales_fee_tax                              AS  sales_fee_tax             -- 販売手数料（消費税）
+         ,xirh.sales_fee_with_tax                         AS  sales_fee_with_tax        -- 販売手数料（税込）
+         ,xirh.electric_amt_no_tax                        AS  electric_amt_no_tax       -- 電気代等（税抜）
+         ,xirh.electric_amt_tax                           AS  electric_amt_tax          -- 電気代等（消費税）
+         ,xirh.electric_amt_with_tax                      AS  electric_amt_with_tax     -- 電気代等（税込）
+         ,xirh.recalc_total_fee_no_tax                    AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+         ,xirh.recalc_total_fee_tax                       AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+         ,xirh.recalc_total_fee_with_tax                  AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+         ,xirh.bank_trans_fee_no_tax                      AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+         ,xirh.bank_trans_fee_tax                         AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+         ,xirh.bank_trans_fee_with_tax                    AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+         ,l_ins_no_diff_header_rec.vendor_invoice_regnum  AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.3 Add Start
+         ,xirh.display_code                               AS  display_code              -- 表示コード
+         ,xirh.company_code_bd                            AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
+      FROM   xxcok_info_rev_header    xirh  -- 元黒
+      WHERE  xirh.rowid = l_ins_no_diff_header_rec.row_id
+      ;
+--
+    END LOOP ins_no_diff_header_loop;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END ins_no_diff_header;
+-- Ver.1.2 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : ins_debit_fb
@@ -362,9 +799,19 @@ AS
        ,closing_date            -- 締め日
        ,closing_date_min        -- 最小締め日
        ,notifi_amt              -- おもての通知金額
+-- Ver.1.2 ADD START
+       ,total_amt_no_tax_10     -- 10%合計金額（税抜）
+       ,tax_amt_10              -- 10%消費税額
+       ,total_amt_10            -- 10%合計金額（税込）
+-- Ver.1.2 ADD END
        ,total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
        ,tax_amt_8               -- 軽減8%消費税額
        ,total_amt_8             -- 軽減8%合計金額（税込）
+-- Ver.1.2 ADD START
+       ,total_amt_no_tax_0      -- 非課税合計金額（税抜）
+       ,tax_amt_0               -- 非課税消費税額
+       ,total_amt_0             -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
        ,total_sales_qty         -- 販売本数合計
        ,total_sales_amt         -- 販売金額合計
        ,sales_fee               -- 販売手数料
@@ -389,13 +836,44 @@ AS
        ,program_application_id  -- コンカレント・プログラム・アプリケーションID
        ,program_id              -- コンカレント・プログラムID
        ,program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+       ,bm_payment_kbn            -- BM支払区分
+       ,tax_calc_kbn              -- 税計算区分
+       ,bm_tax_kbn                -- BM税区分
+       ,bank_charge_bearer        -- 振込手数料負担者
+       ,sales_fee_no_tax          -- 販売手数料（税抜）
+       ,sales_fee_tax             -- 販売手数料（消費税）
+       ,sales_fee_with_tax        -- 販売手数料（税込）
+       ,electric_amt_no_tax       -- 電気代等（税抜）
+       ,electric_amt_tax          -- 電気代等（消費税）
+       ,electric_amt_with_tax     -- 電気代等（税込）
+       ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+       ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+       ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+       ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+       ,bank_trans_fee_tax        -- 振込手数料（消費税）
+       ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+       ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+       ,display_code              -- 表示コード
+       ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
       )
       SELECT
           /*+ INDEX(xirh xxcok_info_rev_head_n03) */
           xirh.snapshot_create_ym                    AS  snapshot_create_ym      -- スナップショット作成年月
          ,iv_proc_div                                AS  snapshot_timing         -- スナップショットタイミング
          ,'2'                                        AS  rev                     -- REV（2:赤（FB）)
-         ,'0'                                        AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD START
+--         ,'0'                                        AS  check_result            -- 妥当性チェック結果
+         ,CASE
+            WHEN xirh.bm_payment_kbn = '1' THEN  -- BM支払区分(2営)が本振(案内書あり)の場合
+              '0'  -- 対象
+            ELSE
+              '1'  -- 対象外
+          END                                        AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
          ,NULL                                       AS  row_id                  -- 元テーブルレコードID
          ,NULL                                       AS  edi_interface_date      -- 連携日（EDI支払案内書）
          ,xirh.vendor_code                           AS  vendor_code             -- 送付先コード
@@ -415,9 +893,19 @@ AS
          ,xirh.closing_date                          AS  closing_date            -- 締め日
          ,xirh.closing_date_min                      AS  closing_date_min        -- 最小締め日
          ,(xirh.notifi_amt) * -1                     AS  notifi_amt              -- おもての通知金額
+-- Ver.1.2 ADD START
+         ,(xirh.total_amt_no_tax_10) * -1            AS  total_amt_no_tax_10     -- 10%合計金額（税抜）
+         ,(xirh.tax_amt_10) * -1                     AS  tax_amt_10              -- 10%消費税額
+         ,(xirh.total_amt_10) * -1                   AS  total_amt_10            -- 10%合計金額（税込）
+-- Ver.1.2 ADD END
          ,(xirh.total_amt_no_tax_8) * -1             AS  total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
          ,(xirh.tax_amt_8) * -1                      AS  tax_amt_8               -- 軽減8%消費税額
          ,(xirh.total_amt_8) * -1                    AS  total_amt_8             -- 軽減8%合計金額（税込）
+-- Ver.1.2 ADD START
+         ,(xirh.total_amt_no_tax_0) * -1             AS  total_amt_no_tax_0      -- 非課税合計金額（税抜）
+         ,(xirh.tax_amt_0) * -1                      AS  tax_amt_0               -- 非課税消費税額
+         ,(xirh.total_amt_0) * -1                    AS  total_amt_0             -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
          ,(xirh.total_sales_qty) * -1                AS  total_sales_qty         -- 販売本数合計
          ,(xirh.total_sales_amt) * -1                AS  total_sales_amt         -- 販売金額合計
          ,(xirh.sales_fee) * -1                      AS  sales_fee               -- 販売手数料
@@ -442,6 +930,29 @@ AS
          ,cn_program_application_id                  AS  program_application_id  -- コンカレント・プログラム・アプリケーションID
          ,cn_program_id                              AS  program_id              -- コンカレント・プログラムID
          ,SYSDATE                                    AS  program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+         ,xirh.bm_payment_kbn                        AS  bm_payment_kbn            -- BM支払区分
+         ,xirh.tax_calc_kbn                          AS  tax_calc_kbn              -- 税計算区分
+         ,xirh.bm_tax_kbn                            AS  bm_tax_kbn                -- BM税区分
+         ,xirh.bank_charge_bearer                    AS  bank_charge_bearer        -- 振込手数料負担者
+         ,(xirh.sales_fee_no_tax) * -1               AS  sales_fee_no_tax          -- 販売手数料（税抜）
+         ,(xirh.sales_fee_tax) * -1                  AS  sales_fee_tax             -- 販売手数料（消費税）
+         ,(xirh.sales_fee_with_tax) * -1             AS  sales_fee_with_tax        -- 販売手数料（税込）
+         ,(xirh.electric_amt_no_tax) * -1            AS  electric_amt_no_tax       -- 電気代等（税抜）
+         ,(xirh.electric_amt_tax) * -1               AS  electric_amt_tax          -- 電気代等（消費税）
+         ,(xirh.electric_amt_with_tax) * -1          AS  electric_amt_with_tax     -- 電気代等（税込）
+         ,(xirh.recalc_total_fee_no_tax) * -1        AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+         ,(xirh.recalc_total_fee_tax) * -1           AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+         ,(xirh.recalc_total_fee_with_tax) * -1      AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+         ,(xirh.bank_trans_fee_no_tax) * -1          AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+         ,(xirh.bank_trans_fee_tax) * -1             AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+         ,(xirh.bank_trans_fee_with_tax) * -1        AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+         ,xirh.vendor_invoice_regnum                 AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+         ,xirh.display_code                          AS  display_code              -- 表示コード
+         ,xirh.company_code_bd                       AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
       FROM   xxcok_info_rev_header    xirh  -- 元黒
       WHERE  xirh.snapshot_create_ym                = gv_process_ym
       AND    xirh.snapshot_timing                   = '1' -- 2営
@@ -499,7 +1010,10 @@ AS
         xirc.snapshot_create_ym                 AS  snapshot_create_ym      -- スナップショット作成年月
        ,iv_proc_div                             AS  snapshot_timing         -- スナップショットタイミング
        ,'2'                                     AS  rev                     -- REV（2:赤（FB）)
-       ,'0'                                     AS  check_result            -- 妥当性チェック結果（0:対象）
+-- Ver.1.2 MOD START
+--       ,'0'                                     AS  check_result            -- 妥当性チェック結果（0:対象）
+       ,xirh.check_result                       AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
        ,NULL                                    AS  row_id                  -- 元テーブルレコードID
        ,NULL                                    AS  edi_interface_date      -- 連携日（EDI支払案内書）
        ,xirc.vendor_code                        AS  vendor_code             -- 送付先コード
@@ -536,7 +1050,9 @@ AS
     WHERE  xirh.snapshot_create_ym                 = gv_process_ym
     AND    xirh.snapshot_timing                    = '2' -- FB
     AND    xirh.rev                                = '2' -- 赤（FB）
-    AND    xirh.check_result                       = '0' -- 対象
+-- Ver.1.2 DEL START
+--    AND    xirh.check_result                       = '0' -- 対象
+-- Ver.1.2 DEL END
     AND    xirh.vendor_code                        = xirc.vendor_code
     AND    xirh.snapshot_create_ym                 = xirc.snapshot_create_ym
     AND    xirc.snapshot_timing                    = '1' -- 2営
@@ -575,6 +1091,21 @@ AS
     lv_errbuf       VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
     lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
     lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+-- Ver.1.2 ADD START
+    ln_recalc_total_fee_no_tax      NUMBER  DEFAULT 0;    -- 再計算済手数料計（税抜）
+    ln_recalc_total_fee_tax         NUMBER  DEFAULT 0;    -- 再計算済手数料計（消費税）
+    ln_recalc_total_fee_with_tax    NUMBER  DEFAULT 0;    -- 再計算済手数料計（税込）
+    ln_bank_trans_fee_no_tax        NUMBER  DEFAULT 0;    -- 振込手数料（税抜）
+    ln_bank_trans_fee_tax           NUMBER  DEFAULT 0;    -- 振込手数料（消費税）
+    ln_bank_trans_fee_with_tax      NUMBER  DEFAULT 0;    -- 振込手数料（税込）
+    ln_total_amt_no_tax_10          NUMBER  DEFAULT 0;    -- 10%合計金額（税抜）
+    ln_tax_amt_10                   NUMBER  DEFAULT 0;    -- 10%消費税額
+    ln_total_amt_10                 NUMBER  DEFAULT 0;    -- 10%合計金額（税込）
+    ln_total_amt_no_tax_0           NUMBER  DEFAULT 0;    -- 非課税合計金額（税抜）
+    ln_tax_amt_0                    NUMBER  DEFAULT 0;    -- 非課税消費税額
+    ln_total_amt_0                  NUMBER  DEFAULT 0;    -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
+--
     -- ===============================================
     -- ローカルカーソル
     -- ===============================================
@@ -599,6 +1130,26 @@ AS
 ----
 --    l_check_ex_rec    l_check_ex_cur%ROWTYPE;
 -- Els Ver1.1 K.Kanada E
+--
+-- Ver.1.2 ADD START
+    CURSOR l_update_xirh_cur
+    IS
+      SELECT xirh.rowid                      AS  row_id                     -- ROWID
+            ,xirh.bm_payment_kbn             AS  bm_payment_kbn             -- BM支払区分
+            ,xirh.tax_calc_kbn               AS  tax_calc_kbn               -- 税計算区分
+            ,xirh.bm_tax_kbn                 AS  bm_tax_kbn                 -- BM税区分
+            ,xirh.bank_charge_bearer         AS  bank_charge_bearer         -- 振込手数料負担者
+            ,xirh.recalc_total_fee_no_tax    AS  recalc_total_fee_no_tax    -- 再計算済手数料計（税抜）
+            ,xirh.recalc_total_fee_tax       AS  recalc_total_fee_tax       -- 再計算済手数料計（消費税）
+            ,xirh.recalc_total_fee_with_tax  AS  recalc_total_fee_with_tax  -- 再計算済手数料計（税込）
+      FROM   xxcok_info_rev_header xirh    -- インフォマート用赤黒（ヘッダー）
+      WHERE  xirh.snapshot_create_ym = gv_process_ym
+      AND    xirh.snapshot_timing    = iv_proc_div
+      AND    xirh.rev                = '3' -- 新黒（FB）
+      AND    xirh.request_id         = cn_request_id
+   ;
+-- Ver.1.2 ADD END
+--
     -- ===============================================
     -- ローカル例外
     -- ===============================================
@@ -663,6 +1214,29 @@ AS
      ,program_application_id  -- コンカレント・プログラム・アプリケーションID
      ,program_id              -- コンカレント・プログラムID
      ,program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+     ,bm_payment_kbn            -- BM支払区分
+     ,tax_calc_kbn              -- 税計算区分
+     ,bm_tax_kbn                -- BM税区分
+     ,bank_charge_bearer        -- 振込手数料負担者
+     ,sales_fee_no_tax          -- 販売手数料（税抜）
+     ,sales_fee_tax             -- 販売手数料（消費税）
+     ,sales_fee_with_tax        -- 販売手数料（税込）
+     ,electric_amt_no_tax       -- 電気代等（税抜）
+     ,electric_amt_tax          -- 電気代等（消費税）
+     ,electric_amt_with_tax     -- 電気代等（税込）
+     ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+     ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+     ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+     ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+     ,bank_trans_fee_tax        -- 振込手数料（消費税）
+     ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+     ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+     ,display_code              -- 表示コード
+     ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
     )
 -- Mod Ver1.1 K.Kanada S
 --    SELECT  /*+ leading(xirh xbbs xirc sum_t sum_ne sum_e) use_nl(xbbs) use_nl(sum_t) use_nl(sum_ne) use_nl(sum_e) */
@@ -673,19 +1247,42 @@ AS
            ,iv_proc_div                           AS  snapshot_timing
 -- Mod Ver1.1 K.Kanada E
            ,'3'                                   AS  rev
-           ,'0'                                   AS  check_result
+-- Ver.1.2 MOD START
+--           ,'0'                                   AS  check_result
+           ,CASE
+              WHEN MAX(xirh.bm_payment_kbn) = '1' THEN  -- BM支払区分(2営)が本振(案内書あり)の場合
+                '0'  -- 対象
+              ELSE
+                '1'  -- 対象外
+            END                                   AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
            ,NULL                                  AS  row_id
            ,NULL                                  AS  edi_interface_date
-           ,CASE
-              WHEN xirh.tax_div = '1' AND NVL(sum_e.sales_fee,0) = 0
-              THEN '0'
-              WHEN xirh.tax_div = '1' AND NVL(sum_e.sales_fee,0) <> 0
-              THEN '1'
-              WHEN xirh.tax_div = '2' AND NVL(sum_e.sales_fee,0) = 0
-              THEN '2'
-              WHEN xirh.tax_div = '2' AND NVL(sum_e.sales_fee,0) <> 0
-              THEN '3'
-            END                                   AS  set_code                -- 通知書書式設定コード
+-- Ver.1.3 Mod Start
+--           ,CASE
+--              WHEN xirh.tax_div = '1' AND NVL(sum_e.sales_fee,0) = 0
+--              THEN '0'
+--              WHEN xirh.tax_div = '1' AND NVL(sum_e.sales_fee,0) <> 0
+--              THEN '1'
+--              WHEN xirh.tax_div = '2' AND NVL(sum_e.sales_fee,0) = 0
+--              THEN '2'
+--              WHEN xirh.tax_div = '2' AND NVL(sum_e.sales_fee,0) <> 0
+--              THEN '3'
+--            END                                   AS  set_code                -- 通知書書式設定コード
+           ,( SELECT flv.lookup_code        AS set_code
+              FROM   fnd_lookup_values flv
+              WHERE  flv.lookup_type        = cv_xxcok1_set_code
+              AND    flv.language           = 'JA'
+              AND    flv.attribute1         = xirh.tax_div
+              AND    flv.attribute2         = xbdciv.company_code_bd
+              AND    flv.attribute3         = CASE
+                                                WHEN NVL(sum_e.sales_fee,0) = 0
+                                                THEN '0'
+                                                WHEN NVL(sum_e.sales_fee,0) <> 0
+                                                THEN '1'
+                                              END
+            )                                     AS  set_code                -- 通知書書式設定コード
+-- Ver.1.3 Mod End
            ,NULL                                  AS  cust_code               -- 顧客コード
            ,xirh.cust_name                        AS  cust_name               -- 会社名
            ,xirh.dest_post_code                   AS  dest_post_code          -- 郵便番号
@@ -772,39 +1369,42 @@ AS
                     ,xbbs.snapshot_timing
                     ,xbbs.supplier_code
               )                                   AS  closing_date_min        -- 最小締め日
-           ,CASE
-              -- 外税
-              WHEN xirh.tax_div = '1'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       + NVL(sum_t.tax_amt,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-              --内税
-              WHEN xirh.tax_div = '2'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-            END                                   AS  notifi_amt              -- おもての通知金額
+-- Ver.1.2 MOD START
+--           ,CASE
+--              -- 外税
+--              WHEN xirh.tax_div = '1'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       + NVL(sum_t.tax_amt,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--              --内税
+--              WHEN xirh.tax_div = '2'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--            END                                   AS  notifi_amt              -- おもての通知金額
+           ,NULL                                  AS  notifi_amt              -- おもての通知金額
+-- Ver.1.2 MOD END
 -- Mod Ver1.1 K.Kanada E
            ,NVL(sum_t.sales_amt,0)                AS  total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
            ,NVL(sum_t.sales_tax_amt,0) - NVL(sum_t.sales_amt,0)
@@ -871,61 +1471,67 @@ AS
 --                         END
 --                      , 0)
 --            END                                   AS  payment_amt             -- お支払金額 税込
-           ,CASE
-              WHEN pvsa.bank_charge_bearer = 'I'
-              THEN 0
-              -- 外税
-              WHEN xirh.tax_div = '1'
-                  AND pvsa.bank_charge_bearer <> 'I'
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
-              THEN gn_tax_include_less
-              WHEN    xirh.tax_div = '1'
-                  AND pvsa.bank_charge_bearer <> 'I' 
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
-              THEN gn_tax_include_more
-              --内税
-              WHEN    xirh.tax_div = '2'
-                  AND pvsa.bank_charge_bearer <> 'I'
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
-              THEN gn_tax_include_less
-              WHEN    xirh.tax_div = '2'
-                  AND pvsa.bank_charge_bearer <> 'I'
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
-              THEN gn_tax_include_more
-            END * -1                              AS  transfer_fee            -- 振込手数料 税込
-           ,CASE
-              -- 外税
-              WHEN xirh.tax_div = '1'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       + NVL(sum_t.tax_amt,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-              --内税
-              WHEN xirh.tax_div = '2'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-            END                                   AS  payment_amt             -- お支払金額 税込
+-- Ver.1.2 MOD START
+--           ,CASE
+--              WHEN pvsa.bank_charge_bearer = 'I'
+--              THEN 0
+--              -- 外税
+--              WHEN xirh.tax_div = '1'
+--                  AND pvsa.bank_charge_bearer <> 'I'
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
+--              THEN gn_tax_include_less
+--              WHEN    xirh.tax_div = '1'
+--                  AND pvsa.bank_charge_bearer <> 'I' 
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
+--              THEN gn_tax_include_more
+--              --内税
+--              WHEN    xirh.tax_div = '2'
+--                  AND pvsa.bank_charge_bearer <> 'I'
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
+--              THEN gn_tax_include_less
+--              WHEN    xirh.tax_div = '2'
+--                  AND pvsa.bank_charge_bearer <> 'I'
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
+--              THEN gn_tax_include_more
+--            END * -1                              AS  transfer_fee            -- 振込手数料 税込
+           ,NULL                                  AS  transfer_fee            -- 振込手数料 税込
+-- Ver.1.2 MOD END
+-- Ver.1.2 MOD START
+--           ,CASE
+--              -- 外税
+--              WHEN xirh.tax_div = '1'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       + NVL(sum_t.tax_amt,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--              --内税
+--              WHEN xirh.tax_div = '2'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--            END                                   AS  payment_amt             -- お支払金額 税込
+           ,NULL                                  AS  payment_amt             -- お支払金額 税込
+-- Ver.1.2 MOD END
 -- Mod Ver1.1 K.Kanada E
            ,SUBSTR( '"' || gv_remarks_new_cre || '"', 1, 500 )
                                                   AS  remarks                 -- おもて備考
@@ -945,6 +1551,38 @@ AS
            ,cn_program_application_id             AS  program_application_id  -- コンカレント・プログラム・ア
            ,cn_program_id                         AS  program_id              -- コンカレント・プログラムID
            ,SYSDATE                               AS  program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+           ,MAX(pvsa.attribute4)                  AS  bm_payment_kbn            -- BM支払区分
+           ,MAX(xirh.tax_calc_kbn)                AS  tax_calc_kbn              -- 税計算区分 （※2営）
+           ,MAX(xirh.bm_tax_kbn)                  AS  bm_tax_kbn                -- BM税区分   （※2営）
+           ,pvsa.bank_charge_bearer               AS  bank_charge_bearer        -- 振込手数料負担者
+           ,NVL(sum_ne.sales_fee_no_tax,0)        AS  sales_fee_no_tax          -- 販売手数料（税抜）
+           ,NVL(sum_ne.sales_fee_tax,0)           AS  sales_fee_tax             -- 販売手数料（消費税）
+           ,NVL(sum_ne.sales_fee_with_tax,0)      AS  sales_fee_with_tax        -- 販売手数料（税込）
+           ,NVL(sum_e.electric_amt_no_tax,0)      AS  electric_amt_no_tax       -- 電気代等（税抜）
+           ,NVL(sum_e.electric_amt_tax,0)         AS  electric_amt_tax          -- 電気代等（消費税）
+           ,NVL(sum_e.electric_amt_with_tax,0)    AS  electric_amt_with_tax     -- 電気代等（税込）
+           ,NVL(sum_ne.sales_fee_no_tax,0) + 
+              NVL(sum_e.electric_amt_no_tax,0)    AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+           ,NVL(sum_ne.sales_fee_tax,0) + 
+             NVL(sum_e.electric_amt_tax,0)        AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+           ,NVL(sum_ne.sales_fee_with_tax,0) + 
+             NVL(sum_e.electric_amt_with_tax,0)   AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+           ,NULL                                  AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+           ,NULL                                  AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+           ,NULL                                  AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+           ,(CASE
+               WHEN (MAX(pvsa.attribute8) IS NOT NULL AND MAX(pvsa.attribute9) IS NOT NULL) THEN
+                 -- 適格請求書発行事業者登録 ＋ 課税事業者番号
+                 MAX(pvsa.attribute8) || MAX(pvsa.attribute9)
+               ELSE
+                 NULL
+             END)                                 AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.8 Add Start
+           ,pvsa.attribute5                       AS  display_code
+           ,xbdciv.company_code_bd                AS  company_code_bd
+-- Ver.1.8 Add End
 -- Mod Ver1.1 K.Kanada S
 --    FROM    xxcok_bm_balance_snap     xbbs        -- 販手残高テーブルスナップショット
 --           ,xxcok_info_rev_header     xirh        -- インフォマート用赤黒（ヘッダー）
@@ -971,6 +1609,11 @@ AS
                       WHEN xirc.tax_div = '2'
                       THEN SUM(xirc.sales_tax_fee)
                     END                     AS  sales_fee
+-- Ver.1.2 ADD START
+                   ,SUM(xirc.sales_fee)     AS  sales_fee_no_tax    -- 販売手数料（税抜）
+                   ,SUM(xirc.tax_amt)       AS  sales_fee_tax       -- 販売手数料（消費税）
+                   ,SUM(xirc.sales_tax_fee) AS  sales_fee_with_tax  -- 販売手数料（税込）
+-- Ver.1.2 ADD END
                    ,xirc.vendor_code
                    ,xirc.tax_div
              FROM   xxcok_info_rev_custom  xirc
@@ -988,6 +1631,11 @@ AS
                       WHEN xirc.tax_div = '2'
                       THEN SUM(xirc.sales_tax_fee)
                     END                     AS  sales_fee
+-- Ver.1.2 ADD START
+                   ,SUM(xirc.sales_fee)     AS  electric_amt_no_tax    -- 電気代等（税抜）
+                   ,SUM(xirc.tax_amt)       AS  electric_amt_tax       -- 電気代等（消費税）
+                   ,SUM(xirc.sales_tax_fee) AS  electric_amt_with_tax  -- 電気代等（税込）
+-- Ver.1.2 ADD END
                    ,xirc.vendor_code
              FROM   xxcok_info_rev_custom  xirc
              WHERE  xirc.calc_sort = 5
@@ -998,6 +1646,9 @@ AS
              GROUP BY xirc.vendor_code
                      ,xirc.tax_div
             ) sum_e                               -- サマリ（電気代）
+-- Ver.1.3 Add Start
+           ,xxcfr_bd_dept_comp_info_v xbdciv       -- 基準日部門会社情報ビュー
+-- Ver.1.3 Add End
 -- Mod Ver1.1 K.Kanada S
 --    WHERE   xbbs.snapshot_create_ym                = gv_process_ym
 --    AND     xbbs.snapshot_timing                   = iv_proc_div
@@ -1038,6 +1689,13 @@ AS
     AND     xirh.snapshot_timing     = '1'  -- 2営
     AND     xirh.rev                 = '1'  -- 元黒（2営）
 -- Mod Ver1.1 K.Kanada E
+-- Ver.1.3 Add Start
+    AND     xbdciv.dept_code         = pvsa.attribute5          -- 仕入先サイトマスタ.問い合わせ担当拠点コード（DFF5）
+    AND     xbdciv.set_of_books_id   = gv_set_of_bks_id         -- 会計帳簿ID
+    AND     xbdciv.enabled_flag      = 'Y'
+    AND     gd_process_date BETWEEN xbdciv.comp_start_date 
+                                AND NVL( xbdciv.comp_end_date, gd_process_date )
+-- Ver.1.3 Add End
     GROUP BY
 -- Mod Ver1.1 K.Kanada S
 --            xbbs.supplier_code
@@ -1071,6 +1729,18 @@ AS
 --           ,xbbs.bank_charge_bearer
            ,pvsa.bank_charge_bearer
 -- Mod Ver1.1 K.Kanada S
+-- Ver.1.2 ADD START
+           ,sum_ne.sales_fee_no_tax
+           ,sum_ne.sales_fee_tax
+           ,sum_ne.sales_fee_with_tax
+           ,sum_e.electric_amt_no_tax
+           ,sum_e.electric_amt_tax
+           ,sum_e.electric_amt_with_tax
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+           ,pvsa.attribute5
+           ,xbdciv.company_code_bd
+-- Ver.1.3 Add End
     ;
 --
     -- 新黒データ作成件数カウント
@@ -1105,11 +1775,127 @@ AS
 --    END LOOP check_ex_loop;
 -- Els Ver1.1 K.Kanada E
 --
+-- Ver.1.2 ADD START
+    --==================================
+    -- インフォマート用赤黒ヘッダー更新
+    --==================================
+    -- 販売手数料計の再計算を行い、その結果をもとに振込手数料、支払金額を算出し、赤黒ヘッダーへ反映する
+    <<update_xirh_loop>>
+    FOR l_update_xirh_rec IN l_update_xirh_cur LOOP
+      --
+      -- 販売手数料計の再計算
+      -- ※再計算が不要な場合はINとOUTの各販売手数料計は同じ金額となる
+      xxcok_common_pkg.recalc_pay_amt_p(
+        ov_errbuf               =>  lv_errbuf
+      , ov_retcode              =>  lv_retcode
+      , ov_errmsg               =>  lv_errmsg
+      , iv_pay_kbn              =>  l_update_xirh_rec.bm_payment_kbn            -- BM支払区分
+      , iv_tax_calc_kbn         =>  NVL(l_update_xirh_rec.tax_calc_kbn
+                                       ,cv_tax_calc_kbn_line)                   -- 税計算区分
+      , iv_tax_kbn              =>  l_update_xirh_rec.bm_tax_kbn                -- BM税区分
+      , iv_tax_rounding_rule    =>  cv_tax_rounding_rule_down                   -- 端数処理区分：切捨て
+      , in_tax_rate             =>  gn_bm_tax                                   -- 税率
+      , in_pay_amt_no_tax       =>  l_update_xirh_rec.recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+      , in_pay_amt_tax          =>  l_update_xirh_rec.recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+      , in_pay_amt_with_tax     =>  l_update_xirh_rec.recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+      , on_pay_amt_no_tax       =>  ln_recalc_total_fee_no_tax                  -- [OUT]再計算済手数料計（税抜）
+      , on_pay_amt_tax          =>  ln_recalc_total_fee_tax                     -- [OUT]再計算済手数料計（消費税）
+      , on_pay_amt_with_tax     =>  ln_recalc_total_fee_with_tax                -- [OUT]再計算済手数料計（税込）
+      );
+      -- リターンコード確認
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
+      -- 振込手数料の算出
+      xxcok_common_pkg.calc_bank_trans_fee_p(
+        ov_errbuf                   => lv_errbuf
+      , ov_retcode                  => lv_retcode
+      , ov_errmsg                   => lv_errmsg
+      , in_bank_trans_amt           => ln_recalc_total_fee_with_tax             -- 再計算済手数料計（税込）
+      , in_base_amt                 => TO_NUMBER(gv_bank_fee_trans)             -- 基準額
+      , in_fee_less_base_amt        => TO_NUMBER(gv_bank_fee_less)              -- 基準額未満手数料
+      , in_fee_more_base_amt        => TO_NUMBER(gv_bank_fee_more)              -- 基準額以上手数料
+      , in_fee_tax_rate             => gn_bm_tax                                -- 手数料税率
+      , iv_bank_charge_bearer       => l_update_xirh_rec.bank_charge_bearer     -- 振込手数料負担者
+      , on_bank_trans_fee_no_tax    => ln_bank_trans_fee_no_tax                 -- [OUT]振込手数料（税抜）
+      , on_bank_trans_fee_tax       => ln_bank_trans_fee_tax                    -- [OUT]振込手数料（消費税）
+      , on_bank_trans_fee_with_tax  => ln_bank_trans_fee_with_tax               -- [OUT]振込手数料（税込）
+      );
+      -- リターンコード確認
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
+      -- 税率ごとの税抜、消費税、税込の金額を設定
+      IF (l_update_xirh_rec.bm_tax_kbn = '3') THEN
+        -- 税区分が非課税の場合
+        ln_total_amt_no_tax_10 := 0 - ln_bank_trans_fee_no_tax;
+        ln_tax_amt_10          := 0 - ln_bank_trans_fee_tax;
+        ln_total_amt_10        := 0 - ln_bank_trans_fee_with_tax;
+        ln_total_amt_no_tax_0  := ln_recalc_total_fee_no_tax;
+        ln_tax_amt_0           := ln_recalc_total_fee_tax;
+        ln_total_amt_0         := ln_recalc_total_fee_with_tax;
+      ELSE
+        -- 税区分が税込み、税抜きの場合
+        ln_total_amt_no_tax_10 := ln_recalc_total_fee_no_tax   - ln_bank_trans_fee_no_tax;
+        ln_tax_amt_10          := ln_recalc_total_fee_tax      - ln_bank_trans_fee_tax;
+        ln_total_amt_10        := ln_recalc_total_fee_with_tax - ln_bank_trans_fee_with_tax;
+        ln_total_amt_no_tax_0  := 0;
+        ln_tax_amt_0           := 0;
+        ln_total_amt_0         := 0;
+      END IF;
+      --
+      -- インフォマート用赤黒ヘッダー更新
+      UPDATE xxcok_info_rev_header xirh
+      SET    -- おもての通知金額
+             xirh.notifi_amt                =  ln_recalc_total_fee_with_tax - ln_bank_trans_fee_with_tax
+             -- 消費税
+            ,xirh.tax_amt                   =  ln_recalc_total_fee_tax
+             -- 振込手数料　税込
+            ,xirh.transfer_fee              =  ln_bank_trans_fee_with_tax * (-1)
+             -- お支払金額　税込
+            ,xirh.payment_amt               =  ln_recalc_total_fee_with_tax - ln_bank_trans_fee_with_tax
+             -- 10%合計金額（税抜）
+            ,xirh.total_amt_no_tax_10       =  ln_total_amt_no_tax_10
+             -- 10%消費税額
+            ,xirh.tax_amt_10                =  ln_tax_amt_10
+             -- 10%合計金額（税込）
+            ,xirh.total_amt_10              =  ln_total_amt_10
+             -- 非課税合計金額（税抜）
+            ,xirh.total_amt_no_tax_0        =  ln_total_amt_no_tax_0
+             -- 非課税消費税額
+            ,xirh.tax_amt_0                 =  ln_tax_amt_0
+             -- 非課税合計金額（税込）
+            ,xirh.total_amt_0               =  ln_total_amt_0
+             -- 再計算済手数料計（税抜）
+            ,xirh.recalc_total_fee_no_tax   =  ln_recalc_total_fee_no_tax
+             -- 再計算済手数料計（消費税）
+            ,xirh.recalc_total_fee_tax      =  ln_recalc_total_fee_tax
+             -- 再計算済手数料計（税込）
+            ,xirh.recalc_total_fee_with_tax =  ln_recalc_total_fee_with_tax
+             -- 振込手数料（税抜）
+            ,xirh.bank_trans_fee_no_tax     =  ln_bank_trans_fee_no_tax   * (-1)
+             -- 振込手数料（消費税）
+            ,xirh.bank_trans_fee_tax        =  ln_bank_trans_fee_tax      * (-1)
+             -- 振込手数料（税込）
+            ,xirh.bank_trans_fee_with_tax   =  ln_bank_trans_fee_with_tax * (-1)
+      WHERE  xirh.rowid = l_update_xirh_rec.row_id
+      ;
+    END LOOP update_xirh_loop;
+-- Ver.1.2 ADD END
+--
   EXCEPTION
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
+-- Ver.1.2 ADD START
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.2 ADD END
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -2025,7 +2811,10 @@ AS
     SELECT  xirc.snapshot_create_ym         AS  snapshot_create_ym      -- スナップショット作成年月
            ,xirc.snapshot_timing            AS  snapshot_timing         -- スナップショットタイミング
            ,'3'                             AS  rev                     -- REV（3:新黒（FB）)
-           ,'0'                             AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD START
+--           ,'0'                             AS  check_result            -- 妥当性チェック結果
+           ,MAX(xirc.check_result)          AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
            ,xirc.vendor_code                AS  vendor_code             -- 送付先コード
            ,xirc.cust_code                  AS  cust_code               -- 顧客コード
            ,xirc.inst_dest                  AS  inst_dest               -- 設置場所
@@ -2109,7 +2898,10 @@ AS
             xbbs_1.snapshot_create_ym            AS snapshot_create_ym     -- スナップショット作成年月
            ,xbbs_1.snapshot_timing               AS snapshot_timing        -- スナップショットタイミング
            ,'3'                                  AS rev                    -- REV（3:新黒（FB）)
-           ,'0'                                  AS check_result           -- 妥当性チェック結果
+-- Ver.1.2 MOD START
+--           ,'0'                                  AS check_result           -- 妥当性チェック結果
+           ,MAX(xbbs_1.check_result)             AS check_result           -- 妥当性チェック結果
+-- Ver.1.2 MOD END
            ,xbbs_1.supplier_code                 AS vendor_code            -- 送付先コード
            ,xseh.ship_to_customer_code           AS cust_code              -- 顧客コード
            ,SUBSTR( xbbs_1.cust_name, 1, 50)     AS inst_dest              -- 設置場所
@@ -2156,6 +2948,16 @@ AS
                           WHEN xbbs.bm_tax_kbn IN ('2','3')
                           THEN '1'
                      END                        AS tax_div
+-- Ver.1.2 ADD START
+                    ,(SELECT MAX(xirc2.check_result)
+                      FROM   xxcok_info_rev_custom    xirc2
+                      WHERE  xirc2.snapshot_create_ym  =  xbbs.snapshot_create_ym
+                      AND    xirc2.snapshot_timing     =  xbbs.snapshot_timing
+                      AND    xirc2.rev                 =  '3' -- 新黒（FB）
+                      AND    xirc2.vendor_code         =  xbbs.supplier_code
+                      AND    xirc2.request_id          =  cn_request_id
+                     )                          AS check_result
+-- Ver.1.2 ADD END
              FROM    xxcok_bm_balance_snap     xbbs   -- 販手残高テーブルスナップショット
                     ,xxcok_cond_bm_support     xcbs   -- 条件別販手販協テーブル
              WHERE   xbbs.snapshot_create_ym           =  gv_process_ym
@@ -2257,7 +3059,10 @@ AS
     SELECT  xirc.snapshot_create_ym         AS  snapshot_create_ym      -- スナップショット作成年月
            ,xirc.snapshot_timing            AS  snapshot_timing         -- スナップショットタイミング
            ,'3'                             AS  rev                     -- REV（3:新黒（FB）)
-           ,'0'                             AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD START
+--           ,'0'                             AS  check_result            -- 妥当性チェック結果
+           ,MAX(xirc.check_result)          AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
            ,xirc.vendor_code                AS  vendor_code             -- 送付先コード
            ,xirc.cust_code                  AS  cust_code               -- 顧客コード
            ,xirc.inst_dest                  AS  inst_dest               -- 設置場所
@@ -2479,7 +3284,10 @@ AS
     SELECT  xirc.snapshot_create_ym         AS  snapshot_create_ym      -- スナップショット作成年月
            ,xirc.snapshot_timing            AS  snapshot_timing         -- スナップショットタイミング
            ,'3'                             AS  rev                     -- REV（3:新黒（FB）)
-           ,'0'                             AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD START
+--           ,'0'                             AS  check_result            -- 妥当性チェック結果
+           ,MAX(xirc.check_result)          AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
            ,xirc.vendor_code                AS  vendor_code             -- 送付先コード
            ,xirc.cust_code                  AS  cust_code               -- 顧客コード
            ,xirc.inst_dest                  AS  inst_dest               -- 設置場所
@@ -2694,7 +3502,10 @@ AS
     IS
 -- Mod Ver1.1 K.Kanada E
 -- Add Ver1.1 K.Kanada S
-      SELECT diff.supplier_code  AS supplier_code  -- 仕入先コード
+      SELECT diff.supplier_code            AS supplier_code            -- 仕入先コード
+-- Ver.1.2 ADD START
+            ,MAX(diff.bm_paymet_kbn_sec)   AS bm_paymet_kbn_sec        -- BM支払区分(2営)
+-- Ver.1.2 ADD END
       FROM    (
 -- Add Ver1.1 K.Kanada E
         SELECT  xbbs_fb.snapshot_create_ym       AS snapshot_create_ym       -- スナップショット作成年月
@@ -2714,6 +3525,9 @@ AS
                ,xbbs_fb.balance_cancel_date      AS balance_cancel_date      -- 残高取消日
                ,xbbs_sec.expect_payment_amt_tax  AS expect_payment_amt_tax   -- 元金額
                ,xbbs_sec.bank_charge_bearer      AS bank_charge_bearer_pre   -- 振込手数料負担者（元）
+-- Ver.1.2 ADD START
+               ,xbbs_sec.bm_paymet_kbn           AS bm_paymet_kbn_sec        -- BM支払区分(2営)
+-- Ver.1.2 ADD END
         FROM
           ( SELECT  /*+ INDEX(xbbs1 xxcok_bm_balance_snap_n01) */
                     xbbs1.bm_balance_id       AS bm_balance_id
@@ -2728,6 +3542,9 @@ AS
                          ELSE  0
                     END                       AS expect_payment_amt_tax  -- 支払予定額（税込）
                    ,xbbs1.bank_charge_bearer  AS bank_charge_bearer      -- 振込手数料負担者
+-- Ver.1.2 ADD START
+                   ,xbbs1.bm_paymet_kbn       AS bm_paymet_kbn           -- BM支払区分
+-- Ver.1.2 ADD END
             FROM  xxcok_bm_balance_snap xbbs1
             WHERE xbbs1.snapshot_create_ym = gv_process_ym
             AND   xbbs1.snapshot_timing    = '1' -- 2営
@@ -2968,7 +3785,15 @@ AS
             xbbs.snapshot_create_ym                 AS  snapshot_create_ym      -- スナップショット作成年月
            ,xbbs.snapshot_timing                    AS  snapshot_timing         -- スナップショットタイミング
            ,'3'                                     AS  rev                     -- REV（3:新黒（FB）)
-           ,'0'                                     AS  check_result            -- 妥当性チェック結果（0:対象）
+-- Ver.1.2 MOD START
+--           ,'0'                                     AS  check_result            -- 妥当性チェック結果（0:対象）
+           ,CASE
+              WHEN l_bm_balance_snap_fb_rec.bm_paymet_kbn_sec = '1' THEN  -- BM支払区分(2営)が本振(案内書あり)の場合
+                '0'  -- 対象
+              ELSE
+                '1'  -- 対象外
+            END                                     AS  check_result            -- 妥当性チェック結果
+-- Ver.1.2 MOD END
            ,NULL                                    AS  row_id                  -- 元テーブルレコードID
            ,NULL                                    AS  edi_interface_date      -- 連携日（EDI支払案内書）
            ,xbbs.supplier_code                      AS  vendor_code             -- 送付先コード
@@ -3291,9 +4116,19 @@ AS
          ,closing_date            -- 締め日
          ,closing_date_min        -- 最小締め日
          ,notifi_amt              -- おもての通知金額
+-- Ver.1.2 ADD START
+         ,total_amt_no_tax_10     -- 10%合計金額（税抜）
+         ,tax_amt_10              -- 10%消費税額
+         ,total_amt_10            -- 10%合計金額（税込）
+-- Ver.1.2 ADD END
          ,total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
          ,tax_amt_8               -- 軽減8%消費税額
          ,total_amt_8             -- 軽減8%合計金額（税込）
+-- Ver.1.2 ADD START
+         ,total_amt_no_tax_0      -- 非課税合計金額（税抜）
+         ,tax_amt_0               -- 非課税消費税額
+         ,total_amt_0             -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
          ,total_sales_qty         -- 販売本数合計
          ,total_sales_amt         -- 販売金額合計
          ,sales_fee               -- 販売手数料
@@ -3318,6 +4153,29 @@ AS
          ,program_application_id  -- コンカレント・プログラム・アプリケーションID
          ,program_id              -- コンカレント・プログラムID
          ,program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+         ,bm_payment_kbn            -- BM支払区分
+         ,tax_calc_kbn              -- 税計算区分
+         ,bm_tax_kbn                -- BM税区分
+         ,bank_charge_bearer        -- 振込手数料負担者
+         ,sales_fee_no_tax          -- 販売手数料（税抜）
+         ,sales_fee_tax             -- 販売手数料（消費税）
+         ,sales_fee_with_tax        -- 販売手数料（税込）
+         ,electric_amt_no_tax       -- 電気代等（税抜）
+         ,electric_amt_tax          -- 電気代等（消費税）
+         ,electric_amt_with_tax     -- 電気代等（税込）
+         ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+         ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+         ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+         ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+         ,bank_trans_fee_tax        -- 振込手数料（消費税）
+         ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+         ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+         ,display_code              -- 表示コード
+         ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
         )
         SELECT
             xirh.snapshot_create_ym                   AS  snapshot_create_ym      -- スナップショット作成年月
@@ -3343,9 +4201,19 @@ AS
            ,xirh.closing_date                         AS  closing_date            -- 締め日
            ,xirh.closing_date_min                     AS  closing_date_min        -- 最小締め日
            ,(xirh.notifi_amt) * -1                    AS  notifi_amt              -- おもての通知金額
+-- Ver.1.2 ADD START
+           ,(xirh.total_amt_no_tax_10) * -1           AS  total_amt_no_tax_10     -- 10%合計金額（税抜）
+           ,(xirh.tax_amt_10) * -1                    AS  tax_amt_10              -- 10%消費税額
+           ,(xirh.total_amt_10) * -1                  AS  total_amt_10            -- 10%合計金額（税込）
+-- Ver.1.2 ADD END
            ,(xirh.total_amt_no_tax_8) * -1            AS  total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
            ,(xirh.tax_amt_8) * -1                     AS  tax_amt_8               -- 軽減8%消費税額
            ,(xirh.total_amt_8) * -1                   AS  total_amt_8             -- 軽減8%合計金額（税込）
+-- Ver.1.2 ADD START
+           ,(xirh.total_amt_no_tax_0) * -1            AS  total_amt_no_tax_0      -- 非課税合計金額（税抜）
+           ,(xirh.tax_amt_0) * -1                     AS  tax_amt_0               -- 非課税消費税額
+           ,(xirh.total_amt_0) * -1                   AS  total_amt_0             -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
            ,(xirh.total_sales_qty) * -1               AS  total_sales_qty         -- 販売本数合計
            ,(xirh.total_sales_amt) * -1               AS  total_sales_amt         -- 販売金額合計
            ,(xirh.sales_fee) * -1                     AS  sales_fee               -- 販売手数料
@@ -3370,6 +4238,29 @@ AS
            ,cn_program_application_id                 AS  program_application_id  -- コンカレント・プログラム・アプリケーションID
            ,cn_program_id                             AS  program_id              -- コンカレント・プログラムID
            ,SYSDATE                                   AS  program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+           ,xirh.bm_payment_kbn                       AS  bm_payment_kbn            -- BM支払区分
+           ,xirh.tax_calc_kbn                         AS  tax_calc_kbn              -- 税計算区分
+           ,xirh.bm_tax_kbn                           AS  bm_tax_kbn                -- BM税区分
+           ,xirh.bank_charge_bearer                   AS  bank_charge_bearer        -- 振込手数料負担者
+           ,(xirh.sales_fee_no_tax) * -1              AS  sales_fee_no_tax          -- 販売手数料（税抜）
+           ,(xirh.sales_fee_tax) * -1                 AS  sales_fee_tax             -- 販売手数料（消費税）
+           ,(xirh.sales_fee_with_tax) * -1            AS  sales_fee_with_tax        -- 販売手数料（税込）
+           ,(xirh.electric_amt_no_tax) * -1           AS  electric_amt_no_tax       -- 電気代等（税抜）
+           ,(xirh.electric_amt_tax) * -1              AS  electric_amt_tax          -- 電気代等（消費税）
+           ,(xirh.electric_amt_with_tax) * -1         AS  electric_amt_with_tax     -- 電気代等（税込）
+           ,(xirh.recalc_total_fee_no_tax) * -1       AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+           ,(xirh.recalc_total_fee_tax) * -1          AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+           ,(xirh.recalc_total_fee_with_tax) * -1     AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+           ,(xirh.bank_trans_fee_no_tax) * -1         AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+           ,(xirh.bank_trans_fee_tax) * -1            AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+           ,(xirh.bank_trans_fee_with_tax) * -1       AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+           ,xirh.vendor_invoice_regnum                AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+           ,xirh.display_code                         AS  display_code              -- 表示コード
+           ,xirh.company_code_bd                      AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
         FROM   xxcok_info_rev_header    xirh  -- インフォマート用赤黒（ヘッダー）
         WHERE  xirh.vendor_code                       = l_bm_balance_snap_re_rec.supplier_code
         AND    xirh.snapshot_create_ym                = gv_process_ym
@@ -3407,9 +4298,19 @@ AS
          ,closing_date            -- 締め日
          ,closing_date_min        -- 最小締め日
          ,notifi_amt              -- おもての通知金額
+-- Ver.1.2 ADD START
+         ,total_amt_no_tax_10     -- 10%合計金額（税抜）
+         ,tax_amt_10              -- 10%消費税額
+         ,total_amt_10            -- 10%合計金額（税込）
+-- Ver.1.2 ADD END
          ,total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
          ,tax_amt_8               -- 軽減8%消費税額
          ,total_amt_8             -- 軽減8%合計金額（税込）
+-- Ver.1.2 ADD START
+         ,total_amt_no_tax_0      -- 非課税合計金額（税抜）
+         ,tax_amt_0               -- 非課税消費税額
+         ,total_amt_0             -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
          ,total_sales_qty         -- 販売本数合計
          ,total_sales_amt         -- 販売金額合計
          ,sales_fee               -- 販売手数料
@@ -3434,6 +4335,29 @@ AS
          ,program_application_id  -- コンカレント・プログラム・アプリケーションID
          ,program_id              -- コンカレント・プログラムID
          ,program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+         ,bm_payment_kbn            -- BM支払区分
+         ,tax_calc_kbn              -- 税計算区分
+         ,bm_tax_kbn                -- BM税区分
+         ,bank_charge_bearer        -- 振込手数料負担者
+         ,sales_fee_no_tax          -- 販売手数料（税抜）
+         ,sales_fee_tax             -- 販売手数料（消費税）
+         ,sales_fee_with_tax        -- 販売手数料（税込）
+         ,electric_amt_no_tax       -- 電気代等（税抜）
+         ,electric_amt_tax          -- 電気代等（消費税）
+         ,electric_amt_with_tax     -- 電気代等（税込）
+         ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+         ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+         ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+         ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+         ,bank_trans_fee_tax        -- 振込手数料（消費税）
+         ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+         ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+         ,display_code              -- 表示コード
+         ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
         )
         SELECT
             xirh.snapshot_create_ym                   AS  snapshot_create_ym      -- スナップショット作成年月
@@ -3459,9 +4383,19 @@ AS
            ,xirh.closing_date                         AS  closing_date            -- 締め日
            ,xirh.closing_date_min                     AS  closing_date_min        -- 最小締め日
            ,(xirh.notifi_amt) * -1                    AS  notifi_amt              -- おもての通知金額
+-- Ver.1.2 ADD START
+           ,(xirh.total_amt_no_tax_10) * -1           AS  total_amt_no_tax_10     -- 10%合計金額（税抜）
+           ,(xirh.tax_amt_10) * -1                    AS  tax_amt_10              -- 10%消費税額
+           ,(xirh.total_amt_10) * -1                  AS  total_amt_10            -- 10%合計金額（税込）
+-- Ver.1.2 ADD END
            ,(xirh.total_amt_no_tax_8) * -1            AS  total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
            ,(xirh.tax_amt_8) * -1                     AS  tax_amt_8               -- 軽減8%消費税額
            ,(xirh.total_amt_8) * -1                   AS  total_amt_8             -- 軽減8%合計金額（税込）
+-- Ver.1.2 ADD START
+           ,(xirh.total_amt_no_tax_0) * -1            AS  total_amt_no_tax_0      -- 非課税合計金額（税抜）
+           ,(xirh.tax_amt_0) * -1                     AS  tax_amt_0               -- 非課税消費税額
+           ,(xirh.total_amt_0) * -1                   AS  total_amt_0             -- 非課税合計金額（税込）
+-- Ver.1.2 ADD END
            ,(xirh.total_sales_qty) * -1               AS  total_sales_qty         -- 販売本数合計
            ,(xirh.total_sales_amt) * -1               AS  total_sales_amt         -- 販売金額合計
            ,(xirh.sales_fee) * -1                     AS  sales_fee               -- 販売手数料
@@ -3486,11 +4420,37 @@ AS
            ,cn_program_application_id                 AS  program_application_id  -- コンカレント・プログラム・アプリケーションID
            ,cn_program_id                             AS  program_id              -- コンカレント・プログラムID
            ,SYSDATE                                   AS  program_update_date     -- プログラム更新日
+-- Ver.1.2 ADD START
+           ,xirh.bm_payment_kbn                       AS  bm_payment_kbn            -- BM支払区分
+           ,xirh.tax_calc_kbn                         AS  tax_calc_kbn              -- 税計算区分
+           ,xirh.bm_tax_kbn                           AS  bm_tax_kbn                -- BM税区分
+           ,xirh.bank_charge_bearer                   AS  bank_charge_bearer        -- 振込手数料負担者
+           ,(xirh.sales_fee_no_tax) * -1              AS  sales_fee_no_tax          -- 販売手数料（税抜）
+           ,(xirh.sales_fee_tax) * -1                 AS  sales_fee_tax             -- 販売手数料（消費税）
+           ,(xirh.sales_fee_with_tax) * -1            AS  sales_fee_with_tax        -- 販売手数料（税込）
+           ,(xirh.electric_amt_no_tax) * -1           AS  electric_amt_no_tax       -- 電気代等（税抜）
+           ,(xirh.electric_amt_tax) * -1              AS  electric_amt_tax          -- 電気代等（消費税）
+           ,(xirh.electric_amt_with_tax) * -1         AS  electric_amt_with_tax     -- 電気代等（税込）
+           ,(xirh.recalc_total_fee_no_tax) * -1       AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+           ,(xirh.recalc_total_fee_tax) * -1          AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+           ,(xirh.recalc_total_fee_with_tax) * -1     AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+           ,(xirh.bank_trans_fee_no_tax) * -1         AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+           ,(xirh.bank_trans_fee_tax) * -1            AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+           ,(xirh.bank_trans_fee_with_tax) * -1       AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+           ,xirh.vendor_invoice_regnum                AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+           ,xirh.display_code                         AS  display_code              -- 表示コード
+           ,xirh.company_code_bd                      AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.3 Add End
         FROM   xxcok_info_rev_header    xirh  -- インフォマート用赤黒（ヘッダー）
         WHERE  xirh.vendor_code                       = l_bm_balance_snap_re_rec.supplier_code
         AND    xirh.snapshot_create_ym                = gv_process_ym
         AND    xirh.snapshot_timing                   = '1' -- 2営
         AND    xirh.rev                               = '1' -- 元黒（2営）
+-- Ver.1.2 ADD START
+        AND    xirh.bm_payment_kbn                    = '1' -- 本振(案内書あり)
+-- Ver.1.2 ADD END
         AND    xirh.notifi_amt                        > 0
         AND NOT EXISTS (
                SELECT 1
@@ -3678,6 +4638,9 @@ AS
         AND    xirh.snapshot_create_ym              = gv_process_ym
         AND    xirh.snapshot_timing                 = '1' -- 2営
         AND    xirh.rev                             = '1' -- 元黒（2営ファイル作成）
+-- Ver.1.2 ADD START
+        AND    xirh.bm_payment_kbn                  = '1' -- 本振(案内書あり)
+-- Ver.1.2 ADD END
         AND    xirh.notifi_amt                      > 0
         AND NOT EXISTS (
                SELECT 1
@@ -3779,6 +4742,9 @@ AS
         ,xbb.amt_fix_status              AS amt_fix_status                      -- 金額確定ステータス
         ,xbb.org_slip_number             AS org_slip_number                     -- 元伝票番号
         ,xbb.proc_type                   AS proc_type                           -- 処理区分
+-- Ver.1.2 ADD START
+        ,xbbs_sec.tax_calc_kbn           AS tax_calc_kbn                        -- 税計算区分 （※2営）
+-- Ver.1.2 ADD END
       FROM    xxcok_backmargin_balance  xbb      -- 販手残高テーブル
              ,xxcok_bm_balance_snap     xbbs_sec -- 販手残高テーブルスナップショット2営
              ,xxcok_bm_balance_snap     xbbs_fb  -- 販手残高テーブルスナップショットFB
@@ -3862,6 +4828,9 @@ AS
         ,program_application_id                  -- コンカレント・プログラム・アプリケーションID
         ,program_id                              -- コンカレント・プログラムID
         ,program_update_date                     -- プログラム更新日      
+-- Ver.1.2 ADD START
+        ,tax_calc_kbn                            -- 税計算区分
+-- Ver.1.2 ADD END
         )
       VALUES (
          gv_process_ym                                                 -- スナップショット作成年月
@@ -3907,6 +4876,9 @@ AS
         ,cn_program_application_id                                     -- コンカレント・プログラム・アプリケーションID
         ,cn_program_id                                                 -- コンカレント・プログラムID
         ,SYSDATE                                                       -- プログラム更新日
+-- Ver.1.2 ADD START
+        ,l_bm_balance_snap_rec.tax_calc_kbn                            -- 税計算区分
+-- Ver.1.2 ADD END
         );
 --
     END LOOP bm_balance_snap_loop;
@@ -4008,7 +4980,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : del_work
-   * Description      : 前月データ削除(A-2)
+   * Description      : 保持期間超過データ削除(A-2)
    ***********************************************************************************/
   PROCEDURE del_work(
     ov_errbuf     OUT VARCHAR2
@@ -4038,17 +5010,26 @@ AS
     -- ===============================================
     -- 販手残高テーブルスナップショット
     DELETE FROM xxcok_bm_balance_snap xbbs
-    WHERE  xbbs.snapshot_create_ym = gv_process_ym_pre
+-- Ver.1.2 MOD START
+--    WHERE  xbbs.snapshot_create_ym = gv_process_ym_pre
+    WHERE  xbbs.snapshot_create_ym < gv_snap_keep_oldest_ym
+-- Ver.1.2 MOD END
     ;
 --
     -- インフォマート用赤黒（ヘッダー）
     DELETE FROM xxcok_info_rev_header xirh
-    WHERE  xirh.snapshot_create_ym = gv_process_ym_pre
+-- Ver.1.2 MOD START
+--    WHERE  xirh.snapshot_create_ym = gv_process_ym_pre
+    WHERE  xirh.snapshot_create_ym < gv_snap_keep_oldest_ym
+-- Ver.1.2 MOD END
     ;
 --
     -- インフォマート用赤黒（カスタム明細）
     DELETE FROM xxcok_info_rev_custom xirc
-    WHERE  xirc.snapshot_create_ym = gv_process_ym_pre
+-- Ver.1.2 MOD START
+--    WHERE  xirc.snapshot_create_ym = gv_process_ym_pre
+    WHERE  xirc.snapshot_create_ym < gv_snap_keep_oldest_ym
+-- Ver.1.2 MOD END
     ;
 --
     COMMIT ;
@@ -4230,6 +5211,36 @@ AS
                     );
       RAISE init_fail_expt;
     END IF;
+-- Ver.1.2 ADD START
+    -- ===============================================
+    -- 4.プロファイル取得(スナップショット保持月数)
+    -- ===============================================
+    gv_snap_keep_months := FND_PROFILE.VALUE( cv_prof_snap_keep_months ) ;
+    IF ( gv_snap_keep_months IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcok
+                     ,iv_name         => cv_msg_xxcok1_00003
+                     ,iv_token_name1  => cv_tkn_profile
+                     ,iv_token_value1 => cv_prof_snap_keep_months
+                    );
+      RAISE init_fail_expt;
+    END IF;
+-- Ver.1.2 ADD END
+-- Ver.1.3 Add Start
+    -- ===============================================
+    -- 4.プロファイル取得(会計帳簿ID)
+    -- ===============================================
+    gv_set_of_bks_id := FND_PROFILE.VALUE( cv_set_of_books_id ) ;
+    IF ( gv_set_of_bks_id IS NULL ) THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcok
+                     ,iv_name         => cv_msg_xxcok1_00003
+                     ,iv_token_name1  => cv_tkn_profile
+                     ,iv_token_value1 => cv_set_of_books_id
+                    );
+      RAISE init_fail_expt;
+    END IF;
+-- Ver.1.3 Add End
 --
     -- ===============================================
     -- 5.メッセージ取得(おもて備考FB赤用)
@@ -4275,6 +5286,15 @@ AS
     -- ===============================================
     gn_tax_include_less := TO_NUMBER( gv_bank_fee_less ) * ( 1 + gn_bm_tax / 100 );
     gn_tax_include_more := TO_NUMBER( gv_bank_fee_more ) * ( 1 + gn_bm_tax / 100 );
+-- Ver.1.2 ADD START
+    -- ===============================================
+    -- 8.スナップショット保持最古年月（YYYYMM）取得
+    -- ===============================================
+    gv_snap_keep_oldest_ym := TO_CHAR(
+                                ADD_MONTHS(gd_process_date, TO_NUMBER(gv_snap_keep_months) * -1)
+                               ,'YYYYMM'
+                              );
+-- Ver.1.2 ADD END
 --
   EXCEPTION
     -- *** 初期処理エラー ***
@@ -4335,7 +5355,7 @@ AS
     -- 処理タイミング = 2：FBデータ作成後の場合
     IF ( iv_proc_div = '2' ) THEN
       -- ===============================================
-      -- 前月データ削除(A-2)
+      -- 保持期間超過データ削除(A-2)
       -- ===============================================
       del_work(
         ov_errbuf     => lv_errbuf      --  エラー・メッセージ           --# 固定 #
@@ -4483,6 +5503,22 @@ AS
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
         END IF;
+--
+-- Ver.1.2 ADD START
+        -- ===============================================
+        -- 差分なしの赤黒ヘッダー情報作成(FB後)(A-13)
+        -- ===============================================
+        ins_no_diff_header(
+          iv_proc_div      => iv_proc_div      --  1.処理タイミング
+         ,ov_errbuf        => lv_errbuf
+         ,ov_retcode       => lv_retcode
+         ,ov_errmsg        => lv_errmsg
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+-- Ver.1.2 ADD END
+--
       END IF;
     END IF;
 --
@@ -4634,16 +5670,23 @@ AS
     -- ===============================================
     -- 削除メッセージ出力
     -- ===============================================
-    IF ( lv_retcode    = cv_status_normal ) THEN
-      lv_errmsg    := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_appli_short_name_xxcok
-                       ,iv_name         => cv_msg_xxcok1_10826
-                      );
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.OUTPUT
-        ,buff   => lv_errmsg
-      );
+-- Ver.1.2 ADD START
+    -- 処理タイミング = 2：FBデータ作成後の場合
+    IF ( iv_proc_div = '2' ) THEN
+-- Ver.1.2 ADD END
+      IF ( lv_retcode    = cv_status_normal ) THEN
+        lv_errmsg    := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_appli_short_name_xxcok
+                         ,iv_name         => cv_msg_xxcok1_10826
+                        );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+      END IF;
+-- Ver.1.2 ADD START
     END IF;
+-- Ver.1.2 ADD END
     -- ===============================================
     -- 処理終了メッセージ出力
     -- ===============================================

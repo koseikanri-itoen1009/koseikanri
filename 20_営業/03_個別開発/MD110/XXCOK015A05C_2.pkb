@@ -6,17 +6,19 @@ AS
  * Package Name     : XXCOK015A05C_2(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
  * --------------------------- ----------------------------------------------------------
  *  file_close                  ファイルクローズ(A-12)
+ *  ins_data                    販手残高スナップショット取得(A-15)
  *  upd_data                    連携対象データ更新(A-11)
  *  chk_data                    連携データ妥当性チェック(A-9)
- *  get_work_head_line          ワークヘッダー・明細対象データ抽出(A-7)(A-8)(A-10)
+ *  get_work_head_line          ワークヘッダー・明細対象データ抽出(A-7)(A-8)(A-10)(A-16)
  *  file_open                   ファイルオープン(A-6)
+ *  ins_info_rev                インフォマート用赤黒取得(A-14)
  *  ins_work_header             ワークヘッダー情報作成(A-5)
  *  ins_work_custom             ワークカスタム明細情報作成(A-4)
  *  ins_work_line               ワーク明細情報作成(A-3)
@@ -30,7 +32,9 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021/04/01    1.0   T.Nishikawa      XXCOK015A05Cをコピーして新規作成
- *  2021/05/28    1.4   K.Yoshikawa      E_本稼動_17220
+ *  2021/05/28    1.1   K.Yoshikawa      E_本稼動_17220
+ *  2023/07/26    1.2   Y.Ooyama         E_本稼動_19179（インボイス対応（BM関連））※本体はVer.1.7
+ *  2024/02/05    1.3   M.Akachi         E_本稼動_19496 ※本体はVer.1.8
  *
  *****************************************************************************************/
 --
@@ -83,6 +87,9 @@ AS
   cv_msg_xxccp1_90005        CONSTANT VARCHAR2(16)    := 'APP-XXCCP1-90005';  -- 警告終了
   cv_msg_xxccp1_90006        CONSTANT VARCHAR2(16)    := 'APP-XXCCP1-90006';  -- エラー終了全ロールバック
   cv_msg_xxccp1_90008        CONSTANT VARCHAR2(16)    := 'APP-XXCCP1-90008';  -- コンカレント入力パラメータなし
+-- Ver1.6 K.Yoshikawa ADD START
+  cv_msg_xxcok1_10814        CONSTANT VARCHAR2(16)    := 'APP-XXCOK1-10814';  -- 元黒作成件数
+-- Ver1.6 K.Yoshikawa ADD END
   -- トークン
   cv_tkn_profile             CONSTANT VARCHAR2(7)     := 'PROFILE';
   cv_tkn_directory           CONSTANT VARCHAR2(9)     := 'DIRECTORY';
@@ -101,6 +108,9 @@ AS
   cv_tkn_tax_div             CONSTANT VARCHAR2(7)     := 'TAX_DIV';
   cv_tkn_proc_div            CONSTANT VARCHAR2(8)     := 'PROC_DIV';
   cv_tkn_target_div          CONSTANT VARCHAR2(10)    := 'TARGET_DIV';
+-- Ver1.6 K.Yoshikawa ADD START
+  cv_tkn_s_count             CONSTANT VARCHAR2(8)     := 'S_COUNT';
+-- Ver1.6 K.Yoshikawa ADD END
   -- プロファイル
   cv_prof_i_dire_path        CONSTANT VARCHAR2(25)    := 'XXCOK1_INFOMART_DIRE_PATH';        -- インフォマート_ディレクトリパス
   cv_prof_i_file_name        CONSTANT VARCHAR2(25)    := 'XXCOK1_INFOMART_FILE_NAME';        -- インフォマート_ファイル名
@@ -111,20 +121,38 @@ AS
   cv_prof_bm_tax             CONSTANT VARCHAR2(13)    := 'XXCOK1_BM_TAX';                    -- 販売手数料_消費税率
   cv_prof_org_id             CONSTANT VARCHAR2(6)     := 'ORG_ID';                           -- MO: 営業単位
   cv_prof_elec_change_item   CONSTANT VARCHAR2(30)    := 'XXCOK1_ELEC_CHANGE_ITEM_CODE';     -- 電気料（変動）品目コード
+-- Ver.1.7 ADD START
+  cv_prof_i_regnum_prompt    CONSTANT VARCHAR2(30)    := 'XXCOK1_INFOMART_REGNUM_PROMPT';    -- インフォマート_登録番号プロンプト
+  cv_prof_invoice_t_no       CONSTANT VARCHAR2(30)    := 'XXCMM1_INVOICE_T_NO';              -- 適格請求書発行事業者登録番号
+-- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+  cv_set_of_books_id         CONSTANT VARCHAR2(30)    := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
+  cv_xxcok1_set_code         CONSTANT VARCHAR2(30)    := 'XXCOK1_SET_CODE';                  -- 通知書書式設定コード
+-- Ver.1.8 Add End
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(1)     := '.';
   cv_msg_canm                CONSTANT VARCHAR2(1)     := ',';
   -- 書式フォーマット
   cv_fmt_ymd                 CONSTANT VARCHAR2(10)    := 'YYYY/MM/DD';
+--Ver1.5 add start
+  cv_fmt_ymd2                CONSTANT VARCHAR2(8)    := 'YYYYMMDD';
+--Ver1.5 add end
   -- ファイルオープンパラメータ
   cv_open_mode_w             CONSTANT VARCHAR2(1)     := 'w';                   -- テキストの書込み
   cn_max_linesize            CONSTANT BINARY_INTEGER  := 32767;                 -- 1行当り最大文字数
+-- Ver.1.7 ADD START
+  cv_tax_calc_kbn_line        CONSTANT VARCHAR2(1)   := '2';                      -- 税計算区分：明細単位
+  cv_tax_rounding_rule_down   CONSTANT VARCHAR2(4)   := 'DOWN';                   -- 端数処理区分：切捨て
+-- Ver.1.7 ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
   gn_target_cnt              NUMBER DEFAULT 0;                                  -- 対象件数
   gn_normal_cnt              NUMBER DEFAULT 0;                                  -- 正常件数
+-- Ver1.6 K.Yoshikawa ADD START
+  gn_normal_s_cnt            NUMBER DEFAULT 0;                                  -- 正常件数(元黒登録)
+-- Ver1.6 K.Yoshikawa ADD END
   gn_error_cnt               NUMBER DEFAULT 0;                                  -- エラー件数
   gn_skip_cnt                NUMBER DEFAULT 0;                                  -- スキップ件数
   gd_process_date            DATE   DEFAULT NULL;                               -- 業務処理日付
@@ -140,6 +168,13 @@ AS
   gv_bank_fee_less           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 銀行手数料_基準額未満
   gv_bank_fee_more           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 銀行手数料_基準額以上
   gv_elec_change_item_code   fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 電気料（変動）品目コード
+-- Ver.1.7 ADD START
+  gv_i_regnum_prompt         fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- インフォマート_登録番号プロンプト（末尾に半角スペース付加）
+  gv_invoice_t_no            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 適格請求書発行事業者登録番号
+-- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+  gv_set_of_bks_id           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- GL会計帳簿ID
+-- Ver.1.8 Add End
   gn_bm_tax                  NUMBER;                                            -- 販売手数料_消費税率
   gn_tax_include_less        NUMBER;                                            -- 税込銀行手数料_基準額未満
   gn_tax_include_more        NUMBER;                                            -- 税込銀行手数料_基準額以上
@@ -217,7 +252,17 @@ AS
               ELSE xiwh.electric_amt
             END                         AS  electric_amt
            ,xiwh.tax_amt                AS  h_tax_amt
-           ,xiwh.transfer_fee           AS  transfer_fee
+-- Ver.1.7 MOD START
+--           ,xiwh.transfer_fee           AS  transfer_fee
+          ,CASE
+             WHEN xiwh.set_code IN ('0', '1') THEN
+                -- 外税の場合
+                xiwh.bank_trans_fee_no_tax
+             ELSE
+                -- 内税の場合
+                xiwh.bank_trans_fee_with_tax
+           END                          AS  transfer_fee              -- 振込手数料：(外税)振込手数料　税抜／(内税)振込手数料　税込
+-- Ver.1.7 MOD END
            ,CASE
               WHEN xiwh.payment_amt < 0 THEN
                 0
@@ -241,6 +286,44 @@ AS
            ,xiwl.cust_code              AS  cust_code
            ,xiwl.order_num              AS  order_num
            ,xiwl.item_code              AS  item_code
+-- Ver1.6 K.Yoshikawa ADD START
+           ,xiwh.rowid                  AS  row_id
+-- Ver1.6 K.Yoshikawa ADD END
+-- Ver.1.7 ADD START
+           ,NVL2(
+              xiwh.vendor_invoice_regnum
+             ,gv_i_regnum_prompt || xiwh.vendor_invoice_regnum
+             ,NULL
+            )                           AS  to_regnum                 -- 送付先登録番号
+           ,(
+              gv_i_regnum_prompt || gv_invoice_t_no
+            )                           AS  from_regnum               -- 送付元登録番号
+           ,CASE
+              WHEN xiwh.set_code IN ('0', '1') THEN
+                -- 外税の場合
+                xiwh.recalc_total_fee_no_tax
+              ELSE
+                -- 内税の場合
+                xiwh.recalc_total_fee_with_tax
+            END                         AS  recalc_total_fee          -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
+           ,CASE
+              WHEN xiwh.set_code IN ('0', '1') THEN
+                -- 外税の場合
+                xiwh.recalc_total_fee_with_tax
+              ELSE
+                -- 内税の場合
+                xiwh.recalc_total_fee_no_tax
+            END                         AS  recalc_total_fee2         -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
+           ,xiwh.bank_trans_fee_tax     AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+           ,CASE
+              WHEN xiwh.set_code IN ('0', '1') THEN
+                -- 外税の場合
+                xiwh.bank_trans_fee_with_tax
+              ELSE
+                -- 内税の場合
+                xiwh.bank_trans_fee_no_tax
+            END                         AS  bank_trans_fee2           -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
+-- Ver.1.7 ADD END
       FROM  xxcok_info_work_header   xiwh
            ,xxcok_info_work_line     xiwl
      WHERE xiwh.vendor_code   = xiwl.vendor_code(+)
@@ -252,6 +335,9 @@ AS
      AND   xiwl.tax_div(+)    = xiwh.tax_div          -- 販売明細が存在しない場合も含む（外部結合）
      AND   xiwl.target_div(+) = xiwh.target_div       -- 販売明細が存在しない場合も含む（外部結合）
 -- Ver1.2 N.Abe ADD END
+-- Ver.1.7 ADD START
+     AND   xiwh.bm_payment_kbn = '1'  -- BM支払区分：本振（案内書あり）
+-- Ver.1.7 ADD END
      AND   xiwh.payment_amt   > 0                   -- 支払あり
     UNION ALL
     -- 支払なし 且つ 販売明細が存在する場合
@@ -284,15 +370,25 @@ AS
 -- Ver1.2 N.Abe MOD END
            ,xiwh.payment_date           AS  payment_date
            ,0                           AS  notifi_amt
-           ,xiwh.total_amt_no_tax_10    AS  total_amt_no_tax_10
-           ,xiwh.tax_amt_10             AS  tax_amt_10
-           ,xiwh.total_amt_10           AS  total_amt_10
+-- Ver.1.7 MOD START
+--           ,xiwh.total_amt_no_tax_10    AS  total_amt_no_tax_10
+--           ,xiwh.tax_amt_10             AS  tax_amt_10
+--           ,xiwh.total_amt_10           AS  total_amt_10
+           ,0                           AS  total_amt_no_tax_10
+           ,0                           AS  tax_amt_10
+           ,0                           AS  total_amt_10
+-- Ver.1.7 MOD END
            ,xiwh.total_amt_no_tax_8     AS  total_amt_no_tax_8
            ,xiwh.tax_amt_8              AS  tax_amt_8
            ,xiwh.total_amt_8            AS  total_amt_8
-           ,xiwh.total_amt_no_tax_0     AS  total_amt_no_tax_0
-           ,xiwh.tax_amt_0              AS  tax_amt_0
-           ,xiwh.total_amt_0            AS  total_amt_0
+-- Ver.1.7 MOD START
+--           ,xiwh.total_amt_no_tax_0     AS  total_amt_no_tax_0
+--           ,xiwh.tax_amt_0              AS  tax_amt_0
+--           ,xiwh.total_amt_0            AS  total_amt_0
+           ,0                           AS  total_amt_no_tax_0
+           ,0                           AS  tax_amt_0
+           ,0                           AS  total_amt_0
+-- Ver.1.7 MOD END
            ,xiwh.closing_date           AS  closing_date
 --2021/05/28 add start
            ,xiwh.closing_date_min       AS  closing_date_min
@@ -321,6 +417,23 @@ AS
            ,xiwl.cust_code              AS  cust_code
            ,xiwl.order_num              AS  order_num
            ,xiwl.item_code              AS  item_code
+-- Ver1.6 K.Yoshikawa ADD START
+           ,xiwh.rowid                  AS  row_id
+-- Ver1.6 K.Yoshikawa ADD END
+-- Ver.1.7 ADD START
+           ,NVL2(
+              xiwh.vendor_invoice_regnum
+             ,gv_i_regnum_prompt || xiwh.vendor_invoice_regnum
+             ,NULL
+            )                           AS  to_regnum                 -- 送付先登録番号
+           ,(
+              gv_i_regnum_prompt || gv_invoice_t_no
+            )                           AS  from_regnum               -- 送付元登録番号
+           ,0                           AS  recalc_total_fee          -- 手数料計  ：(外税時)手数料計　税抜／(内税時)手数料計　税込
+           ,0                           AS  recalc_total_fee2         -- 手数料計２：(外税時)手数料計　税込／(内税時)手数料計　税抜
+           ,0                           AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+           ,0                           AS  bank_trans_fee2           -- 振込手数料２：(外税時)振込手数料　税込／(内税時)振込手数料　税抜
+-- Ver.1.7 ADD END
       FROM  xxcok_info_work_header   xiwh
            ,xxcok_info_work_line     xiwl
      WHERE xiwh.vendor_code   = xiwl.vendor_code    -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
@@ -333,6 +446,9 @@ AS
      AND   xiwl.tax_div       = xiwh.tax_div          -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
      AND   xiwl.target_div    = xiwh.target_div       -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
 -- Ver1.2 N.Abe MOD END
+-- Ver.1.7 ADD START
+     AND   xiwh.bm_payment_kbn = '1'  -- BM支払区分：本振（案内書あり）
+-- Ver.1.7 ADD END
      AND   xiwh.payment_amt  <= 0                   -- 支払なし
      ORDER BY
            vendor_code
@@ -376,6 +492,9 @@ AS
 -- Ver1.2 N.Abe MOD START
            ,xiwc.calc_sort              AS  calc_sort
 -- Ver1.2 N.Abe MOD END
+-- Ver1.6 K.Yoshikawa ADD START
+           ,xiwc.rowid                  AS  row_id
+-- Ver1.6 K.Yoshikawa ADD END
      FROM   xxcok_info_work_custom   xiwc
      WHERE  xiwc.vendor_code    = it_supplier_code
      AND    xiwc.tax_div        = it_tax_div
@@ -387,6 +506,9 @@ AS
               FROM   xxcok_info_work_header   xiwh
               WHERE  xiwh.vendor_code = xiwc.vendor_code
               AND    xiwh.tax_div     = xiwc.tax_div
+-- Ver.1.7 ADD START
+              AND    xiwh.bm_payment_kbn = '1'  -- BM支払区分：本振（案内書あり）
+-- Ver.1.7 ADD END
               AND    xiwh.payment_amt > 0                 -- 支払あり
               )
      ORDER BY xiwc.cust_code
@@ -472,6 +594,273 @@ AS
       ov_retcode := cv_status_error;
   END file_close;
 --
+-- Ver1.6 K.Yoshikawa ADD START
+  /**********************************************************************************
+   * Procedure Name   : ins_data
+   * Description      : 販手残高スナップショット取得(A-15)
+   ***********************************************************************************/
+  PROCEDURE ins_data(
+    ov_errbuf      OUT VARCHAR2
+   ,ov_retcode     OUT VARCHAR2
+   ,ov_errmsg      OUT VARCHAR2
+-- Ver.1.7 DEL START
+--   ,iv_vendor_code IN  VARCHAR2
+-- Ver.1.7 DEL END
+-- Ver.1.7 ADD START
+   ,iv_tax_div     IN  VARCHAR2
+   ,iv_target_div  IN  VARCHAR2
+-- Ver.1.7 ADD END
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name    CONSTANT VARCHAR2(20) := 'ins_data';  -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf       VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+    lv_outmsg       VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
+    lb_msg_return   BOOLEAN        DEFAULT TRUE;              -- メッセージ関数戻り値用
+    -- ===============================================
+    -- 販手残高カーソル
+    -- ===============================================
+    CURSOR l_bm_balance_snap_cur
+-- Ver.1.7 ADD START
+    (
+      it_tax_div     IN  VARCHAR2
+     ,it_target_div  IN  VARCHAR2
+    )
+-- Ver.1.7 ADD END
+    IS
+-- Ver.1.7 MOD START
+--      SELECT  /*+ INDEX(xbb xxcok_backmargin_balance_n06) */
+      SELECT
+              /*+
+                LEADING(xbb pv pvsa)
+                INDEX(xbb xxcok_backmargin_balance_n05)
+                USE_NL(pv) USE_NL(pvsa) USE_NL(hca) USE_NL(hp)
+              */
+-- Ver.1.7 MOD END
+         pvsa.attribute4                 AS bm_paymet_kbn                                              -- BM支払区分
+        ,pvsa.attribute6                 AS bm_tax_kbn                                                 -- BM税区分
+        ,pvsa.bank_charge_bearer         AS bank_charge_bearer                                         -- 振込手数料負担者
+        ,SUBSTR( hp.party_name, 1, 50)   AS cust_name                                                  -- 設置先名
+        ,xbb.bm_balance_id               AS bm_balance_id                                              -- 販手残高ID
+        ,xbb.base_code                   AS base_code                                                  -- 拠点コード
+        ,xbb.supplier_code               AS supplier_code                                              -- 仕入先コード
+        ,xbb.supplier_site_code          AS supplier_site_code                                         -- 仕入先サイトコード
+        ,xbb.cust_code                   AS cust_code                                                  -- 顧客コード
+        ,xbb.closing_date                AS closing_date                                               -- 締め日
+        ,xbb.selling_amt_tax             AS selling_amt_tax                                            -- 販売金額（税込）
+        ,xbb.backmargin                  AS backmargin                                                 -- 販売手数料
+        ,xbb.backmargin_tax              AS backmargin_tax                                             -- 販売手数料（消費税額）
+        ,xbb.electric_amt                AS electric_amt                                               -- 電気料
+        ,xbb.electric_amt_tax            AS electric_amt_tax                                           -- 電気料（消費税額）
+        ,xbb.tax_code                    AS tax_code                                                   -- 税金コード
+        ,xbb.expect_payment_date         AS expect_payment_date                                        -- 支払予定日
+        ,xbb.expect_payment_amt_tax      AS expect_payment_amt_tax                                     -- 支払予定額（税込）
+        ,xbb.payment_amt_tax             AS payment_amt_tax                                            -- 支払額（税込）
+        ,xbb.balance_cancel_date         AS balance_cancel_date                                        -- 残高取消日
+        ,xbb.resv_flag                   AS resv_flag                                                  -- 保留フラグ
+        ,xbb.return_flag                 AS return_flag                                                -- 組み戻しフラグ
+        ,xbb.publication_date            AS publication_date                                           -- 案内書発効日
+        ,xbb.fb_interface_status         AS fb_interface_status                                        -- 連携ステータス（本振用FB）
+        ,xbb.fb_interface_date           AS fb_interface_date                                          -- 連携日（本振用FB）
+        ,xbb.edi_interface_status        AS edi_interface_status                                       -- 連携ステータス（EDI支払案内書）
+        ,xbb.edi_interface_date          AS edi_interface_date                                         -- 連携日（EDI支払案内書）
+        ,xbb.gl_interface_status         AS gl_interface_status                                        -- 連携ステータス（GL）
+        ,xbb.gl_interface_date           AS gl_interface_date                                          -- 連携日（GL）
+        ,xbb.amt_fix_status              AS amt_fix_status                                             -- 金額確定ステータス
+        ,xbb.org_slip_number             AS org_slip_number                                            -- 元伝票番号
+        ,xbb.proc_type                   AS proc_type                                                  -- 処理区分
+        ,xbb.created_by                  AS created_by                                                 -- 作成者
+        ,xbb.creation_date               AS creation_date                                              -- 作成日
+        ,xbb.last_updated_by             AS last_updated_by                                            -- 最終更新者
+        ,xbb.last_update_date            AS last_update_date                                           -- 最終更新日
+        ,xbb.last_update_login           AS last_update_login                                          -- 最終更新ログイン
+        ,xbb.request_id                  AS request_id                                                 -- 要求ID
+        ,xbb.program_application_id      AS program_application_id                                     -- コンカレント・プログラム・アプリケーションID
+        ,xbb.program_id                  AS program_id                                                 -- コンカレント・プログラムID
+        ,xbb.program_update_date         AS program_update_date                                        -- プログラム更新日
+-- Ver.1.7 ADD START
+        ,pvsa.attribute10                AS tax_calc_kbn                                               -- 税計算区分
+-- Ver.1.7 ADD END
+      FROM    xxcok_backmargin_balance  xbb
+             ,po_vendors                pv
+             ,po_vendor_sites_all       pvsa
+             ,hz_cust_accounts          hca   -- 顧客マスタ
+             ,hz_parties                hp    -- パーティー
+-- Ver.1.7 DEL START
+--      WHERE   xbb.supplier_code         = iv_vendor_code
+-- Ver.1.7 DEL START
+-- Ver.1.7 ADD START
+      WHERE   pvsa.attribute4           IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 ADD END
+      AND     xbb.edi_interface_status  = '0'
+      AND     xbb.fb_interface_status   = '0'
+      AND     xbb.gl_interface_status   = '0'
+      AND     xbb.closing_date          <= gd_closing_date
+      AND     xbb.expect_payment_date   <= gd_schedule_date
+-- Ver.1.2* DEL START
+--      AND     xbb.amt_fix_status        = '1'
+-- Ver.1.2* DEL END
+      AND     NVL(xbb.payment_amt_tax, 0) = 0
+      AND     xbb.supplier_code         = pv.segment1
+      AND     pv.vendor_id              = pvsa.vendor_id
+      AND     ( pvsa.inactive_date      > gd_process_date
+      OR      pvsa.inactive_date        IS NULL )
+      AND     pvsa.org_id               = gn_org_id
+      AND     hca.account_number        = xbb.cust_code
+      AND     hca.party_id              = hp.party_id
+-- Ver.1.7 ADD START
+      AND     it_target_div             = SUBSTR( xbb.supplier_code, -1, 1)
+      AND     it_tax_div                = (CASE
+                                             WHEN pvsa.attribute6 = '1' THEN          -- 税込
+                                               '2'
+                                             WHEN pvsa.attribute6 IN ('2', '3') THEN  -- 税抜、非課税
+                                               '1'
+                                           END)
+      AND     NOT EXISTS (
+                  SELECT 1
+                  FROM   xxcok_bm_balance_snap  xxbs  -- 販手残高スナップショット
+                  WHERE  xxbs.snapshot_create_ym  = TO_CHAR(gd_process_date,'YYYYMM')
+                  AND    xxbs.snapshot_timing     = '1'
+                  AND    xxbs.supplier_code       = xbb.supplier_code
+              )
+-- Ver.1.7 ADD END
+      ;
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+    -- ===============================================
+    -- 販手残高スナップショット取得
+    -- ===============================================
+    << bm_balance_snap_loop >>
+-- Ver.1.7 MOD START
+--    FOR l_bm_balance_snap_rec IN l_bm_balance_snap_cur LOOP
+    FOR l_bm_balance_snap_rec IN l_bm_balance_snap_cur(iv_tax_div, iv_target_div) LOOP
+-- Ver.1.7 MOD END
+      -- ===============================================
+      -- 販手残高スナップショット登録
+      -- ===============================================
+      INSERT INTO xxcok_bm_balance_snap(
+         snapshot_create_ym                      -- スナップショット作成年月
+        ,snapshot_timing                         -- スナップショットタイミング
+        ,bm_paymet_kbn                           -- BM支払区分
+        ,bm_tax_kbn                              -- BM税区分
+        ,bank_charge_bearer                      -- 振込手数料負担者
+        ,cust_name                               -- 設置先名
+        ,bm_balance_id                           -- 販手残高ID
+        ,base_code                               -- 拠点コード
+        ,supplier_code                           -- 仕入先コード
+        ,supplier_site_code                      -- 仕入先サイトコード
+        ,cust_code                               -- 顧客コード
+        ,closing_date                            -- 締め日
+        ,selling_amt_tax                         -- 販売金額（税込）
+        ,backmargin                              -- 販売手数料
+        ,backmargin_tax                          -- 販売手数料（消費税額）
+        ,electric_amt                            -- 電気料
+        ,electric_amt_tax                        -- 電気料（消費税額）
+        ,tax_code                                -- 税金コード
+        ,expect_payment_date                     -- 支払予定日
+        ,expect_payment_amt_tax                  -- 支払予定額（税込）
+        ,payment_amt_tax                         -- 支払額（税込）
+        ,balance_cancel_date                     -- 残高取消日
+        ,resv_flag                               -- 保留フラグ
+        ,return_flag                             -- 組み戻しフラグ
+        ,publication_date                        -- 案内書発効日
+        ,fb_interface_status                     -- 連携ステータス（本振用FB）
+        ,fb_interface_date                       -- 連携日（本振用FB）
+        ,edi_interface_status                    -- 連携ステータス（EDI支払案内書）
+        ,edi_interface_date                      -- 連携日（EDI支払案内書）
+        ,gl_interface_status                     -- 連携ステータス（GL）
+        ,gl_interface_date                       -- 連携日（GL）
+        ,amt_fix_status                          -- 金額確定ステータス
+        ,org_slip_number                         -- 元伝票番号
+        ,proc_type                               -- 処理区分
+        ,created_by                              -- 作成者
+        ,creation_date                           -- 作成日
+        ,last_updated_by                         -- 最終更新者
+        ,last_update_date                        -- 最終更新日
+        ,last_update_login                       -- 最終更新ログイン
+        ,request_id                              -- 要求ID
+        ,program_application_id                  -- コンカレント・プログラム・アプリケーションID
+        ,program_id                              -- コンカレント・プログラムID
+        ,program_update_date                     -- プログラム更新日      
+-- Ver.1.7 ADD START
+        ,tax_calc_kbn                            -- 税計算区分
+-- Ver.1.7 ADD END
+        )
+      VALUES (
+         to_char(gd_process_date,'YYYYMM')                           -- スナップショット作成年月
+        ,'1'                                                           -- スナップショットタイミング
+        ,l_bm_balance_snap_rec.bm_paymet_kbn                           -- BM支払区分
+        ,l_bm_balance_snap_rec.bm_tax_kbn                              -- BM税区分
+        ,l_bm_balance_snap_rec.bank_charge_bearer                      -- 振込手数料負担者
+        ,l_bm_balance_snap_rec.cust_name                               -- 設置先名
+        ,l_bm_balance_snap_rec.bm_balance_id                           -- 販手残高ID
+        ,l_bm_balance_snap_rec.base_code                               -- 拠点コード
+        ,l_bm_balance_snap_rec.supplier_code                           -- 仕入先コード
+        ,l_bm_balance_snap_rec.supplier_site_code                      -- 仕入先サイトコード
+        ,l_bm_balance_snap_rec.cust_code                               -- 顧客コード
+        ,l_bm_balance_snap_rec.closing_date                            -- 締め日
+        ,l_bm_balance_snap_rec.selling_amt_tax                         -- 販売金額（税込）
+        ,l_bm_balance_snap_rec.backmargin                              -- 販売手数料
+        ,l_bm_balance_snap_rec.backmargin_tax                          -- 販売手数料（消費税額）
+        ,l_bm_balance_snap_rec.electric_amt                            -- 電気料
+        ,l_bm_balance_snap_rec.electric_amt_tax                        -- 電気料（消費税額）
+        ,l_bm_balance_snap_rec.tax_code                                -- 税金コード
+        ,l_bm_balance_snap_rec.expect_payment_date                     -- 支払予定日
+        ,l_bm_balance_snap_rec.expect_payment_amt_tax                  -- 支払予定額（税込）
+        ,l_bm_balance_snap_rec.payment_amt_tax                         -- 支払額（税込）
+        ,l_bm_balance_snap_rec.balance_cancel_date                     -- 残高取消日
+        ,l_bm_balance_snap_rec.resv_flag                               -- 保留フラグ
+        ,l_bm_balance_snap_rec.return_flag                             -- 組み戻しフラグ
+        ,l_bm_balance_snap_rec.publication_date                        -- 案内書発効日
+        ,l_bm_balance_snap_rec.fb_interface_status                     -- 連携ステータス（本振用FB）
+        ,l_bm_balance_snap_rec.fb_interface_date                       -- 連携日（本振用FB）
+        ,l_bm_balance_snap_rec.edi_interface_status                    -- 連携ステータス（EDI支払案内書）
+        ,l_bm_balance_snap_rec.edi_interface_date                      -- 連携日（EDI支払案内書）
+        ,l_bm_balance_snap_rec.gl_interface_status                     -- 連携ステータス（GL）
+        ,l_bm_balance_snap_rec.gl_interface_date                       -- 連携日（GL）
+        ,l_bm_balance_snap_rec.amt_fix_status                          -- 金額確定ステータス
+        ,l_bm_balance_snap_rec.org_slip_number                         -- 元伝票番号
+        ,l_bm_balance_snap_rec.proc_type                               -- 処理区分
+        ,l_bm_balance_snap_rec.created_by                              -- 作成者
+        ,l_bm_balance_snap_rec.creation_date                           -- 作成日
+        ,l_bm_balance_snap_rec.last_updated_by                         -- 最終更新者
+        ,l_bm_balance_snap_rec.last_update_date                        -- 最終更新日
+        ,l_bm_balance_snap_rec.last_update_login                       -- 最終更新ログイン
+        ,l_bm_balance_snap_rec.request_id                              -- 要求ID
+        ,l_bm_balance_snap_rec.program_application_id                  -- コンカレント・プログラム・アプリケーションID
+        ,l_bm_balance_snap_rec.program_id                              -- コンカレント・プログラムID
+        ,l_bm_balance_snap_rec.program_update_date                     -- プログラム更新日      
+-- Ver.1.7 ADD START
+        ,l_bm_balance_snap_rec.tax_calc_kbn                            -- 税計算区分
+-- Ver.1.7 ADD END
+        );
+--
+        -- 登録件数（成功件数）
+        gn_normal_s_cnt := gn_normal_s_cnt + 1;
+    END LOOP bm_balance_snap_loop;
+  EXCEPTION
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END ins_data;
+-- Ver1.6 K.Yoshikawa ADD END
+--
   /**********************************************************************************
    * Procedure Name   : upd_data
    * Description      : 連携対象データ更新(A-11)
@@ -510,9 +899,9 @@ AS
       AND     xbb.gl_interface_status   = '0'
       AND     xbb.closing_date          <= gd_closing_date
       AND     xbb.expect_payment_date   <= gd_schedule_date
---2021/05/28 dell start
---      AND     xbb.amt_fix_status        = '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--      AND     xbb.amt_fix_status        = '1'
+-- Ver.1.2* DEL END
       AND     NVL(xbb.payment_amt_tax, 0) = 0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
 --
@@ -580,6 +969,9 @@ AS
    ,it_cust_rec    IN     g_custom_cur%ROWTYPE
    ,iv_h_c         IN     VARCHAR2
    ,iv_chk_flg     IN OUT NOCOPY VARCHAR2
+-- Ver1.6 K.Yoshikawa ADD START
+   ,iv_pre_vendor_code IN     VARCHAR2
+-- Ver1.6 K.Yoshikawa ADD END
   )
   IS
     -- ===============================================
@@ -593,6 +985,10 @@ AS
     lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;                    -- リターン・コード
     lv_errmsg       VARCHAR2(5000) DEFAULT NULL;                                -- ユーザー・エラー・メッセージ
     lv_outmsg       VARCHAR2(5000) DEFAULT NULL;                                -- 出力用メッセージ
+-- Ver1.6 K.Yoshikawa ADD START
+    lv_check_result_h VARCHAR2(1)    DEFAULT NULL;                                -- 妥当性チェック結果
+    lv_check_result_c VARCHAR2(1)    DEFAULT NULL;                                -- 妥当性チェック結果
+-- Ver1.6 K.Yoshikawa ADD END    
     lb_msg_return   BOOLEAN        DEFAULT TRUE;                                -- メッセージ関数戻り値用
     lb_chk_return   BOOLEAN        DEFAULT TRUE;                                -- チェック結果戻り値用
 --
@@ -634,6 +1030,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- 住所（送付先）
@@ -658,6 +1057,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- 部署名
@@ -682,6 +1084,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- 住所（送付元）
@@ -706,6 +1111,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
 -- Ver1.2 N.Abe DEL START
@@ -734,59 +1142,61 @@ AS
 --        END IF;
 -- Ver1.2 N.Abe DEL END
 --
+-- Ver1.6 K.Yoshikawa DEL START
         -- 銀行名
-        lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                           iv_chk_char  => it_head_rec.bank_name
-                         );
-        IF ( lb_chk_return = FALSE ) THEN
---
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                              ,iv_name          => cv_msg_xxcok1_10434
-                              ,iv_token_name1   => cv_tkn_conn_loc
-                              ,iv_token_value1  => NULL
-                              ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
-                              ,iv_token_name3   => cv_tkn_bank_code
-                              ,iv_token_value3  => it_head_rec.bank_code
-                              ,iv_token_name4   => cv_tkn_bank_name
-                              ,iv_token_value4  => it_head_rec.bank_name
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.LOG
-                              ,iv_message       => lv_outmsg
-                              ,in_new_line      => 0
-                             );
-          ov_retcode := cv_status_warn;
-        END IF;
---
-        -- 支店名
-        lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                           iv_chk_char  => it_head_rec.branch_name
-                         );
-        IF ( lb_chk_return = FALSE ) THEN
---
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                              ,iv_name          => cv_msg_xxcok1_10435
-                              ,iv_token_name1   => cv_tkn_conn_loc
-                              ,iv_token_value1  => NULL
-                              ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
-                              ,iv_token_name3   => cv_tkn_bank_code
-                              ,iv_token_value3  => it_head_rec.bank_code
-                              ,iv_token_name4   => cv_tkn_bank_branch_code
-                              ,iv_token_value4  => it_head_rec.branch_code
-                              ,iv_token_name5   => cv_tkn_bank_branch_name
-                              ,iv_token_value5  => it_head_rec.branch_name
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.LOG
-                              ,iv_message       => lv_outmsg
-                              ,in_new_line      => 0
-                             );
-          ov_retcode := cv_status_warn;
-        END IF;
+--        lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                           iv_chk_char  => it_head_rec.bank_name
+--                         );
+--        IF ( lb_chk_return = FALSE ) THEN
+----
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                              ,iv_name          => cv_msg_xxcok1_10434
+--                              ,iv_token_name1   => cv_tkn_conn_loc
+--                              ,iv_token_value1  => NULL
+--                              ,iv_token_name2   => cv_tkn_vendor_code
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+--                              ,iv_token_name3   => cv_tkn_bank_code
+--                              ,iv_token_value3  => it_head_rec.bank_code
+--                              ,iv_token_name4   => cv_tkn_bank_name
+--                              ,iv_token_value4  => it_head_rec.bank_name
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.LOG
+--                              ,iv_message       => lv_outmsg
+--                              ,in_new_line      => 0
+--                             );
+--          ov_retcode := cv_status_warn;
+--        END IF;
+----
+--        -- 支店名
+--        lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                           iv_chk_char  => it_head_rec.branch_name
+--                         );
+--        IF ( lb_chk_return = FALSE ) THEN
+----
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                              ,iv_name          => cv_msg_xxcok1_10435
+--                              ,iv_token_name1   => cv_tkn_conn_loc
+--                              ,iv_token_value1  => NULL
+--                              ,iv_token_name2   => cv_tkn_vendor_code
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+--                              ,iv_token_name3   => cv_tkn_bank_code
+--                              ,iv_token_value3  => it_head_rec.bank_code
+--                              ,iv_token_name4   => cv_tkn_bank_branch_code
+--                              ,iv_token_value4  => it_head_rec.branch_code
+--                              ,iv_token_name5   => cv_tkn_bank_branch_name
+--                              ,iv_token_value5  => it_head_rec.branch_name
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.LOG
+--                              ,iv_message       => lv_outmsg
+--                              ,in_new_line      => 0
+--                             );
+--          ov_retcode := cv_status_warn;
+--        END IF;
+-- Ver1.6 K.Yoshikawa DEL END
 --
       END IF;
 --
@@ -813,6 +1223,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
       END IF;
 --
@@ -839,6 +1252,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
       END IF;
 --
@@ -864,7 +1280,10 @@ AS
                               ,iv_token_name1   => cv_tkn_col
                               ,iv_token_value1  => gt_custom_item(2)
                               ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
+-- Ver1.6 K.Yoshikawa MOD START
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+                              ,iv_token_value2  => iv_pre_vendor_code
+-- Ver1.6 K.Yoshikawa MOD END
                               ,iv_token_name3   => cv_tkn_value
                               ,iv_token_value3  => it_cust_rec.custom2
                              );
@@ -874,6 +1293,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_c := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
       END IF;
     END IF;
@@ -907,6 +1329,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- 電話番号（送付先）
@@ -931,6 +1356,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- FAX番号
@@ -955,6 +1383,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- 郵便番号（送付元）
@@ -979,6 +1410,9 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
         -- 電話番号（送付元）
@@ -1003,103 +1437,108 @@ AS
                               ,in_new_line      => 0
                              );
           ov_retcode := cv_status_warn;
+-- Ver1.6 K.Yoshikawa ADD START
+          lv_check_result_h := 'W';
+-- Ver1.6 K.Yoshikawa ADD END
         END IF;
 --
       END IF;
 --
     END IF;
 --
-    -- ヘッダー・明細
-    IF (iv_h_c = 'H') THEN
-      -- チェックフラグがNの場合チェックする（Yならチェック済み）
-      IF (iv_chk_flg = 'N') THEN
-        -- ===============================================
-        -- 半角チェック
-        -- ===============================================
-        -- 銀行コード
-        lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
-                           iv_check_char  => it_head_rec.bank_code
-                         );
-        IF ( lb_chk_return = FALSE ) THEN
+-- Ver1.6 K.Yoshikawa DEL START
+--    -- ヘッダー・明細
+--    IF (iv_h_c = 'H') THEN
+--      -- チェックフラグがNの場合チェックする（Yならチェック済み）
+--      IF (iv_chk_flg = 'N') THEN
+--        -- ===============================================
+--        -- 半角チェック
+--        -- ===============================================
+--        -- 銀行コード
+--        lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
+--                           iv_check_char  => it_head_rec.bank_code
+--                         );
+--        IF ( lb_chk_return = FALSE ) THEN
+----
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                              ,iv_name          => cv_msg_xxcok1_10460
+--                              ,iv_token_name1   => cv_tkn_conn_loc
+--                              ,iv_token_value1  => NULL
+--                              ,iv_token_name2   => cv_tkn_vendor_code
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+--                              ,iv_token_name3   => cv_tkn_bank_code
+--                              ,iv_token_value3  => it_head_rec.bank_code
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.LOG
+--                              ,iv_message       => lv_outmsg
+--                              ,in_new_line      => 0
+--                             );
+--          ov_retcode := cv_status_warn;
+--        END IF;
+----
+--        -- 支店コード
+--        lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
+--                           iv_check_char  => it_head_rec.branch_code
+--                         );
+--        IF ( lb_chk_return = FALSE ) THEN
+----
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                              ,iv_name          => cv_msg_xxcok1_10461
+--                              ,iv_token_name1   => cv_tkn_conn_loc
+--                              ,iv_token_value1  => NULL
+--                              ,iv_token_name2   => cv_tkn_vendor_code
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+--                              ,iv_token_name3   => cv_tkn_bank_code
+--                              ,iv_token_value3  => it_head_rec.bank_code
+--                              ,iv_token_name4   => cv_tkn_bank_branch_code
+--                              ,iv_token_value4  => it_head_rec.branch_code
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.LOG
+--                              ,iv_message       => lv_outmsg
+--                              ,in_new_line      => 0
+--                             );
+--          ov_retcode := cv_status_warn;
+--        END IF;
 --
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                              ,iv_name          => cv_msg_xxcok1_10460
-                              ,iv_token_name1   => cv_tkn_conn_loc
-                              ,iv_token_value1  => NULL
-                              ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
-                              ,iv_token_name3   => cv_tkn_bank_code
-                              ,iv_token_value3  => it_head_rec.bank_code
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.LOG
-                              ,iv_message       => lv_outmsg
-                              ,in_new_line      => 0
-                             );
-          ov_retcode := cv_status_warn;
-        END IF;
+--        -- ===============================================
+--        -- 半角英数字記号チェック
+--        -- ===============================================
+--        -- 口座名
+--        lb_chk_return := xxccp_common_pkg.chk_single_byte(
+--                           iv_chk_char  => it_head_rec.bank_holder_name_alt
+--                         );
+--        IF ( lb_chk_return = FALSE ) THEN
+----
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                              ,iv_name          => cv_msg_xxcok1_10462
+--                              ,iv_token_name1   => cv_tkn_conn_loc
+--                              ,iv_token_value1  => NULL
+--                              ,iv_token_name2   => cv_tkn_vendor_code
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+--                              ,iv_token_name3   => cv_tkn_bank_code
+--                              ,iv_token_value3  => it_head_rec.bank_code
+--                              ,iv_token_name4   => cv_tkn_bank_branch_code
+--                              ,iv_token_value4  => it_head_rec.branch_code
+--                              ,iv_token_name5   => cv_tkn_bank_holder_name
+--                              ,iv_token_value5  => it_head_rec.bank_holder_name_alt
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.LOG
+--                              ,iv_message       => lv_outmsg
+--                              ,in_new_line      => 0
+--                             );
+--          ov_retcode := cv_status_warn;
+--        END IF;
 --
-        -- 支店コード
-        lb_chk_return := xxccp_common_pkg.chk_alphabet_number(
-                           iv_check_char  => it_head_rec.branch_code
-                         );
-        IF ( lb_chk_return = FALSE ) THEN
+--      END IF;
 --
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                              ,iv_name          => cv_msg_xxcok1_10461
-                              ,iv_token_name1   => cv_tkn_conn_loc
-                              ,iv_token_value1  => NULL
-                              ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
-                              ,iv_token_name3   => cv_tkn_bank_code
-                              ,iv_token_value3  => it_head_rec.bank_code
-                              ,iv_token_name4   => cv_tkn_bank_branch_code
-                              ,iv_token_value4  => it_head_rec.branch_code
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.LOG
-                              ,iv_message       => lv_outmsg
-                              ,in_new_line      => 0
-                             );
-          ov_retcode := cv_status_warn;
-        END IF;
---
-        -- ===============================================
-        -- 半角英数字記号チェック
-        -- ===============================================
-        -- 口座名
-        lb_chk_return := xxccp_common_pkg.chk_single_byte(
-                           iv_chk_char  => it_head_rec.bank_holder_name_alt
-                         );
-        IF ( lb_chk_return = FALSE ) THEN
---
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                              ,iv_name          => cv_msg_xxcok1_10462
-                              ,iv_token_name1   => cv_tkn_conn_loc
-                              ,iv_token_value1  => NULL
-                              ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
-                              ,iv_token_name3   => cv_tkn_bank_code
-                              ,iv_token_value3  => it_head_rec.bank_code
-                              ,iv_token_name4   => cv_tkn_bank_branch_code
-                              ,iv_token_value4  => it_head_rec.branch_code
-                              ,iv_token_name5   => cv_tkn_bank_holder_name
-                              ,iv_token_value5  => it_head_rec.bank_holder_name_alt
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.LOG
-                              ,iv_message       => lv_outmsg
-                              ,in_new_line      => 0
-                             );
-          ov_retcode := cv_status_warn;
-        END IF;
---
-      END IF;
---
-    END IF;
+--    END IF;
+-- Ver1.6 K.Yoshikawa DEL END
 --
   EXCEPTION
     -- *** 共通関数OTHERS例外 ***
@@ -1160,6 +1599,19 @@ AS
     -- ===============================================
     ov_retcode := cv_status_normal;
 --
+-- Ver.1.7 ADD(MOVE) START
+    -- ===============================================
+    -- 販手残高スナップショット取得(A-15)
+    -- ===============================================
+    ins_data(
+      ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+     ,iv_tax_div      => iv_tax_div
+     ,iv_target_div   => iv_target_div
+    );
+-- Ver.1.7 ADD(MOVE) END
+--
     ln_out_cnt := 1;
     -- ===============================================
     -- ヘッダー・明細データ取得カーソル
@@ -1208,6 +1660,9 @@ AS
            ,it_cust_rec   => g_custom_rec
            ,iv_h_c        => 'C'
            ,iv_chk_flg    => lv_chk_flg
+-- Ver1.6 K.Yoshikawa ADD START
+           ,iv_pre_vendor_code => lv_pre_vendor_code
+-- Ver1.6 K.Yoshikawa ADD END
           );
 --
           IF ( lv_retcode <> cv_status_normal ) THEN
@@ -1397,6 +1852,60 @@ AS
           gn_skip_cnt := gn_skip_cnt + 1;
         END IF;
 --
+-- Ver1.6 K.Yoshikawa ADD START
+-- Ver.1.7 DEL(MOVE) START
+--        IF lv_skip_flg <> 'Y' THEN
+--          -- ===============================================
+--          -- 販手残高スナップショット取得(A-15)
+--          -- ===============================================
+--          ins_data(
+--            ov_errbuf       => lv_errbuf
+--           ,ov_retcode      => lv_retcode
+--           ,ov_errmsg       => lv_errmsg
+--           ,iv_vendor_code  => lv_pre_vendor_code
+--          );
+--        END IF;
+-- Ver.1.7 DEL(MOVE) END
+--
+        IF lv_skip_flg = 'Y' THEN
+-- Ver.1.7 ADD START
+          -- ===============================================
+          -- 販手残高スナップショットテーブル削除(A-16)
+          -- ===============================================
+          DELETE FROM xxcok_bm_balance_snap
+          WHERE  supplier_code       = lv_pre_vendor_code
+          AND    snapshot_create_ym  = to_char(gd_process_date,'YYYYMM')
+          AND    snapshot_timing     = '1';
+          --
+          -- 登録件数（成功件数）の減算
+          gn_normal_s_cnt := gn_normal_s_cnt - SQL%ROWCOUNT;
+-- Ver.1.7 ADD END
+--
+          -- ===============================================
+          -- インフォマート用赤黒カスタム明細テーブル削除(A-16)
+          -- ===============================================
+          DELETE FROM xxcok_info_rev_custom
+          WHERE  vendor_code         = lv_pre_vendor_code
+          AND    tax_div             = iv_tax_div
+          AND    snapshot_create_ym  = to_char(gd_process_date,'YYYYMM')
+          AND    snapshot_timing     = '1'
+          AND    rev                 = '1'
+          AND    check_result        = '9';
+--
+          -- ===============================================
+          -- インフォマート用赤黒ヘッダーテーブル削除(A-16)
+          -- ===============================================
+          DELETE FROM xxcok_info_rev_header
+          WHERE  vendor_code         = lv_pre_vendor_code
+          AND    tax_div             = iv_tax_div
+          AND    snapshot_create_ym  = to_char(gd_process_date,'YYYYMM')
+          AND    snapshot_timing     = '1'
+          AND    rev                 = '1'
+          AND    check_result        = '9';
+        END IF;
+--
+-- Ver1.6 K.Yoshikawa ADD END
+--
         -- 更新対象かチェック
         IF ( lv_upd_flg = 'Y' ) AND ( lv_skip_flg = 'N' ) THEN
           -- ===============================================
@@ -1472,7 +1981,7 @@ AS
             || cv_msg_canm || gt_head_item(32)          -- 販売手数料　税抜／販売手数料　税込
             || cv_msg_canm || gt_head_item(33)          -- 電気代等合計　税抜
             || cv_msg_canm || gt_head_item(34)          -- 消費税／内消費税
-            || cv_msg_canm || gt_head_item(35)          -- 振込手数料　税込
+            || cv_msg_canm || gt_head_item(35)          -- 振込手数料：(外税)振込手数料　税抜／(内税)振込手数料　税込
             || cv_msg_canm || gt_head_item(36)          -- お支払金額　税込
             || cv_msg_canm || gt_head_item(37)          -- 明細項目
             || cv_msg_canm || gt_head_item(38)          -- 単価
@@ -1483,6 +1992,18 @@ AS
             || cv_msg_canm || gt_head_item(43)          -- 合計金額
             || cv_msg_canm || gt_head_item(44)          -- 部門名
             || cv_msg_canm || gt_head_item(45)          -- 備考
+--2021/5/28 add start
+            || cv_msg_canm || gt_head_item(46)          -- 対象期間開始日
+            || cv_msg_canm || gt_head_item(47)          -- 対象期間終了日
+--2021/5/28 add end
+-- Ver.1.7 ADD START
+            || cv_msg_canm || gt_head_item(48)          -- 送付先登録番号
+            || cv_msg_canm || gt_head_item(49)          -- 送付元登録番号
+            || cv_msg_canm || gt_head_item(50)          -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
+            || cv_msg_canm || gt_head_item(51)          -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
+            || cv_msg_canm || gt_head_item(52)          -- 振込手数料　消費税
+            || cv_msg_canm || gt_head_item(53)          -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
+-- Ver.1.7 ADD END
             ;
 --
             -- ===============================================
@@ -1540,7 +2061,7 @@ AS
           || cv_msg_canm || g_head_rec.sales_fee                            -- 販売手数料　税抜／販売手数料　税込
           || cv_msg_canm || g_head_rec.electric_amt                         -- 電気代等合計　税抜
           || cv_msg_canm || g_head_rec.h_tax_amt                            -- 消費税／内消費税
-          || cv_msg_canm || g_head_rec.transfer_fee                         -- 振込手数料　税込
+          || cv_msg_canm || g_head_rec.transfer_fee                         -- 振込手数料：(外税)振込手数料　税抜／(内税)振込手数料　税込
           || cv_msg_canm || g_head_rec.payment_amt                          -- お支払金額　税込
           || cv_msg_canm || g_head_rec.line_item                            -- 明細項目
           || cv_msg_canm || g_head_rec.unit_price                           -- 単価
@@ -1551,6 +2072,30 @@ AS
           || cv_msg_canm || g_head_rec.total_amt                            -- 合計金額
           || cv_msg_canm || g_head_rec.inst_dest                            -- 部門名
           || cv_msg_canm || g_head_rec.remarks                              -- 備考
+--2021/5/28 add start
+          || cv_msg_canm || SUBSTR(
+--Ver1.5 mod start
+--                                   TO_CHAR( g_head_rec.closing_date_min, cv_fmt_ymd )
+                                   TO_CHAR( g_head_rec.closing_date_min, cv_fmt_ymd2 )
+--Ver1.5 mod end
+                                   ,1
+--Ver1.5 mod start
+--                                   ,7 
+--                                   ) ||'/01'                                 -- 対象期間開始日
+--          || cv_msg_canm || TO_CHAR( g_head_rec.closing_date, cv_fmt_ymd )  -- 対象期間終了日
+                                   ,6
+                                   ) ||'01'                                  -- 対象期間開始日
+          || cv_msg_canm || TO_CHAR( g_head_rec.closing_date, cv_fmt_ymd2 )  -- 対象期間終了日
+--Ver1.5 mod end
+--2021/5/28 add end
+-- Ver.1.7 ADD START
+          || cv_msg_canm || g_head_rec.to_regnum                            -- 送付先登録番号
+          || cv_msg_canm || g_head_rec.from_regnum                          -- 送付元登録番号
+          || cv_msg_canm || g_head_rec.recalc_total_fee                     -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
+          || cv_msg_canm || g_head_rec.recalc_total_fee2                    -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
+          || cv_msg_canm || g_head_rec.bank_trans_fee_tax                   -- 振込手数料（消費税）
+          || cv_msg_canm || g_head_rec.bank_trans_fee2                      -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
+-- Ver.1.7 ADD END
           ;
 --
       ln_out_cnt := ln_out_cnt + 1;
@@ -1566,6 +2111,9 @@ AS
        ,it_cust_rec   => NULL
        ,iv_h_c        => 'H'
        ,iv_chk_flg    => lv_chk_flg
+-- Ver1.6 K.Yoshikawa ADD START
+       ,iv_pre_vendor_code => lv_pre_vendor_code
+-- Ver1.6 K.Yoshikawa ADD END
       );
 --
       lv_chk_flg := 'Y';
@@ -1689,6 +2237,302 @@ AS
       ov_retcode := cv_status_error;
   END file_open;
 --
+-- Ver1.6 K.Yoshikawa ADD START
+  /**********************************************************************************
+   * Procedure Name   : ins_info_rev
+   * Description      : インフォマート用赤黒取得(A-14)
+   ***********************************************************************************/
+  PROCEDURE ins_info_rev(
+    iv_tax_div    IN  VARCHAR2
+   ,iv_target_div IN  VARCHAR2
+   ,ov_errbuf     OUT VARCHAR2
+   ,ov_retcode    OUT VARCHAR2
+   ,ov_errmsg     OUT VARCHAR2
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name    CONSTANT VARCHAR2(20) := 'ins_info_rev';  -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf       VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+    lv_outmsg       VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
+    -- ===============================================
+    -- ローカル例外
+    -- ===============================================
+    --*** 存在チェックエラー ***
+    check_file_expt  EXCEPTION;
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+    -- ===============================================
+    -- カスタム明細情報登録
+    -- ===============================================
+    INSERT INTO xxcok_info_rev_custom(
+      snapshot_create_ym          -- スナップショット作成年月
+     ,snapshot_timing             -- スナップショットタイミング 
+     ,rev                         -- REV
+     ,check_result                -- 妥当性チェック結果
+     ,row_id                      -- 元テーブルレコードID
+     ,edi_interface_date          -- 連携日（EDI支払案内書）
+     ,vendor_code                 -- 送付先コード
+     ,cust_code                   -- 顧客コード
+     ,inst_dest                   -- 設置場所
+     ,calc_type                   -- 計算条件
+     ,calc_sort                   -- 計算条件ソート順
+     ,sell_bottle                 -- 売価／容器
+     ,sales_qty                   -- 販売本数
+     ,sales_tax_amt               -- 販売金額（税込）
+     ,sales_amt                   -- 販売金額（税抜）
+     ,contract                    -- ご契約内容
+     ,sales_fee                   -- 販売手数料（税抜）
+     ,tax_amt                     -- 消費税
+     ,sales_tax_fee               -- 販売手数料（税込）
+     ,bottle_code                 -- 容器区分コード
+     ,salling_price               -- 売価金額
+     ,rebate_rate                 -- 割戻率
+     ,rebate_amt                  -- 割戻額
+     ,tax_code                    -- 税コード
+     ,tax_div                     -- 税区分
+     ,target_div                  -- 対象区分
+     ,created_by                  -- 作成者
+     ,creation_date               -- 作成日
+     ,last_updated_by             -- 最終更新者
+     ,last_update_date            -- 最終更新日
+     ,last_update_login           -- 最終更新ログイン
+     ,request_id                  -- 要求ID
+     ,program_application_id      -- コンカレント・プログラム・アプリケーションID
+     ,program_id                  -- コンカレント・プログラムID
+     ,program_update_date         -- プログラム更新日
+    )
+    SELECT        to_char(gd_process_date,'YYYYMM') -- スナップショット作成年月
+                 ,'1'                              -- スナップショットタイミング 1：2営
+                 ,'1'                              --  REV
+                 ,'9'                              -- 妥当性チェック結果
+                 ,xiwc.rowid                       -- 元テーブルレコードID
+                 ,null                             -- 連携日（EDI支払案内書）
+                 ,xiwc.vendor_code                 -- 送付先コード
+                 ,xiwc.cust_code                   -- 顧客コード
+                 ,xiwc.inst_dest                   -- 設置場所
+                 ,xiwc.calc_type                   -- 計算条件
+                 ,xiwc.calc_sort                   -- 計算条件ソート順
+                 ,xiwc.sell_bottle                 -- 売価／容器
+                 ,xiwc.sales_qty                   -- 販売本数
+                 ,xiwc.sales_tax_amt               -- 販売金額（税込）
+                 ,xiwc.sales_amt                   -- 販売金額（税抜）
+                 ,xiwc.contract                    -- ご契約内容
+                 ,xiwc.sales_fee                   -- 販売手数料（税抜）
+                 ,xiwc.tax_amt                     -- 消費税
+                 ,xiwc.sales_tax_fee               -- 販売手数料（税込）
+                 ,xiwc.bottle_code                 -- 容器区分コード
+                 ,xiwc.salling_price               -- 売価金額
+                 ,xiwc.rebate_rate                 -- 割戻率
+                 ,xiwc.rebate_amt                  -- 割戻額
+                 ,xiwc.tax_code                    -- 税コード
+                 ,xiwc.tax_div                     -- 税区分
+                 ,xiwc.target_div                  -- 対象区分
+                 ,xiwc.created_by                  -- 作成者
+                 ,xiwc.creation_date               -- 作成日
+                 ,xiwc.last_updated_by             -- 最終更新者
+                 ,xiwc.last_update_date            -- 最終更新日
+                 ,xiwc.last_update_login           -- 最終更新ログイン
+                 ,xiwc.request_id                  -- 要求ID
+                 ,xiwc.program_application_id      -- コンカレント・プログラム・アプリケーションID
+                 ,xiwc.program_id                  -- コンカレント・プログラムID
+                 ,xiwc.program_update_date         -- プログラム更新日
+    FROM    xxcok_info_work_custom xiwc
+    WHERE   xiwc.tax_div    = iv_tax_div
+    AND     xiwc.target_div = iv_target_div;
+--
+    -- 登録件数（成功件数）
+    gn_normal_s_cnt := gn_normal_s_cnt + SQL%ROWCOUNT;
+--
+    -- ===============================================
+    -- ヘッダー情報登録
+    -- ===============================================
+    INSERT INTO xxcok_info_rev_header(
+      snapshot_create_ym      -- スナップショット作成年月
+     ,snapshot_timing         -- スナップショットタイミング
+     ,rev                     -- REV 1：元黒（2営ファイル作成）
+     ,check_result            -- 妥当性チェック結果
+     ,row_id                  -- 元テーブルレコードID
+     ,edi_interface_date      -- 連携日（EDI支払案内書）
+     ,vendor_code             -- 送付先コード
+     ,set_code                -- 通知書書式設定コード
+     ,cust_code               -- 顧客コード
+     ,cust_name               -- 会社名
+     ,dest_post_code          -- 郵便番号
+     ,dest_address1           -- 住所
+     ,dest_tel                -- 電話番号
+     ,fax                     -- FAX番号
+     ,dept_name               -- 部署名
+     ,send_post_code          -- 郵便番号（送付元）
+     ,send_address1           -- 住所（送付元）
+     ,send_tel                -- 電話番号（送付元）
+     ,num                     -- 番号
+     ,payment_date            -- 支払日
+     ,closing_date            -- 締め日
+     ,closing_date_min        -- 最小締め日
+     ,notifi_amt              -- おもての通知金額
+     ,total_amt_no_tax_10     -- 10%合計金額（税抜）
+     ,tax_amt_10              -- 10%消費税額
+     ,total_amt_10            -- 10%合計金額（税込）
+     ,total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
+     ,tax_amt_8               -- 軽減8%消費税額
+     ,total_amt_8             -- 軽減8%合計金額（税込）
+     ,total_amt_no_tax_0      -- 非課税合計金額（税抜）
+     ,tax_amt_0               -- 非課税消費税額
+     ,total_amt_0             -- 非課税合計金額（税込）
+     ,total_sales_qty         -- 販売本数合計
+     ,total_sales_amt         -- 販売金額合計
+     ,sales_fee               -- 販売手数料
+     ,electric_amt            -- 電気代等合計　税抜
+     ,tax_amt                 -- 消費税
+     ,transfer_fee            -- 振込手数料　税込
+     ,payment_amt             -- お支払金額　税込
+     ,remarks                 -- おもて備考
+     ,bank_code               -- 銀行コード
+     ,bank_name               -- 銀行名
+     ,branch_code             -- 支店コード
+     ,branch_name             -- 支店名
+     ,bank_holder_name_alt    -- 口座名
+     ,tax_div                 -- 税区分
+     ,target_div              -- 対象区分
+     ,created_by              -- 作成者
+     ,creation_date           -- 作成日
+     ,last_updated_by         -- 最終更新者
+     ,last_update_date        -- 最終更新日
+     ,last_update_login       -- 最終更新ログイン
+     ,request_id              -- 要求ID
+     ,program_application_id  -- コンカレント・プログラム・アプリケーションID
+     ,program_id              -- コンカレント・プログラムID
+     ,program_update_date     -- プログラム更新日
+-- Ver.1.7 ADD START
+     ,bm_payment_kbn            -- BM支払区分
+     ,tax_calc_kbn              -- 税計算区分
+     ,bm_tax_kbn                -- BM税区分
+     ,bank_charge_bearer        -- 振込手数料負担者
+     ,sales_fee_no_tax          -- 販売手数料（税抜）
+     ,sales_fee_tax             -- 販売手数料（消費税）
+     ,sales_fee_with_tax        -- 販売手数料（税込）
+     ,electric_amt_no_tax       -- 電気代等（税抜）
+     ,electric_amt_tax          -- 電気代等（消費税）
+     ,electric_amt_with_tax     -- 電気代等（税込）
+     ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+     ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+     ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+     ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+     ,bank_trans_fee_tax        -- 振込手数料（消費税）
+     ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+     ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.7 ADD END
+    )
+    SELECT        to_char(gd_process_date,'YYYYMM') -- スナップショット作成年月
+                 ,'1'                          -- スナップショットタイミング 1：2営
+                 ,'1'                          -- REV 1：元黒（2営ファイル作成）
+                 ,'9'                          -- 妥当性チェック結果
+                 ,xiwh.rowid                   -- 元テーブルレコードID
+                 ,null                         -- 連携日（EDI支払案内書）
+                 ,xiwh.vendor_code             -- 送付先コード
+                 ,xiwh.set_code                -- 通知書書式設定コード
+                 ,xiwh.cust_code               -- 顧客コード
+                 ,xiwh.cust_name               -- 会社名
+                 ,xiwh.dest_post_code          -- 郵便番号
+                 ,xiwh.dest_address1           -- 住所
+                 ,xiwh.dest_tel                -- 電話番号
+                 ,xiwh.fax                     -- FAX番号
+                 ,xiwh.dept_name               -- 部署名
+                 ,xiwh.send_post_code          -- 郵便番号（送付元）
+                 ,xiwh.send_address1           -- 住所（送付元）
+                 ,xiwh.send_tel                -- 電話番号（送付元）
+                 ,xiwh.num                     -- 番号
+                 ,xiwh.payment_date            -- 支払日
+                 ,xiwh.closing_date            -- 締め日
+                 ,xiwh.closing_date_min        -- 最小締め日
+                 ,xiwh.notifi_amt              -- おもての通知金額
+                 ,xiwh.total_amt_no_tax_10     -- 10%合計金額（税抜）
+                 ,xiwh.tax_amt_10              -- 10%消費税額
+                 ,xiwh.total_amt_10            -- 10%合計金額（税込）
+                 ,xiwh.total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
+                 ,xiwh.tax_amt_8               -- 軽減8%消費税額
+                 ,xiwh.total_amt_8             -- 軽減8%合計金額（税込）
+                 ,xiwh.total_amt_no_tax_0      -- 非課税合計金額（税抜）
+                 ,xiwh.tax_amt_0               -- 非課税消費税額
+                 ,xiwh.total_amt_0             -- 非課税合計金額（税込）
+                 ,xiwh.total_sales_qty         -- 販売本数合計
+                 ,xiwh.total_sales_amt         -- 販売金額合計
+                 ,xiwh.sales_fee               -- 販売手数料
+                 ,xiwh.electric_amt            -- 電気代等合計　税抜
+                 ,xiwh.tax_amt                 -- 消費税
+                 ,xiwh.transfer_fee            -- 振込手数料　税込
+                 ,xiwh.payment_amt             -- お支払金額　税込
+                 ,xiwh.remarks                 -- おもて備考
+                 ,xiwh.bank_code               -- 銀行コード
+                 ,xiwh.bank_name               -- 銀行名
+                 ,xiwh.branch_code             -- 支店コード
+                 ,xiwh.branch_name             -- 支店名
+                 ,xiwh.bank_holder_name_alt    -- 口座名
+                 ,xiwh.tax_div                 -- 税区分
+                 ,xiwh.target_div              -- 対象区分
+                 ,xiwh.created_by              -- 作成者
+                 ,xiwh.creation_date           -- 作成日
+                 ,xiwh.last_updated_by         -- 最終更新者
+                 ,xiwh.last_update_date        -- 最終更新日
+                 ,xiwh.last_update_login       -- 最終更新ログイン
+                 ,xiwh.request_id              -- 要求ID
+                 ,xiwh.program_application_id  -- コンカレント・プログラム・アプリケーションID
+                 ,xiwh.program_id              -- コンカレント・プログラムID
+                 ,xiwh.program_update_date     -- プログラム更新日
+-- Ver.1.7 ADD START
+                 ,xiwh.bm_payment_kbn            -- BM支払区分
+                 ,xiwh.tax_calc_kbn              -- 税計算区分
+                 ,xiwh.bm_tax_kbn                -- BM税区分
+                 ,xiwh.bank_charge_bearer        -- 振込手数料負担者
+                 ,xiwh.sales_fee_no_tax          -- 販売手数料（税抜）
+                 ,xiwh.sales_fee_tax             -- 販売手数料（消費税）
+                 ,xiwh.sales_fee_with_tax        -- 販売手数料（税込）
+                 ,xiwh.electric_amt_no_tax       -- 電気代等（税抜）
+                 ,xiwh.electric_amt_tax          -- 電気代等（消費税）
+                 ,xiwh.electric_amt_with_tax     -- 電気代等（税込）
+                 ,xiwh.recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+                 ,xiwh.recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+                 ,xiwh.recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+                 ,xiwh.bank_trans_fee_no_tax     -- 振込手数料（税抜）
+                 ,xiwh.bank_trans_fee_tax        -- 振込手数料（消費税）
+                 ,xiwh.bank_trans_fee_with_tax   -- 振込手数料（税込）
+                 ,xiwh.vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.7 ADD END
+    FROM    xxcok_info_work_header xiwh
+    WHERE   xiwh.tax_div    = iv_tax_div
+    AND     xiwh.target_div = iv_target_div;
+--
+    -- 登録件数（成功件数）
+    gn_normal_s_cnt := gn_normal_s_cnt + SQL%ROWCOUNT;
+--
+  EXCEPTION
+    -- *** 存在チェックエラー ***
+    WHEN check_file_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END ins_info_rev;
+-- Ver1.6 K.Yoshikawa ADD END
+--
   /**********************************************************************************
    * Procedure Name   : ins_work_header
    * Description      : ワークヘッダー情報作成(A-5)
@@ -1712,6 +2556,45 @@ AS
     lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
     lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
     lv_outmsg       VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
+-- Ver.1.7 ADD START
+    ln_recalc_total_fee_no_tax      NUMBER  DEFAULT 0;    -- 再計算済手数料計（税抜）
+    ln_recalc_total_fee_tax         NUMBER  DEFAULT 0;    -- 再計算済手数料計（消費税）
+    ln_recalc_total_fee_with_tax    NUMBER  DEFAULT 0;    -- 再計算済手数料計（税込）
+    ln_bank_trans_fee_no_tax        NUMBER  DEFAULT 0;    -- 振込手数料（税抜）
+    ln_bank_trans_fee_tax           NUMBER  DEFAULT 0;    -- 振込手数料（消費税）
+    ln_bank_trans_fee_with_tax      NUMBER  DEFAULT 0;    -- 振込手数料（税込）
+    ln_total_amt_no_tax_10          NUMBER  DEFAULT 0;    -- 10%合計金額（税抜）
+    ln_tax_amt_10                   NUMBER  DEFAULT 0;    -- 10%消費税額
+    ln_total_amt_10                 NUMBER  DEFAULT 0;    -- 10%合計金額（税込）
+    ln_total_amt_no_tax_0           NUMBER  DEFAULT 0;    -- 非課税合計金額（税抜）
+    ln_tax_amt_0                    NUMBER  DEFAULT 0;    -- 非課税消費税額
+    ln_total_amt_0                  NUMBER  DEFAULT 0;    -- 非課税合計金額（税込）
+-- Ver.1.7 ADD END
+--
+-- Ver.1.7 ADD START
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    CURSOR l_update_xiwh_cur
+    (
+      it_tax_div     IN  VARCHAR2
+     ,it_target_div  IN  VARCHAR2
+    )
+    IS
+      SELECT xiwh.rowid                      AS  row_id                     -- ROWID
+            ,xiwh.bm_payment_kbn             AS  bm_payment_kbn             -- BM支払区分
+            ,xiwh.tax_calc_kbn               AS  tax_calc_kbn               -- 税計算区分
+            ,xiwh.bm_tax_kbn                 AS  bm_tax_kbn                 -- BM税区分
+            ,xiwh.bank_charge_bearer         AS  bank_charge_bearer         -- 振込手数料負担者
+            ,xiwh.recalc_total_fee_no_tax    AS  recalc_total_fee_no_tax    -- 再計算済手数料計（税抜）
+            ,xiwh.recalc_total_fee_tax       AS  recalc_total_fee_tax       -- 再計算済手数料計（消費税）
+            ,xiwh.recalc_total_fee_with_tax  AS  recalc_total_fee_with_tax  -- 再計算済手数料計（税込）
+      FROM   xxcok_info_work_header xiwh    -- ワークヘッダー
+      WHERE  xiwh.tax_div    = it_tax_div
+      AND    xiwh.target_div = it_target_div
+   ;
+-- Ver.1.7 ADD END
+--
     -- ===============================================
     -- ローカル例外
     -- ===============================================
@@ -1773,22 +2656,60 @@ AS
      ,program_application_id  -- コンカレント・プログラム・アプリケーションID
      ,program_id              -- コンカレント・プログラムID
      ,program_update_date     -- プログラム更新日
+-- Ver.1.7 ADD START
+     ,bm_payment_kbn            -- BM支払区分
+     ,tax_calc_kbn              -- 税計算区分
+     ,bm_tax_kbn                -- BM税区分
+     ,bank_charge_bearer        -- 振込手数料負担者
+     ,sales_fee_no_tax          -- 販売手数料（税抜）
+     ,sales_fee_tax             -- 販売手数料（消費税）
+     ,sales_fee_with_tax        -- 販売手数料（税込）
+     ,electric_amt_no_tax       -- 電気代等（税抜）
+     ,electric_amt_tax          -- 電気代等（消費税）
+     ,electric_amt_with_tax     -- 電気代等（税込）
+     ,recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+     ,recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+     ,recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+     ,bank_trans_fee_no_tax     -- 振込手数料（税抜）
+     ,bank_trans_fee_tax        -- 振込手数料（消費税）
+     ,bank_trans_fee_with_tax   -- 振込手数料（税込）
+     ,vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+     ,display_code              -- 表示コード
+     ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.8 Add End
     )
     SELECT  /*+ 
                 LEADING(xbb pv pvsa)
                 INDEX(xbb xxcok_backmargin_balance_n05)
                 USE_NL(pv) USE_NL(pvsa) USE_NL(abau) USE_NL(aba) USE_NL(abb)
                 */
-            CASE
-              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) = 0
-              THEN '0'
-              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) <> 0
-              THEN '1'
-              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) = 0
-              THEN '2'
-              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) <> 0
-              THEN '3'
-            END                                   AS  set_code                -- 通知書書式設定コード
+-- Ver.1.8 Mod Start
+--            CASE
+--              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) = 0
+--              THEN '0'
+--              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) <> 0
+--              THEN '1'
+--              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) = 0
+--              THEN '2'
+--              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) <> 0
+--              THEN '3'
+--            END                                   AS  set_code                -- 通知書書式設定コード
+           ( SELECT flv.lookup_code        AS  set_code
+             FROM   fnd_lookup_values flv
+             WHERE  flv.lookup_type        = cv_xxcok1_set_code
+             AND    flv.language           = 'JA'
+             AND    flv.attribute1         = iv_tax_div
+             AND    flv.attribute2         = xbdciv.company_code_bd
+             AND    flv.attribute3         = CASE
+                                               WHEN NVL(sum_e.sales_fee,0) = 0
+                                               THEN '0'
+                                               WHEN NVL(sum_e.sales_fee,0) <> 0
+                                               THEN '1'
+                                             END
+           )                                      AS  set_code                -- 通知書書式設定コード
+-- Ver.1.8 Mod End
            ,NULL                                  AS  cust_code               -- 顧客コード
            ,SUBSTR( pvsa.attribute1, 1, 30 )      AS  cust_name               -- 会社名
            ,SUBSTR(pvsa.zip, 1, 3) || '-' || SUBSTR(pvsa.zip, 4, 4)
@@ -1809,39 +2730,42 @@ AS
 --2021/05/28 add start
            ,MIN(xbb.closing_date)                 AS  closing_date_min        -- 最小締め日
 --2021/05/28 add end
-           ,CASE
-              -- 外税
-              WHEN iv_tax_div = '1'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       + NVL(sum_t.tax_amt,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-              --内税
-              WHEN iv_tax_div = '2'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-            END                                   AS  notifi_amt              -- おもての通知金額
+-- Ver.1.7 MOD START
+--           ,CASE
+--              -- 外税
+--              WHEN iv_tax_div = '1'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       + NVL(sum_t.tax_amt,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--              --内税
+--              WHEN iv_tax_div = '2'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--            END                                   AS  notifi_amt              -- おもての通知金額
+           ,NULL                                  AS  notifi_amt              -- おもての通知金額
+-- Ver.1.7 MOD END
            ,NVL(sum_t.sales_amt,0)                AS  total_amt_no_tax_8      -- 軽減8%合計金額（税抜）
            ,NVL(sum_t.sales_tax_amt,0) - NVL(sum_t.sales_amt,0)
                                                   AS  tax_amt_8               -- 軽減8%消費税額
@@ -1851,61 +2775,67 @@ AS
            ,NVL(sum_ne.sales_fee,0)               AS  sales_fee               -- 販売手数料　税抜／販売手数料　税込
            ,NVL(sum_e.sales_fee,0)                AS  electric_amt            -- 電気代等合計　税抜／電気代等合計　税込
            ,NVL(sum_t.tax_amt,0)                  AS  tax_amt                 -- 消費税／内消費税
-           ,CASE
-              WHEN pvsa.bank_charge_bearer = 'I'
-              THEN 0
-              -- 外税
-              WHEN    iv_tax_div = '1'
-                  AND pvsa.bank_charge_bearer <> 'I'
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
-              THEN gn_tax_include_less
-              WHEN    iv_tax_div = '1'
-                  AND pvsa.bank_charge_bearer <> 'I' 
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
-              THEN gn_tax_include_more
-              --内税
-              WHEN    iv_tax_div = '2'
-                  AND pvsa.bank_charge_bearer <> 'I'
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
-              THEN gn_tax_include_less
-              WHEN    iv_tax_div = '2'
-                  AND pvsa.bank_charge_bearer <> 'I'
-                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
-              THEN gn_tax_include_more
-            END * -1                              AS  transfer_fee            -- 振込手数料　税込
-           ,CASE
-              -- 外税
-              WHEN iv_tax_div = '1'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       + NVL(sum_t.tax_amt,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-              --内税
-              WHEN iv_tax_div = '2'
-              THEN NVL(  NVL(sum_ne.sales_fee,0)
-                       + NVL(sum_e.sales_fee,0)
-                       - CASE
-                           WHEN pvsa.bank_charge_bearer = 'I'
-                           THEN 0
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
-                           THEN gn_tax_include_less
-                           WHEN    pvsa.bank_charge_bearer <> 'I' 
-                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
-                           THEN gn_tax_include_more
-                         END
-                      , 0)
-            END                                   AS  payment_amt             -- お支払金額　税込
+-- Ver.1.7 MOD START
+--           ,CASE
+--              WHEN pvsa.bank_charge_bearer = 'I'
+--              THEN 0
+--              -- 外税
+--              WHEN    iv_tax_div = '1'
+--                  AND pvsa.bank_charge_bearer <> 'I'
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
+--              THEN gn_tax_include_less
+--              WHEN    iv_tax_div = '1'
+--                  AND pvsa.bank_charge_bearer <> 'I' 
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
+--              THEN gn_tax_include_more
+--              --内税
+--              WHEN    iv_tax_div = '2'
+--                  AND pvsa.bank_charge_bearer <> 'I'
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
+--              THEN gn_tax_include_less
+--              WHEN    iv_tax_div = '2'
+--                  AND pvsa.bank_charge_bearer <> 'I'
+--                  AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
+--              THEN gn_tax_include_more
+--            END * -1                              AS  transfer_fee            -- 振込手数料　税込
+           ,NULL                                  AS  transfer_fee            -- 振込手数料　税込
+-- Ver.1.7 MOD END
+-- Ver.1.7 MOD START
+--           ,CASE
+--              -- 外税
+--              WHEN iv_tax_div = '1'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       + NVL(sum_t.tax_amt,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) + NVL(sum_t.tax_amt,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--              --内税
+--              WHEN iv_tax_div = '2'
+--              THEN NVL(  NVL(sum_ne.sales_fee,0)
+--                       + NVL(sum_e.sales_fee,0)
+--                       - CASE
+--                           WHEN pvsa.bank_charge_bearer = 'I'
+--                           THEN 0
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) <  gv_bank_fee_trans
+--                           THEN gn_tax_include_less
+--                           WHEN    pvsa.bank_charge_bearer <> 'I' 
+--                               AND ( NVL(sum_ne.sales_fee,0) + NVL(sum_e.sales_fee,0) ) >= gv_bank_fee_trans
+--                           THEN gn_tax_include_more
+--                         END
+--                      , 0)
+--            END                                   AS  payment_amt             -- お支払金額　税込
+           ,NULL                                  AS  payment_amt             -- お支払金額　税込
+-- Ver.1.7 MOD END
 -- Ver1.2 N.Abe MOD START
 --           ,SUBSTR( gv_remarks, 1, 500 )          AS  remarks                 -- おもて備考
            ,SUBSTR( '"' || gv_remarks || '"', 1, 500 )
@@ -1927,6 +2857,38 @@ AS
            ,cn_program_application_id             AS  program_application_id  -- コンカレント・プログラム・ア
            ,cn_program_id                         AS  program_id              -- コンカレント・プログラムID
            ,SYSDATE                               AS  program_update_date     -- プログラム更新日
+-- Ver.1.7 ADD START
+           ,MAX(pvsa.attribute4)                  AS  bm_payment_kbn            -- BM支払区分
+           ,MAX(pvsa.attribute10)                 AS  tax_calc_kbn              -- 税計算区分
+           ,MAX(pvsa.attribute6)                  AS  bm_tax_kbn                -- BM税区分
+           ,pvsa.bank_charge_bearer               AS  bank_charge_bearer        -- 振込手数料負担者
+           ,NVL(sum_ne.sales_fee_no_tax,0)        AS  sales_fee_no_tax          -- 販売手数料（税抜）
+           ,NVL(sum_ne.sales_fee_tax,0)           AS  sales_fee_tax             -- 販売手数料（消費税）
+           ,NVL(sum_ne.sales_fee_with_tax,0)      AS  sales_fee_with_tax        -- 販売手数料（税込）
+           ,NVL(sum_e.electric_amt_no_tax,0)      AS  electric_amt_no_tax       -- 電気代等（税抜）
+           ,NVL(sum_e.electric_amt_tax,0)         AS  electric_amt_tax          -- 電気代等（消費税）
+           ,NVL(sum_e.electric_amt_with_tax,0)    AS  electric_amt_with_tax     -- 電気代等（税込）
+           ,NVL(sum_ne.sales_fee_no_tax,0) + 
+              NVL(sum_e.electric_amt_no_tax,0)    AS  recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+           ,NVL(sum_ne.sales_fee_tax,0) + 
+             NVL(sum_e.electric_amt_tax,0)        AS  recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+           ,NVL(sum_ne.sales_fee_with_tax,0) + 
+             NVL(sum_e.electric_amt_with_tax,0)   AS  recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+           ,NULL                                  AS  bank_trans_fee_no_tax     -- 振込手数料（税抜）
+           ,NULL                                  AS  bank_trans_fee_tax        -- 振込手数料（消費税）
+           ,NULL                                  AS  bank_trans_fee_with_tax   -- 振込手数料（税込）
+           ,(CASE
+               WHEN (MAX(pvsa.attribute8) IS NOT NULL AND MAX(pvsa.attribute9) IS NOT NULL) THEN
+                 -- 適格請求書発行事業者登録 ＋ 課税事業者番号
+                 MAX(pvsa.attribute8) || MAX(pvsa.attribute9)
+               ELSE
+                 NULL
+             END)                                 AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
+-- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+           ,pvsa.attribute5                       AS  display_code
+           ,xbdciv.company_code_bd                AS  company_code_bd
+-- Ver.1.8 Add End
     FROM    xxcok_backmargin_balance  xbb
            ,po_vendors                pv
            ,po_vendor_sites_all       pvsa
@@ -1970,6 +2932,11 @@ AS
                       WHEN iv_tax_div = '2'
                       THEN SUM(xiwc.sales_tax_fee)
                     END                     AS  sales_fee
+-- Ver.1.7 ADD START
+                   ,SUM(xiwc.sales_fee)     AS  sales_fee_no_tax    -- 販売手数料（税抜）
+                   ,SUM(xiwc.tax_amt)       AS  sales_fee_tax       -- 販売手数料（消費税）
+                   ,SUM(xiwc.sales_tax_fee) AS  sales_fee_with_tax  -- 販売手数料（税込）
+-- Ver.1.7 ADD END
                    ,xiwc.vendor_code
              FROM   xxcok_info_work_custom  xiwc
 --Mod Ver1.3 K.Kanada S
@@ -1986,18 +2953,29 @@ AS
                       WHEN iv_tax_div = '2'
                       THEN SUM(xiwc.sales_tax_fee)
                     END                     AS  sales_fee
+-- Ver.1.7 ADD START
+                   ,SUM(xiwc.sales_fee)     AS  electric_amt_no_tax    -- 電気代等（税抜）
+                   ,SUM(xiwc.tax_amt)       AS  electric_amt_tax       -- 電気代等（消費税）
+                   ,SUM(xiwc.sales_tax_fee) AS  electric_amt_with_tax  -- 電気代等（税込）
+-- Ver.1.7 ADD END
                    ,xiwc.vendor_code
              FROM   xxcok_info_work_custom  xiwc
              WHERE  xiwc.calc_sort = 5
              AND    xiwc.tax_div   = iv_tax_div
              GROUP BY xiwc.vendor_code
             ) sum_e
+-- Ver.1.8 Add Start
+           ,xxcfr_bd_dept_comp_info_v xbdciv      -- 基準日部門会社情報ビュー
+-- Ver.1.8 Add End
     WHERE   xbb.supplier_code                      = pv.segment1
     AND     pv.vendor_id                           = pvsa.vendor_id
     AND     ( pvsa.inactive_date                   > gd_process_date
       OR    pvsa.inactive_date                     IS NULL )
     AND     pvsa.org_id                            = gn_org_id
-    AND     pvsa.attribute4                        = '1'
+-- Ver.1.7 MOD START
+--    AND     pvsa.attribute4                        = '1'
+    AND     pvsa.attribute4                        IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 MOD END
     AND     pvsa.attribute5                        = sub1.contact_code
     AND     xbb.supplier_code                      = sum_t.vendor_code(+)
     AND     xbb.supplier_code                      = sum_ne.vendor_code(+)
@@ -2009,9 +2987,9 @@ AS
     AND     xbb.fb_interface_status                = '0'
     AND     xbb.gl_interface_status                = '0'
     AND     NVL(xbb.payment_amt_tax,0)             = 0
---2021/05/28 dell start
---    AND     xbb.amt_fix_status                     = '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--    AND     xbb.amt_fix_status                     = '1'
+-- Ver.1.2* DEL END
     AND     pvsa.vendor_id                         = abau.vendor_id
     AND     pvsa.vendor_site_id                    = abau.vendor_site_id
     AND     abau.primary_flag                      = 'Y'
@@ -2025,6 +3003,22 @@ AS
                                                        WHEN pvsa.attribute6 IN ('2', '3') THEN  -- 税抜、非課税
                                                          '1'
                                                      END
+-- Ver.1.7 ADD START
+    AND     NOT EXISTS (
+                SELECT 1
+                FROM   xxcok_bm_balance_snap  xxbs  -- 販手残高スナップショット
+                WHERE  xxbs.snapshot_create_ym  = TO_CHAR(gd_process_date,'YYYYMM')
+                AND    xxbs.snapshot_timing     = '1'
+                AND    xxbs.supplier_code       = xbb.supplier_code
+            )
+-- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+    AND     xbdciv.dept_code       = pvsa.attribute5          -- 仕入先サイトマスタ.問い合わせ担当拠点コード（DFF5）
+    AND     xbdciv.set_of_books_id = gv_set_of_bks_id         -- 会計帳簿ID
+    AND     xbdciv.enabled_flag    = 'Y'
+    AND     gd_process_date BETWEEN xbdciv.comp_start_date 
+                                AND NVL( xbdciv.comp_end_date, gd_process_date )
+-- Ver.1.8 Add End
     GROUP BY
             xbb.supplier_code
            ,pvsa.attribute1
@@ -2050,10 +3044,132 @@ AS
            ,sum_t.sales_amt
            ,sum_t.sales_tax_amt
            ,sum_t.sales_qty
+-- Ver.1.7 ADD START
+           ,sum_ne.sales_fee_no_tax
+           ,sum_ne.sales_fee_tax
+           ,sum_ne.sales_fee_with_tax
+           ,sum_e.electric_amt_no_tax
+           ,sum_e.electric_amt_tax
+           ,sum_e.electric_amt_with_tax
+-- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+           ,pvsa.attribute5
+           ,xbdciv.company_code_bd
+-- Ver.1.8 Add End
     ;
 --
     -- 登録件数（成功件数）
     gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+-- Ver.1.7 ADD START
+    --============================
+    -- ワークヘッダー情報更新
+    --============================
+    -- 販売手数料計の再計算を行い、その結果をもとに振込手数料、支払金額を算出し、ワークヘッダーへ反映する
+    <<update_xiwh_loop>>
+    FOR l_update_xiwh_rec IN l_update_xiwh_cur(iv_tax_div, iv_target_div) LOOP
+      --
+      -- 販売手数料計の再計算
+      -- ※再計算が不要な場合はINとOUTの各販売手数料計は同じ金額となる
+      xxcok_common_pkg.recalc_pay_amt_p(
+        ov_errbuf               =>  lv_errbuf
+      , ov_retcode              =>  lv_retcode
+      , ov_errmsg               =>  lv_errmsg
+      , iv_pay_kbn              =>  l_update_xiwh_rec.bm_payment_kbn            -- BM支払区分
+      , iv_tax_calc_kbn         =>  NVL(l_update_xiwh_rec.tax_calc_kbn
+                                       ,cv_tax_calc_kbn_line)                   -- 税計算区分
+      , iv_tax_kbn              =>  l_update_xiwh_rec.bm_tax_kbn                -- BM税区分
+      , iv_tax_rounding_rule    =>  cv_tax_rounding_rule_down                   -- 端数処理区分：切捨て
+      , in_tax_rate             =>  gn_bm_tax                                   -- 税率
+      , in_pay_amt_no_tax       =>  l_update_xiwh_rec.recalc_total_fee_no_tax   -- 再計算済手数料計（税抜）
+      , in_pay_amt_tax          =>  l_update_xiwh_rec.recalc_total_fee_tax      -- 再計算済手数料計（消費税）
+      , in_pay_amt_with_tax     =>  l_update_xiwh_rec.recalc_total_fee_with_tax -- 再計算済手数料計（税込）
+      , on_pay_amt_no_tax       =>  ln_recalc_total_fee_no_tax                  -- [OUT]再計算済手数料計（税抜）
+      , on_pay_amt_tax          =>  ln_recalc_total_fee_tax                     -- [OUT]再計算済手数料計（消費税）
+      , on_pay_amt_with_tax     =>  ln_recalc_total_fee_with_tax                -- [OUT]再計算済手数料計（税込）
+      );
+      -- リターンコード確認
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
+      -- 振込手数料の算出
+      xxcok_common_pkg.calc_bank_trans_fee_p(
+        ov_errbuf                   => lv_errbuf
+      , ov_retcode                  => lv_retcode
+      , ov_errmsg                   => lv_errmsg
+      , in_bank_trans_amt           => ln_recalc_total_fee_with_tax             -- 再計算済手数料計（税込）
+      , in_base_amt                 => TO_NUMBER(gv_bank_fee_trans)             -- 基準額
+      , in_fee_less_base_amt        => TO_NUMBER(gv_bank_fee_less)              -- 基準額未満手数料
+      , in_fee_more_base_amt        => TO_NUMBER(gv_bank_fee_more)              -- 基準額以上手数料
+      , in_fee_tax_rate             => gn_bm_tax                                -- 手数料税率
+      , iv_bank_charge_bearer       => l_update_xiwh_rec.bank_charge_bearer     -- 振込手数料負担者
+      , on_bank_trans_fee_no_tax    => ln_bank_trans_fee_no_tax                 -- [OUT]振込手数料（税抜）
+      , on_bank_trans_fee_tax       => ln_bank_trans_fee_tax                    -- [OUT]振込手数料（消費税）
+      , on_bank_trans_fee_with_tax  => ln_bank_trans_fee_with_tax               -- [OUT]振込手数料（税込）
+      );
+      -- リターンコード確認
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
+      -- 税率ごとの税抜、消費税、税込の金額を設定
+      IF (l_update_xiwh_rec.bm_tax_kbn = '3') THEN
+        -- 税区分が非課税の場合
+        ln_total_amt_no_tax_10 := 0 - ln_bank_trans_fee_no_tax;
+        ln_tax_amt_10          := 0 - ln_bank_trans_fee_tax;
+        ln_total_amt_10        := 0 - ln_bank_trans_fee_with_tax;
+        ln_total_amt_no_tax_0  := ln_recalc_total_fee_no_tax;
+        ln_tax_amt_0           := ln_recalc_total_fee_tax;
+        ln_total_amt_0         := ln_recalc_total_fee_with_tax;
+      ELSE
+        -- 税区分が税込み、税抜きの場合
+        ln_total_amt_no_tax_10 := ln_recalc_total_fee_no_tax   - ln_bank_trans_fee_no_tax;
+        ln_tax_amt_10          := ln_recalc_total_fee_tax      - ln_bank_trans_fee_tax;
+        ln_total_amt_10        := ln_recalc_total_fee_with_tax - ln_bank_trans_fee_with_tax;
+        ln_total_amt_no_tax_0  := 0;
+        ln_tax_amt_0           := 0;
+        ln_total_amt_0         := 0;
+      END IF;
+      --
+      -- ワークヘッダー情報更新
+      UPDATE xxcok_info_work_header xiwh
+      SET    -- おもての通知金額
+             xiwh.notifi_amt                =  ln_recalc_total_fee_with_tax - ln_bank_trans_fee_with_tax
+             -- 消費税
+            ,xiwh.tax_amt                   =  ln_recalc_total_fee_tax
+             -- 振込手数料　税込
+            ,xiwh.transfer_fee              =  ln_bank_trans_fee_with_tax * (-1)
+             -- お支払金額　税込
+            ,xiwh.payment_amt               =  ln_recalc_total_fee_with_tax - ln_bank_trans_fee_with_tax
+             -- 10%合計金額（税抜）
+            ,xiwh.total_amt_no_tax_10       =  ln_total_amt_no_tax_10
+             -- 10%消費税額
+            ,xiwh.tax_amt_10                =  ln_tax_amt_10
+             -- 10%合計金額（税込）
+            ,xiwh.total_amt_10              =  ln_total_amt_10
+             -- 非課税合計金額（税抜）
+            ,xiwh.total_amt_no_tax_0        =  ln_total_amt_no_tax_0
+             -- 非課税消費税額
+            ,xiwh.tax_amt_0                 =  ln_tax_amt_0
+             -- 非課税合計金額（税込）
+            ,xiwh.total_amt_0               =  ln_total_amt_0
+             -- 再計算済手数料計（税抜）
+            ,xiwh.recalc_total_fee_no_tax   =  ln_recalc_total_fee_no_tax
+             -- 再計算済手数料計（消費税）
+            ,xiwh.recalc_total_fee_tax      =  ln_recalc_total_fee_tax
+             -- 再計算済手数料計（税込）
+            ,xiwh.recalc_total_fee_with_tax =  ln_recalc_total_fee_with_tax
+             -- 振込手数料（税抜）
+            ,xiwh.bank_trans_fee_no_tax     =  ln_bank_trans_fee_no_tax   * (-1)
+             -- 振込手数料（消費税）
+            ,xiwh.bank_trans_fee_tax        =  ln_bank_trans_fee_tax      * (-1)
+             -- 振込手数料（税込）
+            ,xiwh.bank_trans_fee_with_tax   =  ln_bank_trans_fee_with_tax * (-1)
+      WHERE  xiwh.rowid = l_update_xiwh_rec.row_id
+      ;
+    END LOOP update_xiwh_loop;
+-- Ver.1.7 ADD END
 --
   EXCEPTION
     -- *** 存在チェックエラー ***
@@ -2065,6 +3181,12 @@ AS
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
+-- Ver.1.7 ADD START
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.7 ADD END
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -2288,7 +3410,10 @@ AS
     AND     ( pvsa.inactive_date                   > gd_closing_date
         OR    pvsa.inactive_date                   IS NULL )
     AND     pvsa.org_id                            = gn_org_id
-    AND     pvsa.attribute4                        = '1' --本振あり
+-- Ver.1.7 MOD START
+--    AND     pvsa.attribute4                        = '1' --本振あり
+    AND     pvsa.attribute4                        IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 MOD END
     AND     xcbs.delivery_cust_code                = sub1.cust_code
     AND     xcbs.container_type_code               = flv1.container_type_code(+)
     AND     xcbs.calc_type                         = flv2.calc_type
@@ -2300,15 +3425,24 @@ AS
     AND     xbb.fb_interface_status                = '0'
     AND     xbb.gl_interface_status                = '0'
     AND     NVL(xbb.payment_amt_tax,0)             = 0
---2021/05/28 dell start
---    AND     xbb.amt_fix_status                     = '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--    AND     xbb.amt_fix_status                     = '1'
+-- Ver.1.2* DEL END
     AND     iv_tax_div                             = CASE
                                                        WHEN pvsa.attribute6 = '1' THEN          -- 税込
                                                          '2'
                                                        WHEN pvsa.attribute6 IN ('2', '3') THEN  -- 税抜、非課税
                                                          '1'
                                                      END
+-- Ver.1.7 ADD START
+    AND     NOT EXISTS (
+                SELECT 1
+                FROM   xxcok_bm_balance_snap  xxbs  -- 販手残高スナップショット
+                WHERE  xxbs.snapshot_create_ym  = TO_CHAR(gd_process_date,'YYYYMM')
+                AND    xxbs.snapshot_timing     = '1'
+                AND    xxbs.supplier_code       = xbb.supplier_code
+            )
+-- Ver.1.7 ADD END
     GROUP BY
             xbb.supplier_code
            ,xcbs.delivery_cust_code
@@ -2490,7 +3624,10 @@ AS
              AND     ( pvsa.inactive_date              >  gd_closing_date     --締め日
                  OR    pvsa.inactive_date              IS NULL )
              AND     pvsa.org_id                       =  gn_org_id
-             AND     pvsa.attribute4                   =  '1' --本振あり
+-- Ver.1.7 MOD START
+--             AND     pvsa.attribute4                   =  '1' --本振あり
+             AND     pvsa.attribute4                   IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 MOD END
              AND     NVL( xbb.resv_flag, 'N' )         != 'Y'
              AND     SUBSTR( xbb.supplier_code, -1, 1) =  iv_target_div
              AND     xbb.closing_date                  <= gd_closing_date    --締め日
@@ -2499,9 +3636,9 @@ AS
              AND     xbb.fb_interface_status           =  '0'
              AND     xbb.gl_interface_status           =  '0'
              AND     NVL(xbb.payment_amt_tax,0)        =   0
---2021/05/28 dell start
---             AND     xbb.amt_fix_status                =  '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--             AND     xbb.amt_fix_status                =  '1'
+-- Ver.1.2* DEL END
              AND     iv_tax_div = CASE
                                     WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
                                     WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
@@ -2530,6 +3667,15 @@ AS
                        AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
                                                  AND NVL( flv.end_date_active  , gd_process_date )
         )
+-- Ver.1.7 ADD START
+    AND     NOT EXISTS (
+                SELECT 1
+                FROM   xxcok_bm_balance_snap  xxbs  -- 販手残高スナップショット
+                WHERE  xxbs.snapshot_create_ym  = TO_CHAR(gd_process_date,'YYYYMM')
+                AND    xxbs.snapshot_timing     = '1'
+                AND    xxbs.supplier_code       = xbb_1.supplier_code
+            )
+-- Ver.1.7 ADD END
     GROUP BY
             xseh.ship_to_customer_code
            ,SUBSTR( hp.party_name, 1, 50)
@@ -2669,7 +3815,10 @@ AS
                   AND     ( pvsa.inactive_date              >  gd_closing_date     --締め日
                       OR    pvsa.inactive_date              IS NULL )
                   AND     pvsa.org_id                       =  gn_org_id
-                  AND     pvsa.attribute4                   =  '1' --本振あり
+-- Ver.1.7 MOD START
+--                  AND     pvsa.attribute4                   =  '1' --本振あり
+                  AND     pvsa.attribute4                   IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 MOD END
                   AND     NVL( xbb.resv_flag, 'N' )         != 'Y'
                   AND     SUBSTR( xbb.supplier_code, -1, 1) =  iv_target_div
                   AND     xbb.closing_date                  <=  gd_closing_date    --締め日
@@ -2678,9 +3827,9 @@ AS
                   AND     xbb.fb_interface_status           =  '0'
                   AND     xbb.gl_interface_status           =  '0'
                   AND     NVL(xbb.payment_amt_tax,0)        =  0
---2021/05/28 dell start
---                  AND     xbb.amt_fix_status                =  '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--                  AND     xbb.amt_fix_status                =  '1'
+-- Ver.1.2* DEL END
                   AND     iv_tax_div                        =  CASE
                                                                  WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
                                                                  WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
@@ -2761,7 +3910,10 @@ AS
                   AND     ( pvsa.inactive_date              >  gd_closing_date     --締め日
                       OR    pvsa.inactive_date              IS NULL )
                   AND     pvsa.org_id                       =  gn_org_id
-                  AND     pvsa.attribute4                   =  '1' --本振あり
+-- Ver.1.7 MOD START
+--                  AND     pvsa.attribute4                   =  '1' --本振あり
+                  AND     pvsa.attribute4                   IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 MOD END
                   AND     NVL( xbb.resv_flag, 'N' )         != 'Y'
                   AND     SUBSTR( xbb.supplier_code, -1, 1) =  iv_target_div
                   AND     xbb.closing_date                  <=  gd_closing_date    --締め日
@@ -2770,9 +3922,9 @@ AS
                   AND     xbb.fb_interface_status           =  '0'
                   AND     xbb.gl_interface_status           =  '0'
                   AND     NVL(xbb.payment_amt_tax,0)        =  0
---2021/05/28 dell start
---                  AND     xbb.amt_fix_status                =  '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--                  AND     xbb.amt_fix_status                =  '1'
+-- Ver.1.2* DEL END
                   AND     iv_tax_div                        =  CASE
                                                                  WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
                                                                  WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
@@ -2992,15 +4144,18 @@ AS
              AND     xbb.fb_interface_status                      = '0'
              AND     xbb.gl_interface_status                      = '0'
              AND     NVL(xbb.payment_amt_tax,0)                   = 0
---2021/05/28 dell start
---             AND     xbb.amt_fix_status                           = '0'
---2021/05/28 dell end
+-- Ver.1.2* DEL START
+--             AND     xbb.amt_fix_status                           = '1'
+-- Ver.1.2* DEL END
              AND     xbb.supplier_code                            = pv.segment1
              AND     pv.vendor_id                                 = pvsa.vendor_id
              AND     ( pvsa.inactive_date                         > gd_process_date
                OR    pvsa.inactive_date                          IS NULL )
              AND     pvsa.org_id                                  = gn_org_id
-             AND     pvsa.attribute4                              = '1'
+-- Ver.1.7 MOD START
+--             AND     pvsa.attribute4                              = '1'
+             AND     pvsa.attribute4                             IN ('1','2')  -- BM支払区分：本振（案内書あり） or 本振（案内書なし）
+-- Ver.1.7 MOD END
              AND     iv_tax_div                                   = CASE
                                                                       WHEN pvsa.attribute6 = '1' THEN          -- 税込
                                                                         '2'
@@ -3042,6 +4197,15 @@ AS
                        AND ROWNUM = 1
         )
 -- Ver1.1 N.Abe ADD END
+-- Ver.1.7 ADD START
+    AND NOT EXISTS (
+            SELECT 1
+            FROM   xxcok_bm_balance_snap  xxbs  -- 販手残高スナップショット
+            WHERE  xxbs.snapshot_create_ym  = TO_CHAR(gd_process_date,'YYYYMM')
+            AND    xxbs.snapshot_timing     = '1'
+            AND    xxbs.supplier_code       = xbb_1.supplier_code
+        )
+-- Ver.1.7 ADD END
     GROUP BY
             ximb.item_short_name
            ,xsel.dlv_unit_price
@@ -3326,6 +4490,35 @@ AS
       -- ファイル名設定（外税・内税）
       gv_i_file_name := gv_i_file_name || iv_tax_div || iv_target_div || '.csv';
 --
+-- Ver.1.7 ADD START
+      -- ===============================================
+      -- 2.プロファイル取得(インフォマート_登録番号プロンプト) ※NULL許容
+      -- ===============================================
+      gv_i_regnum_prompt  := FND_PROFILE.VALUE( cv_prof_i_regnum_prompt );
+      IF (gv_i_regnum_prompt IS NOT NULL) THEN
+        -- NULLでない場合、末尾に半角スペースを付加
+        gv_i_regnum_prompt := gv_i_regnum_prompt || ' ';
+      END IF;
+--
+      -- ===============================================
+      -- 2.プロファイル取得(適格請求書発行事業者登録番号)
+      -- ===============================================
+      gv_invoice_t_no  := FND_PROFILE.VALUE( cv_prof_invoice_t_no );
+      IF ( gv_invoice_t_no IS NULL ) THEN
+        lv_outmsg     := xxccp_common_pkg.get_msg(
+                           iv_application   => cv_appli_short_name_xxcok
+                          ,iv_name          => cv_msg_xxcok1_00003
+                          ,iv_token_name1   => cv_tkn_profile
+                          ,iv_token_value1  => cv_prof_invoice_t_no
+                         );
+        lb_msg_return := xxcok_common_pkg.put_message_f(
+                           in_which         => FND_FILE.LOG
+                          ,iv_message       => lv_outmsg
+                          ,in_new_line      => 0
+                         );
+        RAISE init_fail_expt;
+      END IF;
+-- Ver.1.7 ADD END
     END IF;
 --
     -- ===============================================
@@ -3455,6 +4648,26 @@ AS
       RAISE init_fail_expt;
     END IF;
 --
+-- Ver.1.8 Add Start
+    -- ===============================================
+    -- 2.プロファイル取得(会計帳簿ID)
+    -- ===============================================
+    gv_set_of_bks_id := FND_PROFILE.VALUE( cv_set_of_books_id );
+    IF ( gv_set_of_bks_id IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcok
+                     ,iv_name         => cv_msg_xxcok1_00003
+                     ,iv_token_name1  => cv_tkn_profile
+                     ,iv_token_value1 => cv_set_of_books_id
+                    );
+      lb_msg_return   := xxcok_common_pkg.put_message_f(
+                           in_which         => FND_FILE.LOG
+                          ,iv_message       => lv_outmsg
+                          ,in_new_line      => 0
+                         );
+      RAISE init_fail_expt;
+    END IF;
+-- Ver.1.8 Add End
     -- ===============================================
     -- 3.メッセージ取得(おもて備考)
     -- ===============================================
@@ -3739,46 +4952,65 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_file_close_expt;
       END IF;
+-- Ver.1.2* DEL START
+---- Ver1.6 K.Yoshikawa ADD START
+--      -- ===============================================
+--      -- インフォマート用赤黒取得(A-14)
+--      -- ===============================================
+--      ins_info_rev(
+--        iv_tax_div    => iv_tax_div
+--       ,iv_target_div => iv_target_div
+--       ,ov_errbuf     => lv_errbuf
+--       ,ov_retcode    => lv_retcode
+--       ,ov_errmsg     => lv_errmsg
+--      );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_file_close_expt;
+--      END IF;
+---- Ver1.6 K.Yoshikawa ADD END
+-- Ver.1.2* DEL END
     END IF;
 --
-    -- 処理区分 = 2：ファイル出力
-    IF ( iv_proc_div = '2' ) THEN
-      -- ===============================================
-      -- ファイルオープン(A-6)
-      -- ===============================================
-      file_open(
-        ov_errbuf   => lv_errbuf
-       ,ov_retcode  => lv_retcode
-       ,ov_errmsg   => lv_errmsg
-      );
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-      -- ===============================================
-      -- ワークヘッダー・明細対象データ抽出(A-7)
-      -- ===============================================
-      get_work_head_line(
-        iv_tax_div    => iv_tax_div
-       ,iv_target_div => iv_target_div
-       ,ov_errbuf     => lv_errbuf
-       ,ov_retcode    => lv_retcode
-       ,ov_errmsg     => lv_errmsg
-      );
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_file_close_expt;
-      END IF;
-      -- ===============================================
-      -- ファイルクローズ(A-12)
-      -- ===============================================
-      file_close(
-        ov_errbuf   => lv_errbuf
-       ,ov_retcode  => lv_retcode
-       ,ov_errmsg   => lv_errmsg
-      );
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
-    END IF;
+-- Ver.1.2* DEL START
+--    -- 処理区分 = 2：ファイル出力
+--    IF ( iv_proc_div = '2' ) THEN
+--      -- ===============================================
+--      -- ファイルオープン(A-6)
+--      -- ===============================================
+--      file_open(
+--        ov_errbuf   => lv_errbuf
+--       ,ov_retcode  => lv_retcode
+--       ,ov_errmsg   => lv_errmsg
+--      );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--      -- ===============================================
+--      -- ワークヘッダー・明細対象データ抽出(A-7)
+--      -- ===============================================
+--      get_work_head_line(
+--        iv_tax_div    => iv_tax_div
+--       ,iv_target_div => iv_target_div
+--       ,ov_errbuf     => lv_errbuf
+--       ,ov_retcode    => lv_retcode
+--       ,ov_errmsg     => lv_errmsg
+--      );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_file_close_expt;
+--      END IF;
+--      -- ===============================================
+--      -- ファイルクローズ(A-12)
+--      -- ===============================================
+--      file_close(
+--        ov_errbuf   => lv_errbuf
+--       ,ov_retcode  => lv_retcode
+--       ,ov_errmsg   => lv_errmsg
+--      );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--    END IF;
+-- Ver.1.2* DEL END
 --
     -- ===============================================
     -- スキップ件数が存在する場合、ステータス警告
@@ -3955,6 +5187,26 @@ AS
                       ,iv_message      => lv_out_msg
                       ,in_new_line     => 1
                      );
+-- Ver1.6 K.Yoshikawa ADD START
+      -- ===============================================
+      -- 対象件数出力
+      -- ===============================================
+    IF ( lv_retcode = cv_status_error ) THEN
+      gn_normal_s_cnt := 0;
+    END IF;
+    lv_out_msg    := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appli_short_name_xxcok
+                      ,iv_name         => cv_msg_xxcok1_10814
+                      ,iv_token_name1  => cv_tkn_s_count
+                      ,iv_token_value1 => TO_CHAR( gn_normal_s_cnt )
+                     );
+    lb_msg_return := xxcok_common_pkg.put_message_f(
+                       in_which        => FND_FILE.LOG
+                      ,iv_message      => lv_out_msg
+                      ,in_new_line     => 0
+                     );
+--
+-- Ver1.6 K.Yoshikawa ADD END
     -- ===============================================
     -- 処理終了メッセージ出力
     -- ===============================================

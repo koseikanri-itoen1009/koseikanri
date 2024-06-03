@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A04C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用赤黒データファイル作成
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2022/02/18    1.0   K.Yoshikawa      新規作成  E_本稼動_17680
  *  2023/08/31    1.1   Y.Ooyama         E_本稼動_19179（インボイス対応（BM関連））
  *  2023/11/30    1.2   R.Oikawa         E_本稼動_19707
+ *  2024/02/05    1.3   M.Akachi         E_本稼動_19496
  *
  *****************************************************************************************/
 --
@@ -166,7 +167,10 @@ AS
            ,xiwh.total_sales_amt        AS  total_sales_amt
            ,xiwh.sales_fee              AS  sales_fee
            ,CASE
-              WHEN xiwh.set_code IN ('0', '2')
+-- Ver.1.3 Mod Start
+--              WHEN xiwh.set_code IN ('0', '2')
+              WHEN xiwh.set_code IN ('0', '2', '4', '6')
+-- Ver.1.3 Mod End
               THEN NULL
               ELSE xiwh.electric_amt
             END                         AS  electric_amt
@@ -174,7 +178,10 @@ AS
 -- Ver.1.1 MOD START
 --           ,xiwh.transfer_fee           AS  transfer_fee
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.3 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.3 Mod End
                  -- 外税の場合
                  xiwh.bank_trans_fee_no_tax
               ELSE
@@ -207,7 +214,10 @@ AS
               gv_i_regnum_prompt || gv_invoice_t_no
             )                           AS  from_regnum               -- 送付元登録番号
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.3 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.3 Mod End
                 -- 外税の場合
                 xiwh.recalc_total_fee_no_tax
               ELSE
@@ -215,7 +225,10 @@ AS
                 xiwh.recalc_total_fee_with_tax
             END                         AS  recalc_total_fee          -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.3 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.3 Mod End
                 -- 外税の場合
                 xiwh.recalc_total_fee_with_tax
               ELSE
@@ -224,7 +237,10 @@ AS
             END                         AS  recalc_total_fee2         -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
            ,xiwh.bank_trans_fee_tax     AS  bank_trans_fee_tax        -- 振込手数料（消費税）
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.3 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.3 Mod End
                 -- 外税の場合
                 xiwh.bank_trans_fee_with_tax
               ELSE
@@ -232,6 +248,9 @@ AS
                 xiwh.bank_trans_fee_no_tax
             END                         AS  bank_trans_fee2           -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.1 ADD END
+-- Ver.1.3 Add Start
+            ,xiwh.display_code          AS  display_code              -- 表示コード
+-- Ver.1.3 Add End
      FROM  xxcok_info_rev_header   xiwh
      WHERE xiwh.tax_div       = it_tax_div
      AND   xiwh.rev           = it_rev
@@ -858,6 +877,9 @@ AS
             || cv_msg_canm || gt_head_item(53)          -- 振込手数料　消費税
             || cv_msg_canm || gt_head_item(54)          -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.1 ADD END
+-- Ver.1.3 Add Start
+            || cv_msg_canm || gt_head_item(55)          -- 表示コード
+-- Ver.1.3 Add End
             ;
 --
             -- ===============================================
@@ -933,6 +955,9 @@ AS
           || cv_msg_canm || g_head_rec.bank_trans_fee_tax                   -- 振込手数料（消費税）
           || cv_msg_canm || g_head_rec.bank_trans_fee2                      -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.1 ADD END
+-- Ver.1.3 Add Start
+          || cv_msg_canm || g_head_rec.display_code                         -- 表示コード
+-- Ver.1.3 Add End
           ;
 --
       ln_out_cnt := ln_out_cnt + 1;
