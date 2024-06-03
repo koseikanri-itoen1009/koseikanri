@@ -10,7 +10,8 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2015/02/18    1.0   K.Kiriu         V‹Kì¬
- *  2023/06/01    1.1  T.Okuyama       yE_–{‰Ò“®_19179zƒCƒ“ƒ{ƒCƒX‘Î‰iŒ_–ñ‘ŠÖ˜Aj
+ *  2023/06/01    1.1   T.Okuyama       yE_–{‰Ò“®_19179zƒCƒ“ƒ{ƒCƒX‘Î‰iŒ_–ñ‘ŠÖ˜Aj
+ *  2024/02/02    1.2   T.Okuyama       yE_–{‰Ò“®_19496zƒOƒ‹[ƒv‰ïĞ‘Î‰
  ****************************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_memorandum
 (
@@ -86,12 +87,14 @@ CREATE TABLE xxcso.xxcso_rep_memorandum
   request_id                     NUMBER(15,0),
   program_application_id         NUMBER(15,0),
   program_id                     NUMBER(15,0),
- program_update_date            DATE
-
 /* Ver1.1 ADD COLUMN START */
   program_update_date           DATE
  ,invoice_t_no                  VARCHAR2(14)
 /* Ver1.1 ADD COLUMN END */
+/* Ver1.2 ADD COLUMN START */
+ ,company_code                   VARCHAR2(30)
+ ,company_name                   VARCHAR2(44)
+/* Ver1.2 ADD COLUMN END */
 )
 PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
 ;
@@ -174,3 +177,7 @@ COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.program_update_date           IS 'ƒ
 /* Ver1.1 ADD COLUMN START */
 COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.invoice_t_no                  IS '“o˜^”Ô†i‘—•tæj';
 /* Ver1.1 ADD COLUMN END */
+/* Ver1.2 ADD COLUMN START */
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.company_code                  IS '‰ïĞƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.company_name                  IS '‰ïĞ–¼Ì';
+/* Ver1.2 ADD COLUMN END */
