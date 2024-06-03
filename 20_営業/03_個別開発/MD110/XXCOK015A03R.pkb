@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2018/11/15    1.18  E.Yazaki         [障害E_本稼動_15367]年号変更対応（営業・個別・販売）
  *  2019/08/08    1.19  Y.Koh            [障害E_本稼動_15784]
  *  2023/09/11    1.20  R.Oikawa         [障害E_本稼動_19179]【個別開発】インボイス対応（BM関連）
+ *  2024/01/30    1.21  R.Oikawa         [障害E_本稼動_19496]グループ会社対応
  *
  *****************************************************************************************/
   --==================================================
@@ -199,6 +200,15 @@ AS
   -- 税率
   cv_ten                           CONSTANT VARCHAR2(2)     := '10';
 -- Ver.1.20 ADD END
+-- Ver.1.21 ADD START
+  cv_flex_dept                     CONSTANT VARCHAR2(30)    := 'XX03_DEPARTMENT';            -- 部門
+  cv_conv_company_code             CONSTANT VARCHAR2(30)    := 'XXCMM_CONV_COMPANY_CODE';    -- 会社コード変換
+  cv_xxcmm_invoice_t_no            CONSTANT VARCHAR2(30)    := 'XXCMM_INVOICE_T_NO';         -- 適格請求書発行事業者情報
+  cv_xml_format                    CONSTANT VARCHAR2(30)    := 'XXCOK1_XML_FORMAT';          -- 各社XMLフォーマット
+  cv_msg_cok_00015                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-00015';
+  cv_tkn_lookup                    CONSTANT VARCHAR2(30)    := 'LOOKUP_VALUE_SET';
+  cv_company_code                  CONSTANT VARCHAR2(3)     := '001';                        -- 会社コード：伊藤園
+-- Ver.1.21 ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -249,6 +259,9 @@ AS
   gv_sales_mft                     VARCHAR2(20)  DEFAULT NULL;                  -- 支払案内書_販売手数料
   gv_param_target_yyyymm           VARCHAR2(6)   DEFAULT NULL;                  -- 案内書発行年月
 -- Ver.1.20 ADD END
+-- Ver.1.21 ADD START
+  gd_company_reference_date        DATE;                                        -- 会社基準日
+-- Ver.1.21 ADD END
   --==================================================
   -- グローバルカーソル
   --==================================================
@@ -654,6 +667,11 @@ AS
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     lv_date                        VARCHAR2(8)    DEFAULT NULL;                 -- 出力ファイル名用日付
     lv_file_name                   VARCHAR2(100)  DEFAULT NULL;                 -- 出力ファイル名
+-- Ver.1.21 ADD START
+    lv_contact_base_code           xxcok_rep_bm_pg_detail.contact_base_code%TYPE;  -- 連絡先拠点コード
+    lv_company_code                VARCHAR2(3)   DEFAULT NULL;                     -- 会社コード
+    lv_frm_file                    VARCHAR2(20)  DEFAULT NULL;                     -- フォーム様式ファイル名
+-- Ver.1.21 ADD END
 --
   BEGIN
     --==================================================
@@ -672,6 +690,100 @@ AS
                  || TO_CHAR( cn_request_id )
                  || cv_extension
                  ;
+-- Ver.1.21 ADD START
+    --==================================================
+    -- 出力フォーマットを決めるため連絡先拠点を取得
+    --==================================================
+    BEGIN
+      SELECT xrbpd.contact_base_code
+      INTO   lv_contact_base_code
+      FROM   xxcok_rep_bm_pg_detail xrbpd
+      WHERE  xrbpd.request_id   = cn_request_id
+      AND    rownum = 1
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_contact_base_code := NULL;
+    END;
+    --==================================================
+    -- 連絡先拠点が取得できない場合は対象データなし
+    --==================================================
+    IF ( lv_contact_base_code IS NULL ) THEN
+      lv_frm_file := cv_frm_file;   -- デフォルトのフォーム様式
+    ELSE
+      --==================================================
+      -- クイックコード取得(適格請求書発行事業者登録番号)
+      --==================================================
+      BEGIN
+        SELECT flv2.lookup_code                  -- 会社コード
+              ,flv2.meaning                      -- T番号
+        INTO   lv_company_code
+              ,gv_t_number
+        FROM   fnd_flex_value_sets ffvs          -- 値セット定義マスタ
+              ,fnd_flex_values     ffv           -- 値セット値定義マスタ
+              ,fnd_lookup_values   flv           -- 会社コード変換
+              ,fnd_lookup_values   flv2          -- 適格請求書発行事業者情報
+        WHERE
+               ffvs.flex_value_set_id   = ffv.flex_value_set_id
+        AND    ffvs.flex_value_set_name = cv_flex_dept
+        AND    ffv.flex_value           = lv_contact_base_code
+        AND    flv.lookup_type          = cv_conv_company_code
+        AND    flv.attribute1           = NVL(ffv.attribute10,cv_company_code)
+        AND    flv.language             = USERENV( 'LANG' )
+        AND    gd_company_reference_date BETWEEN NVL( flv.start_date_active, gd_company_reference_date )
+                                 AND     NVL( flv.end_date_active, gd_company_reference_date )
+        AND    flv2.lookup_type         = cv_xxcmm_invoice_t_no
+        AND    flv2.lookup_code         = flv.attribute2
+        AND    flv2.language            = USERENV( 'LANG' )
+        AND    gd_company_reference_date BETWEEN NVL( flv2.start_date_active, gd_company_reference_date )
+                                 AND     NVL( flv2.end_date_active, gd_company_reference_date )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_00015
+                      , iv_token_name1          => cv_tkn_lookup
+                      , iv_token_value1         => cv_xxcmm_invoice_t_no
+                      );
+        RAISE error_proc_expt;
+      END;
+--
+      --==================================================
+      -- 帳票ワークテーブル更新(登録番号（伊藤園）)
+      --==================================================
+      BEGIN
+        UPDATE xxcok_rep_bm_pg_detail xrbpd
+        SET    xrbpd.invoice_t_no = gv_t_number
+        WHERE  xrbpd.request_id   = cn_request_id
+        ;
+        -- コミット
+        COMMIT;
+      END;
+--
+      --==================================================
+      -- フォーム様式ファイル名を会社ごとに切り替える
+      --==================================================
+      BEGIN
+        SELECT flv.attribute1                  -- XMLフォーマット
+        INTO   lv_frm_file
+        FROM   fnd_lookup_values   flv         -- 各会社XMLフォーマット
+        WHERE  flv.lookup_type   = cv_xml_format
+        AND    flv.lookup_code   = lv_company_code
+        AND    flv.language      = USERENV( 'LANG' )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_00015
+                      , iv_token_name1          => cv_tkn_lookup
+                      , iv_token_value1         => cv_xml_format
+                      );
+        RAISE error_proc_expt;
+      END;
+    END IF;
+-- Ver.1.21 ADD END
     --==================================================
     -- SVFコンカレント起動
     --==================================================
@@ -686,7 +798,10 @@ AS
     , iv_file_name             => lv_file_name              -- 出力ファイル名
     , iv_file_id               => cv_file_id                -- 帳票ID
     , iv_output_mode           => cv_output_mode            -- 出力区分
-    , iv_frm_file              => cv_frm_file               -- フォーム様式ファイル名
+-- Ver.1.21 MOD START
+--    , iv_frm_file              => cv_frm_file               -- フォーム様式ファイル名
+    , iv_frm_file              => lv_frm_file               -- フォーム様式ファイル名
+-- Ver.1.21 MOD END
     , iv_vrq_file              => cv_vrq_file               -- クエリー様式ファイル名
     , iv_org_id                => NULL                      -- ORG_ID
     , iv_user_name             => fnd_global.user_name      -- ログイン・ユーザ名
@@ -713,6 +828,12 @@ AS
     END IF;
 --
   EXCEPTION
+-- Ver.1.21 ADD START
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.21 ADD END
     -- *** 共通関数例外 ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -4563,6 +4684,9 @@ AS
     --==================================================
     BEGIN
       ld_chk_date := TO_DATE( iv_target_ym, cv_format_fxrrrrmm );
+-- Ver.1.21 ADD START
+      gd_company_reference_date   := ld_chk_date;               -- 会社基準日
+-- Ver.1.21 ADD END
     EXCEPTION
       WHEN OTHERS THEN
         lv_outmsg  := xxccp_common_pkg.get_msg(
@@ -4846,19 +4970,21 @@ AS
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- Ver.1.20 ADD START
     gv_param_target_yyyymm   := REPLACE(iv_target_ym,cv_slash);
-    --==================================================
-    -- プロファイル取得(適格請求書発行事業者登録番号)
-    --==================================================
-    gv_t_number := FND_PROFILE.VALUE( cv_t_number );
-    IF( gv_t_number IS NULL ) THEN
-      lv_outmsg  := xxccp_common_pkg.get_msg(
-                      iv_application          => cv_appl_short_name_cok
-                    , iv_name                 => cv_msg_cok_00003
-                    , iv_token_name1          => cv_tkn_profile
-                    , iv_token_value1         => cv_t_number
-                    );
-      RAISE error_proc_expt;
-    END IF;
+-- Ver.1.21 DEL START
+--    --==================================================
+--    -- プロファイル取得(適格請求書発行事業者登録番号)
+--    --==================================================
+--    gv_t_number := FND_PROFILE.VALUE( cv_t_number );
+--    IF( gv_t_number IS NULL ) THEN
+--      lv_outmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application          => cv_appl_short_name_cok
+--                    , iv_name                 => cv_msg_cok_00003
+--                    , iv_token_name1          => cv_tkn_profile
+--                    , iv_token_value1         => cv_t_number
+--                    );
+--      RAISE error_proc_expt;
+--    END IF;
+-- Ver.1.21 DEL END
     --==================================================
     -- プロファイル取得(支払案内書_販売手数料計見出し)
     --==================================================
@@ -5085,6 +5211,9 @@ AS
         --==================================================
         gv_param_base_code   := NULL;
         gv_param_target_ym   := SUBSTRB(TO_CHAR(g_upload_tab(i).target_ym), 1, 4) || cv_slash || SUBSTRB(TO_CHAR(g_upload_tab(i).target_ym), 5, 2);
+-- Ver.1.21 ADD START
+        gd_company_reference_date   := TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm );               -- 会社基準日
+-- Ver.1.21 ADD END
         gv_param_vendor_code := g_upload_tab(i).vendor_code;
         gt_upload_cust_code  := g_upload_tab(i).customer_code;
         gt_upload_output_num := g_upload_tab(i).output_num;

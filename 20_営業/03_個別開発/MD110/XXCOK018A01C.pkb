@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                                        AR連携フラグ更新件数、請求OIF登録件数を出力する
  *  2021/02/10    1.12  SCSK Y.Koh       [E_本稼動_16026]
  *  2021/05/13    1.13  SCSK Y.Koh       [E_本稼動_16026] 障害対応
+ *  2024/01/30    1.14  SCSK R.Oikawa    [E_本稼動_19496] 対応
  *
  *****************************************************************************************/
 --
@@ -80,8 +81,10 @@ AS
   --プロファイル
   cv_set_of_bks_id           CONSTANT VARCHAR2(20) := 'GL_SET_OF_BKS_ID';                   --会計帳簿ID
   cv_org_id                  CONSTANT VARCHAR2(10) := 'ORG_ID';                             --組織ID
-  cv_aff1_company_code       CONSTANT VARCHAR2(25) := 'XXCOK1_AFF1_COMPANY_CODE';           --会社コード
-  cv_aff2_dept_fin           CONSTANT VARCHAR2(20) := 'XXCOK1_AFF2_DEPT_FIN';               --部門コード：財務経理部
+-- Ver.1.14 Del Start
+--  cv_aff1_company_code       CONSTANT VARCHAR2(25) := 'XXCOK1_AFF1_COMPANY_CODE';           --会社コード
+--  cv_aff2_dept_fin           CONSTANT VARCHAR2(20) := 'XXCOK1_AFF2_DEPT_FIN';               --部門コード：財務経理部
+-- Ver.1.14 Del End
   cv_aff5_customer_dummy     CONSTANT VARCHAR2(26) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';         --ダミー値:顧客コード
   cv_aff6_compuny_dummy      CONSTANT VARCHAR2(25) := 'XXCOK1_AFF6_COMPANY_DUMMY';          --ダミー値:企業コード
   cv_aff7_preliminary1_dummy CONSTANT VARCHAR2(30) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';     --ダミー値:予備１
@@ -102,15 +105,19 @@ AS
 ----  cv_cust_trx_type_elec_cost CONSTANT VARCHAR2(30) := 'XXCOK1_CUST_TRX_TYPE_ELEC_COST';     --取引タイプ:電気料相殺
 --  cv_cust_trx_type_gnrl      CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_ALL_PAY';       --取引タイプ:入金値引高
 ---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
-  cv_ra_trx_type_f_digestion_vd CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_FULL_DIGESTION_VD';  -- 取引タイプ_入金値引_フルサービス（消化）VD
-  cv_ra_trx_type_delivery_vd    CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DELIVERY_VD';        -- 取引タイプ_入金値引_納品VD
-  cv_ra_trx_type_digestion_vd   CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DIGESTION_VD';       -- 取引タイプ_入金値引_消化VD
-  cv_ra_trx_type_general        CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_GENERAL';            -- 取引タイプ_入金値引_一般店
+-- Ver.1.14 Del Start
+--  cv_ra_trx_type_f_digestion_vd CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_FULL_DIGESTION_VD';  -- 取引タイプ_入金値引_フルサービス（消化）VD
+--  cv_ra_trx_type_delivery_vd    CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DELIVERY_VD';        -- 取引タイプ_入金値引_納品VD
+--  cv_ra_trx_type_digestion_vd   CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DIGESTION_VD';       -- 取引タイプ_入金値引_消化VD
+--  cv_ra_trx_type_general        CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_GENERAL';            -- 取引タイプ_入金値引_一般店
+-- Ver.1.14 Del End
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
 -- 2021/02/10 Ver1.12 ADD Start
   cv_aff3_equipment_costs       CONSTANT VARCHAR2(50) := 'XXCOK1_AFF3_EQUIPMENT_COSTS';           -- 勘定科目_設備費
   cv_aff4_equipment_costs       CONSTANT VARCHAR2(50) := 'XXCOK1_AFF4_EQUIPMENT_COSTS';           -- 補助科目_設備費
-  cv_ra_trx_type_equipment      CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_EQUIPMENT_COSTS';    -- 取引タイプ_入金値引_設備費
+-- Ver.1.14 Del Start
+--  cv_ra_trx_type_equipment      CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_EQUIPMENT_COSTS';    -- 取引タイプ_入金値引_設備費
+-- Ver.1.14 Del End
 -- 2021/02/10 Ver1.12 ADD End
   --メッセージ
   cv_90008_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90008'; --入力パラメータなし
@@ -204,6 +211,13 @@ AS
 -- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD START
   cv_null                    CONSTANT VARCHAR2(1)  := 'X';       --NULLの代替文字
 -- 2010/12/07 Ver.1.11 [E_本稼動_05823] SCS S.Niki ADD END
+-- Ver.1.14 Add Start
+  cv_default_company         CONSTANT VARCHAR2(3)  := '001';                        -- 伊藤園
+  cv_flex_dept               CONSTANT VARCHAR2(30) := 'XX03_DEPARTMENT';            -- 部門
+  -- 参照タイプ
+  cv_drafting_company        CONSTANT VARCHAR2(30) := 'XXCFR1_DRAFTING_COMPANY';    -- 各社部門情報（AR）
+  cv_trx_type_ar             CONSTANT VARCHAR2(30) := 'XXCFR1_TRX_TYPE_AR';         -- AR取引タイプ
+-- Ver.1.14 Add End
   -- ===============================
   -- グローバル変数
   -- ===============================
@@ -219,7 +233,9 @@ AS
   gn_set_of_bks_id           NUMBER         DEFAULT NULL; --会計帳簿ID
   gn_org_id                  VARCHAR2(50)   DEFAULT NULL; --組織ID
   gv_aff1_company_code       VARCHAR2(50)   DEFAULT NULL; --会社コード
-  gv_aff2_dept_fin           VARCHAR2(50)   DEFAULT NULL; --部門コード：財務経理部
+-- Ver.1.14 Del Start
+--  gv_aff2_dept_fin           VARCHAR2(50)   DEFAULT NULL; --部門コード：財務経理部
+-- Ver.1.14 Del End
   gv_aff5_customer_dummy     VARCHAR2(50)   DEFAULT NULL; --ダミー値:顧客コード
   gv_aff6_compuny_dummy      VARCHAR2(50)   DEFAULT NULL; --ダミー値:企業コード
   gv_aff7_preliminary1_dummy VARCHAR2(50)   DEFAULT NULL; --ダミー値:予備１
@@ -271,6 +287,25 @@ AS
   gv_tax_flag                VARCHAR2(1)    DEFAULT NULL; --消費税税フラグ
   gn_tax_rate                NUMBER         DEFAULT NULL; --消費税率
   gn_tax_amt                 NUMBER         DEFAULT NULL; --消費税額
+-- Ver.1.14 Add Start
+  gv_rec_dept                gl_code_combinations.segment2%TYPE          DEFAULT NULL;   --  部門コード_債権
+  gv_tax_dept                gl_code_combinations.segment2%TYPE          DEFAULT NULL;   --  部門コード_税金
+  gv_full_vd_name            ra_cust_trx_types_all.name%TYPE             DEFAULT NULL;   --  フルサービス（消化）VD_名称
+  gn_full_vd_id              ra_cust_trx_types_all.cust_trx_type_id%TYPE DEFAULT NULL;   --  フルサービス（消化）VD_ID
+  gv_full_vd_status          VARCHAR2(10)                                DEFAULT NULL;   --  フルサービス（消化）VD_ステータス
+  gv_delivery_vd_name        ra_cust_trx_types_all.name%TYPE             DEFAULT NULL;   --  納品VD_名称
+  gn_delivery_vd_id          ra_cust_trx_types_all.cust_trx_type_id%TYPE DEFAULT NULL;   --  納品VD_ID
+  gv_delivery_vd_status      VARCHAR2(10)                                DEFAULT NULL;   --  納品VD_ステータス
+  gv_digestive_vd_name       ra_cust_trx_types_all.name%TYPE             DEFAULT NULL;   --  消化VD_名称
+  gn_digestive_vd_id         ra_cust_trx_types_all.cust_trx_type_id%TYPE DEFAULT NULL;   --  消化VD_ID
+  gv_digestive_vd_status     VARCHAR2(10)                                DEFAULT NULL;   --  消化VD_ステータス
+  gv_general_name            ra_cust_trx_types_all.name%TYPE             DEFAULT NULL;   --  一般店_名称
+  gn_general_id              ra_cust_trx_types_all.cust_trx_type_id%TYPE DEFAULT NULL;   --  一般店_ID
+  gv_general_status          VARCHAR2(10)                                DEFAULT NULL;   --  一般店_ステータス
+  gv_equipment_costs_name    ra_cust_trx_types_all.name%TYPE             DEFAULT NULL;   --  設備費_名称
+  gn_equipment_costs_id      ra_cust_trx_types_all.cust_trx_type_id%TYPE DEFAULT NULL;   --  設備費_ID
+  gv_equipment_costs_status  VARCHAR2(10)                                DEFAULT NULL;   --  設備費_ステータス
+-- Ver.1.14 Add End
   -- ===============================
   -- グローバルカーソル：AR連携データの取得(入金時値引高)
   -- ===============================
@@ -981,31 +1016,54 @@ AS
 --        lt_charge_waiting_status := g_cust_trx_type_gnrl.charge_waiting_status; -- 入金値引高：請求書保留ステータス
 --      END IF;
 ---- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+-- Ver.1.14 Mod Start
+--      -- フルVD（消化）
+---- 2021/02/10 Ver1.12 MOD Start
+--      IF  gv_business_low_type  IN  ( cv_low_type_f_digestion_vd, cv_low_type_digestion_vd )
+--      AND i_discnt_amount_rec.closing_date  >=  TO_DATE('2021/05/01','YYYY/MM/DD')  THEN
+--        lt_cust_trx_type_id      := g_ra_trx_type_equipment.cust_trx_type_id;
+--        lt_charge_waiting_status := g_ra_trx_type_equipment.charge_waiting_status;
+--      ELSIF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
+----      IF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
+---- 2021/02/10 Ver1.12 MOD End
+--        lt_cust_trx_type_id      := g_ra_trx_type_f_digestion_vd.cust_trx_type_id;
+--        lt_charge_waiting_status := g_ra_trx_type_f_digestion_vd.charge_waiting_status;
+--      -- 納品VD
+--      ELSIF( gv_business_low_type = cv_low_type_delivery_vd    ) THEN
+--        lt_cust_trx_type_id      := g_ra_trx_type_delivery_vd.cust_trx_type_id;
+--        lt_charge_waiting_status := g_ra_trx_type_delivery_vd.charge_waiting_status;
+--      -- 消化VD
+--      ELSIF( gv_business_low_type = cv_low_type_digestion_vd   ) THEN
+--        lt_cust_trx_type_id      := g_ra_trx_type_digestion_vd.cust_trx_type_id;
+--        lt_charge_waiting_status := g_ra_trx_type_digestion_vd.charge_waiting_status;
+--      -- 一般店
+--      ELSE
+--        lt_cust_trx_type_id      := g_ra_trx_type_general.cust_trx_type_id;
+--        lt_charge_waiting_status := g_ra_trx_type_general.charge_waiting_status;
+--      END IF;
+---- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       -- フルVD（消化）
--- 2021/02/10 Ver1.12 MOD Start
       IF  gv_business_low_type  IN  ( cv_low_type_f_digestion_vd, cv_low_type_digestion_vd )
       AND i_discnt_amount_rec.closing_date  >=  TO_DATE('2021/05/01','YYYY/MM/DD')  THEN
-        lt_cust_trx_type_id      := g_ra_trx_type_equipment.cust_trx_type_id;
-        lt_charge_waiting_status := g_ra_trx_type_equipment.charge_waiting_status;
+        lt_cust_trx_type_id      := gn_equipment_costs_id;
+        lt_charge_waiting_status := gv_equipment_costs_status;
       ELSIF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
---      IF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
--- 2021/02/10 Ver1.12 MOD End
-        lt_cust_trx_type_id      := g_ra_trx_type_f_digestion_vd.cust_trx_type_id;
-        lt_charge_waiting_status := g_ra_trx_type_f_digestion_vd.charge_waiting_status;
+        lt_cust_trx_type_id      := gn_full_vd_id;
+        lt_charge_waiting_status := gv_full_vd_status;
       -- 納品VD
       ELSIF( gv_business_low_type = cv_low_type_delivery_vd    ) THEN
-        lt_cust_trx_type_id      := g_ra_trx_type_delivery_vd.cust_trx_type_id;
-        lt_charge_waiting_status := g_ra_trx_type_delivery_vd.charge_waiting_status;
+        lt_cust_trx_type_id      := gn_delivery_vd_id;
+        lt_charge_waiting_status := gv_delivery_vd_status;
       -- 消化VD
       ELSIF( gv_business_low_type = cv_low_type_digestion_vd   ) THEN
-        lt_cust_trx_type_id      := g_ra_trx_type_digestion_vd.cust_trx_type_id;
-        lt_charge_waiting_status := g_ra_trx_type_digestion_vd.charge_waiting_status;
+        lt_cust_trx_type_id      := gn_digestive_vd_id;
+        lt_charge_waiting_status := gv_digestive_vd_status;
       -- 一般店
       ELSE
-        lt_cust_trx_type_id      := g_ra_trx_type_general.cust_trx_type_id;
-        lt_charge_waiting_status := g_ra_trx_type_general.charge_waiting_status;
+        lt_cust_trx_type_id      := gn_general_id;
+        lt_charge_waiting_status := gv_general_status;
       END IF;
--- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- Ver.1.14 Mod End
       --================================================================
       --内税フラグの取得する
       --================================================================
@@ -1228,7 +1286,10 @@ AS
       --================================================================
       ELSIF ( ln_cnt = 2 )
         AND ( gn_tax_rate <> cn_no_tax ) THEN
-        lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
+-- Ver.1.14 Mod Start
+--        lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
+        lv_segment2             := gv_tax_dept;                                       -- 部門コード  ：部門コード_税金
+-- Ver.1.14 Mod End
 -- 2010/04/26 Ver.1.9 [E_本稼動_02268] SCS S.Arizumi REPAIR START
 --        lv_segment3             := gv_aff3_payment_excise_tax;                        -- 勘定科目コード :仮払消費税等
         lv_segment3             := gv_aff3_receive_excise_tax;                        -- 勘定科目コード :仮受消費税等
@@ -1286,7 +1347,10 @@ AS
 --        AND ( gv_business_low_type = cv_low_type ) THEN
         AND ( gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
-        lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
+-- Ver.1.14 Mod Start
+--        lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
+        lv_segment2             := gv_rec_dept;                                       -- 部門コード  ：部門コード_債権
+-- Ver.1.14 Mod End
         lv_segment3             := gv_aff3_receivable;                                -- 勘定科目コード :未収入金
         lv_segment4             := gv_aff4_receivable_vd;                             -- 補助科目コード :未収入金VD売上
         lt_account_class        := cv_rec_class;                                      -- 配分タイプ(債権)
@@ -1341,7 +1405,10 @@ AS
 --        AND  ( gv_business_low_type <> cv_low_type ) THEN
         AND  ( gv_business_low_type <> cv_low_type_f_digestion_vd ) THEN
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
-        lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
+-- Ver.1.14 Mod Start
+--        lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
+        lv_segment2             := gv_rec_dept;                                       -- 部門コード  ：部門コード_債権
+-- Ver.1.14 Mod End
         lv_segment3             := gv_aff3_account_receivable;                        -- 勘定科目コード :売掛金
         lv_segment4             := gv_aff4_subacct_dummy;                             -- 補助科目コード :ダミー値
         lt_account_class        := cv_rec_class;                                      -- 配分タイプ(債権)
@@ -1446,12 +1513,18 @@ AS
     lv_errmsg          VARCHAR2(5000) DEFAULT NULL; -- ユーザー・エラー・メッセージ
     lv_out_msg         VARCHAR2(5000) DEFAULT NULL; -- メッセージ変数
     lb_retcode         BOOLEAN        DEFAULT NULL; -- メッセージ出力戻り値
+-- Ver.1.14 Add Start
+    lv_token_value     VARCHAR2(5000) DEFAULT NULL; -- トークンバリュー
+-- Ver.1.14 Add End
     -- ===============================
     -- ローカル・例外
     -- ===============================
     get_slip_number_expt EXCEPTION; -- 伝票番号取得エラー
     get_cust_info_expt   EXCEPTION; -- 顧客情報取得エラー
     get_term_info_expt   EXCEPTION; -- 支払条件情報取得エラー
+-- Ver.1.14 Add Start
+    get_trx_type_expt    EXCEPTION; -- 取引タイプ情報取得エラー
+-- Ver.1.14 Add End
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -1546,6 +1619,111 @@ AS
               , xchv.ship_account_name      AS ship_account_name      -- 【出荷先】顧客名
               , xchv.bill_account_id        AS bill_account_id        -- 【請求先】顧客ID
               , bill_hcas.cust_acct_site_id AS bill_acct_site_id      -- 【請求先】顧客サイトID
+-- Ver.1.14 Add Start
+              , flv_comp.company_code_bd    AS company_code_bd        -- 会社コード（基準日）
+              , flv_comp.attribute1         AS rec_dept               -- 部門コード_債権
+              , flv_comp.attribute2         AS tax_dept               -- 部門コード_税金
+              , flv_trx.attribute1          AS full_vd_name           -- フルサービス（消化）VD_名称
+              , (
+                 SELECT rctta.cust_trx_type_id AS cust_trx_type_id
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute1
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS full_vd_id             -- フルサービス（消化）VD_ID
+              , (
+                 SELECT CASE rctta.attribute1
+                        WHEN cv_submit_bill_type_yes THEN
+                          cv_open
+                        ELSE
+                          cv_hold
+                        END                 AS charge_waiting_status
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute1
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS full_vd_status         -- フルサービス（消化）VD_ステータス
+              , flv_trx.attribute2          AS delivery_vd_name       -- 納品VD_名称
+              , (
+                 SELECT rctta.cust_trx_type_id AS cust_trx_type_id
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute2
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS delivery_vd_id         -- 納品VD_ID
+              , (
+                 SELECT CASE rctta.attribute1
+                        WHEN cv_submit_bill_type_yes THEN
+                          cv_open
+                        ELSE
+                          cv_hold
+                        END                 AS charge_waiting_status
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute2
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS delivery_vd_status     -- 納品VD_ステータス
+              , flv_trx.attribute3          AS digestive_vd_name      -- 消化VD_名称
+              , (
+                 SELECT rctta.cust_trx_type_id AS cust_trx_type_id
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute3
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS digestive_vd_id        -- 消化VD_ID
+              , (
+                 SELECT CASE rctta.attribute1
+                        WHEN cv_submit_bill_type_yes THEN
+                          cv_open
+                        ELSE
+                          cv_hold
+                        END                 AS charge_waiting_status
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute3
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS digestive_vd_status    -- 消化VD_ステータス
+              , flv_trx.attribute4          AS general_name           -- 一般店_名称
+              , (
+                 SELECT rctta.cust_trx_type_id AS cust_trx_type_id
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute4
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS general_id             -- 一般店_ID
+              , (
+                 SELECT CASE rctta.attribute1
+                        WHEN cv_submit_bill_type_yes THEN
+                          cv_open
+                        ELSE
+                          cv_hold
+                        END                 AS charge_waiting_status
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute4
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS general_status         -- 一般店_ステータス
+              , flv_trx.attribute5          AS equipment_costs_name   -- 設備費_名称
+              , (
+                 SELECT rctta.cust_trx_type_id AS cust_trx_type_id
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute5
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS equipment_costs_id     -- 設備費_ID
+              , (
+                 SELECT CASE rctta.attribute1
+                        WHEN cv_submit_bill_type_yes THEN
+                          cv_open
+                        ELSE
+                          cv_hold
+                        END                 AS charge_waiting_status
+                 FROM   ra_cust_trx_types_all  rctta
+                 WHERE  rctta.name         = flv_trx.attribute5
+                 AND    rctta.org_id       = gn_org_id
+                 AND    i_discnt_amount_rec.closing_date  BETWEEN rctta.start_date AND NVL( rctta.end_date, i_discnt_amount_rec.closing_date )
+                )                           AS equipment_costs_status -- 設備費_ステータス
+-- Ver.1.14 Add End
       INTO  gv_cash_receiv_base_code  -- 入金拠点コード
           , gv_business_low_type      -- 業態(小分類)
           , gn_ship_account_id        -- 出荷先顧客ID
@@ -1554,10 +1732,36 @@ AS
           , gt_ship_account_name      -- 出荷先顧客名
           , gn_bill_account_id        -- 請求先顧客ID
           , gn_bill_address_id        -- 請求先顧客サイトID
+-- Ver.1.14 Add Start
+          , gv_aff1_company_code      --  会社コード（基準日）
+          , gv_rec_dept               --  部門コード_債権
+          , gv_tax_dept               --  部門コード_税金
+          , gv_full_vd_name           --  フルサービス（消化）VD_名称
+          , gn_full_vd_id             --  フルサービス（消化）VD_ID
+          , gv_full_vd_status         --  フルサービス（消化）VD_ステータス
+          , gv_delivery_vd_name       --  納品VD_名称
+          , gn_delivery_vd_id         --  納品VD_ID
+          , gv_delivery_vd_status     --  納品VD_ステータス
+          , gv_digestive_vd_name      --  消化VD_名称
+          , gn_digestive_vd_id        --  消化VD_ID
+          , gv_digestive_vd_status    --  消化VD_ステータス
+          , gv_general_name           --  一般店_名称
+          , gn_general_id             --  一般店_ID
+          , gv_general_status         --  一般店_ステータス
+          , gv_equipment_costs_name   --  設備費_名称
+          , gn_equipment_costs_id     --  設備費_ID
+          , gv_equipment_costs_status --  設備費_ステータス
+-- Ver.1.14 Add End
       FROM      xxcfr_cust_hierarchy_v  xchv      -- 顧客階層ビュー
               , xxcmm_cust_accounts     ship_xca  -- 【出荷先】顧客アドオン
               , hz_cust_acct_sites      ship_hcas -- 【出荷先】顧客サイトマスタ
               , hz_cust_acct_sites      bill_hcas -- 【請求先】顧客サイトマスタ
+-- Ver.1.14 Add Start
+              , fnd_flex_value_sets     ffvs      -- 値セット
+              , fnd_flex_values         ffv       -- 値セット値ビュー
+              , xxcfr_bd_company_info_v flv_comp  -- 各社部門情報（AR）
+              , xxcfr_bd_company_info_v flv_trx   -- 取引タイプ（AR）
+-- Ver.1.14 Add End
       WHERE     xchv.ship_account_number  =  i_discnt_amount_rec.delivery_cust_code
         AND     xchv.bill_account_number  =  i_discnt_amount_rec.demand_to_cust_code
         AND     ship_xca.customer_id      =  xchv.ship_account_id
@@ -1565,12 +1769,46 @@ AS
         AND     ship_hcas.status          =  cv_cust_status_available -- ステータス：有効
         AND     bill_hcas.cust_account_id =  xchv.bill_account_id
         AND     bill_hcas.status          =  cv_cust_status_available -- ステータス：有効
+-- Ver.1.14 Add Start
+        AND     xchv.ship_sale_base_code  =  ffv.flex_value
+        AND     ffv.flex_value_set_id     =  ffvs.flex_value_set_id
+        AND     ffvs.flex_value_set_name  =  cv_flex_dept
+        AND     flv_comp.lookup_type      = cv_drafting_company
+        AND     flv_comp.company_code     = NVL(ffv.attribute10,cv_default_company)
+        AND     i_discnt_amount_rec.closing_date BETWEEN NVL( flv_comp.start_date_active, i_discnt_amount_rec.closing_date )
+                                  AND     NVL( flv_comp.end_date_active, i_discnt_amount_rec.closing_date )
+        AND     flv_trx.lookup_type       = cv_trx_type_ar
+        AND     flv_trx.company_code      = NVL(ffv.attribute10,cv_default_company)
+        AND     i_discnt_amount_rec.closing_date BETWEEN NVL( flv_trx.start_date_active, i_discnt_amount_rec.closing_date )
+                                  AND     NVL( flv_trx.end_date_active, i_discnt_amount_rec.closing_date )
+-- Ver.1.14 Add End
       ;
 -- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi REPAIR END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         RAISE get_cust_info_expt;
     END;
+-- Ver.1.14 Add Start
+    --==================================================================
+    -- 取引タイプチェック
+    --==================================================================
+      IF ( gn_full_vd_id IS NULL ) THEN
+        lv_token_value := gv_full_vd_name;
+        RAISE get_trx_type_expt;
+      ELSIF ( gn_delivery_vd_id IS NULL ) THEN
+        lv_token_value := gv_delivery_vd_name;
+        RAISE get_trx_type_expt;
+      ELSIF ( gn_digestive_vd_id IS NULL ) THEN
+        lv_token_value := gv_digestive_vd_name;
+        RAISE get_trx_type_expt;
+      ELSIF ( gn_general_id IS NULL ) THEN
+        lv_token_value := gv_general_name;
+        RAISE get_trx_type_expt;
+      ELSIF ( gn_equipment_costs_id IS NULL ) THEN
+        lv_token_value := gv_equipment_costs_name;
+        RAISE get_trx_type_expt;
+      END IF;
+-- Ver.1.14 Add End
     --==================================================================
     --支払条件に紐づく支払条件情報を取得
     --==================================================================
@@ -1634,6 +1872,24 @@ AS
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
       ov_retcode := cv_status_error;
+-- Ver.1.14 Add Start
+    -- *** 取引タイプ情報取得エラー ***
+    WHEN get_trx_type_expt THEN
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                      cv_appli_xxcok_name
+                    , cv_00090_err_msg
+                    , cv_cust_trx_type_token
+                    , lv_token_value
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f( 
+                      FND_FILE.OUTPUT    -- 出力区分
+                    , lv_out_msg         -- メッセージ
+                    , 0                  -- 改行
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.14 Add End
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM, 1, 5000 );
@@ -1778,6 +2034,26 @@ AS
       gn_tax_rate               := NULL;  -- 消費税率
       gn_tax_amt                := NULL;  -- 消費税額
 -- 2010/07/09 Ver.1.10 [E_本稼動_02001] SCS S.Arizumi ADD START
+-- Ver.1.14 Add Start
+      gv_aff1_company_code      := NULL;  --  会社コード（基準日）
+      gv_rec_dept               := NULL;  --  部門コード_債権
+      gv_tax_dept               := NULL;  --  部門コード_税金
+      gv_full_vd_name           := NULL;  --  フルサービス（消化）VD_名称
+      gn_full_vd_id             := NULL;  --  フルサービス（消化）VD_ID
+      gv_full_vd_status         := NULL;  --  フルサービス（消化）VD_ステータス
+      gv_delivery_vd_name       := NULL;  --  納品VD_名称
+      gn_delivery_vd_id         := NULL;  --  納品VD_ID
+      gv_delivery_vd_status     := NULL;  --  納品VD_ステータス
+      gv_digestive_vd_name      := NULL;  --  消化VD_名称
+      gn_digestive_vd_id        := NULL;  --  消化VD_ID
+      gv_digestive_vd_status    := NULL;  --  消化VD_ステータス
+      gv_general_name           := NULL;  --  一般店_名称
+      gn_general_id             := NULL;  --  一般店_ID
+      gv_general_status         := NULL;  --  一般店_ステータス
+      gv_equipment_costs_name   := NULL;  --  設備費_名称
+      gn_equipment_costs_id     := NULL;  --  設備費_ID
+      gv_equipment_costs_status := NULL;  --  設備費_ステータス
+-- Ver.1.14 Add End
       --================================================================
       --入金時値引の抽出件数
       --================================================================
@@ -1972,8 +2248,10 @@ AS
     --==============================================================
     gn_set_of_bks_id           := TO_NUMBER(FND_PROFILE.VALUE( cv_set_of_bks_id )); -- 会計帳簿ID
     gn_org_id                  := TO_NUMBER(FND_PROFILE.VALUE( cv_org_id        )); -- 組織ID
-    gv_aff1_company_code       := FND_PROFILE.VALUE( cv_aff1_company_code       );  -- 会社コード
-    gv_aff2_dept_fin           := FND_PROFILE.VALUE( cv_aff2_dept_fin           );  -- 部門コード：財務経理部
+-- Ver.1.14 Del Start
+--    gv_aff1_company_code       := FND_PROFILE.VALUE( cv_aff1_company_code       );  -- 会社コード
+--    gv_aff2_dept_fin           := FND_PROFILE.VALUE( cv_aff2_dept_fin           );  -- 部門コード：財務経理部
+-- Ver.1.14 Del End
     gv_aff5_customer_dummy     := FND_PROFILE.VALUE( cv_aff5_customer_dummy     );  -- ダミー値:顧客コード
     gv_aff6_compuny_dummy      := FND_PROFILE.VALUE( cv_aff6_compuny_dummy      );  -- ダミー値:企業コード
     gv_aff7_preliminary1_dummy := FND_PROFILE.VALUE( cv_aff7_preliminary1_dummy );  -- ダミー値:予備１
@@ -1994,15 +2272,19 @@ AS
 ----    gv_cust_trx_type_elec_cost := FND_PROFILE.VALUE( cv_cust_trx_type_elec_cost );  -- 取引タイプ:電気料相殺
 --    gv_cust_trx_type_gnrl      := FND_PROFILE.VALUE( cv_cust_trx_type_gnrl      );  -- 取引タイプ:入金値引高
 ---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
-    gv_ra_trx_type_f_digestion_vd := FND_PROFILE.VALUE( cv_ra_trx_type_f_digestion_vd  );  -- 取引タイプ_入金値引_フルVD（消化）
-    gv_ra_trx_type_delivery_vd    := FND_PROFILE.VALUE( cv_ra_trx_type_delivery_vd     );  -- 取引タイプ_入金値引_納品VD
-    gv_ra_trx_type_digestion_vd   := FND_PROFILE.VALUE( cv_ra_trx_type_digestion_vd    );  -- 取引タイプ_入金値引_消化VD
-    gv_ra_trx_type_general        := FND_PROFILE.VALUE( cv_ra_trx_type_general         );  -- 取引タイプ_入金値引_一般店
--- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- Ver.1.14 Del Start
+--    gv_ra_trx_type_f_digestion_vd := FND_PROFILE.VALUE( cv_ra_trx_type_f_digestion_vd  );  -- 取引タイプ_入金値引_フルVD（消化）
+--    gv_ra_trx_type_delivery_vd    := FND_PROFILE.VALUE( cv_ra_trx_type_delivery_vd     );  -- 取引タイプ_入金値引_納品VD
+--    gv_ra_trx_type_digestion_vd   := FND_PROFILE.VALUE( cv_ra_trx_type_digestion_vd    );  -- 取引タイプ_入金値引_消化VD
+--    gv_ra_trx_type_general        := FND_PROFILE.VALUE( cv_ra_trx_type_general         );  -- 取引タイプ_入金値引_一般店
+---- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- Ver.1.14 Del End
 -- 2021/02/10 Ver1.12 ADD Start
     gv_aff3_equipment_costs    := FND_PROFILE.VALUE( cv_aff3_equipment_costs );     -- 勘定科目_設備費
     gv_aff4_equipment_costs    := FND_PROFILE.VALUE( cv_aff4_equipment_costs );     -- 補助科目_設備費
-    gv_ra_trx_type_equipment   := FND_PROFILE.VALUE( cv_ra_trx_type_equipment );    -- 取引タイプ_設備費
+-- Ver.1.14 Del Start
+--    gv_ra_trx_type_equipment   := FND_PROFILE.VALUE( cv_ra_trx_type_equipment );    -- 取引タイプ_設備費
+-- Ver.1.14 Del End
 -- 2021/02/10 Ver1.12 ADD End
 --
     IF( gn_set_of_bks_id IS NULL ) THEN
@@ -2013,13 +2295,15 @@ AS
       lv_token_value := cv_org_id;
       RAISE profile_expt;
 --
-    ELSIF( gv_aff1_company_code IS NULL ) THEN
-      lv_token_value := cv_aff1_company_code;
-      RAISE profile_expt;
---
-    ELSIF( gv_aff2_dept_fin IS NULL ) THEN
-      lv_token_value := cv_aff2_dept_fin;
-      RAISE profile_expt;
+-- Ver.1.14 Del Start
+--    ELSIF( gv_aff1_company_code IS NULL ) THEN
+--      lv_token_value := cv_aff1_company_code;
+--      RAISE profile_expt;
+----
+--    ELSIF( gv_aff2_dept_fin IS NULL ) THEN
+--      lv_token_value := cv_aff2_dept_fin;
+--      RAISE profile_expt;
+-- Ver.1.14 Del End
 --
     ELSIF( gv_aff5_customer_dummy IS NULL ) THEN
       lv_token_value := cv_aff5_customer_dummy;
@@ -2084,23 +2368,25 @@ AS
 --      RAISE profile_expt;
 ---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
 ----
-    -- 取引タイプ_入金値引_フルVD（消化）
-    ELSIF( gv_ra_trx_type_f_digestion_vd IS NULL ) THEN
-      lv_token_value := cv_ra_trx_type_f_digestion_vd;
-      RAISE profile_expt;
-    -- 取引タイプ_入金値引_納品VD
-    ELSIF( gv_ra_trx_type_delivery_vd IS NULL ) THEN
-      lv_token_value := cv_ra_trx_type_delivery_vd;
-      RAISE profile_expt;
-    -- 取引タイプ_入金値引_消化VD
-    ELSIF( gv_ra_trx_type_digestion_vd IS NULL ) THEN
-      lv_token_value := cv_ra_trx_type_digestion_vd;
-      RAISE profile_expt;
-    -- 取引タイプ_入金値引_一般店
-    ELSIF( gv_ra_trx_type_general IS NULL ) THEN
-      lv_token_value := cv_ra_trx_type_general;
-      RAISE profile_expt;
--- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- Ver.1.14 Del Start
+--    -- 取引タイプ_入金値引_フルVD（消化）
+--    ELSIF( gv_ra_trx_type_f_digestion_vd IS NULL ) THEN
+--      lv_token_value := cv_ra_trx_type_f_digestion_vd;
+--      RAISE profile_expt;
+--    -- 取引タイプ_入金値引_納品VD
+--    ELSIF( gv_ra_trx_type_delivery_vd IS NULL ) THEN
+--      lv_token_value := cv_ra_trx_type_delivery_vd;
+--      RAISE profile_expt;
+--    -- 取引タイプ_入金値引_消化VD
+--    ELSIF( gv_ra_trx_type_digestion_vd IS NULL ) THEN
+--      lv_token_value := cv_ra_trx_type_digestion_vd;
+--      RAISE profile_expt;
+--    -- 取引タイプ_入金値引_一般店
+--    ELSIF( gv_ra_trx_type_general IS NULL ) THEN
+--      lv_token_value := cv_ra_trx_type_general;
+--      RAISE profile_expt;
+---- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- Ver.1.14 Del End
 -- 2021/02/10 Ver1.12 ADD Start
     ELSIF( gv_aff3_equipment_costs IS NULL ) THEN
       lv_token_value := cv_aff3_equipment_costs;
@@ -2108,10 +2394,12 @@ AS
     ELSIF( gv_aff4_equipment_costs IS NULL ) THEN
       lv_token_value := cv_aff4_equipment_costs;
       RAISE profile_expt;
-    ELSIF( gv_ra_trx_type_equipment IS NULL ) THEN
-      lv_token_value := cv_ra_trx_type_equipment;
-      RAISE profile_expt;
--- 2021/02/10 Ver1.12 ADD End
+-- Ver.1.14 Del Start
+--    ELSIF( gv_ra_trx_type_equipment IS NULL ) THEN
+--      lv_token_value := cv_ra_trx_type_equipment;
+--      RAISE profile_expt;
+---- 2021/02/10 Ver1.12 ADD End
+-- Ver.1.14 Del End
     END IF;
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
 ---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
@@ -2164,69 +2452,71 @@ AS
 --      RAISE get_trx_type_expt;
 --    END IF;
 ---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
-    --==============================================================
-    -- 取引タイプ情報を取得（フルVD（消化））
-    --==============================================================
-    OPEN g_cust_trx_type_cur(
-           gv_ra_trx_type_f_digestion_vd
-         );
-    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_f_digestion_vd;
-    CLOSE g_cust_trx_type_cur;
-    IF( g_ra_trx_type_f_digestion_vd.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := gv_ra_trx_type_f_digestion_vd;
-      RAISE get_trx_type_expt;
-    END IF;
-    --==============================================================
-    -- 取引タイプ情報を取得（納品VD）
-    --==============================================================
-    OPEN g_cust_trx_type_cur(
-           gv_ra_trx_type_delivery_vd
-         );
-    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_delivery_vd;
-    CLOSE g_cust_trx_type_cur;
-    IF( g_ra_trx_type_delivery_vd.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := gv_ra_trx_type_delivery_vd;
-      RAISE get_trx_type_expt;
-    END IF;
-    --==============================================================
-    -- 取引タイプ情報を取得（消化VD）
-    --==============================================================
-    OPEN g_cust_trx_type_cur(
-           gv_ra_trx_type_digestion_vd
-         );
-    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_digestion_vd;
-    CLOSE g_cust_trx_type_cur;
-    IF( g_ra_trx_type_digestion_vd.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := gv_ra_trx_type_digestion_vd;
-      RAISE get_trx_type_expt;
-    END IF;
-    --==============================================================
-    -- 取引タイプ情報を取得（一般店）
-    --==============================================================
-    OPEN g_cust_trx_type_cur(
-           gv_ra_trx_type_general
-         );
-    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_general;
-    CLOSE g_cust_trx_type_cur;
-    IF( g_ra_trx_type_general.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := gv_ra_trx_type_general;
-      RAISE get_trx_type_expt;
-    END IF;
--- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/02/10 Ver1.12 ADD Start
-    --==============================================================
-    -- 取引タイプ情報を取得（設備費）
-    --==============================================================
-    OPEN g_cust_trx_type_cur(
-           gv_ra_trx_type_equipment
-         );
-    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_equipment;
-    CLOSE g_cust_trx_type_cur;
-    IF( g_ra_trx_type_equipment.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := gv_ra_trx_type_equipment;
-      RAISE get_trx_type_expt;
-    END IF;
--- 2021/02/10 Ver1.12 ADD End
+-- Ver.1.14 Del Start
+--    --==============================================================
+--    -- 取引タイプ情報を取得（フルVD（消化））
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
+--           gv_ra_trx_type_f_digestion_vd
+--         );
+--    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_f_digestion_vd;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_ra_trx_type_f_digestion_vd.cust_trx_type_id IS NULL ) THEN
+--      lv_token_value := gv_ra_trx_type_f_digestion_vd;
+--      RAISE get_trx_type_expt;
+--    END IF;
+--    --==============================================================
+--    -- 取引タイプ情報を取得（納品VD）
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
+--           gv_ra_trx_type_delivery_vd
+--         );
+--    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_delivery_vd;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_ra_trx_type_delivery_vd.cust_trx_type_id IS NULL ) THEN
+--      lv_token_value := gv_ra_trx_type_delivery_vd;
+--      RAISE get_trx_type_expt;
+--    END IF;
+--    --==============================================================
+--    -- 取引タイプ情報を取得（消化VD）
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
+--           gv_ra_trx_type_digestion_vd
+--         );
+--    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_digestion_vd;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_ra_trx_type_digestion_vd.cust_trx_type_id IS NULL ) THEN
+--      lv_token_value := gv_ra_trx_type_digestion_vd;
+--      RAISE get_trx_type_expt;
+--    END IF;
+--    --==============================================================
+--    -- 取引タイプ情報を取得（一般店）
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
+--           gv_ra_trx_type_general
+--         );
+--    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_general;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_ra_trx_type_general.cust_trx_type_id IS NULL ) THEN
+--      lv_token_value := gv_ra_trx_type_general;
+--      RAISE get_trx_type_expt;
+--    END IF;
+---- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+---- 2021/02/10 Ver1.12 ADD Start
+--    --==============================================================
+--    -- 取引タイプ情報を取得（設備費）
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
+--           gv_ra_trx_type_equipment
+--         );
+--    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_equipment;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_ra_trx_type_equipment.cust_trx_type_id IS NULL ) THEN
+--      lv_token_value := gv_ra_trx_type_equipment;
+--      RAISE get_trx_type_expt;
+--    END IF;
+---- 2021/02/10 Ver1.12 ADD End
+-- Ver.1.14 Del End
     --==============================================================
     --通貨コードの取得
     --==============================================================

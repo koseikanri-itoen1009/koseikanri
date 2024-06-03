@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A32C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：入金時値引処理 MD050_COK_024_A32
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2021/06/03    1.1   SCSK Y.Koh       [E_本稼動_16026] 消費税明細対応
  *  2021/06/21    1.2   SCSK T.Nishikawa [E_本稼動_17278] 処理対象から売上実績振替分を除く
  *  2021/09/10    1.3   SCSK K.Yoshikawa [E_本稼動_17505] 入金時値引処理の実行日の変更
+ *  2024/01/29    1.4   SCSK Y.Koh       [E_本稼動_19496] グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -54,11 +55,15 @@ AS
   cv_gl_category_bm           CONSTANT VARCHAR2(30)         := 'XXCOK1_GL_CATEGORY_BM';             -- 仕訳カテゴリ_販売手数料
   cv_gl_category_condition1   CONSTANT VARCHAR2(30)         := 'XXCOK1_GL_CATEGORY_CONDITION1';     -- 仕訳カテゴリ_販売控除
   cv_gl_set_of_bks_id         CONSTANT VARCHAR2(30)         := 'GL_SET_OF_BKS_ID';                  -- GL会計帳簿ID
-  cv_ra_trx_type_general      CONSTANT VARCHAR2(30)         := 'XXCOK1_RA_TRX_TYPE_GENERAL';        -- 取引タイプ_入金値引_一般店
+-- 2024/01/29 Ver1.4 DEL Start
+--  cv_ra_trx_type_general      CONSTANT VARCHAR2(30)         := 'XXCOK1_RA_TRX_TYPE_GENERAL';        -- 取引タイプ_入金値引_一般店
+-- 2024/01/29 Ver1.4 DEL End
   cv_other_tax_code           CONSTANT VARCHAR2(30)         := 'XXCOK1_OTHER_TAX_CODE';             -- 対象外消費税コード
   cv_org_id                   CONSTANT VARCHAR2(30)         := 'ORG_ID';                            -- 営業単位
-  cv_aff1_company_code        CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF1_COMPANY_CODE';          -- 会社コード
-  cv_aff2_dept_fin            CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF2_DEPT_FIN';              -- 部門コード_財務経理部
+-- 2024/01/29 Ver1.4 DEL Start
+--  cv_aff1_company_code        CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF1_COMPANY_CODE';          -- 会社コード
+--  cv_aff2_dept_fin            CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF2_DEPT_FIN';              -- 部門コード_財務経理部
+-- 2024/01/29 Ver1.4 DEL End
   cv_aff3_account_receivable  CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF3_ACCOUNT_RECEIVABLE';    -- 勘定科目_売掛金
   cv_aff4_subacct_dummy       CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF4_SUBACCT_DUMMY';         -- 補助科目_ダミー値
   cv_aff5_customer_dummy      CONSTANT VARCHAR2(30)         := 'XXCOK1_AFF5_CUSTOMER_DUMMY';        -- 顧客コード_ダミー値
@@ -217,18 +222,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 取引タイプ_入金値引_一般店
-    gv_ra_trx_type_general := FND_PROFILE.VALUE( cv_ra_trx_type_general );
-    IF gv_ra_trx_type_general IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_appli_xxcok_name
-                     ,cv_msg_cok_00003
-                     ,cv_tkn_profile
-                     ,cv_ra_trx_type_general
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- 2024/01/29 Ver1.4 DEL Start
+--    -- 取引タイプ_入金値引_一般店
+--    gv_ra_trx_type_general := FND_PROFILE.VALUE( cv_ra_trx_type_general );
+--    IF gv_ra_trx_type_general IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcok_name
+--                     ,cv_msg_cok_00003
+--                     ,cv_tkn_profile
+--                     ,cv_ra_trx_type_general
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2024/01/29 Ver1.4 DEL End
 --
     -- 対象外消費税コード
     gv_other_tax_code := FND_PROFILE.VALUE( cv_other_tax_code );
@@ -256,31 +263,35 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 会社コード
-    gv_aff1_company_code := FND_PROFILE.VALUE( cv_aff1_company_code );
-    IF gv_aff1_company_code IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_appli_xxcok_name
-                     ,cv_msg_cok_00003
-                     ,cv_tkn_profile
-                     ,cv_aff1_company_code
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- 2024/01/29 Ver1.4 DEL Start
+--    -- 会社コード
+--    gv_aff1_company_code := FND_PROFILE.VALUE( cv_aff1_company_code );
+--    IF gv_aff1_company_code IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcok_name
+--                     ,cv_msg_cok_00003
+--                     ,cv_tkn_profile
+--                     ,cv_aff1_company_code
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2024/01/29 Ver1.4 DEL End
 --
-    -- 部門コード_財務経理部
-    gv_aff2_dept_fin := FND_PROFILE.VALUE( cv_aff2_dept_fin );
-    IF gv_aff2_dept_fin IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_appli_xxcok_name
-                     ,cv_msg_cok_00003
-                     ,cv_tkn_profile
-                     ,cv_aff2_dept_fin
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- 2024/01/29 Ver1.4 DEL Start
+--    -- 部門コード_財務経理部
+--    gv_aff2_dept_fin := FND_PROFILE.VALUE( cv_aff2_dept_fin );
+--    IF gv_aff2_dept_fin IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcok_name
+--                     ,cv_msg_cok_00003
+--                     ,cv_tkn_profile
+--                     ,cv_aff2_dept_fin
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2024/01/29 Ver1.4 DEL End
 --
     -- 勘定科目_売掛金
     gv_aff3_account_receivable := FND_PROFILE.VALUE( cv_aff3_account_receivable );
@@ -381,14 +392,16 @@ AS
     FROM    gl_sets_of_books gsob
     WHERE   gsob.set_of_books_id = gn_gl_set_of_bks_id;
 --
-    -- ============================================================
-    -- 請求書保留ステータスの取得
-    -- ============================================================
-    SELECT  DECODE(rctt.attribute1,'Y','OPEN','HOLD')
-    INTO    gv_invoice_hold_status
-    FROM    ra_cust_trx_types_all rctt
-    WHERE   rctt.name   = gv_ra_trx_type_general
-    AND     rctt.org_id = gn_org_id;
+-- 2024/01/29 Ver1.4 DEL Start
+--    -- ============================================================
+--    -- 請求書保留ステータスの取得
+--    -- ============================================================
+--    SELECT  DECODE(rctt.attribute1,'Y','OPEN','HOLD')
+--    INTO    gv_invoice_hold_status
+--    FROM    ra_cust_trx_types_all rctt
+--    WHERE   rctt.name   = gv_ra_trx_type_general
+--    AND     rctt.org_id = gn_org_id;
+-- 2024/01/29 Ver1.4 DEL End
 --
     -- ============================================================
     -- 処理対象範囲の販売実績ヘッダーIDの取得
@@ -1256,6 +1269,46 @@ AS
                                   iv_account_number   =>  iv_ship_to_customer_code,
                                   iv_kana_judge_type  =>  '0'
                                 );
+-- 2024/01/29 Ver1.4 ADD Start
+--
+      -- 取引タイプ、請求書保留ステータス、会社セグメント、部門セグメント
+      BEGIN
+--
+        SELECT  xbtt.attribute4                           ,   -- 取引タイプ
+                DECODE(rctt.attribute1,'Y','OPEN','HOLD') ,   -- 請求書保留ステータス
+                xbdc.COMPANY_CODE_BD                      ,   -- 会社セグメント
+                xbdi.attribute1                               -- 部門セグメント
+        INTO    gv_ra_trx_type_general,                       -- 取引タイプ
+                gv_invoice_hold_status,                       -- 請求書保留ステータス
+                gv_aff1_company_code  ,                       -- 会社セグメント
+                gv_aff2_dept_fin                              -- 部門セグメント
+        FROM    ra_cust_trx_types_all     rctt,               -- 請求取引タイプ
+                xxcfr_bd_company_info_v   xbdi,               -- 各社部門情報(AR)
+                xxcfr_bd_company_info_v   xbtt,               -- 取引タイプ(AR)
+                xxcfr_bd_dept_comp_info_v xbdc                -- 基準日部門会社情報ビュー
+        WHERE   xbdc.dept_code        = lv_header_attribute5
+        AND     xbdc.set_of_books_id  = gn_gl_set_of_bks_id
+        AND     id_next_closing_date  BETWEEN NVL(xbdc.comp_start_date,   TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                      AND     NVL(xbdc.comp_end_date,     TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+        AND     xbtt.company_code     = xbdc.company_code
+        AND     id_next_closing_date  BETWEEN NVL(xbtt.start_date_active, TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                      AND     NVL(xbtt.end_date_active,   TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+        AND     xbtt.lookup_type      = 'XXCFR1_TRX_TYPE_AR'
+        AND     xbdi.company_code     = xbdc.company_code
+        AND     id_next_closing_date  BETWEEN NVL(xbdi.start_date_active, TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                      AND     NVL(xbdi.end_date_active,   TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+        AND     xbdi.lookup_type      = 'XXCFR1_DRAFTING_COMPANY'
+        AND     rctt.name             = xbtt.attribute4
+        AND     rctt.org_id           = gn_org_id;
+--
+      EXCEPTION
+        WHEN  OTHERS THEN
+          gv_ra_trx_type_general  :=  NULL;
+          gv_invoice_hold_status  :=  NULL;
+          gv_aff1_company_code    :=  NULL;
+          gv_aff2_dept_fin        :=  NULL;
+      END;
+-- 2024/01/29 Ver1.4 ADD End
 --
       -- ============================================================
       -- 販売控除情報抽出【本体行】
