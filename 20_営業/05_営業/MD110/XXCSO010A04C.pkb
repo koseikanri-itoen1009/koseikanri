@@ -5,10 +5,10 @@ AS
  *
  * Package Name     : XXCSO010A04C(body)
  * Description      : 自動販売機設置契約情報登録/更新画面、契約書検索画面から
- *                    自動販売機設置契約書を帳票に出力します。
+ *                    自動販売機設置契約書、覚書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,7 +22,7 @@ AS
  *  func_wait_for_request  コンカレント終了待機処理(A-6)
  *  delete_data            ワークテーブルデータ削除(A-7)
  *  submain                メイン処理プロシージャ
- *                           SVF起動APIエラーチェック(A-8)
+ *                         SVF起動APIエラーチェック(A-8)
  *  main                   コンカレント実行ファイル登録プロシージャ
  *                         終了処理(A-9)
  * Change Record
@@ -51,6 +51,7 @@ AS
  *  2021-01-12    1.17  K.Kanada         E_本稼動_15904対応（外税対応不具合）条件内容編集（定率・定額）
  *  2023-06-02    1.18  T.Okuyama        E_本稼動_19179対応 インボイス対応
  *  2023-07-26    1.19  T.Okuyama        E_本稼動_19179対応 インボイス対応 登録番号取得要領
+ *  2024-02-02    1.20  T.Okuyama        E_本稼動_19496対応 グループ会社対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -129,6 +130,9 @@ AS
   cv_tkn_number_22      CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00746';  -- コンカレント待機警告メッセージ
   cv_tkn_number_23      CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00747';  -- コンカレント待機エラーメッセージ
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END    */
+--  Ver1.20 T.Okuyama Add Start
+  cv_tkn_number_24      CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00416';  -- GL会計帳簿ID
+--  Ver1.20 T.Okuyama Add End
 --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(30) := 'PARAM_NAME';
@@ -225,7 +229,12 @@ AS
   cv_interval           CONSTANT VARCHAR2(30)  := 'XXCSO1_INTERVAL_XXCSO010A04C'; -- XXCSO:待機間隔（覚書出力）
   cv_max_wait           CONSTANT VARCHAR2(30)  := 'XXCSO1_MAX_WAIT_XXCSO010A04C'; -- XXCSO:最大待機時間（覚書出力）
 --  Ver1.18 T.Okuyama Add Start
-  cv_t_number           CONSTANT VARCHAR2(30)  := 'XXCMM1_INVOICE_T_NO';          -- XXCMM:適格請求書発行事業者登録番号
+--  Ver1.20 T.Okuyama Mod Start
+--  cv_t_number           CONSTANT VARCHAR2(30)  := 'XXCMM1_INVOICE_T_NO';          -- XXCMM:適格請求書発行事業者登録番号
+  cv_sob_id             CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';             -- GL会計帳簿ID
+  -- 適格請求書発行事業者情報(クイックコード)
+  cv_publisher_company_type CONSTANT VARCHAR2(100) := 'XXCMM_INVOICE_T_NO';
+--  Ver1.20 T.Okuyama Mod End
   cv_t_flag             CONSTANT VARCHAR2(1)   := 'T';                            -- Tフラグ
   cv_t_none             CONSTANT VARCHAR2(1)   := ' ';                            -- 登録番号なし
 --  Ver1.18 T.Okuyama Add End
@@ -285,6 +294,12 @@ AS
   gv_electric_pre2      VARCHAR2(300);
   gv_electric_pre3      VARCHAR2(300);
   gv_electric_pre4      VARCHAR2(300);
+--  Ver1.20 T.Okuyama Add Start
+  gv_company_code       fnd_lookup_values.lookup_code%TYPE;            -- 会社コード
+  gv_company_name       fnd_lookup_values.attribute1%TYPE;             -- 会社名称
+  gv_company_name2      fnd_lookup_values.attribute1%TYPE;             -- 前文埋め込み用会社名称
+  gv_invoice_t_no       fnd_lookup_values.meaning%TYPE;                -- インボイス登録番号
+--  Ver1.20 T.Okuyama Add End
   -- 本部長職位
   gt_gen_mgr_pos_code   fnd_lookup_values.attribute1%TYPE;
   -- 統括本部長（副社長）所属拠点（新）
@@ -295,9 +310,12 @@ AS
   gn_is_amt_branch      NUMBER;       -- 支店長（設置協賛金総額上限）
   gn_is_amt_areamgr     NUMBER;       -- 地域営業本部長（設置協賛金総額上限）
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+--  Ver1.20 T.Okuyama Mod Start
 --  Ver1.18 T.Okuyama Add Start
-  gv_t_number           VARCHAR2(14);                              -- 登録番号
+--  gv_t_number           VARCHAR2(14);                                  -- 登録番号
 --  Ver1.18 T.Okuyama Add End
+  gt_set_of_books_id    gl_sets_of_books.set_of_books_id%TYPE;         -- GL会計帳簿ID
+--  Ver1.20 T.Okuyama Mod Start
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -362,7 +380,7 @@ AS
 --  Ver1.18 T.Okuyama Add End
     condition_contents_flag       BOOLEAN,                                              -- 販売手数料情報有無フラグ
     install_support_amt_flag      BOOLEAN,                                              -- 設置協賛金有無フラグ
-    electricity_information_flag  BOOLEAN                                              -- 電気代情報有無フラグ
+    electricity_information_flag  BOOLEAN                                               -- 電気代情報有無フラグ
 -- 2020/05/07 Ver1.14 N.Abe ADD START
    ,bm_tax_kbn                    xxcso_rep_auto_sale_cont.bm_tax_kbn%TYPE                     -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
@@ -476,7 +494,15 @@ AS
 --###########################  固定部 END   ####################################
     -- *** ローカル定数 ***
     cv_con_mng_id        CONSTANT VARCHAR2(100)   := '自動販売機設置契約書ID';
+--  Ver1.20 T.Okuyama Add Start
+    cv_gl_sob_id        CONSTANT VARCHAR2(100)   := 'GL会計帳簿ID';
+    cv_sp               CONSTANT VARCHAR2(1)     := ' ';     -- 半角SP
+    cv_m_sp             CONSTANT VARCHAR2(2)     := '　';    -- 全角SP
+--  Ver1.20 T.Okuyama Add End
     -- *** ローカル変数 ***
+--  Ver1.20 T.Okuyama Add Start
+    ld_sysdate               DATE;              -- 業務日付
+--  Ver1.20 T.Okuyama Add End
     -- メッセージ出力用
     lv_msg               VARCHAR2(5000);
 -- == 2010/08/03 V1.9 Added START ===============================================================
@@ -631,16 +657,100 @@ AS
         RAISE global_process_expt;
     END;
 -- == 2010/08/03 V1.9 Added END   ===============================================================
+--
+--  Ver1.20 T.Okuyama Add Start
+    --==================================================
+    -- プロファイル取得(GL会計帳簿ID)
+    --==================================================
+    gt_set_of_books_id := FND_PROFILE.VALUE( cv_sob_id );
+    IF( gt_set_of_books_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name       -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_15  -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_prof_name  -- トークンコード1
+                     ,iv_token_value1 => cv_sob_id         -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    ELSE
+      -- ===========================
+      -- GL会計帳簿IDメッセージ出力
+      -- ===========================
+      lv_msg := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_app_name                 --アプリケーション短縮名
+                  ,iv_name         => cv_tkn_number_09            --メッセージコード
+                  ,iv_token_name1  => cv_tkn_param_nm             --トークンコード1
+                  ,iv_token_value1 => cv_gl_sob_id                --トークン値1
+                  ,iv_token_name2  => cv_tkn_val                  --トークンコード2
+                  ,iv_token_value2 => TO_CHAR(gt_set_of_books_id) --トークン値2
+                );
+      -- ログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   =>'' || CHR(10) || lv_msg
+      );
+    END IF;
+--
+    -- 業務日付
+    ld_sysdate := TRUNC(xxcso_util_common_pkg.get_online_sysdate);  -- 共通関数により業務日付を格納
+--
+    -- ===================================================
+    -- 契約書発行会社情報取得
+    -- ===================================================
+    BEGIN
+      SELECT
+        xbdciv.company_code_bd                                             -- 会社コード
+       ,SUBSTRB(flvv.attribute1, 1, 44)                                    -- 会社名称
+       ,SUBSTRB(REPLACE(REPLACE(flvv.attribute1, cv_sp), cv_m_sp), 1, 44)  -- 前文埋め込み用会社名称
+       ,SUBSTRB(flvv.meaning, 1, 14)                                       -- インボイス登録番号
+      INTO
+        gv_company_code                                                    -- 会社コード
+       ,gv_company_name                                                    -- 会社名称
+       ,gv_company_name2                                                   -- 前文埋め込み用会社名称
+       ,gv_invoice_t_no                                                    -- インボイス登録番号
+      FROM   xxcso_contract_managements xcm                                -- 契約管理テーブル
+            ,xxcfr_bd_dept_comp_info_v  xbdciv                             -- 担当拠点会社情報ビュー
+            ,fnd_lookup_values_vl       flvv                               -- 参照表
+      WHERE  xcm.contract_management_id = gt_con_mng_id                    -- 自動販売機設置契約書ID
+        AND  xbdciv.dept_code = xcm.publish_dept_code                      -- 担当拠点
+        AND  xbdciv.set_of_books_id = gt_set_of_books_id                   -- GL会計帳簿ID
+        AND  xcm.contract_effect_date BETWEEN NVL(xbdciv.comp_start_date, xcm.contract_effect_date)  -- 契約書発効日
+                                  AND NVL(xbdciv.comp_end_date, xcm.contract_effect_date)
+        AND  flvv.lookup_type = cv_publisher_company_type
+        AND  flvv.lookup_code = xbdciv.company_code_bd                     -- 会社コード（基準日）
+        AND  TRUNC(ld_sysdate) BETWEEN TRUNC(NVL(flvv.start_date_active, ld_sysdate))
+                                   AND TRUNC(NVL(flvv.end_date_active,   ld_sysdate))
+        AND  flvv.enabled_flag = cv_enabled_flag
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_04           -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_contract_num        -- トークンコード1
+                         ,iv_token_value1 => gt_contract_number         -- 契約書番号
+                      );
+        lv_errbuf :=  lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--  Ver1.20 T.Okuyama Add End
+--
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD START */
     -- ===================================================
     -- 前文固定部取得
     -- ===================================================
     BEGIN
       SELECT
-        flvv.attribute1 || flvv.attribute2 install_supp_pre    -- 前文固定部（設置協賛金）
-       ,flvv.attribute1 || flvv.attribute3 intro_chg_pre1      -- 前文固定部1（紹介手数料）
-       ,flvv.attribute1 || flvv.attribute4 intro_chg_pre2      -- 前文固定部2（紹介手数料）
-       ,flvv.attribute1 || flvv.attribute5 electric_pre1       -- 前文固定部1（電気代）
+--  Ver1.20 T.Okuyama Mod Start
+--        flvv.attribute1 || flvv.attribute2 install_supp_pre    -- 前文固定部（設置協賛金）
+--       ,flvv.attribute1 || flvv.attribute3 intro_chg_pre1      -- 前文固定部1（紹介手数料）
+--       ,flvv.attribute1 || flvv.attribute4 intro_chg_pre2      -- 前文固定部2（紹介手数料）
+--       ,flvv.attribute1 || flvv.attribute5 electric_pre1       -- 前文固定部1（電気代）
+        flvv.attribute1 || gv_company_name2 || flvv.attribute10 || flvv.attribute2 install_supp_pre    -- 前文固定部（設置協賛金）
+       ,flvv.attribute1 || gv_company_name2 || flvv.attribute10 || flvv.attribute3 intro_chg_pre1      -- 前文固定部1（紹介手数料）
+       ,flvv.attribute1 || gv_company_name2 || flvv.attribute10 || flvv.attribute4 intro_chg_pre2      -- 前文固定部2（紹介手数料）
+       ,flvv.attribute1 || gv_company_name2 || flvv.attribute10 || flvv.attribute5 electric_pre1       -- 前文固定部1（電気代）
+--  Ver1.20 T.Okuyama Mod End
        ,flvv.attribute6                    electric_pre2       -- 前文固定部2（電気代）
        ,flvv.attribute7 || flvv.attribute9 electric_pre3       -- 前文固定部3（電気代）
        ,flvv.attribute8 || flvv.attribute9 electric_pre4       -- 前文固定部4（電気代）
@@ -795,21 +905,24 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+--  Ver1.20 T.Okuyama Del Start
 --  Ver1.18 T.Okuyama Add Start
-    -- 適格請求書発行事業者登録番号（自社）取得
-    gv_t_number := FND_PROFILE.VALUE(cv_t_number);
-    -- プロファイル値チェック
-    IF ( gv_t_number IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name       -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_15  -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_prof_name  -- トークンコード1
-                     ,iv_token_value1 => cv_t_number       -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+--    -- 適格請求書発行事業者登録番号（自社）取得
+--    gv_t_number := FND_PROFILE.VALUE(cv_t_number);
+--    -- プロファイル値チェック
+--    IF ( gv_t_number IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name       -- アプリケーション短縮名
+--                     ,iv_name         => cv_tkn_number_15  -- メッセージコード
+--                     ,iv_token_name1  => cv_tkn_prof_name  -- トークンコード1
+--                     ,iv_token_value1 => cv_t_number       -- トークン値1
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
 --  Ver1.18 T.Okuyama Add End
+--  Ver1.20 T.Okuyama Del End
+--
     -- ===================================================
     -- 覚書の発行画面出力用名称の取得
     -- ===================================================
@@ -1257,7 +1370,10 @@ AS
               ,flv_tax.tax_type_name                    tax_type_name                 -- 税区分名
               ,xcm.contract_number                      contract_number               -- 契約書番号
               ,xcoc.contract_other_custs_id             contract_other_custs_id       -- 契約先以外ID
-              ,xcc.contract_name                        contract_name2                -- 契約者名2
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xcc.contract_name                        contract_name2                -- 契約者名2
+              ,SUBSTRB(xcc.contract_name, 1, 100)         contract_name2                -- 契約者名2
+--  Ver1.20 T.Okuyama Mod End
               ,xcm.contract_effect_date                 contract_effect_date2         -- 契約書発効日2
               ,flv_tax.tax_type_name2                   tax_type_name2                -- 税区分名2
               ,CASE xsdh.install_supp_payment_type
@@ -1275,7 +1391,10 @@ AS
               ,xcoc.install_supp_bk_acct_number         install_supp_bk_acct_number   -- 口座番号（設置協賛金）
               ,xcoc.install_supp_bk_acct_name_alt       install_supp_bk_acct_name_alt -- 口座名義カナ（設置協賛金）
               ,xcoc.install_supp_bk_acct_name           install_supp_bk_acct_name     -- 口座名義漢字（設置協賛金）
-              ,xcc.contract_name || gv_install_supp_pre install_supp_preamble         -- 前文（設置協賛金）
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xcc.contract_name || gv_install_supp_pre install_supp_preamble         -- 前文（設置協賛金）
+              ,SUBSTRB(xcc.contract_name, 1,100) || gv_install_supp_pre install_supp_preamble         -- 前文（設置協賛金）
+--  Ver1.20 T.Okuyama Mod End
               ,CASE xsdh.intro_chg_payment_type
                  WHEN cv_ic_pay_type_single THEN xsdh.intro_chg_amt
                  WHEN cv_ic_pay_type_per_sp THEN xsdh.intro_chg_per_sales_price
@@ -1286,7 +1405,10 @@ AS
               ,xsdh.intro_chg_closing_date              intro_chg_closing_date        -- 締日（紹介手数料）
               ,flv_ic_mon.trans_month_name              intro_chg_trans_month         -- 振込月（紹介手数料）
               ,xsdh.intro_chg_trans_date                intro_chg_trans_date          -- 振込日（紹介手数料）
-              ,xsdh.intro_chg_trans_name                intro_chg_trans_name          -- 契約先以外名（紹介手数料）
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xsdh.intro_chg_trans_name                intro_chg_trans_name          -- 契約先以外名（紹介手数料）
+              ,SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) intro_chg_trans_name          -- 契約先以外名（紹介手数料）
+--  Ver1.20 T.Okuyama Mod End
               ,xsdh.intro_chg_trans_name_alt            intro_chg_trans_alt           -- 契約先以外名カナ（紹介手数料）
               ,flv_ic_fee.bk_chg_bearer_nm              intro_chg_bk_chg_bearer       -- 振込手数料負担（紹介手数料）
               ,xcoc.intro_chg_bk_number                 intro_chg_bk_number           -- 銀行番号（紹介手数料）
@@ -1298,19 +1420,30 @@ AS
               ,xcoc.intro_chg_bk_acct_name_alt          intro_chg_bk_acct_name_alt    -- 口座名義カナ（紹介手数料）
               ,xcoc.intro_chg_bk_acct_name              intro_chg_bk_acct_name        -- 口座名義漢字（紹介手数料）
               ,CASE xsdh.intro_chg_payment_type
+--  Ver1.20 T.Okuyama Mod Start
+--                 WHEN cv_ic_pay_type_single THEN
+--                   xsdh.intro_chg_trans_name || gv_intro_chg_pre1
+--                 WHEN cv_ic_pay_type_per_sp THEN 
+--                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
+--                 WHEN cv_ic_pay_type_per_p  THEN 
+--                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
                  WHEN cv_ic_pay_type_single THEN
-                   xsdh.intro_chg_trans_name || gv_intro_chg_pre1
+                   SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) || gv_intro_chg_pre1
                  WHEN cv_ic_pay_type_per_sp THEN 
-                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
+                   SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) || gv_intro_chg_pre2
                  WHEN cv_ic_pay_type_per_p  THEN 
-                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
+                   SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) || gv_intro_chg_pre2
+--  Ver1.20 T.Okuyama Mod End
                  ELSE NULL
                END                                      intro_chg_preamble            -- 前文（紹介手数料）
               ,xsdh.electricity_amount                  electric_amt                  -- 電気代2
               ,xsdh.electric_closing_date               electric_closing_date         -- 締日（電気代）
               ,flv_e_mon.trans_month_name               electric_trans_month          -- 振込月（電気代）
               ,xsdh.electric_trans_date                 electric_trans_date           -- 振込日（電気代）
-              ,xsdh.electric_trans_name                 electric_trans_name           -- 契約先以外名（電気代）
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xsdh.electric_trans_name                 electric_trans_name           -- 契約先以外名（電気代）
+              ,SUBSTRB(xsdh.electric_trans_name, 1, 100)  electric_trans_name           -- 契約先以外名（電気代）
+--  Ver1.20 T.Okuyama Mod End
               ,xsdh.electric_trans_name_alt             electric_trans_name_alt       -- 契約先以外名カナ（電気代）
               ,flv_e_fee.bk_chg_bearer_nm               electric_bk_chg_bearer        -- 振込手数料負担（電気代）
               ,xcoc.electric_bk_number                  electric_bk_number            -- 銀行番号（電気代）
@@ -1323,8 +1456,12 @@ AS
               ,xcoc.electric_bk_acct_name               electric_bk_acct_name         -- 口座名義漢字（電気代）
               ,CASE xsdh.electricity_type
                  WHEN cv_electric_type_fix THEN
-                   xsdh.electric_trans_name
-                        || gv_electric_pre1 || xcc.contract_name
+--  Ver1.20 T.Okuyama Mod Start
+--                   xsdh.electric_trans_name
+                   SUBSTRB(xsdh.electric_trans_name, 1, 100)
+--                        || gv_electric_pre1 || xcc.contract_name
+                        || gv_electric_pre1 || SUBSTRB(xcc.contract_name, 1, 100)
+--  Ver1.20 T.Okuyama Mod End
                         || gv_electric_pre2
 /* 2018/11/15 Ver1.13 E.Yazaki MOD START */
 --                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
@@ -1332,8 +1469,12 @@ AS
 /* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                         || gv_electric_pre3
                  WHEN cv_electric_type_var THEN
-                   xsdh.electric_trans_name
-                        || gv_electric_pre1 || xcc.contract_name
+--  Ver1.20 T.Okuyama Mod Start
+--                   xsdh.electric_trans_name
+                   SUBSTRB(xsdh.electric_trans_name, 1, 100)
+--                        || gv_electric_pre1 || xcc.contract_name
+                        || gv_electric_pre1 || SUBSTRB(xcc.contract_name, 1, 100)
+--  Ver1.20 T.Okuyama Mod End
                         || gv_electric_pre2
 /* 2018/11/15 Ver1.13 E.Yazaki MOD START */
 --                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
@@ -1489,7 +1630,10 @@ AS
 --  Ver1.19 T.Okuyama Add Start
               ,po_vendor_sites            pvs      -- 仕入先サイトマスタ
 --  Ver1.19 T.Okuyama Add End
-              ,(SELECT (flvv.attribute1 || flvv.attribute2) attr
+--  Ver1.20 T.Okuyama Mod Start
+--              ,(SELECT (flvv.attribute1 || flvv.attribute2) attr
+              ,(SELECT (flvv.attribute1 || gv_company_name2 || flvv.attribute2) attr  -- 前文埋め込み || 会社名称 || 前文埋め込み
+--  Ver1.20 T.Okuyama Mod End
                 FROM   fnd_lookup_values_vl flvv -- 参照タイプ
                 WHERE
                        flvv.lookup_type = cv_lkup_contract_nm_con
@@ -1812,7 +1956,10 @@ AS
               ,flv_tax.tax_type_name                    tax_type_name                 -- 税区分名
               ,xcm.contract_number                      contract_number               -- 契約書番号
               ,xcoc.contract_other_custs_id             contract_other_custs_id       -- 契約先以外ID
-              ,xcc.contract_name                        contract_name2                -- 契約者名2
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xcc.contract_name                        contract_name2                -- 契約者名2
+              ,SUBSTRB(xcc.contract_name, 1, 100)         contract_name2                -- 契約者名2
+--  Ver1.20 T.Okuyama Mod End
               ,xcm.contract_effect_date                 contract_effect_date2         -- 契約書発効日2
               ,flv_tax.tax_type_name2                   tax_type_name2                -- 税区分名2
               ,CASE xsdh.install_supp_payment_type
@@ -1830,7 +1977,10 @@ AS
               ,xcoc.install_supp_bk_acct_number         install_supp_bk_acct_number   -- 口座番号（設置協賛金）
               ,xcoc.install_supp_bk_acct_name_alt       install_supp_bk_acct_name_alt -- 口座名義カナ（設置協賛金）
               ,xcoc.install_supp_bk_acct_name           install_supp_bk_acct_name     -- 口座名義漢字（設置協賛金）
-              ,xcc.contract_name || gv_install_supp_pre install_supp_preamble         -- 前文（設置協賛金）
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xcc.contract_name || gv_install_supp_pre install_supp_preamble         -- 前文（設置協賛金）
+              ,SUBSTRB(xcc.contract_name, 1, 100) || gv_install_supp_pre install_supp_preamble         -- 前文（設置協賛金）
+--  Ver1.20 T.Okuyama Mod End
               ,CASE xsdh.intro_chg_payment_type
                  WHEN cv_ic_pay_type_single THEN xsdh.intro_chg_amt
                  WHEN cv_ic_pay_type_per_sp THEN xsdh.intro_chg_per_sales_price
@@ -1841,7 +1991,10 @@ AS
               ,xsdh.intro_chg_closing_date              intro_chg_closing_date        -- 締日（紹介手数料）
               ,flv_ic_mon.trans_month_name              intro_chg_trans_month         -- 振込月（紹介手数料）
               ,xsdh.intro_chg_trans_date                intro_chg_trans_date          -- 振込日（紹介手数料）
-              ,xsdh.intro_chg_trans_name                intro_chg_trans_name          -- 契約先以外名（紹介手数料）
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xsdh.intro_chg_trans_name                intro_chg_trans_name          -- 契約先以外名（紹介手数料）
+              ,SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) intro_chg_trans_name          -- 契約先以外名（紹介手数料）
+--  Ver1.20 T.Okuyama Mod End
               ,xsdh.intro_chg_trans_name_alt            intro_chg_trans_alt           -- 契約先以外名カナ（紹介手数料）
               ,flv_ic_fee.bk_chg_bearer_nm              intro_chg_bk_chg_bearer       -- 振込手数料負担（紹介手数料）
               ,xcoc.intro_chg_bk_number                 intro_chg_bk_number           -- 銀行番号（紹介手数料）
@@ -1853,19 +2006,30 @@ AS
               ,xcoc.intro_chg_bk_acct_name_alt          intro_chg_bk_acct_name_alt    -- 口座名義カナ（紹介手数料）
               ,xcoc.intro_chg_bk_acct_name              intro_chg_bk_acct_name        -- 口座名義漢字（紹介手数料）
               ,CASE xsdh.intro_chg_payment_type
+--  Ver1.20 T.Okuyama Mod Start
+--                 WHEN cv_ic_pay_type_single THEN
+--                   xsdh.intro_chg_trans_name || gv_intro_chg_pre1
+--                 WHEN cv_ic_pay_type_per_sp THEN 
+--                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
+--                 WHEN cv_ic_pay_type_per_p  THEN 
+--                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
                  WHEN cv_ic_pay_type_single THEN
-                   xsdh.intro_chg_trans_name || gv_intro_chg_pre1
+                   SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) || gv_intro_chg_pre1
                  WHEN cv_ic_pay_type_per_sp THEN 
-                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
+                   SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) || gv_intro_chg_pre2
                  WHEN cv_ic_pay_type_per_p  THEN 
-                   xsdh.intro_chg_trans_name || gv_intro_chg_pre2
+                   SUBSTRB(xsdh.intro_chg_trans_name, 1, 100) || gv_intro_chg_pre2
+--  Ver1.20 T.Okuyama Mod End
                  ELSE NULL
                END                                      intro_chg_preamble            -- 前文（紹介手数料）
               ,xsdh.electricity_amount                  electric_amt                  -- 電気代2
               ,xsdh.electric_closing_date               electric_closing_date         -- 締日（電気代）
               ,flv_e_mon.trans_month_name               electric_trans_month          -- 振込月（電気代）
               ,xsdh.electric_trans_date                 electric_trans_date           -- 振込日（電気代）
-              ,xsdh.electric_trans_name                 electric_trans_name           -- 契約先以外名（電気代）
+--  Ver1.20 T.Okuyama Mod Start
+--              ,xsdh.electric_trans_name                 electric_trans_name           -- 契約先以外名（電気代）
+              ,SUBSTRB(xsdh.electric_trans_name, 1, 100)  electric_trans_name           -- 契約先以外名（電気代）
+--  Ver1.20 T.Okuyama Mod End
               ,xsdh.electric_trans_name_alt             electric_trans_name_alt       -- 契約先以外名カナ（電気代）
               ,flv_e_fee.bk_chg_bearer_nm               electric_bk_chg_bearer        -- 振込手数料負担（電気代）
               ,xcoc.electric_bk_number                  electric_bk_number            -- 銀行番号（電気代）
@@ -1878,8 +2042,12 @@ AS
               ,xcoc.electric_bk_acct_name               electric_bk_acct_name         -- 口座名義漢字（電気代）
               ,CASE xsdh.electricity_type
                  WHEN cv_electric_type_fix THEN
-                   xsdh.electric_trans_name
-                        || gv_electric_pre1 || xcc.contract_name
+--  Ver1.20 T.Okuyama Mod Start
+--                   xsdh.electric_trans_name
+                   SUBSTRB(xsdh.electric_trans_name, 1, 100)
+--                        || gv_electric_pre1 || xcc.contract_name
+                        || gv_electric_pre1 || SUBSTRB(xcc.contract_name, 1, 100)
+--  Ver1.20 T.Okuyama Mod End
                         || gv_electric_pre2
 /* 2018/11/15 Ver1.13 E.Yazaki MOD START */
 --                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
@@ -1887,8 +2055,12 @@ AS
 /* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                         || gv_electric_pre3
                  WHEN cv_electric_type_var THEN
-                   xsdh.electric_trans_name
-                        || gv_electric_pre1 || xcc.contract_name
+--  Ver1.20 T.Okuyama Mod Start
+--                   xsdh.electric_trans_name
+                   SUBSTRB(xsdh.electric_trans_name, 1, 100)
+--                        || gv_electric_pre1 || xcc.contract_name
+                        || gv_electric_pre1 || SUBSTRB(xcc.contract_name, 1, 100)
+--  Ver1.20 T.Okuyama Mod End
                         || gv_electric_pre2
 /* 2018/11/15 Ver1.13 E.Yazaki MOD START */
 --                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
@@ -1930,7 +2102,7 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
               ,NVL( xd.bm_tax_kbn, '1' )                bm_tax_kbn                    -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
---
+-- == 2010/08/03 V1.9 Modified END   ===============================================================
 --  Ver1.18 T.Okuyama Add Start
               ,CASE WHEN ((NVL(pvs.attribute8, cv_t_none) = cv_t_flag) AND (pvs.attribute9 IS NOT NULL)) THEN
                  pvs.attribute8 || pvs.attribute9
@@ -1938,7 +2110,6 @@ AS
                  NULL
                END                                      bm1_t_no                      -- 登録番号（送付先）
 --  Ver1.18 T.Okuyama Add End
--- == 2010/08/03 V1.9 Modified END   ===============================================================
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
               ,o_rep_cont_data_rec.contract_name                 -- 契約者名
@@ -2037,7 +2208,10 @@ AS
               /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
               ,xxcso_bank_accts_v         xbav     -- 銀行口座マスタ（最新）ビュー
               ,xxcso_locations_v2         xlv2     -- 事業所マスタ（最新）ビュー
-              ,(SELECT (flvv.attribute1 || flvv.attribute2) attr
+--  Ver1.20 T.Okuyama Mod Start
+--              ,(SELECT (flvv.attribute1 || flvv.attribute2) attr
+              ,(SELECT (flvv.attribute1 || gv_company_name2 || flvv.attribute2) attr  -- 前文埋め込み || 会社名称 || 前文埋め込み
+--  Ver1.20 T.Okuyama Mod End
                 FROM   fnd_lookup_values_vl flvv -- 参照タイプ
                 WHERE
                        flvv.lookup_type = cv_lkup_contract_nm_con
@@ -2562,8 +2736,6 @@ AS
           --END IF;
           /* 2009.11.30 T.Maruyama E_本稼動_00193 END */
         END IF;
-         
-        
         -- 販売手数料有無チェック
         IF ((l_sales_charge_rec.bm1_bm_rate IS NOT NULL AND
               l_sales_charge_rec.bm1_bm_rate <> '0') OR
@@ -2832,7 +3004,6 @@ AS
         ELSE
           lb_bm1_bm_amount := FALSE;
         END IF;
-        
         --率もしくは額のどちらかだけが１種類の場合だけ定率とする
         IF ((ln_work_cnt_ritu = 1) AND (ln_work_cnt_gaku = 0))
         OR ((ln_work_cnt_ritu = 0) AND (ln_work_cnt_gaku = 1)) THEN
@@ -2842,8 +3013,6 @@ AS
           lb_bm1_bm_amount := FALSE;
         END IF;
         /* 2009.11.30 T.Maruyama E_本稼動_00193 END */
-        
-        
 -- == 2010/08/03 V1.9 Modified START ===============================================================
 --        -- 容器別、定率の場合
 --        IF ((lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
@@ -3294,6 +3463,10 @@ AS
           ,bm1_invoice_t_no                 -- 登録番号（送付先）
           ,invoice_t_no                     -- 登録番号（発行元）
 --  Ver1.18 T.Okuyama Add End
+--  Ver1.20 T.Okuyama Add Start
+          ,company_code                     -- 会社コード
+          ,company_name                     -- 会社名称
+--  Ver1.20 T.Okuyama Add End
         )
       VALUES
         (  i_rep_cont_data_rec.install_location                 -- 設置ロケーション
@@ -3360,10 +3533,15 @@ AS
 -- 2020/05/07 Ver1.14 N.Abe ADD START
           ,i_rep_cont_data_rec.bm_tax_kbn                       -- BM税区分
 -- 2020/05/07 Ver1.14 N.Abe ADD END
+--  Ver1.20 T.Okuyama Mod Start
 --  Ver1.18 T.Okuyama Add Start
           ,i_rep_cont_data_rec.bm1_t_no                         -- 登録番号（送付先）
-          ,gv_t_number                                          -- 登録番号（発行元）
+--          ,gv_t_number                                          -- 登録番号（発行元）
 --  Ver1.18 T.Okuyama Add End
+          ,gv_invoice_t_no                                      -- インボイス登録番号
+          ,gv_company_code                                      -- 会社コード
+          ,gv_company_name                                      -- 会社名称
+--  Ver1.20 T.Okuyama Mod End
         );
 --
       -- ログ出力
@@ -3470,6 +3648,10 @@ AS
 --  Ver1.18 T.Okuyama Add Start
               ,invoice_t_no                  -- 登録番号（発行元）
 --  Ver1.18 T.Okuyama Add End
+--  Ver1.20 T.Okuyama Add Start
+              ,company_code                  -- 会社コード
+              ,company_name                  -- 会社名称
+--  Ver1.20 T.Okuyama Add End
       ) VALUES (
                i_rep_memo_data_rec.contract_number               -- 契約書番号
               ,i_rep_memo_data_rec.contract_other_custs_id       -- 契約先以外ID
@@ -3544,9 +3726,14 @@ AS
               ,cn_program_application_id                         -- コンカレントプログラムアプリケーションID
               ,cn_program_id                                     -- コンカレントプログラムID
               ,cd_program_update_date                            -- プログラム更新日
+--  Ver1.20 T.Okuyama Mod Start
 --  Ver1.18 T.Okuyama Add Start
-              ,gv_t_number                                       -- 登録番号（発行元）
+--              ,gv_t_number                                       -- 登録番号（発行元）
 --  Ver1.18 T.Okuyama Add End
+              ,gv_invoice_t_no                                   -- インボイス登録番号
+              ,gv_company_code                                   -- 会社コード
+              ,gv_company_name                                   -- 会社名称
+--  Ver1.20 T.Okuyama Mod End
       );
       -- ログ出力
       fnd_file.put_line(
