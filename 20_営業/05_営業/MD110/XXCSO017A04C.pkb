@@ -7,7 +7,7 @@ AS
  * Description      : 帳合問屋用見積入力画面から、見積番号、版毎に見積書を  
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A04_見積書（帳合問屋用）PDF出力
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-06-17    1.7   Daisuke.Abe      ＳＴ障害対応(T1_1257)
  *  2009-07-30    1.8   Daisuke.Abe      SCS障害対応(0000806)
  *  2009-12-16    1.9   Daisuke.Abe      E_本稼動_00501
+ *  2024-02-01    1.10  R.Oikawa         [E_本稼動_19496]グループ会社対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -193,6 +194,10 @@ AS
     ,program_application_id        xxcso_rep_quote_list.program_application_id%TYPE     -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｱﾌﾟﾘｹｰｼｮﾝ
     ,program_id                    xxcso_rep_quote_list.program_id%TYPE                 -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑＩＤ
     ,program_update_date           xxcso_rep_quote_list.program_update_date%TYPE        -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- Ver.1.10 ADD START
+    ,company_code                  xxcso_rep_quote_list.company_code%type               -- 会社コード
+    ,company_name                  xxcso_rep_quote_list.company_name%type               -- 会社名称_見積
+-- Ver.1.10 ADD end
   );
   --
   /**********************************************************************************
@@ -336,6 +341,12 @@ AS
     --cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXINV_ITM_NET_UOM_CODE';
     cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXCMM_ITM_NET_UOM_CODE';
     /* 2009.04.03 K.Satomura T1_0294対応 END */
+-- Ver.1.10 ADD START
+    cv_flex_dept             CONSTANT VARCHAR2(30) := 'XX03_DEPARTMENT';            -- 部門
+    cv_conv_company_code     CONSTANT VARCHAR2(30) := 'XXCMM_CONV_COMPANY_CODE';    -- 会社コード変換
+    cv_xxcmm_invoice_t_no    CONSTANT VARCHAR2(30) := 'XXCMM_INVOICE_T_NO';         -- 適格請求書発行事業者情報
+    cv_company_code          CONSTANT VARCHAR2(3)  := '001';                        -- 会社コード：伊藤園
+-- Ver.1.10 ADD END
     --
     cv_yes                   CONSTANT VARCHAR2(1)  := 'Y';
     cv_zero                  CONSTANT VARCHAR2(1)  := '0';
@@ -362,6 +373,9 @@ AS
     cv_tkn_item_info         CONSTANT VARCHAR2(100) := '品目情報';
     cv_tkn_qt_div_nm         CONSTANT VARCHAR2(100) := '見積区分名';
     cv_tkn_itm_nt_um_cd_nm   CONSTANT VARCHAR2(100) := '内容量単位名';
+-- Ver.1.10 ADD START
+    cv_tkn_company_name      CONSTANT VARCHAR2(100) := '会社名称';
+-- Ver.1.10 ADD END
     --
     cv_qt_line_id            CONSTANT VARCHAR2(100) := '明細ＩＤ : ';
     cv_invntry_itm_id        CONSTANT VARCHAR2(100) := '品目ＩＤ : ';
@@ -389,6 +403,10 @@ AS
     lt_nets_uom_code         xxcso_inventory_items_v2.nets_uom_code%TYPE;   -- 内容量単位
     lt_nets_uom_cd_nm        fnd_lookup_values_vl.meaning%TYPE;             -- 内容量単位名
     lt_zip                   xxcso_locations_v2.zip%TYPE;                   -- 郵便番号
+-- Ver.1.10 ADD START
+    lt_company_code          xxcso_rep_quote_list.company_code%TYPE;        -- 会社コード
+    lt_company_name          xxcso_rep_quote_list.company_name%TYPE;        -- 会社名称
+-- Ver.1.10 ADD END
     -- メッセージ格納用
     lv_msg                   VARCHAR2(5000);
 --
@@ -673,7 +691,49 @@ AS
         );
         ov_retcode := cv_status_warn;
     END;
-
+-- Ver.1.10 ADD START
+    --==================================================
+    -- 会社名取得
+    --==================================================
+    BEGIN
+      SELECT flv2.lookup_code                  -- 会社コード
+            ,flv2.attribute2                   -- 会社名称_見積書
+      INTO   lt_company_code
+            ,lt_company_name
+      FROM   fnd_flex_value_sets ffvs          -- 値セット定義マスタ
+            ,fnd_flex_values     ffv           -- 値セット値定義マスタ
+            ,fnd_lookup_values   flv           -- 会社コード変換
+            ,fnd_lookup_values   flv2          -- 適格請求書発行事業者情報
+      WHERE
+             ffvs.flex_value_set_id   = ffv.flex_value_set_id
+      AND    ffvs.flex_value_set_name = cv_flex_dept
+      AND    ffv.flex_value           = io_rp_qte_lst_dt_rec.base_code
+      AND    flv.lookup_type          = cv_conv_company_code
+      AND    flv.attribute1           = NVL(ffv.attribute10,cv_company_code)
+      AND    flv.language             = USERENV( 'LANG' )
+      AND    TO_DATE(io_rp_qte_lst_dt_rec.publish_date, cv_format_date_ymd1) BETWEEN NVL( flv.start_date_active, TO_DATE(io_rp_qte_lst_dt_rec.publish_date, cv_format_date_ymd1) )
+                               AND     NVL( flv.end_date_active, TO_DATE(io_rp_qte_lst_dt_rec.publish_date, cv_format_date_ymd1) )
+      AND    flv2.lookup_type         = cv_xxcmm_invoice_t_no
+      AND    flv2.lookup_code         = flv.attribute2
+      AND    flv2.language            = USERENV( 'LANG' )
+      AND    TO_DATE(io_rp_qte_lst_dt_rec.publish_date, cv_format_date_ymd1) BETWEEN NVL( flv2.start_date_active, TO_DATE(io_rp_qte_lst_dt_rec.publish_date, cv_format_date_ymd1) )
+                               AND     NVL( flv2.end_date_active, TO_DATE(io_rp_qte_lst_dt_rec.publish_date, cv_format_date_ymd1) )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_app_name             --アプリケーション短縮名
+                   ,iv_name         => cv_tkn_number_03        --メッセージコード
+                   ,iv_token_name1  => cv_tkn_param1           --トークンコード1
+                   ,iv_token_value1 => cv_tkn_company_name     --トークン値1
+                  );
+        fnd_file.put_line(
+          which  => FND_FILE.LOG
+         ,buff   => lv_msg
+        );
+        ov_retcode := cv_status_warn;
+    END;
+-- Ver.1.10 ADD END
     -- ====================================
     -- 取得値をOUTパラメータに設定
     -- ====================================
@@ -707,6 +767,10 @@ AS
     END IF;                                                                                  -- 入数
     io_rp_qte_lst_dt_rec.sticer_price      := NVL(lt_fixed_price_new, cv_zero);              -- メーカー希望小売価格
     io_rp_qte_lst_dt_rec.quote_div_nm      := lv_qt_div_nm;                                  -- 見積区分名
+-- Ver.1.10 ADD START
+    io_rp_qte_lst_dt_rec.company_code      := lt_company_code;                               -- 会社コード
+    io_rp_qte_lst_dt_rec.company_name      := lt_company_NAME;                               -- 会社名称_見積
+-- Ver.1.10 ADD end
 --
     -- 空行の挿入
     IF ov_retcode = cv_status_warn THEN
@@ -862,6 +926,10 @@ AS
          ,program_application_id       -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｱﾌﾟﾘｹｰｼｮﾝ
          ,program_id                   -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｉｄ
          ,program_update_date          -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- Ver.1.10 ADD START
+         ,company_code                 -- 会社コード
+         ,company_name                 -- 会社名称_見積
+-- Ver.1.10 ADD end
         )
       VALUES
         ( xxcso_rep_quote_list_s01.NEXTVAL                     -- 見積帳票ワークテーブルＩＤ
@@ -911,6 +979,10 @@ AS
          ,i_rp_qte_lst_data_rec.program_application_id         -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｱﾌﾟﾘｹｰｼｮﾝ
          ,i_rp_qte_lst_data_rec.program_id                     -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑＩＤ
          ,i_rp_qte_lst_data_rec.program_update_date            -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- Ver.1.10 ADD START
+         ,i_rp_qte_lst_data_rec.company_code                   -- 会社コード
+         ,i_rp_qte_lst_data_rec.company_name                   -- 会社名称_見積
+-- Ver.1.10 ADD end
         );
 --
     EXCEPTION
@@ -1030,6 +1102,10 @@ AS
          ,program_application_id       -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｱﾌﾟﾘｹｰｼｮﾝ
          ,program_id                   -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑＩＤ
          ,program_update_date          -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- Ver.1.10 ADD START
+         ,company_code                 -- 会社コード
+         ,company_name                 -- 会社名称_見積
+-- Ver.1.10 ADD end
         )
       VALUES
         ( xxcso_rep_quote_list_s01.NEXTVAL                     -- 見積帳票ワークテーブルＩＤ
@@ -1060,6 +1136,10 @@ AS
          ,i_rp_qte_lst_data_rec.program_application_id         -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｱﾌﾟﾘｹｰｼｮﾝ
          ,i_rp_qte_lst_data_rec.program_id                     -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑＩＤ
          ,i_rp_qte_lst_data_rec.program_update_date            -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- Ver.1.10 ADD START
+         ,i_rp_qte_lst_data_rec.company_code                   -- 会社コード
+         ,i_rp_qte_lst_data_rec.company_name                   -- 会社名称_見積
+-- Ver.1.10 ADD end
         );
 --
     EXCEPTION

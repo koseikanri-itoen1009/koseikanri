@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -97,6 +97,7 @@ AS
  *  2022-05-19    1.28  R.Oikawa         E_本稼動_18060本番障害対応
  *  2022-08-18    1.29  M.Akachi         E_本稼動_18060（実績の月別按分）対応
  *  2023-05-25    1.30  R.Oikawa         E_本稼動_19179対応
+ *  2024-02-05    1.31  M.Akachi         E_本稼動_19496対応
  *
  *****************************************************************************************/
   --
@@ -222,6 +223,21 @@ AS
   cv_plan_kbn               CONSTANT VARCHAR2(6)                                  := '1'; -- 予定
   cv_actual_kbn             CONSTANT VARCHAR2(6)                                  := '2'; -- 実績
   -- 2022/03/28 Ver.1.27 ADD END
+-- Ver.1.31 Add Start
+  cv_appl_name_xxcfo        CONSTANT VARCHAR2(10)  := 'XXCFO';                    -- XXCFO
+  cv_set_of_books_id        CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_ID';         -- 会計帳簿ID
+  cv_qct_draf_comp          CONSTANT VARCHAR2(30)  := 'XXCFO1_DRAFTING_COMPANY';  -- 各社部門情報マスタ
+  -- CCID
+  cv_tkn_process_date       CONSTANT VARCHAR2(20)  := 'PROCESS_DATE';           -- トークン：処理日
+  cv_tkn_com_code           CONSTANT VARCHAR2(20)  := 'COM_CODE';               -- トークン：会社コード
+  cv_tkn_dept_code          CONSTANT VARCHAR2(20)  := 'DEPT_CODE';              -- トークン：部門コード
+  cv_tkn_acc_code           CONSTANT VARCHAR2(20)  := 'ACC_CODE';               -- トークン：勘定科目コード
+  cv_tkn_ass_code           CONSTANT VARCHAR2(20)  := 'ASS_CODE';               -- トークン：補助科目コード
+  cv_tkn_cust_code          CONSTANT VARCHAR2(20)  := 'CUST_CODE';              -- トークン：顧客コード
+  cv_tkn_ent_code           CONSTANT VARCHAR2(20)  := 'ENT_CODE';               -- トークン：企業コード
+  cv_tkn_res1_code          CONSTANT VARCHAR2(20)  := 'RES1_CODE';              -- トークン：予備１コード
+  cv_tkn_res2_code          CONSTANT VARCHAR2(20)  := 'RES2_CODE';              -- トークン：予備２コード
+-- Ver.1.31 Add End
   --
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011'; -- 業務処理日付取得エラー
@@ -255,6 +271,10 @@ AS
   cv_tkn_number_22 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00126';  -- 正の値チェックエラー
   cv_tkn_number_23 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00918';  -- 支払期間開始日・終了日大小チェックメッセージ
   -- 2022/03/28 Ver.1.27 ADD END
+  -- Ver.1.31 Add Start
+  cv_tkn_number_24 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00430';  -- 会計期間開始日付取得エラーメッセージ
+  cv_tkn_number_25 CONSTANT VARCHAR2(100) := 'APP-XXCFO1-10052';  -- 勘定科目ID（CCID）取得エラーメッセージ
+  -- Ver.1.31 Add End
   --
   -- トークンコード
   cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';
@@ -387,6 +407,11 @@ AS
   cv_debug_msg91 CONSTANT VARCHAR2(200) := 'invoice_t_no                 = ';
   cv_debug_msg92 CONSTANT VARCHAR2(200) := 'invoice_tax_div_bm           = ';
   -- Ver.1.30 ADD END
+  -- Ver.1.30 Add Start
+  cv_debug_msg93 CONSTANT VARCHAR2(200) := 'company_code                 = ';
+  cv_debug_msg94 CONSTANT VARCHAR2(200) := 'site_accts_pay_ccid          = ';
+  cv_debug_msg95 CONSTANT VARCHAR2(200) := 'site_prepay_ccid             = ';
+  -- Ver.1.30 Add End
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -410,6 +435,24 @@ AS
   gt_new_tax_rate            xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;
   gt_old_tax_rate            xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;
 -- 2019/06/14 V1.24 N.Miyamoto ADD END
+-- Ver.1.31 Add Start
+  gn_set_of_bks_id           NUMBER; -- GL会計帳簿ID
+  gd_min_ap_start_date       DATE;   -- AP会計期間の開始日
+  gt_act_pay_cd_comb_id      ap_system_parameters_all.accts_pay_code_combination_id%TYPE; -- 負債勘定ID
+  gt_act_pay_cd_seg3         gl_code_combinations.segment3%TYPE;                          -- 負債勘定.勘定科目コード
+  gt_act_pay_cd_seg4         gl_code_combinations.segment4%TYPE;                          -- 負債勘定.補助科目コード
+  gt_act_pay_cd_seg5         gl_code_combinations.segment5%TYPE;                          -- 負債勘定.顧客コード
+  gt_act_pay_cd_seg6         gl_code_combinations.segment6%TYPE;                          -- 負債勘定.企業コード
+  gt_act_pay_cd_seg7         gl_code_combinations.segment7%TYPE;                          -- 負債勘定.予備１コード
+  gt_act_pay_cd_seg8         gl_code_combinations.segment8%TYPE;                          -- 負債勘定.予備２コード
+  gt_prepay_cd_comb_id       ap_system_parameters_all.prepay_code_combination_id%TYPE;    -- 前払金勘定ID
+  gt_prepay_cd_seg3          gl_code_combinations.segment3%TYPE;                          -- 前払金勘定.勘定科目コード
+  gt_prepay_cd_seg4          gl_code_combinations.segment3%TYPE;                          -- 前払金勘定.補助科目コード
+  gt_prepay_cd_seg5          gl_code_combinations.segment3%TYPE;                          -- 前払金勘定.顧客コード
+  gt_prepay_cd_seg6          gl_code_combinations.segment3%TYPE;                          -- 前払金勘定.企業コード
+  gt_prepay_cd_seg7          gl_code_combinations.segment3%TYPE;                          -- 前払金勘定.予備１コード
+  gt_prepay_cd_seg8          gl_code_combinations.segment3%TYPE;                          -- 前払金勘定.予備２コード
+-- Ver.1.31 Add End
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -458,6 +501,9 @@ AS
     ,invoice_t_no                 xxcso_destinations.invoice_t_no%TYPE                 -- 課税事業者番号
     ,invoice_tax_div_bm           xxcso_destinations.invoice_tax_div_bm%TYPE           -- 税計算区分
     -- Ver.1.30 ADD END
+    -- Ver.1.31 Add Start
+    ,company_code                 fnd_lookup_values_vl.attribute1%TYPE       -- 会社コード
+    -- Ver.1.31 Add End
     -- 銀行口座情報
     ,bank_number             xxcso_bank_accounts.bank_number%TYPE             -- 銀行番号
     ,bank_name               xxcso_bank_accounts.bank_name%TYPE               -- 銀行名
@@ -468,6 +514,9 @@ AS
     ,bank_account_name_kana  xxcso_bank_accounts.bank_account_name_kana%TYPE  -- 口座名義カナ
     ,bank_account_name_kanji xxcso_bank_accounts.bank_account_name_kanji%TYPE -- 口座名義漢字
     ,bank_account_dummy_flag xxcso_bank_accounts.bank_account_dummy_flag%TYPE -- 銀行口座ダミーフラグ
+    -- Ver.1.31 Add Start
+    ,site_accts_pay_ccid     ap_system_parameters_all.accts_pay_code_combination_id%TYPE  -- 負債勘定ID
+    ,site_prepay_ccid        ap_system_parameters_all.prepay_code_combination_id%TYPE     -- 前払金勘定ID
   );
   --
   /**********************************************************************************
@@ -506,6 +555,11 @@ AS
     cv_tkn_val_ky_nm_bk_num2 CONSTANT VARCHAR2(50) := '、支店コード';
     cv_tkn_val_ky_nm_bk_num3 CONSTANT VARCHAR2(50) := '、口座番号';
     /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
+-- Ver.1.31 Add Start
+    cv_tkn_val_act_pay_cd_comb_id CONSTANT VARCHAR2(50) := '負債勘定';
+    cv_tkn_val_prepay_cd_comb_id  CONSTANT VARCHAR2(50) := '前払金勘定';
+    cv_tkn_val_set_of_books_id    CONSTANT VARCHAR2(50) := '会計帳簿ID';
+-- Ver.1.31 Add End
     --
     -- *** ローカル変数 ***
     lv_msg_from VARCHAR2(5000);
@@ -652,6 +706,21 @@ AS
       RAISE global_api_expt;
     END IF;
 -- 2019/06/14 V1.24 N.Miyamoto ADD END
+-- Ver.1.31 Add Start
+    --==============================================================
+    -- プロファイルの取得(会計帳簿ID)
+    --==============================================================
+    gn_set_of_bks_id := FND_PROFILE.VALUE(cv_set_of_books_id);
+    IF (gn_set_of_bks_id IS NULL) THEN
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                     cv_sales_appl_short_name
+                    ,cv_tkn_number_20
+                    ,cv_tkn_prf
+                    ,cv_set_of_books_id
+                   );
+      RAISE global_api_expt;
+    END IF;
+-- Ver.1.31 Add End
     /* 2015.02.25 H.Wajima E_本稼動_12565 START */
     -- ================================
     -- 消費税率取得
@@ -705,6 +774,137 @@ AS
         RAISE global_api_expt;
     END;
     /* 2015.02.25 H.Wajima E_本稼動_12565 END */
+-- Ver.1.31 Add Start
+    -- ================================
+    -- AP会計期間の開始日取得
+    -- ================================
+    BEGIN
+      SELECT MIN( gps.start_date ) AS gps_start_date
+      INTO   gd_min_ap_start_date
+      FROM   gl_period_statuses   gps
+            ,fnd_application      fa
+      WHERE  fa.application_short_name  = 'SQLAP'
+      AND    gps.application_id         = fa.application_id
+      AND    gps.adjustment_period_flag = 'N'
+      AND    gps.closing_status         = 'O'
+      AND    gps.set_of_books_id        = gn_set_of_bks_id
+      ;
+--
+      IF ( gd_min_ap_start_date IS NULL ) THEN
+        lv_errbuf :=  xxccp_common_pkg.get_msg(
+                        cv_sales_appl_short_name
+                       ,cv_tkn_number_24
+                      );
+        RAISE global_api_expt;
+      END IF;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf :=  xxccp_common_pkg.get_msg(
+                        cv_sales_appl_short_name
+                       ,cv_tkn_number_24
+                      );
+        RAISE global_api_expt;
+    END;
+    -- ================================
+    -- 負債勘定ID勘定科目組合せ取得
+    -- ================================
+    BEGIN
+      SELECT aspa.accts_pay_code_combination_id AS accts_pay_code_combination_id
+            ,gcc.segment3 AS act_pay_cd_seg3
+            ,gcc.segment4 AS act_pay_cd_seg4
+            ,gcc.segment5 AS act_pay_cd_seg5
+            ,gcc.segment6 AS act_pay_cd_seg6
+            ,gcc.segment7 AS act_pay_cd_seg7
+            ,gcc.segment8 AS act_pay_cd_seg8
+      INTO   gt_act_pay_cd_comb_id
+            ,gt_act_pay_cd_seg3
+            ,gt_act_pay_cd_seg4
+            ,gt_act_pay_cd_seg5
+            ,gt_act_pay_cd_seg6
+            ,gt_act_pay_cd_seg7
+            ,gt_act_pay_cd_seg8
+      FROM  gl_code_combinations gcc
+           ,ap_system_parameters_all  aspa
+      WHERE gcc.code_combination_id = aspa.accts_pay_code_combination_id
+      AND   aspa.set_of_books_id = gn_set_of_bks_id;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name           -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                      -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_val_act_pay_cd_comb_id      -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                    -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_set_of_books_id         -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                      -- トークンコード3
+                       ,iv_token_value3 => gn_set_of_bks_id                   -- トークン値3
+                     );
+        RAISE global_api_expt;
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name           -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                      -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_val_act_pay_cd_comb_id      -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                    -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_set_of_books_id         -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                      -- トークンコード3
+                       ,iv_token_value3 => gn_set_of_bks_id                   -- トークン値3
+                     );
+        RAISE global_api_expt;
+    END;
+    -- ================================
+    -- 前払金勘定ID勘定科目組合せ取得
+    -- ================================
+    BEGIN
+      SELECT aspa.prepay_code_combination_id AS prepay_code_combination_id
+            ,gcc.segment3 AS prepay_cd_seg3
+            ,gcc.segment4 AS prepay_cd_seg4
+            ,gcc.segment5 AS prepay_cd_seg5
+            ,gcc.segment6 AS prepay_cd_seg6
+            ,gcc.segment7 AS prepay_cd_seg7
+            ,gcc.segment8 AS prepay_cd_seg8
+      INTO   gt_prepay_cd_comb_id
+            ,gt_prepay_cd_seg3
+            ,gt_prepay_cd_seg4
+            ,gt_prepay_cd_seg5
+            ,gt_prepay_cd_seg6
+            ,gt_prepay_cd_seg7
+            ,gt_prepay_cd_seg8
+      FROM  gl_code_combinations gcc
+           ,ap_system_parameters_all  aspa
+      WHERE gcc.code_combination_id = aspa.prepay_code_combination_id
+      AND   aspa.set_of_books_id = gn_set_of_bks_id;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name           -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                      -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_val_prepay_cd_comb_id       -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                    -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_set_of_books_id         -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                      -- トークンコード3
+                       ,iv_token_value3 => gn_set_of_bks_id                   -- トークン値3
+                     );
+        RAISE global_api_expt;
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name           -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                      -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_val_prepay_cd_comb_id       -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                    -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_set_of_books_id         -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                      -- トークンコード3
+                       ,iv_token_value3 => gn_set_of_bks_id                   -- トークン値3
+                     );
+        RAISE global_api_expt;
+    END;
+-- Ver.1.31 Add End
   EXCEPTION
     --
     --#################################  固定例外処理部 START   ####################################
@@ -1221,6 +1421,9 @@ AS
                 ,site_attribute9              -- 仕入先サイト予備9
                 ,site_attribute10             -- 仕入先サイト予備10
                 -- Ver.1.30 ADD END
+                -- Ver.1.31 Add Start
+                ,site_attribute11             -- 仕入先サイト予備11
+                -- Ver.1.31 Add End
                 ,site_bank_number             -- 仕入先サイト銀行支店コード
                 ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
                 ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1286,6 +1489,9 @@ AS
                 ,SUBSTRB(it_mst_regist_info_rec.invoice_t_no, 1, 13)           -- 仕入先サイト予備9
                 ,SUBSTRB(it_mst_regist_info_rec.invoice_tax_div_bm, 1, 1)      -- 仕入先サイト予備10
                 -- Ver.1.30 ADD END
+                -- Ver.1.31 Add Start
+                ,SUBSTRB(it_mst_regist_info_rec.company_code, 1, 150)          -- 仕入先サイト予備11
+                -- Ver.1.31 Add End
                 ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
                 ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
                 ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -1499,6 +1705,10 @@ AS
           ,site_bank_account_num        -- 仕入先サイト口座番号
           ,site_bank_num                -- 仕入先サイト銀行コード
           ,site_bank_account_type       -- 仕入先サイト預金種別
+          -- Ver.1.31 Add Start
+          ,site_accts_pay_ccid          -- 仕入先サイト負債勘定科目ID
+          ,site_prepay_ccid             -- 仕入先サイト前払／仮払金勘定科
+          -- Ver.1.31 Add End
           ,site_attribute_category      -- 仕入先サイト予備カテゴリ
           ,site_attribute1              -- 仕入先サイト予備1
           ,site_attribute3              -- 仕入先サイト予備3
@@ -1515,6 +1725,9 @@ AS
           ,site_attribute9              -- 仕入先サイト予備9
           ,site_attribute10             -- 仕入先サイト予備10
           -- Ver.1.30 ADD END
+          -- Ver.1.31 Add Start
+          ,site_attribute11             -- 仕入先サイト予備11
+          -- Ver.1.31 Add End
           ,site_bank_number             -- 仕入先サイト銀行支店コード
           ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
           ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1583,6 +1796,10 @@ AS
           ,SUBSTRB(lt_bank_account_num, 1, 30)                           -- 仕入先サイト口座番号
           ,SUBSTRB(lt_bank_number, 1, 25)                                -- 仕入先サイト銀行コード
           ,SUBSTRB(lt_bank_account_type, 1, 25)                          -- 仕入先サイト預金種別
+          -- Ver.1.31 Add Start
+          ,SUBSTRB(it_mst_regist_info_rec.site_accts_pay_ccid, 1, 22)    -- 仕入先サイト負債勘定科目ID
+          ,SUBSTRB(it_mst_regist_info_rec.site_prepay_ccid, 1, 22)       -- 仕入先サイト前払／仮払金勘定科
+          -- Ver.1.31 Add End
           ,cn_org_id                                                     -- 仕入先サイト予備カテゴリ
           ,SUBSTRB(it_mst_regist_info_rec.payment_name, 1, 150)          -- 仕入先サイト予備1
           ,SUBSTRB(cv_flag_yes, 1, 150)                                  -- 仕入先サイト予備3
@@ -1599,6 +1816,9 @@ AS
           ,SUBSTRB(it_mst_regist_info_rec.invoice_t_no, 1, 13)           -- 仕入先サイト予備9
           ,SUBSTRB(it_mst_regist_info_rec.invoice_tax_div_bm, 1, 1)      -- 仕入先サイト予備10
           -- Ver.1.30 ADD END
+          -- Ver.1.31 Add Start
+          ,SUBSTRB(it_mst_regist_info_rec.company_code, 1, 150)          -- 仕入先サイト予備11
+          -- Ver.1.31 Add End
           ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
           ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
           ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -5396,6 +5616,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver.1.31 Add Start
+    cv_tkn_val_company_code      CONSTANT VARCHAR2(50) := '会社コード';
+    cv_tkn_val_inq_charge_hub_cd CONSTANT VARCHAR2(50) := '問合せ担当拠点コード';
+-- Ver.1.31 Add End
     --
     -- *** ローカル変数 ***
     lt_mst_regist_info_rec    g_mst_regist_info_rtype;
@@ -5408,6 +5632,10 @@ AS
 -- 2019/06/14 V1.24 N.Miyamoto ADD START
     lt_contract_effect_date   xxcso_contract_managements.contract_effect_date%TYPE;
 -- 2019/06/14 V1.24 N.Miyamoto ADD END
+-- Ver.1.31 Add Start
+    lt_company_code_bd        fnd_lookup_values_vl.attribute2%TYPE;
+    lt_dept_code              fnd_lookup_values_vl.attribute1%TYPE;
+-- Ver.1.31 Add End
     --
     -- *** ローカル・カーソル ***
     -- A-3,A-8用カーソル
@@ -5627,6 +5855,152 @@ AS
         lt_mst_regist_info_rec.bank_account_name_kana       := lt_vendor_info_rec.bank_account_name_kana;
         lt_mst_regist_info_rec.bank_account_name_kanji      := lt_vendor_info_rec.bank_account_name_kanji;
         --
+        -- Ver.1.31 Add Start
+        --==============================================================
+        -- 会社コード、会社コード（基準日）、部門コード_財務経理部を取得
+        --==============================================================
+        BEGIN
+          SELECT company_code    AS company_code     -- 会社コード
+                ,company_code_bd AS company_code_bd  -- 会社コード（基準日）
+                ,flvv.attribute1 AS dept_code        -- 部門コード_財務経理部
+          INTO   lt_mst_regist_info_rec.company_code
+                ,lt_company_code_bd
+                ,lt_dept_code
+          FROM   xxcfr_bd_dept_comp_info_v xbdciv    -- 基準日部門会社情報ビュー
+                ,fnd_lookup_values_vl      flvv      -- 参照表(各社部門情報)
+          WHERE xbdciv.dept_code = lt_vendor_info_rec.inquery_charge_hub_cd -- 問合せ担当拠点コード
+          AND   xbdciv.set_of_books_id = gn_set_of_bks_id                   -- 会計帳簿ID
+          AND   xbdciv.enabled_flag   = 'Y'
+          AND   gd_min_ap_start_date BETWEEN xbdciv.comp_start_date 
+                                         AND NVL( xbdciv.comp_end_date, gd_min_ap_start_date )
+          AND   flvv.lookup_type = cv_qct_draf_comp
+          AND   flvv.lookup_code = xbdciv.company_code_bd
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                             -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_val_company_code                   -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                           -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_inq_charge_hub_cd              -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                             -- トークンコード3
+                       ,iv_token_value3 => lt_vendor_info_rec.inquery_charge_hub_cd  -- トークン値3
+                     );
+            --
+            RAISE global_process_expt;
+            --
+          WHEN OTHERS THEN
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                          -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                             -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_val_company_code                   -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                           -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_inq_charge_hub_cd              -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                             -- トークンコード3
+                       ,iv_token_value3 => lt_vendor_info_rec.inquery_charge_hub_cd  -- トークン値3
+                     );
+            --
+            RAISE global_process_expt;
+            --
+        END;
+        --==============================================================
+        -- 負債勘定IDの取得
+        --==============================================================
+        IF ( lt_company_code_bd <> '001' ) THEN
+          BEGIN
+            lt_mst_regist_info_rec.site_accts_pay_ccid := xxcok_common_pkg.get_code_combination_id_f(
+                                       id_proc_date => cd_process_date                   -- 処理日
+                                     , iv_segment1  => lt_company_code_bd                -- 会社コード
+                                     , iv_segment2  => lt_dept_code                      -- 部門コード
+                                     , iv_segment3  => gt_act_pay_cd_seg3                -- 勘定科目コード
+                                     , iv_segment4  => gt_act_pay_cd_seg4                -- 補助科目コード
+                                     , iv_segment5  => gt_act_pay_cd_seg5                -- 顧客コードダミー値
+                                     , iv_segment6  => gt_act_pay_cd_seg6                -- 企業コードダミー値
+                                     , iv_segment7  => gt_act_pay_cd_seg7                -- 予備1ダミー値
+                                     , iv_segment8  => gt_act_pay_cd_seg8                -- 予備2ダミー値
+                                     );
+--
+            IF ( lt_mst_regist_info_rec.site_accts_pay_ccid IS NULL ) THEN
+              lv_errmsg    := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_appl_name_xxcfo
+                              , iv_name         => cv_tkn_number_25                      -- 勘定科目ID（CCID）取得エラーメッセージ
+                              , iv_token_name1  => cv_tkn_process_date
+                              , iv_token_value1 => TO_CHAR( cd_process_date,'YYYYMMDD')  -- 処理日
+                              , iv_token_name2  => cv_tkn_com_code
+                              , iv_token_value2 => lt_company_code_bd                    -- 会社コード
+                              , iv_token_name3  => cv_tkn_dept_code
+                              , iv_token_value3 => lt_dept_code                          -- 部門コード
+                              , iv_token_name4  => cv_tkn_acc_code
+                              , iv_token_value4 => gt_act_pay_cd_seg3                    -- 勘定科目コード
+                              , iv_token_name5  => cv_tkn_ass_code
+                              , iv_token_value5 => gt_act_pay_cd_seg4                    -- 補助科目コード
+                              , iv_token_name6  => cv_tkn_cust_code
+                              , iv_token_value6 => gt_act_pay_cd_seg5                    -- 顧客コードダミー値
+                              , iv_token_name7  => cv_tkn_ent_code
+                              , iv_token_value7 => gt_act_pay_cd_seg6                    -- 企業コードダミー値
+                              , iv_token_name8  => cv_tkn_res1_code
+                              , iv_token_value8 => gt_act_pay_cd_seg7                    -- 予備1ダミー値
+                              , iv_token_name9  => cv_tkn_res2_code
+                              , iv_token_value9 => gt_act_pay_cd_seg8                    -- 予備2ダミー値
+                              );
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+          END;
+        ELSE
+          lt_mst_regist_info_rec.site_accts_pay_ccid := gt_act_pay_cd_comb_id;
+        END IF;
+        --==============================================================
+        -- 前払金勘定IDの取得
+        --==============================================================
+        IF ( lt_company_code_bd <> '001' ) THEN
+          BEGIN
+            lt_mst_regist_info_rec.site_prepay_ccid := xxcok_common_pkg.get_code_combination_id_f(
+                                       id_proc_date => cd_process_date                   -- 処理日
+                                     , iv_segment1  => lt_company_code_bd                -- 会社コード
+                                     , iv_segment2  => lt_dept_code                      -- 部門コード
+                                     , iv_segment3  => gt_prepay_cd_seg3                 -- 勘定科目コード
+                                     , iv_segment4  => gt_prepay_cd_seg4                 -- 補助科目コード
+                                     , iv_segment5  => gt_prepay_cd_seg5                 -- 顧客コードダミー値
+                                     , iv_segment6  => gt_prepay_cd_seg6                 -- 企業コードダミー値
+                                     , iv_segment7  => gt_prepay_cd_seg7                 -- 予備1ダミー値
+                                     , iv_segment8  => gt_prepay_cd_seg8                 -- 予備2ダミー値
+                                     );
+--
+            IF ( lt_mst_regist_info_rec.site_prepay_ccid IS NULL ) THEN
+              lv_errmsg    := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_appl_name_xxcfo
+                              , iv_name         => cv_tkn_number_25                      -- 勘定科目ID（CCID）取得エラーメッセージ
+                              , iv_token_name1  => cv_tkn_process_date
+                              , iv_token_value1 => TO_CHAR( cd_process_date,'YYYYMMDD')  -- 処理日
+                              , iv_token_name2  => cv_tkn_com_code
+                              , iv_token_value2 => lt_company_code_bd                    -- 会社コード
+                              , iv_token_name3  => cv_tkn_dept_code
+                              , iv_token_value3 => lt_dept_code                          -- 部門コード
+                              , iv_token_name4  => cv_tkn_acc_code
+                              , iv_token_value4 => gt_prepay_cd_seg3                     -- 勘定科目コード
+                              , iv_token_name5  => cv_tkn_ass_code
+                              , iv_token_value5 => gt_prepay_cd_seg3                     -- 補助科目コード
+                              , iv_token_name6  => cv_tkn_cust_code
+                              , iv_token_value6 => gt_prepay_cd_seg3                     -- 顧客コードダミー値
+                              , iv_token_name7  => cv_tkn_ent_code
+                              , iv_token_value7 => gt_prepay_cd_seg3                     -- 企業コードダミー値
+                              , iv_token_name8  => cv_tkn_res1_code
+                              , iv_token_value8 => gt_prepay_cd_seg3                     -- 予備1ダミー値
+                              , iv_token_name9  => cv_tkn_res2_code
+                              , iv_token_value9 => gt_prepay_cd_seg3                     -- 予備2ダミー値
+                              );
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+            END IF;
+          END;
+        ELSE
+          lt_mst_regist_info_rec.site_prepay_ccid := gt_prepay_cd_comb_id;
+        END IF;
+        -- Ver.1.31 Add End
         -- *** DEBUG_LOG START ***
         -- 仕入先情報をログ出力
         fnd_file.put_line(
@@ -5656,6 +6030,11 @@ AS
                      cv_debug_msg91 || lt_vendor_info_rec.invoice_t_no                 || CHR(10) ||
                      cv_debug_msg92 || lt_vendor_info_rec.invoice_tax_div_bm           || CHR(10) ||
                      -- Ver.1.30 ADD END
+                     -- Ver.1.31 Add Start
+                     cv_debug_msg93 || lt_mst_regist_info_rec.company_code             || CHR(10) ||
+                     cv_debug_msg94 || lt_mst_regist_info_rec.site_accts_pay_ccid      || CHR(10) ||
+                     cv_debug_msg95 || lt_mst_regist_info_rec.site_prepay_ccid         || CHR(10) ||
+                     -- Ver.1.31 Add End
                      cv_debug_msg28 || lt_vendor_info_rec.bank_number                  || CHR(10) ||
                      cv_debug_msg29 || lt_vendor_info_rec.bank_name                    || CHR(10) ||
                      cv_debug_msg30 || lt_vendor_info_rec.branch_number                || CHR(10) ||
