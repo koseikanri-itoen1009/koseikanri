@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A06C (body)
  * Description      : 販売控除情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : 販売控除データGL連携 MD050_COK_024_A06
- * Version          : 1.5
+ * Version          : 1.6
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -31,6 +31,7 @@ AS
  *  2021/08/26    1.3   H.Futamura       E_本稼動_17468対応
  *  2022/04/25    1.4   K.Yoshikawa      E_本稼動_18146対応
  *  2022/06/16    1.5   SCSK Y.Koh       E_本稼動_18401対応
+ *  2024/01/29    1.6   SCSK Y.Koh       E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -99,8 +100,10 @@ AS
   cv_tkn_gloif_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10589';                 -- 一般会計OIF
   cv_pro_bks_id             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10578';                 -- 会計帳簿ID
   cv_pro_bks_nm             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10579';                 -- 会計帳簿名称
-  cv_pro_company_cd         CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10580';                 -- 会社コード
-  cv_pro_dept_fin_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10624';                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.6 DEL Start
+--  cv_pro_company_cd         CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10580';                 -- 会社コード
+--  cv_pro_dept_fin_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10624';                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.6 DEL End
   cv_pro_customer_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10625';                 -- 顧客コード_ダミー値
   cv_pro_comp_cd            CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10626';                 -- 企業コード_ダミー値
   cv_pro_preliminary1_cd    CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10627';                 -- 予備１_ダミー値
@@ -128,7 +131,9 @@ AS
   cv_u_flag                 CONSTANT  VARCHAR2(1)  := 'U';                               -- フラグ値:U
   cv_v_flag                 CONSTANT  VARCHAR2(1)  := 'V';                               -- フラグ値:V
   cv_f_flag                 CONSTANT  VARCHAR2(1)  := 'F';                               -- フラグ値:F
-  cv_dummy_code             CONSTANT  VARCHAR2(5)  := 'DUMMY';                           -- DUMMY値
+-- 2024/01/29 Ver1.6 DEL Start
+--  cv_dummy_code             CONSTANT  VARCHAR2(5)  := 'DUMMY';                           -- DUMMY値
+-- 2024/01/29 Ver1.6 DEL End
   cv_date_format            CONSTANT  VARCHAR2(6)  := 'YYYYMM';                          -- 書式フォーマットYYYYMM
   cv_teigaku_code           CONSTANT  VARCHAR2(3)  := '070';                             -- 控除タイプ_定額控除
   -- クイックコード
@@ -144,29 +149,31 @@ AS
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
-  -- 販売控除ワークテーブル定義
-  TYPE gr_deductions_exp_rec IS RECORD(
--- 2022/06/16 Ver1.5 MOD Start
-      accounting_base           xxcok_condition_lines.accounting_base%TYPE                -- 拠点コード(定額控除)
---      sales_deduction_id        xxcok_sales_deduction.sales_deduction_id%TYPE             -- 販売控除ID
---    , accounting_base           xxcok_condition_lines.accounting_base%TYPE                -- 拠点コード(定額控除)
---    , past_sale_base_code       xxcok_sales_deduction.base_code_from%TYPE                 -- 拠点コード(定額控除以外)
--- 2022/06/16 Ver1.5 MOD End
-    , account                   fnd_lookup_values.attribute4%TYPE                         -- 勘定科目
-    , sub_account               fnd_lookup_values.attribute5%TYPE                         -- 補助科目
-    , deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
-    , tax_code                  xxcok_sales_deduction.tax_code%TYPE                       -- 税コード
-    , deduction_tax_amount      xxcok_sales_deduction.deduction_tax_amount%TYPE           -- 控除税額
-    , corp_code                 fnd_lookup_values.attribute1%TYPE                         -- 企業コード
-    , customer_code             fnd_lookup_values.attribute4%TYPE                         -- 顧客コード
-  );
---
-  -- 負債控除ワークテーブル定義
-  TYPE gr_deductions_debt_exp_rec IS RECORD(
-      account                   fnd_lookup_values.attribute6%TYPE                         -- 勘定科目
-    , sub_account               fnd_lookup_values.attribute7%TYPE                         -- 補助科目
-    , deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
-  );
+-- 2024/01/29 Ver1.6 DEL Start
+--  -- 販売控除ワークテーブル定義
+--  TYPE gr_deductions_exp_rec IS RECORD(
+---- 2022/06/16 Ver1.5 MOD Start
+--      accounting_base           xxcok_condition_lines.accounting_base%TYPE                -- 拠点コード(定額控除)
+----      sales_deduction_id        xxcok_sales_deduction.sales_deduction_id%TYPE             -- 販売控除ID
+----    , accounting_base           xxcok_condition_lines.accounting_base%TYPE                -- 拠点コード(定額控除)
+----    , past_sale_base_code       xxcok_sales_deduction.base_code_from%TYPE                 -- 拠点コード(定額控除以外)
+---- 2022/06/16 Ver1.5 MOD End
+--    , account                   fnd_lookup_values.attribute4%TYPE                         -- 勘定科目
+--    , sub_account               fnd_lookup_values.attribute5%TYPE                         -- 補助科目
+--    , deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
+--    , tax_code                  xxcok_sales_deduction.tax_code%TYPE                       -- 税コード
+--    , deduction_tax_amount      xxcok_sales_deduction.deduction_tax_amount%TYPE           -- 控除税額
+--    , corp_code                 fnd_lookup_values.attribute1%TYPE                         -- 企業コード
+--    , customer_code             fnd_lookup_values.attribute4%TYPE                         -- 顧客コード
+--  );
+----
+--  -- 負債控除ワークテーブル定義
+--  TYPE gr_deductions_debt_exp_rec IS RECORD(
+--      account                   fnd_lookup_values.attribute6%TYPE                         -- 勘定科目
+--    , sub_account               fnd_lookup_values.attribute7%TYPE                         -- 補助科目
+--    , deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
+--  );
+-- 2024/01/29 Ver1.6 DEL End
 --
 -- Ver 1.3 del start
 --  -- 販売控除ロック用ワークテーブル定義
@@ -176,13 +183,15 @@ AS
 -- Ver 1.3 del end
 --
   -- ワークテーブル型定義
-  -- 販売控除データ
-  TYPE g_deductions_exp_ttype       IS TABLE OF gr_deductions_exp_rec INDEX BY BINARY_INTEGER;
-    gt_deductions_exp_tbl        g_deductions_exp_ttype;
---
-  -- 販売控除負債データ
-  TYPE g_deductions_debt_exp_ttype  IS TABLE OF gr_deductions_debt_exp_rec INDEX BY BINARY_INTEGER;
-    gt_deductions_debt_exp_tbl   g_deductions_debt_exp_ttype;
+-- 2024/01/29 Ver1.6 DEL Start
+--  -- 販売控除データ
+--  TYPE g_deductions_exp_ttype       IS TABLE OF gr_deductions_exp_rec INDEX BY BINARY_INTEGER;
+--    gt_deductions_exp_tbl        g_deductions_exp_ttype;
+----
+--  -- 販売控除負債データ
+--  TYPE g_deductions_debt_exp_ttype  IS TABLE OF gr_deductions_debt_exp_rec INDEX BY BINARY_INTEGER;
+--    gt_deductions_debt_exp_tbl   g_deductions_debt_exp_ttype;
+-- 2024/01/29 Ver1.6 DEL End
 --
 -- Ver 1.3 del start
 --  -- 販売控除ロック用データ
@@ -213,8 +222,10 @@ AS
   gv_period                           VARCHAR2(30);                                 -- 会計期間
   gv_set_bks_id                       VARCHAR2(30);                                 -- 会計帳簿ID
   gv_set_bks_nm                       VARCHAR2(30);                                 -- 会計帳簿名称
-  gv_company_code                     VARCHAR2(30);                                 -- 会社コード
-  gv_dept_fin_code                    VARCHAR2(30);                                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.6 DEL Start
+--  gv_company_code                     VARCHAR2(30);                                 -- 会社コード
+--  gv_dept_fin_code                    VARCHAR2(30);                                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.6 DEL End
   gv_account_code                     VARCHAR2(30);                                 -- 勘定科目コード_負債（引当等）
   gv_sub_account_code                 VARCHAR2(30);                                 -- 補助科目コード_負債（引当等）
   gv_customer_code                    VARCHAR2(30);                                 -- 顧客コード
@@ -235,6 +246,9 @@ AS
   IS
 -- 2022/06/16 Ver1.5 MOD Start
     SELECT temp.accounting_base             accounting_base
+-- 2024/01/29 Ver1.6 ADD Start
+          ,temp.company                     company
+-- 2024/01/29 Ver1.6 ADD End
 --    SELECT temp.sales_deduction_id          sales_deduction_id
 --          ,temp.accounting_base             accounting_base
 --          ,temp.past_sale_base_code         past_sale_base_code
@@ -255,6 +269,9 @@ AS
     FROM   XXCOK_XXCOK024A06C_TEMP  temp
 -- 2022/06/16 Ver1.5 ADD Start
     GROUP BY
+-- 2024/01/29 Ver1.6 ADD Start
+           temp.company ,
+-- 2024/01/29 Ver1.6 ADD End
            temp.tax_code
           ,temp.accounting_base
           ,temp.account
@@ -263,16 +280,27 @@ AS
           ,temp.customer_code
 -- 2022/06/16 Ver1.5 ADD End
     ORDER BY
+-- 2024/01/29 Ver1.6 ADD Start
+           temp.company ,
+-- 2024/01/29 Ver1.6 ADD End
            temp.tax_code
-          ,temp.accounting_base
--- 2022/06/16 Ver1.5 DEL Start
---          ,temp.past_sale_base_code
--- 2022/06/16 Ver1.5 DEL End
-          ,temp.account
-          ,temp.sub_account
-          ,temp.corp_code
-          ,temp.customer_code
+-- 2024/01/29 Ver1.6 DEL Start
+--          ,temp.accounting_base
+---- 2022/06/16 Ver1.5 DEL Start
+----          ,temp.past_sale_base_code
+---- 2022/06/16 Ver1.5 DEL End
+--          ,temp.account
+--          ,temp.sub_account
+--          ,temp.corp_code
+--          ,temp.customer_code
+-- 2024/01/29 Ver1.6 DEL End
     ;
+-- 2024/01/29 Ver1.6 ADD Start
+  -- 販売控除データ
+  TYPE g_deductions_exp_ttype           IS TABLE OF deductions_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  gt_deductions_exp_tbl                 g_deductions_exp_ttype;
+--
+-- 2024/01/29 Ver1.6 ADD End
 --
 -- Ver 1.3 del start
 --  CURSOR deductions_data_lock_cur
@@ -303,36 +331,61 @@ AS
 --
   CURSOR deductions_debt_data_cur
   IS
-    SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
-           flv.attribute6                                account                -- 勘定科目
-          ,flv.attribute7                                sub_account            -- 補助科目
-          ,SUM(CASE
-                 WHEN xsd.gl_if_flag = cv_n_flag THEN
-                   xsd.deduction_amount
-                 ELSE
-                   xsd.deduction_amount * -1
-                 END
-               )                                         deduction_amount       -- 控除額
-    FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
-          ,fnd_lookup_values         flv                     -- クイックコード
-    WHERE  flv.lookup_code                          = xsd.data_type                                 -- データ種類
-    AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
-    AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
-    AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
---Ver 1.2 add start
-    AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
---Ver 1.2 add end
-    AND    TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)         -- 売上日
-    AND    xsd.gl_if_flag                          IN (cv_n_flag,cv_r_flag)                         -- GL連携フラグ N：未連携、R：再送
-    AND    xsd.source_category                     IN (cv_s_flag, cv_t_flag, cv_v_flag              -- 作成元区分 S:販売実績、T:売上実績振替(EDI)、V:売上実績振替(振替割合)
-                                                     , cv_u_flag, cv_f_flag)                        -- 作成元区分 U:アップロード、F:定額控除
+-- 2024/01/29 Ver1.6 MOD Start
+    SELECT
+        temp.company                company         , -- 会社
+        ffv.attribute1              dept_fin        , -- 財務経理部
+        temp.debt_account           account         , -- 勘定科目(負債)
+        temp.debt_sub_account       sub_account     , -- 補助科目(負債)
+        SUM(temp.deduction_amount)  deduction_amount  -- 控除額
+    FROM
+        fnd_lookup_values         ffv ,
+        xxcok_xxcok024a06c_temp   temp
+    WHERE
+        ffv.lookup_type = 'XXCFO1_DRAFTING_COMPANY' AND
+        ffv.language    = 'JA'                      AND
+        ffv.lookup_code = temp.company
     GROUP BY
-           flv.attribute6
-          ,flv.attribute7
-    ORDER BY
-           flv.attribute6
-          ,flv.attribute7
-    ;
+        temp.company          ,
+        ffv.attribute1        ,
+        temp.debt_account     ,
+        temp.debt_sub_account;
+--    SELECT /*+ INDEX(XSD XXCOK_SALES_DEDUCTION_N04) */
+--           flv.attribute6                                account                -- 勘定科目
+--          ,flv.attribute7                                sub_account            -- 補助科目
+--          ,SUM(CASE
+--                 WHEN xsd.gl_if_flag = cv_n_flag THEN
+--                   xsd.deduction_amount
+--                 ELSE
+--                   xsd.deduction_amount * -1
+--                 END
+--               )                                         deduction_amount       -- 控除額
+--    FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
+--          ,fnd_lookup_values         flv                     -- クイックコード
+--    WHERE  flv.lookup_code                          = xsd.data_type                                 -- データ種類
+--    AND    flv.lookup_type                          = cv_lookup_dedu_code                           -- 控除データ種類
+--    AND    flv.enabled_flag                         = cv_y_flag                                     -- 使用可能：Y
+--    AND    flv.language                             = USERENV('LANG')                               -- 言語：USERENV('LANG')
+----Ver 1.2 add start
+--    AND    flv.attribute13                          = gv_parallel_group                             -- GL連携パラレル実行グループ
+----Ver 1.2 add end
+--    AND    TO_CHAR(xsd.record_date,cv_date_format) <= TO_CHAR(gd_from_date, cv_date_format)         -- 売上日
+--    AND    xsd.gl_if_flag                          IN (cv_n_flag,cv_r_flag)                         -- GL連携フラグ N：未連携、R：再送
+--    AND    xsd.source_category                     IN (cv_s_flag, cv_t_flag, cv_v_flag              -- 作成元区分 S:販売実績、T:売上実績振替(EDI)、V:売上実績振替(振替割合)
+--                                                     , cv_u_flag, cv_f_flag)                        -- 作成元区分 U:アップロード、F:定額控除
+--    GROUP BY
+--           flv.attribute6
+--          ,flv.attribute7
+--    ORDER BY
+--           flv.attribute6
+--          ,flv.attribute7
+--    ;
+-- 2024/01/29 Ver1.6 MOD End
+-- 2024/01/29 Ver1.6 ADD Start
+  -- 販売控除負債データ
+  TYPE g_deductions_debt_exp_ttype      IS TABLE OF deductions_debt_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  gt_deductions_debt_exp_tbl            g_deductions_debt_exp_ttype;
+-- 2024/01/29 Ver1.6 ADD End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -361,8 +414,10 @@ AS
     -- *** ローカル定数 ***
     cv_pro_bks_id_1             CONSTANT VARCHAR2(40) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
     cv_pro_bks_nm_1             CONSTANT VARCHAR2(40) := 'GL_SET_OF_BKS_NAME';               -- 会計帳簿名称
-    cv_pro_company_cd_1         CONSTANT VARCHAR2(40) := 'XXCOK1_AFF1_COMPANY_CODE';         -- XXCOK:会社コード
-    cv_pro_dept_fin_cd_1        CONSTANT VARCHAR2(40) := 'XXCOK1_AFF2_DEPT_FIN';             -- XXCOK:部門コード_財務経理部
+-- 2024/01/29 Ver1.6 DEL Start
+--    cv_pro_company_cd_1         CONSTANT VARCHAR2(40) := 'XXCOK1_AFF1_COMPANY_CODE';         -- XXCOK:会社コード
+--    cv_pro_dept_fin_cd_1        CONSTANT VARCHAR2(40) := 'XXCOK1_AFF2_DEPT_FIN';             -- XXCOK:部門コード_財務経理部
+-- 2024/01/29 Ver1.6 DEL End
     cv_pro_customer_cd_1        CONSTANT VARCHAR2(40) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';       -- XXCOK:顧客コード_ダミー値
     cv_pro_comp_cd_1            CONSTANT VARCHAR2(40) := 'XXCOK1_AFF6_COMPANY_DUMMY';        -- XXCOK:企業コード_ダミー値
     cv_pro_preliminary1_cd_1    CONSTANT VARCHAR2(40) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- XXCOK:予備１_ダミー値:0
@@ -468,43 +523,45 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    --==================================
-    -- ５．プロファイル取得：会社コード
-    --==================================
-    gv_company_code := FND_PROFILE.VALUE( cv_pro_company_cd_1 );
+-- 2024/01/29 Ver1.6 DEL Start
+--    --==================================
+--    -- ５．プロファイル取得：会社コード
+--    --==================================
+--    gv_company_code := FND_PROFILE.VALUE( cv_pro_company_cd_1 );
+----
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( gv_company_code IS NULL ) THEN
+--      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
+--                                                 , iv_name        => cv_pro_company_cd               -- メッセージID
+--                                                  );
+--      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
+--                                                 , iv_name         => cv_pro_msg
+--                                                 , iv_token_name1  => cv_tkn_pro
+--                                                 , iv_token_value1 => lv_profile_name
+--                                                  );
+--      lv_errbuf       := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
 --
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_company_code IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
-                                                 , iv_name        => cv_pro_company_cd               -- メッセージID
-                                                  );
-      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
-                                                 , iv_name         => cv_pro_msg
-                                                 , iv_token_name1  => cv_tkn_pro
-                                                 , iv_token_value1 => lv_profile_name
-                                                  );
-      lv_errbuf       := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    --==================================
-    -- ６．プロファイル取得：部門コード（財務経理部）
-    --==================================
-    gv_dept_fin_code := FND_PROFILE.VALUE( cv_pro_dept_fin_cd_1 );
---
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_dept_fin_code IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
-                                                 , iv_name        => cv_pro_dept_fin_cd              -- メッセージID
-                                                  );
-      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
-                                                 , iv_name         => cv_pro_msg
-                                                 , iv_token_name1  => cv_tkn_pro
-                                                 , iv_token_value1 => lv_profile_name
-                                                  );
-      lv_errbuf       := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+--    --==================================
+--    -- ６．プロファイル取得：部門コード（財務経理部）
+--    --==================================
+--    gv_dept_fin_code := FND_PROFILE.VALUE( cv_pro_dept_fin_cd_1 );
+----
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( gv_dept_fin_code IS NULL ) THEN
+--      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
+--                                                 , iv_name        => cv_pro_dept_fin_cd              -- メッセージID
+--                                                  );
+--      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
+--                                                 , iv_name         => cv_pro_msg
+--                                                 , iv_token_name1  => cv_tkn_pro
+--                                                 , iv_token_value1 => lv_profile_name
+--                                                  );
+--      lv_errbuf       := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- 2024/01/29 Ver1.6 DEL End
 --
     --==================================
     -- ７．プロファイル取得：顧客コード_ダミー値
@@ -724,19 +781,50 @@ AS
     -- 販売控除データ抽出（一時表退避）
     --==================================
     INSERT INTO XXCOK_XXCOK024A06C_TEMP
-    SELECT sales_deduction_id          sales_deduction_id
-          ,accounting_base             accounting_base
--- 2022/06/16 Ver1.5 MOD Start
-          ,NULL                        past_sale_base_code
---          ,past_sale_base_code         past_sale_base_code
--- 2022/06/16 Ver1.5 MOD End
-          ,account                     account
-          ,sub_account                 sub_account
-          ,deduction_amount            deduction_amount
-          ,tax_code                    tax_code
-          ,deduction_tax_amount        deduction_tax_amount
-          ,corp_code                   corp_code
-          ,customer_code               customer_code
+-- 2024/01/29 Ver1.6 ADD Start
+    (
+      sales_deduction_id  ,
+      company             ,
+      accounting_base     ,
+      account             ,
+      sub_account         ,
+      deduction_amount    ,
+      tax_code            ,
+      deduction_tax_amount,
+      corp_code           ,
+      customer_code       ,
+      debt_account        ,
+      debt_sub_account
+    )
+-- 2024/01/29 Ver1.6 ADD End
+-- 2024/01/29 Ver1.6 MOD Start
+    SELECT
+      sub.sales_deduction_id    sales_deduction_id  ,
+      xbdc.company_code_bd      company             ,
+      sub.accounting_base       accounting_base     ,
+      sub.account               account             ,
+      sub.sub_account           sub_account         ,
+      sub.deduction_amount      deduction_amount    ,
+      sub.tax_code              tax_code            ,
+      sub.deduction_tax_amount  deduction_tax_amount,
+      sub.corp_code             corp_code           ,
+      sub.customer_code         customer_code       ,
+      sub.debt_account          debt_account        ,
+      sub.debt_sub_account      debt_sub_account
+--    SELECT sales_deduction_id          sales_deduction_id
+--          ,accounting_base             accounting_base
+---- 2022/06/16 Ver1.5 MOD Start
+--          ,NULL                        past_sale_base_code
+----          ,past_sale_base_code         past_sale_base_code
+---- 2022/06/16 Ver1.5 MOD End
+--          ,account                     account
+--          ,sub_account                 sub_account
+--          ,deduction_amount            deduction_amount
+--          ,tax_code                    tax_code
+--          ,deduction_tax_amount        deduction_tax_amount
+--          ,corp_code                   corp_code
+--          ,customer_code               customer_code
+-- 2024/01/29 Ver1.6 MOD End
     FROM (
           -- 顧客
 --Ver 1.2 mod start
@@ -786,6 +874,10 @@ AS
                 ,NVL(flv2.attribute1,gv_comp_code)     corp_code      -- 企業コード
                 ,NVL(DECODE(xca.torihiki_form,'2',xsd.customer_code_to,flv2.attribute4),gv_customer_code) customer_code
                                                                         -- 顧客コード
+-- 2024/01/29 Ver1.6 ADD Start
+                ,flv.attribute6                 debt_account          -- 勘定科目(負債)
+                ,flv.attribute7                 debt_sub_account      -- 補助科目(負債)
+-- 2024/01/29 Ver1.6 ADD End
           FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
                 ,xxcmm_cust_accounts       xca                     -- 顧客追加情報
                 ,fnd_lookup_values         flv                     -- クイックコード(データ種類)
@@ -853,6 +945,10 @@ AS
                    END                          deduction_tax_amount  -- 控除税額
                 ,NVL(flv2.attribute1,gv_comp_code)     corp_code      -- 企業コード
                 ,NVL(flv2.attribute4,gv_customer_code) customer_code  -- 顧客コード
+-- 2024/01/29 Ver1.6 ADD Start
+                ,flv.attribute6                 debt_account          -- 勘定科目(負債)
+                ,flv.attribute7                 debt_sub_account      -- 補助科目(負債)
+-- 2024/01/29 Ver1.6 ADD End
           FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
                 ,fnd_lookup_values         flv                     -- クイックコード(データ種類)
                 ,fnd_lookup_values         flv1                    -- クイックコード(税コード変換)
@@ -913,6 +1009,10 @@ AS
                    END                          deduction_tax_amount  -- 控除税額
                 ,xsd.corp_code                  corp_code             -- 企業コード
                 ,gv_customer_code               customer_code         -- 顧客コード
+-- 2024/01/29 Ver1.6 ADD Start
+                ,flv.attribute6                 debt_account          -- 勘定科目(負債)
+                ,flv.attribute7                 debt_sub_account      -- 補助科目(負債)
+-- 2024/01/29 Ver1.6 ADD End
           FROM   xxcok_sales_deduction     xsd                     -- 販売控除情報
                 ,fnd_lookup_values         flv                     -- クイックコード(データ種類)
                 ,fnd_lookup_values         flv1                    -- クイックコード(税コード変換)
@@ -935,7 +1035,15 @@ AS
           AND    xsd.deduction_chain_code                IS NULL                                          -- チェーンコード
           AND    xsd.customer_code_to                    IS NULL                                          -- 振替先顧客コード
 -- Ver 1.4 add end
-         ) ;
+-- 2024/01/29 Ver1.6 MOD Start
+         )                          sub ,
+         xxcfr_bd_dept_comp_info_v  xbdc
+    WHERE xbdc.set_of_books_id      =       TO_NUMBER(gv_set_bks_id)
+    AND   gd_from_date              BETWEEN NVL(xbdc.comp_start_date, TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                    AND     NVL(xbdc.comp_end_date,   TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+    AND   xbdc.dept_code            =       sub.accounting_base;
+--         ) ;
+-- 2024/01/29 Ver1.6 MOD End
 
     --==================================
     -- 販売控除データ抽出
@@ -1050,6 +1158,9 @@ AS
                         , ov_retcode         OUT VARCHAR2         -- リターン・コード             --# 固定 #
                         , ov_errmsg          OUT VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
                         , in_gl_idx          IN  NUMBER           -- GL OIF データインデックス
+-- 2024/01/29 Ver1.6 ADD Start
+                        , iv_company         IN  VARCHAR2         -- 会社
+-- 2024/01/29 Ver1.6 ADD End
                         , iv_accounting_base IN  VARCHAR2         -- 拠点コード(定額控除)
 -- 2022/06/16 Ver1.5 DEL Start
 --                        , iv_base_code       IN  VARCHAR2         -- 拠点コード(定額控除以外)
@@ -1122,7 +1233,10 @@ AS
     --==============================================================
     ln_ccid_check := xxcok_common_pkg.get_code_combination_id_f(
                                id_proc_date => gd_process_date                       -- 処理日
-                             , iv_segment1  => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.6 MOD Start
+                             , iv_segment1  => iv_company                            -- 会社コード
+--                             , iv_segment1  => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.6 MOD End
 -- 2022/06/16 Ver1.5 MOD Start
                              , iv_segment2  => iv_accounting_base                    -- 部門コード
 --                             , iv_segment2  => NVL(iv_accounting_base,iv_base_code)  -- 部門コード
@@ -1142,7 +1256,10 @@ AS
                       , iv_token_name1  => cv_tkn_pro_date
                       , iv_token_value1 => gd_process_date                       -- 処理日
                       , iv_token_name2  => cv_tkn_com_code
-                      , iv_token_value2 => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.6 MOD Start
+                      , iv_token_value2 => iv_company                            -- 会社コード
+--                      , iv_token_value2 => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.6 MOD End
                       , iv_token_name3  => cv_tkn_dept_code
 -- 2022/06/16 Ver1.5 MOD Start
                       , iv_token_value3 => iv_accounting_base                    -- 部門コード
@@ -1173,7 +1290,10 @@ AS
     gt_gl_interface_tbl( in_gl_idx ).actual_flag           := cv_actual_flag;                                           -- 残高タイプ
     gt_gl_interface_tbl( in_gl_idx ).user_je_category_name := gv_category_code;                                         -- 仕訳カテゴリ名
     gt_gl_interface_tbl( in_gl_idx ).user_je_source_name   := gv_source_code;                                           -- 仕訳ソース名
-    gt_gl_interface_tbl( in_gl_idx ).segment1              := gv_company_code;                                          -- (会社)
+-- 2024/01/29 Ver1.6 MOD Start
+    gt_gl_interface_tbl( in_gl_idx ).segment1              := iv_company;                                               -- (会社)
+--    gt_gl_interface_tbl( in_gl_idx ).segment1              := gv_company_code;                                          -- (会社)
+-- 2024/01/29 Ver1.6 MOD End
 --
     -- 拠点コード(定額控除) が設定されていない場合は、拠点コード(定額控除以外)を登録
 -- 2022/06/16 Ver1.5 DEL Start
@@ -1214,8 +1334,12 @@ AS
 --
     gt_gl_interface_tbl( in_gl_idx ).reference1            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス1（バッチ名）
     gt_gl_interface_tbl( in_gl_idx ).reference2            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス2（バッチ摘要）
-    gt_gl_interface_tbl( in_gl_idx ).reference4            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス4（仕訳名）
-    gt_gl_interface_tbl( in_gl_idx ).reference5            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス5（仕訳名摘要）
+-- 2024/01/29 Ver1.6 MOD Start
+    gt_gl_interface_tbl( in_gl_idx ).reference4            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period || cv_underbar || iv_company;  -- リファレンス4（仕訳名）
+    gt_gl_interface_tbl( in_gl_idx ).reference5            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period || cv_underbar || iv_company;  -- リファレンス5（仕訳名摘要）
+--    gt_gl_interface_tbl( in_gl_idx ).reference4            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス4（仕訳名）
+--    gt_gl_interface_tbl( in_gl_idx ).reference5            := TO_CHAR( gv_category_code ) || cv_underbar || gv_period;  -- リファレンス5（仕訳名摘要）
+-- 2024/01/29 Ver1.6 MOD End
     gt_gl_interface_tbl( in_gl_idx ).reference10           := iv_reference10;                                           -- リファレンス10（仕訳明細摘要）
     gt_gl_interface_tbl( in_gl_idx ).period_name           := gv_period;                                                -- 会計期間
 --2021/05/18 add start
@@ -1286,29 +1410,45 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    ln_deduction_amount          NUMBER DEFAULT 0;                               -- 売上控除:控除額集計金額
+-- 2024/01/29 Ver1.6 DEL Start
+--    ln_deduction_amount          NUMBER DEFAULT 0;                               -- 売上控除:控除額集計金額
+-- 2024/01/29 Ver1.6 DEL End
     ln_deduction_tax_amount      NUMBER DEFAULT 0;                               -- 仮払消費税:控除税額集計金額
     ln_gl_contact_id             NUMBER;                                         -- GL連携ID
 --
     ln_gl_idx                    NUMBER DEFAULT 0;                               -- GL OIFのインデックス
-    ln_loop_index1               NUMBER DEFAULT 0;                               -- ワークテーブル販売控除インデックス
-    ln_loop_index2               NUMBER DEFAULT 0;                               -- ワークテーブル販売控除負債インデックス
-    ln_loop_cnt                  NUMBER DEFAULT 0;                               -- 定額控除確認用件数
+-- 2024/01/29 Ver1.6 DEL Start
+--    ln_loop_index1               NUMBER DEFAULT 0;                               -- ワークテーブル販売控除インデックス
+--    ln_loop_index2               NUMBER DEFAULT 0;                               -- ワークテーブル販売控除負債インデックス
+--    ln_loop_cnt                  NUMBER DEFAULT 0;                               -- 定額控除確認用件数
+-- 2024/01/29 Ver1.6 DEL End
+-- 2024/01/29 Ver1.6 ADD Start
+    lv_dept_fin                  VARCHAR2(004);                                  -- 財務経理部
+-- 2024/01/29 Ver1.6 ADD End
     lv_account_code              VARCHAR2(5);                                    -- 税コード勘定科目用
     lv_sub_account_code          VARCHAR2(5);                                    -- 税コード補助科目用
     lv_debt_account_code         VARCHAR2(5);                                    -- 税コード勘定科目用
     lv_debt_sub_account_code     VARCHAR2(5);                                    -- 税コード補助科目用
 --
     -- 集計キー
-    lt_accounting_base           xxcok_condition_lines.accounting_base%TYPE;     -- 集計キー：拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 ADD Start
+    lv_company                   VARCHAR2(003);                                  -- 集計キー：会社
+-- 2024/01/29 Ver1.6 ADD End
+-- 2024/01/29 Ver1.6 DEL Start
+--    lt_accounting_base           xxcok_condition_lines.accounting_base%TYPE;     -- 集計キー：拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 DEL End
 -- 2022/06/16 Ver1.5 DEL Start
 --    lt_past_sale_base_code       xxcmm_cust_accounts.past_sale_base_code%TYPE;   -- 集計キー：拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 DEL End
-    lt_account                   fnd_lookup_values.attribute4%TYPE;              -- 集計キー：勘定科目
-    lt_sub_account               fnd_lookup_values.attribute5%TYPE;              -- 集計キー：補助科目
+-- 2024/01/29 Ver1.6 DEL Start
+--    lt_account                   fnd_lookup_values.attribute4%TYPE;              -- 集計キー：勘定科目
+--    lt_sub_account               fnd_lookup_values.attribute5%TYPE;              -- 集計キー：補助科目
+-- 2024/01/29 Ver1.6 DEL End
     lt_tax_code                  xxcok_sales_deduction.tax_code%TYPE;            -- 集計キー：税コード
-    lt_corp_code                 fnd_lookup_values.attribute1%TYPE;              -- 集計キー：企業コード
-    lt_customer_code             fnd_lookup_values.attribute4%TYPE;              -- 集計キー：顧客コード
+-- 2024/01/29 Ver1.6 DEL Start
+--    lt_corp_code                 fnd_lookup_values.attribute1%TYPE;              -- 集計キー：企業コード
+--    lt_customer_code             fnd_lookup_values.attribute4%TYPE;              -- 集計キー：顧客コード
+-- 2024/01/29 Ver1.6 DEL End
 --
     -- *** ローカル例外 ***
     edit_gl_expt                 EXCEPTION;                                      -- 一般会計作成エラー
@@ -1325,15 +1465,24 @@ AS
     -- 1.仕訳パターンの取得
     --=====================================
     -- ブレイク用集約キーの初期化
-    lt_accounting_base      := gt_deductions_exp_tbl(1).accounting_base;      -- 拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 ADD Start
+    lv_company              := gt_deductions_exp_tbl(1).company;              -- 会社
+-- 2024/01/29 Ver1.6 ADD End
+-- 2024/01/29 Ver1.6 DEL Start
+--    lt_accounting_base      := gt_deductions_exp_tbl(1).accounting_base;      -- 拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 DEL End
 -- 2022/06/16 Ver1.5 DEL Start
 --    lt_past_sale_base_code  := gt_deductions_exp_tbl(1).past_sale_base_code;  -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 DEL End
-    lt_account              := gt_deductions_exp_tbl(1).account;              -- 勘定科目
-    lt_sub_account          := gt_deductions_exp_tbl(1).sub_account;          -- 補助科目
+-- 2024/01/29 Ver1.6 DEL Start
+--    lt_account              := gt_deductions_exp_tbl(1).account;              -- 勘定科目
+--    lt_sub_account          := gt_deductions_exp_tbl(1).sub_account;          -- 補助科目
+-- 2024/01/29 Ver1.6 DEL End
     lt_tax_code             := gt_deductions_exp_tbl(1).tax_code;             -- 税コード
-    lt_corp_code            := gt_deductions_exp_tbl(1).corp_code;            -- 企業コード
-    lt_customer_code        := gt_deductions_exp_tbl(1).customer_code;        -- 顧客コード
+-- 2024/01/29 Ver1.6 DEL Start
+--    lt_corp_code            := gt_deductions_exp_tbl(1).corp_code;            -- 企業コード
+--    lt_customer_code        := gt_deductions_exp_tbl(1).customer_code;        -- 顧客コード
+-- 2024/01/29 Ver1.6 DEL End
 --
     -- 控除額/消費税/負債消費税のループスタート
     <<main_data_loop>>
@@ -1347,13 +1496,23 @@ AS
 -- 2022/06/16 Ver1.5 DEL Start
 --      IF ( lt_accounting_base IS NOT NULL) THEN
 -- 2022/06/16 Ver1.5 DEL End
-        -- 拠点コード(定額控除)/勘定科目/補助科目/税コードのいずれかが前処理データ異なった場合
-        IF ( lt_accounting_base   <> NVL(gt_deductions_exp_tbl(ln_loop_index1).accounting_base,cv_dummy_code) )
-          OR  ( lt_account               <> gt_deductions_exp_tbl(ln_loop_index1).account )
-          OR  ( lt_sub_account           <> gt_deductions_exp_tbl(ln_loop_index1).sub_account )
-          OR  ( lt_tax_code              <> gt_deductions_exp_tbl(ln_loop_index1).tax_code )
-          OR  ( lt_corp_code             <> gt_deductions_exp_tbl(ln_loop_index1).corp_code )
-          OR  ( lt_customer_code         <> gt_deductions_exp_tbl(ln_loop_index1).customer_code ) THEN
+-- 2024/01/29 Ver1.6 DEL Start
+--        -- 拠点コード(定額控除)/勘定科目/補助科目/税コードのいずれかが前処理データ異なった場合
+--        IF ( lt_accounting_base   <> NVL(gt_deductions_exp_tbl(ln_loop_index1).accounting_base,cv_dummy_code) )
+--          OR  ( lt_account               <> gt_deductions_exp_tbl(ln_loop_index1).account )
+--          OR  ( lt_sub_account           <> gt_deductions_exp_tbl(ln_loop_index1).sub_account )
+--          OR  ( lt_tax_code              <> gt_deductions_exp_tbl(ln_loop_index1).tax_code )
+--          OR  ( lt_corp_code             <> gt_deductions_exp_tbl(ln_loop_index1).corp_code )
+--          OR  ( lt_customer_code         <> gt_deductions_exp_tbl(ln_loop_index1).customer_code ) THEN
+-- 2024/01/29 Ver1.6 DEL End
+-- 2024/01/29 Ver1.6 ADD Start
+--
+      --GL紐付ID取得
+      SELECT xxcok_gl_interface_seq_s01.NEXTVAL gl_seq
+      INTO   ln_gl_contact_id
+      FROM   DUAL
+      ;
+-- 2024/01/29 Ver1.6 ADD End
 
 --
           --販売控除データの集約(費用)
@@ -1363,16 +1522,30 @@ AS
                       , ov_retcode                => lv_retcode                -- リターン・コード
                       , ov_errmsg                 => lv_errmsg                 -- ユーザー・エラー・メッセージ
                       , in_gl_idx                 => ln_gl_idx                 -- GL OIF データインデックス
-                      , iv_accounting_base        => lt_accounting_base        -- 拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 ADD Start
+                      , iv_company                => gt_deductions_exp_tbl(ln_loop_index1).company            -- 会社
+-- 2024/01/29 Ver1.6 ADD End
+-- 2024/01/29 Ver1.6 MOD Start
+                      , iv_accounting_base        => gt_deductions_exp_tbl(ln_loop_index1).accounting_base    -- 拠点コード(定額控除)
+--                      , iv_accounting_base        => lt_accounting_base        -- 拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 MOD End
 -- 2022/06/16 Ver1.5 DEL Start
 --                      , iv_base_code              => lt_past_sale_base_code    -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 DEL End
-                      , iv_gl_segment3            => lt_account                -- 勘定科目コード
-                      , iv_gl_segment4            => lt_sub_account            -- 補助科目コード
-                      , iv_tax_code               => lt_tax_code               -- 税コード
-                      , iv_corp_code              => lt_corp_code              -- 企業コード
-                      , iv_customer_code          => lt_customer_code          -- 顧客コード
-                      , in_entered_dr             => ln_deduction_amount       -- 借方金額
+-- 2024/01/29 Ver1.6 MOD Start
+                      , iv_gl_segment3            => gt_deductions_exp_tbl(ln_loop_index1).account            -- 勘定科目コード
+                      , iv_gl_segment4            => gt_deductions_exp_tbl(ln_loop_index1).sub_account        -- 補助科目コード
+                      , iv_tax_code               => gt_deductions_exp_tbl(ln_loop_index1).tax_code           -- 税コード
+                      , iv_corp_code              => gt_deductions_exp_tbl(ln_loop_index1).corp_code          -- 企業コード
+                      , iv_customer_code          => gt_deductions_exp_tbl(ln_loop_index1).customer_code      -- 顧客コード
+                      , in_entered_dr             => gt_deductions_exp_tbl(ln_loop_index1).deduction_amount   -- 借方金額
+--                      , iv_gl_segment3            => lt_account                -- 勘定科目コード
+--                      , iv_gl_segment4            => lt_sub_account            -- 補助科目コード
+--                      , iv_tax_code               => lt_tax_code               -- 税コード
+--                      , iv_corp_code              => lt_corp_code              -- 企業コード
+--                      , iv_customer_code          => lt_customer_code          -- 顧客コード
+--                      , in_entered_dr             => ln_deduction_amount       -- 借方金額
+-- 2024/01/29 Ver1.6 MOD End
                       , in_entered_cr             => NULL                      -- 貸方金額
                       , in_gl_contact_id          => ln_gl_contact_id          -- GL紐付ID
                       , iv_reference10            => gv_category_code || cv_underbar || gv_period
@@ -1385,12 +1558,14 @@ AS
           END IF;
 --
 --Ver 1.2 add end
-          --控除額集約初期化
-          ln_deduction_amount := 0;
+-- 2024/01/29 Ver1.6 DEL Start
+--          --控除額集約初期化
+--          ln_deduction_amount := 0;
+----
+--          ln_loop_cnt := 0;
 --
-          ln_loop_cnt := 0;
---
-        END IF;
+--        END IF;
+-- 2024/01/29 Ver1.6 DEL End
 --
 -- 2022/06/16 Ver1.5 DEL Start
 --      -- 定額控除以外の場合
@@ -1439,7 +1614,11 @@ AS
 -- 2022/06/16 Ver1.5 DEL End
 --
       -- 税コードが前処理データ異なった場合
-      IF ( lt_tax_code              <> gt_deductions_exp_tbl(ln_loop_index1).tax_code ) THEN
+-- 2024/01/29 Ver1.6 MOD Start
+      IF ( lv_company               <> gt_deductions_exp_tbl(ln_loop_index1).company )
+        OR  ( lt_tax_code              <> gt_deductions_exp_tbl(ln_loop_index1).tax_code ) THEN
+--      IF ( lt_tax_code              <> gt_deductions_exp_tbl(ln_loop_index1).tax_code ) THEN
+-- 2024/01/29 Ver1.6 MOD End
 --
         --税コードマスタより税コードを引き渡して勘定科目、補助科目を取得
         BEGIN
@@ -1447,17 +1626,31 @@ AS
                 ,gcc.segment4            -- 税額_補助科目
                 ,tax.attribute5          -- 負債税額_勘定科目
                 ,tax.attribute6          -- 負債税額_補助科目
+-- 2024/01/29 Ver1.6 ADD Start
+                ,ffv.attribute1          -- 財務経理部
+-- 2024/01/29 Ver1.6 ADD End
           INTO   lv_account_code
                 ,lv_sub_account_code
                 ,lv_debt_account_code
                 ,lv_debt_sub_account_code
+-- 2024/01/29 Ver1.6 ADD Start
+                ,lv_dept_fin
+-- 2024/01/29 Ver1.6 ADD End
           FROM   apps.ap_tax_codes_all     tax  -- AP税コードマスタ
                 ,apps.gl_code_combinations gcc  -- 勘定組合情報
+-- 2024/01/29 Ver1.6 ADD Start
+                ,fnd_lookup_values         ffv
+-- 2024/01/29 Ver1.6 ADD End
           WHERE  tax.set_of_books_id     = TO_NUMBER(gv_set_bks_id)       -- SET_OF_BOOKS_ID
           and    tax.org_id              = gn_org_id                      -- ORG_ID
           and    gcc.code_combination_id = tax.tax_code_combination_id    -- 税CCID
           and    tax.name                = lt_tax_code                    -- 税コード
           AND    tax.enabled_flag        = cv_y_flag                      -- 有効
+-- 2024/01/29 Ver1.6 ADD Start
+          AND    ffv.lookup_type = 'XXCFO1_DRAFTING_COMPANY'
+          AND    ffv.language    = 'JA'
+          AND    ffv.lookup_code = lv_company
+-- 2024/01/29 Ver1.6 ADD End
           ;
 --
         EXCEPTION
@@ -1477,8 +1670,14 @@ AS
                     , ov_retcode                => lv_retcode                      -- リターン・コード
                     , ov_errmsg                 => lv_errmsg                       -- ユーザー・エラー・メッセージ
                     , in_gl_idx                 => ln_gl_idx                       -- GL OIF データインデックス
+-- 2024/01/29 Ver1.6 ADD Start
+                    , iv_company                => lv_company                      -- 会社
+-- 2024/01/29 Ver1.6 ADD End
 -- 2022/06/16 Ver1.5 MOD Start
-                    , iv_accounting_base        => gv_dept_fin_code                -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD Start
+                    , iv_accounting_base        => lv_dept_fin                     -- 拠点コード
+--                    , iv_accounting_base        => gv_dept_fin_code                -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD End
 --                    , iv_accounting_base        => NULL                            -- 拠点コード(定額控除)
 --                    , iv_base_code              => gv_dept_fin_code                -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 MOD End
@@ -1505,8 +1704,14 @@ AS
                     , ov_retcode                => lv_retcode                    -- リターン・コード
                     , ov_errmsg                 => lv_errmsg                     -- ユーザー・エラー・メッセージ
                     , in_gl_idx                 => ln_gl_idx                     -- GL OIF データインデックス
+-- 2024/01/29 Ver1.6 ADD Start
+                    , iv_company                => lv_company                    -- 会社
+-- 2024/01/29 Ver1.6 ADD End
 -- 2022/06/16 Ver1.5 MOD Start
-                    , iv_accounting_base        => gv_dept_fin_code              -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD Start
+                    , iv_accounting_base        => lv_dept_fin                   -- 拠点コード
+--                    , iv_accounting_base        => gv_dept_fin_code              -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD End
 --                    , iv_accounting_base        => NULL                          -- 拠点コード(定額控除)
 --                    , iv_base_code              => gv_dept_fin_code              -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 MOD End
@@ -1533,20 +1738,31 @@ AS
 --
       --出力用金額の集約
       -- 控除額の集約
-      ln_deduction_amount      := NVL(ln_deduction_amount,0)     + NVL(gt_deductions_exp_tbl(ln_loop_index1).deduction_amount,0);
+-- 2024/01/29 Ver1.6 DEL Start
+--      ln_deduction_amount      := NVL(ln_deduction_amount,0)     + NVL(gt_deductions_exp_tbl(ln_loop_index1).deduction_amount,0);
+-- 2024/01/29 Ver1.6 DEL End
       -- 消費税額の集約
       ln_deduction_tax_amount  := NVL(ln_deduction_tax_amount,0) + NVL(gt_deductions_exp_tbl(ln_loop_index1).deduction_tax_amount,0);
 --
       -- ブレイク用集約キーセット
-      lt_accounting_base       := gt_deductions_exp_tbl(ln_loop_index1).accounting_base;       -- 拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 ADD Start
+      lv_company               := gt_deductions_exp_tbl(ln_loop_index1).company;               -- 会社
+-- 2024/01/29 Ver1.6 ADD End
+-- 2024/01/29 Ver1.6 DEL Start
+--      lt_accounting_base       := gt_deductions_exp_tbl(ln_loop_index1).accounting_base;       -- 拠点コード(定額控除)
+-- 2024/01/29 Ver1.6 DEL End
 -- 2022/06/16 Ver1.5 DEL Start
 --      lt_past_sale_base_code   := gt_deductions_exp_tbl(ln_loop_index1).past_sale_base_code;   -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 DEL End
-      lt_account               := gt_deductions_exp_tbl(ln_loop_index1).account;               -- 勘定科目
-      lt_sub_account           := gt_deductions_exp_tbl(ln_loop_index1).sub_account;           -- 補助科目
+-- 2024/01/29 Ver1.6 DEL Start
+--      lt_account               := gt_deductions_exp_tbl(ln_loop_index1).account;               -- 勘定科目
+--      lt_sub_account           := gt_deductions_exp_tbl(ln_loop_index1).sub_account;           -- 補助科目
+-- 2024/01/29 Ver1.6 DEL End
       lt_tax_code              := gt_deductions_exp_tbl(ln_loop_index1).tax_code;              -- 税コード
-      lt_corp_code             := gt_deductions_exp_tbl(ln_loop_index1).corp_code;             -- 企業コード
-      lt_customer_code         := gt_deductions_exp_tbl(ln_loop_index1).customer_code;         -- 顧客コード
+-- 2024/01/29 Ver1.6 DEL Start
+--      lt_corp_code             := gt_deductions_exp_tbl(ln_loop_index1).corp_code;             -- 企業コード
+--      lt_customer_code         := gt_deductions_exp_tbl(ln_loop_index1).customer_code;         -- 顧客コード
+-- 2024/01/29 Ver1.6 DEL End
 --
 -- 2022/06/16 Ver1.5 DEL Start
 --      --処理件数を取得
@@ -1558,16 +1774,18 @@ AS
 -- 2022/06/16 Ver1.5 DEL End
 
 --
-      IF ( ln_loop_cnt = 0 ) THEN
-        --GL紐付ID取得
-        SELECT xxcok_gl_interface_seq_s01.NEXTVAL gl_seq
-        INTO   ln_gl_contact_id
-        FROM   DUAL
-        ;
+-- 2024/01/29 Ver1.6 DEL Start
+--      IF ( ln_loop_cnt = 0 ) THEN
+--        --GL紐付ID取得
+--        SELECT xxcok_gl_interface_seq_s01.NEXTVAL gl_seq
+--        INTO   ln_gl_contact_id
+--        FROM   DUAL
+--        ;
+----
+--        ln_loop_cnt := 1;
 --
-        ln_loop_cnt := 1;
---
-      END IF;
+--      END IF;
+-- 2024/01/29 Ver1.6 DEL End
 --
 -- 2022/06/16 Ver1.5 DEL Start
 --      -- 更新処理用にGL紐付IDを取得
@@ -1622,6 +1840,9 @@ AS
       WHERE xsd.sales_deduction_id      IN  ( SELECT  temp.sales_deduction_id sales_deduction_id
                                               FROM    XXCOK_XXCOK024A06C_TEMP  temp
                                               WHERE   temp.tax_code         = gt_deductions_exp_tbl(ln_loop_index1).tax_code
+-- 2024/01/29 Ver1.6 ADD Start
+                                              AND     temp.company          = gt_deductions_exp_tbl(ln_loop_index1).company
+-- 2024/01/29 Ver1.6 ADD End
                                               AND     temp.accounting_base  = gt_deductions_exp_tbl(ln_loop_index1).accounting_base
                                               AND     temp.account          = gt_deductions_exp_tbl(ln_loop_index1).account
                                               AND     temp.sub_account      = gt_deductions_exp_tbl(ln_loop_index1).sub_account
@@ -1636,32 +1857,34 @@ AS
     --最終レコード出力
     IF ( gt_deductions_exp_tbl.COUNT > 0 ) THEN
 --
-      --販売控除データの集約
-      ln_gl_idx := ln_gl_idx + 1;
---
-      edit_gl_data( ov_errbuf                 => lv_errbuf                 -- エラー・メッセージ
-                  , ov_retcode                => lv_retcode                -- リターン・コード
-                  , ov_errmsg                 => lv_errmsg                 -- ユーザー・エラー・メッセージ
-                  , in_gl_idx                 => ln_gl_idx                 -- GL OIF データインデックス
-                  , iv_accounting_base        => lt_accounting_base        -- 拠点コード(定額控除)
--- 2022/06/16 Ver1.5 DEL Start
---                  , iv_base_code              => lt_past_sale_base_code    -- 拠点コード(定額控除以外)
--- 2022/06/16 Ver1.5 DEL End
-                  , iv_gl_segment3            => lt_account                -- 勘定科目コード
-                  , iv_gl_segment4            => lt_sub_account            -- 補助科目コード
-                  , iv_tax_code               => lt_tax_code               -- 税コード
-                  , iv_corp_code              => lt_corp_code              -- 企業コード
-                  , iv_customer_code          => lt_customer_code          -- 顧客コード
-                  , in_entered_dr             => ln_deduction_amount       -- 借方金額
-                  , in_entered_cr             => NULL                      -- 貸方金額
-                  , in_gl_contact_id          => ln_gl_contact_id          -- GL紐付ID
-                  , iv_reference10            => gv_category_code || cv_underbar || gv_period
-                                                                           -- reference10
-                 );
---
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE edit_gl_expt;
-      END IF;
+-- 2024/01/29 Ver1.6 DEL Start
+--      --販売控除データの集約
+--      ln_gl_idx := ln_gl_idx + 1;
+----
+--      edit_gl_data( ov_errbuf                 => lv_errbuf                 -- エラー・メッセージ
+--                  , ov_retcode                => lv_retcode                -- リターン・コード
+--                  , ov_errmsg                 => lv_errmsg                 -- ユーザー・エラー・メッセージ
+--                  , in_gl_idx                 => ln_gl_idx                 -- GL OIF データインデックス
+--                  , iv_accounting_base        => lt_accounting_base        -- 拠点コード(定額控除)
+---- 2022/06/16 Ver1.5 DEL Start
+----                  , iv_base_code              => lt_past_sale_base_code    -- 拠点コード(定額控除以外)
+---- 2022/06/16 Ver1.5 DEL End
+--                  , iv_gl_segment3            => lt_account                -- 勘定科目コード
+--                  , iv_gl_segment4            => lt_sub_account            -- 補助科目コード
+--                  , iv_tax_code               => lt_tax_code               -- 税コード
+--                  , iv_corp_code              => lt_corp_code              -- 企業コード
+--                  , iv_customer_code          => lt_customer_code          -- 顧客コード
+--                  , in_entered_dr             => ln_deduction_amount       -- 借方金額
+--                  , in_entered_cr             => NULL                      -- 貸方金額
+--                  , in_gl_contact_id          => ln_gl_contact_id          -- GL紐付ID
+--                  , iv_reference10            => gv_category_code || cv_underbar || gv_period
+--                                                                           -- reference10
+--                 );
+----
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE edit_gl_expt;
+--      END IF;
+-- 2024/01/29 Ver1.6 DEL End
 --
       --税コードマスタより税コードを引き渡して勘定科目、補助科目を取得
       BEGIN
@@ -1669,17 +1892,31 @@ AS
               ,gcc.segment4            -- 税額_補助科目
               ,tax.attribute5          -- 負債税額_勘定科目
               ,tax.attribute6          -- 負債税額_補助科目
+-- 2024/01/29 Ver1.6 ADD Start
+              ,ffv.attribute1          -- 財務経理部
+-- 2024/01/29 Ver1.6 ADD End
         INTO   lv_account_code
               ,lv_sub_account_code
               ,lv_debt_account_code
               ,lv_debt_sub_account_code
+-- 2024/01/29 Ver1.6 ADD Start
+              ,lv_dept_fin
+-- 2024/01/29 Ver1.6 ADD End
         FROM   apps.ap_tax_codes_all     tax  -- AP税コードマスタ
               ,apps.gl_code_combinations gcc  -- 勘定組合情報
+-- 2024/01/29 Ver1.6 ADD Start
+              ,fnd_lookup_values         ffv
+-- 2024/01/29 Ver1.6 ADD End
         WHERE  tax.set_of_books_id     = TO_NUMBER(gv_set_bks_id)       -- SET_OF_BOOKS_ID
         and    tax.org_id              = gn_org_id                      -- ORG_ID
         and    gcc.code_combination_id = tax.tax_code_combination_id    -- 税CCID
         and    tax.name                = lt_tax_code                    -- 税コード
         AND    tax.enabled_flag        = cv_y_flag                      -- 有効
+-- 2024/01/29 Ver1.6 ADD Start
+        AND    ffv.lookup_type = 'XXCFO1_DRAFTING_COMPANY'
+        AND    ffv.language    = 'JA'
+        AND    ffv.lookup_code = lv_company
+-- 2024/01/29 Ver1.6 ADD End
         ;
 --
       EXCEPTION
@@ -1699,8 +1936,14 @@ AS
                   , ov_retcode                => lv_retcode                      -- リターン・コード
                   , ov_errmsg                 => lv_errmsg                       -- ユーザー・エラー・メッセージ
                   , in_gl_idx                 => ln_gl_idx                       -- GL OIF データインデックス
+-- 2024/01/29 Ver1.6 ADD Start
+                  , iv_company                => lv_company                      -- 会社
+-- 2024/01/29 Ver1.6 ADD End
 -- 2022/06/16 Ver1.5 MOD Start
-                  , iv_accounting_base        => gv_dept_fin_code                -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD Start
+                  , iv_accounting_base        => lv_dept_fin                     -- 拠点コード
+--                  , iv_accounting_base        => gv_dept_fin_code                -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD End
 --                  , iv_accounting_base        => NULL                            -- 拠点コード(定額控除)
 --                  , iv_base_code              => gv_dept_fin_code                -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 MOD End
@@ -1727,8 +1970,14 @@ AS
                   , ov_retcode                => lv_retcode                    -- リターン・コード
                   , ov_errmsg                 => lv_errmsg                     -- ユーザー・エラー・メッセージ
                   , in_gl_idx                 => ln_gl_idx                     -- GL OIF データインデックス
+-- 2024/01/29 Ver1.6 ADD Start
+                  , iv_company                => lv_company                    -- 会社
+-- 2024/01/29 Ver1.6 ADD End
 -- 2022/06/16 Ver1.5 MOD Start
-                  , iv_accounting_base        => gv_dept_fin_code              -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD Start
+                  , iv_accounting_base        => lv_dept_fin                   -- 拠点コード
+--                  , iv_accounting_base        => gv_dept_fin_code              -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD End
 --                  , iv_accounting_base        => NULL                          -- 拠点コード(定額控除)
 --                  , iv_base_code              => gv_dept_fin_code              -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 MOD End
@@ -1761,8 +2010,14 @@ AS
                   , ov_retcode                => lv_retcode                                                   -- リターン・コード
                   , ov_errmsg                 => lv_errmsg                                                    -- ユーザー・エラー・メッセージ
                   , in_gl_idx                 => ln_gl_idx                                                    -- GL OIF データインデックス
+-- 2024/01/29 Ver1.6 ADD Start
+                  , iv_company                => gt_deductions_debt_exp_tbl(ln_loop_index2).company           -- 会社
+-- 2024/01/29 Ver1.6 ADD End
 -- 2022/06/16 Ver1.5 MOD Start
-                  , iv_accounting_base        => gv_dept_fin_code                                             -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD Start
+                  , iv_accounting_base        => gt_deductions_debt_exp_tbl(ln_loop_index2).dept_fin          -- 拠点コード
+--                  , iv_accounting_base        => gv_dept_fin_code                                             -- 拠点コード
+-- 2024/01/29 Ver1.6 MOD End
 --                  , iv_accounting_base        => NULL                                                         -- 拠点コード(定額控除)
 --                  , iv_base_code              => gv_dept_fin_code                                             -- 拠点コード(定額控除以外)
 -- 2022/06/16 Ver1.5 MOD End

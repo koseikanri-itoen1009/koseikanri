@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2021/10/20    1.5   K.Tomie          E_本稼動_17220(追加項目の書式変更)
  *  2021/11/20    1.6   K.Yoshikawa      E_本稼動_17680
  *  2023/09/08    1.7   Y.Ooyama         E_本稼動_19179（インボイス対応（BM関連））
+ *  2024/02/05    1.8   M.Akachi         E_本稼動_19496
  *****************************************************************************************/
 --
   -- ===============================================
@@ -129,6 +130,10 @@ AS
   cv_prof_invoice_t_no       CONSTANT VARCHAR2(30)    := 'XXCMM1_INVOICE_T_NO';              -- 適格請求書発行事業者登録番号
   cv_prof_bus_div_tax        CONSTANT VARCHAR2(30)    := 'XXCOK1_BUS_DIV_TAX';               -- 事業者区分（課税）
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+  cv_set_of_books_id         CONSTANT VARCHAR2(30)    := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
+  cv_xxcok1_set_code         CONSTANT VARCHAR2(30)    := 'XXCOK1_SET_CODE';                  -- 通知書書式設定コード
+-- Ver.1.8 Add End
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(1)     := '.';
@@ -173,6 +178,9 @@ AS
   gv_invoice_t_no            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 適格請求書発行事業者登録番号
   gv_bus_div_tax             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 事業者区分（課税）
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+  gv_set_of_bks_id           fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- GL会計帳簿ID
+-- Ver.1.8 Add End
   gn_bm_tax                  NUMBER;                                            -- 販売手数料_消費税率
   gn_tax_include_less        NUMBER;                                            -- 税込銀行手数料_基準額未満
   gn_tax_include_more        NUMBER;                                            -- 税込銀行手数料_基準額以上
@@ -245,7 +253,10 @@ AS
            ,xiwh.total_sales_amt        AS  total_sales_amt
            ,xiwh.sales_fee              AS  sales_fee
            ,CASE
-              WHEN xiwh.set_code IN ('0', '2')
+-- Ver.1.8 Mod Start
+--              WHEN xiwh.set_code IN ('0', '2')
+              WHEN xiwh.set_code IN ('0', '2', '4', '6')
+-- Ver.1.8 Mod End
               THEN NULL
               ELSE xiwh.electric_amt
             END                         AS  electric_amt
@@ -253,7 +264,10 @@ AS
 -- Ver.1.7 MOD START
 --           ,xiwh.transfer_fee           AS  transfer_fee
           ,CASE
-             WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.8 Mod Start
+--             WHEN xiwh.set_code IN ('0', '1') THEN
+             WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.8 Mod End
                 -- 外税の場合
                 xiwh.bank_trans_fee_no_tax
              ELSE
@@ -304,7 +318,10 @@ AS
               gv_i_regnum_prompt || gv_invoice_t_no
             )                           AS  from_regnum               -- 送付元登録番号
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.8 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.8 Mod End
                 -- 外税の場合
                 xiwh.recalc_total_fee_no_tax
               ELSE
@@ -312,7 +329,10 @@ AS
                 xiwh.recalc_total_fee_with_tax
             END                         AS  recalc_total_fee          -- 手数料計  ：(外税)手数料計　税抜／(内税)手数料計　税込
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.8 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+ -- Ver.1.8 Mod End
                 -- 外税の場合
                 xiwh.recalc_total_fee_with_tax
               ELSE
@@ -321,7 +341,10 @@ AS
             END                         AS  recalc_total_fee2         -- 手数料計２：(外税)手数料計　税込／(内税)手数料計　税抜
            ,xiwh.bank_trans_fee_tax     AS  bank_trans_fee_tax        -- 振込手数料（消費税）
            ,CASE
-              WHEN xiwh.set_code IN ('0', '1') THEN
+-- Ver.1.8 Mod Start
+--              WHEN xiwh.set_code IN ('0', '1') THEN
+              WHEN xiwh.set_code IN ('0', '1', '4', '5') THEN
+-- Ver.1.8 Mod End
                 -- 外税の場合
                 xiwh.bank_trans_fee_with_tax
               ELSE
@@ -329,6 +352,10 @@ AS
                 xiwh.bank_trans_fee_no_tax
             END                         AS  bank_trans_fee2           -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+           ,xiwh.display_code           AS  display_code              -- 表示コード
+           ,xiwh.company_code_bd        AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.8 Add End
       FROM  xxcok_info_work_header   xiwh
            ,xxcok_info_work_line     xiwl
      WHERE xiwh.vendor_code   = xiwl.vendor_code(+)
@@ -350,10 +377,21 @@ AS
 --    SELECT
     SELECT  /*+ LEADING(xiwh xiwl) USE_NL(xiwl) INDEX(xiwl XXCOK_INFO_WORK_LINE_N01) */
 -- Ver1.2 N.Abe MOD END
-            CASE
-              WHEN it_tax_div = '1' THEN '0'
-              WHEN it_tax_div = '2' THEN '2'
-            END                         AS  set_code                -- 通知書書式設定コード
+-- Ver.1.8 Mod Start
+--            CASE
+--              WHEN it_tax_div = '1' THEN '0'
+--              WHEN it_tax_div = '2' THEN '2'
+--            END                         AS  set_code
+           ( SELECT flv.lookup_code     AS  set_code
+             FROM   fnd_lookup_values flv
+             WHERE  flv.lookup_type        = cv_xxcok1_set_code
+             AND    flv.language           = 'JA'
+             AND    flv.attribute1         = it_tax_div
+             AND    flv.attribute2         = xiwh.company_code_bd
+             AND    flv.attribute3         = '0'
+           )                            AS  set_code                -- 通知書書式設定コード
+-- Ver.1.8 Mod End
+              -- 通知書書式設定コード
            ,xiwh.cust_name              AS  cust_name
            ,NULL                        AS  office
            ,xiwh.dest_post_code         AS  dest_post_code
@@ -446,6 +484,10 @@ AS
            ,0                           AS  bank_trans_fee_tax        -- 振込手数料（消費税）
            ,0                           AS  bank_trans_fee2           -- 振込手数料２：(外税時)振込手数料　税込／(内税時)振込手数料　税抜
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+           ,xiwh.display_code           AS  display_code              -- 表示コード
+           ,xiwh.company_code_bd        AS  company_code_bd           -- 会社コード（基準日）
+-- Ver.1.8 Add End
       FROM  xxcok_info_work_header   xiwh
            ,xxcok_info_work_line     xiwl
      WHERE xiwh.vendor_code   = xiwl.vendor_code    -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
@@ -2049,6 +2091,9 @@ AS
             || cv_msg_canm || gt_head_item(53)          -- 振込手数料　消費税
             || cv_msg_canm || gt_head_item(54)          -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+            || cv_msg_canm || gt_head_item(55)          -- 表示コード
+-- Ver.1.8 Add End
             ;
 --
             -- ===============================================
@@ -2142,6 +2187,9 @@ AS
           || cv_msg_canm || g_head_rec.bank_trans_fee_tax                   -- 振込手数料（消費税）
           || cv_msg_canm || g_head_rec.bank_trans_fee2                      -- 振込手数料２：(外税)振込手数料　税込／(内税)振込手数料　税抜
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+          || cv_msg_canm || g_head_rec.display_code                         -- 表示コード
+-- Ver.1.8 Add End
           ;
 --
       ln_out_cnt := ln_out_cnt + 1;
@@ -2479,6 +2527,10 @@ AS
      ,bank_trans_fee_with_tax   -- 振込手数料（税込）
      ,vendor_invoice_regnum     -- 送付先インボイス登録番号
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+     ,display_code              -- 表示コード
+     ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.8 Add End
     )
     SELECT        to_char(gd_process_date,'YYYYMM') -- スナップショット作成年月
                  ,'1'                          -- スナップショットタイミング 1：2営
@@ -2555,6 +2607,10 @@ AS
                  ,xiwh.bank_trans_fee_with_tax   -- 振込手数料（税込）
                  ,xiwh.vendor_invoice_regnum     -- 送付先インボイス登録番号
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+                 ,xiwh.display_code              -- 表示コード
+                 ,xiwh.company_code_bd           -- 会社コード（基準日）
+-- Ver.1.8 Add End
     FROM    xxcok_info_work_header xiwh
     WHERE   xiwh.tax_div    = iv_tax_div
     AND     xiwh.target_div = iv_target_div;
@@ -2721,22 +2777,41 @@ AS
      ,bank_trans_fee_with_tax   -- 振込手数料（税込）
      ,vendor_invoice_regnum     -- 送付先インボイス登録番号
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+     ,display_code              -- 表示コード
+     ,company_code_bd           -- 会社コード（基準日）
+-- Ver.1.8 Add End
     )
     SELECT  /*+ 
                 LEADING(xbb pv pvsa)
                 INDEX(xbb xxcok_backmargin_balance_n05)
                 USE_NL(pv) USE_NL(pvsa) USE_NL(abau) USE_NL(aba) USE_NL(abb)
                 */
-            CASE
-              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) = 0
-              THEN '0'
-              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) <> 0
-              THEN '1'
-              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) = 0
-              THEN '2'
-              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) <> 0
-              THEN '3'
-            END                                   AS  set_code                -- 通知書書式設定コード
+-- Ver.1.8 Mod Start
+--            CASE
+--              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) = 0
+--              THEN '0'
+--              WHEN iv_tax_div = '1' AND NVL(sum_e.sales_fee,0) <> 0
+--              THEN '1'
+--              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) = 0
+--              THEN '2'
+--              WHEN iv_tax_div = '2' AND NVL(sum_e.sales_fee,0) <> 0
+--              THEN '3'
+--            END                                   AS  set_code                -- 通知書書式設定コード
+           ( SELECT flv.lookup_code        AS set_code
+             FROM   fnd_lookup_values flv
+             WHERE  flv.lookup_type        = cv_xxcok1_set_code
+             AND    flv.language           = 'JA'
+             AND    flv.attribute1         = iv_tax_div
+             AND    flv.attribute2         = xbdciv.company_code_bd
+             AND    flv.attribute3         = CASE
+                                               WHEN NVL(sum_e.sales_fee,0) = 0
+                                               THEN '0'
+                                               WHEN NVL(sum_e.sales_fee,0) <> 0
+                                               THEN '1'
+                                             END
+           )                                      AS  set_code                -- 通知書書式設定コード
+-- Ver.1.8 Mod End
            ,NULL                                  AS  cust_code               -- 顧客コード
            ,SUBSTR( pvsa.attribute1, 1, 30 )      AS  cust_name               -- 会社名
            ,SUBSTR(pvsa.zip, 1, 3) || '-' || SUBSTR(pvsa.zip, 4, 4)
@@ -2912,6 +2987,10 @@ AS
                  NULL
              END)                                 AS  vendor_invoice_regnum     -- 送付先インボイス登録番号
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+           ,pvsa.attribute5                       AS  display_code
+           ,xbdciv.company_code_bd                AS  company_code_bd
+-- Ver.1.8 Add End
     FROM    xxcok_backmargin_balance  xbb
            ,po_vendors                pv
            ,po_vendor_sites_all       pvsa
@@ -2987,6 +3066,9 @@ AS
              AND    xiwc.tax_div   = iv_tax_div
              GROUP BY xiwc.vendor_code
             ) sum_e
+-- Ver.1.8 Add Start
+           ,xxcfr_bd_dept_comp_info_v xbdciv       -- 基準日部門会社情報ビュー
+-- Ver.1.8 Add End
     WHERE   xbb.supplier_code                      = pv.segment1
     AND     pv.vendor_id                           = pvsa.vendor_id
     AND     ( pvsa.inactive_date                   > gd_process_date
@@ -3030,6 +3112,13 @@ AS
                 AND    xxbs.supplier_code       = xbb.supplier_code
             )
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+    AND     xbdciv.dept_code       = pvsa.attribute5          -- 仕入先サイトマスタ.問い合わせ担当拠点コード（DFF5）
+    AND     xbdciv.set_of_books_id = gv_set_of_bks_id         -- 会計帳簿ID
+    AND     xbdciv.enabled_flag    = 'Y'
+    AND     gd_process_date BETWEEN xbdciv.comp_start_date 
+                                AND NVL( xbdciv.comp_end_date, gd_process_date )
+-- Ver.1.8 Add End
     GROUP BY
             xbb.supplier_code
            ,pvsa.attribute1
@@ -3063,6 +3152,10 @@ AS
            ,sum_e.electric_amt_tax
            ,sum_e.electric_amt_with_tax
 -- Ver.1.7 ADD END
+-- Ver.1.8 Add Start
+           ,pvsa.attribute5
+           ,xbdciv.company_code_bd
+-- Ver.1.8 Add End
     ;
 --
     -- 登録件数（成功件数）
@@ -4663,6 +4756,26 @@ AS
                          );
       RAISE init_fail_expt;
     END IF;
+-- Ver.1.8 Add Start
+    -- ===============================================
+    -- 2.プロファイル取得(会計帳簿ID)
+    -- ===============================================
+    gv_set_of_bks_id := FND_PROFILE.VALUE( cv_set_of_books_id );
+    IF ( gv_set_of_bks_id IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcok
+                     ,iv_name         => cv_msg_xxcok1_00003
+                     ,iv_token_name1  => cv_tkn_profile
+                     ,iv_token_value1 => cv_set_of_books_id
+                    );
+      lb_msg_return   := xxcok_common_pkg.put_message_f(
+                           in_which         => FND_FILE.LOG
+                          ,iv_message       => lv_outmsg
+                          ,in_new_line      => 0
+                         );
+      RAISE init_fail_expt;
+    END IF;
+-- Ver.1.8 Add End
 --
     -- ===============================================
     -- 3.メッセージ取得(おもて備考)

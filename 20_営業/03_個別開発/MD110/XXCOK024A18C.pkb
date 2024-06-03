@@ -7,7 +7,7 @@ AS
  * Description      : 控除額の支払・入金相殺データが承認されたデータを対象に、控除消込情報を基に、
  *                    控除情報から消込仕訳情報を抽出してGL仕訳の作成し、一般会計OIFに連携する処理
  * MD.050           : 控除データ決済仕訳情報取得 MD050_COK_024_A18
- * Version          : 1.4
+ * Version          : 1.5
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -33,6 +33,7 @@ AS
  *  2022/07/20    1.2   SCSK Y.Koh       E_本稼動_18509 長時間走行対応
  *  2022/09/06    1.3   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
  *  2022/12/01    1.4   SCSK M.Akachi    E_本稼動_18519【収益認識】入金相殺の消込（AR連携）
+ *  2024/01/29    1.5   SCSK Y.Koh       E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -101,8 +102,10 @@ AS
   cv_tkn_gloif_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10589';                 -- 一般会計OIF
   cv_pro_bks_id             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10578';                 -- 会計帳簿ID
   cv_pro_bks_nm             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10579';                 -- 会計帳簿名称
-  cv_pro_company_cd         CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10580';                 -- 会社コード
-  cv_pro_dept_fin_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10624';                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.5 DEL Start
+--  cv_pro_company_cd         CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10580';                 -- 会社コード
+--  cv_pro_dept_fin_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10624';                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.5 DEL End
   cv_pro_customer_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10625';                 -- 顧客コード_ダミー値
   cv_pro_comp_cd            CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10626';                 -- 企業コード_ダミー値
   cv_pro_preliminary1_cd    CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10627';                 -- 予備１_ダミー値
@@ -179,40 +182,42 @@ AS
      ,context                   gl_je_lines.context%TYPE
   );
 --
-  -- 販売控除消込情報ワークテーブル定義
-  TYPE gr_recon_deductions_rec IS RECORD(
-      deduction_recon_head_id   xxcok_deduction_recon_head.deduction_recon_head_id%TYPE   -- 控除消込ヘッダーID
-     ,carry_payment_slip_num    xxcok_sales_deduction.carry_payment_slip_num%TYPE         -- 支払伝票番号
-     ,interface_div             xxcok_deduction_recon_head.interface_div%TYPE             -- 連携先
-     ,data_type                 fnd_lookup_values.attribute2%TYPE                         -- 控除タイプ
-     ,gl_date                   xxcok_deduction_recon_head.gl_date%TYPE                   -- GL記帳日
-     ,period_name               gl_periods.period_name%TYPE                               -- 会計期間
-     ,recon_base_code           xxcok_sales_deduction.recon_base_code%TYPE                -- 消込時計上拠点
-     ,deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
-     ,tax_code                  fnd_lookup_values.attribute1%TYPE                         -- 税コード
-     ,tax_rate                  xxcok_sales_deduction.tax_rate%TYPE                       -- 税率
-     ,deduction_tax_amount      xxcok_sales_deduction.deduction_tax_amount%TYPE           -- 控除税額
-     ,source_category           xxcok_sales_deduction.source_category%TYPE                -- 作成元区分
-     ,meaning                   fnd_lookup_values.meaning%TYPE                            -- 内容（データ種類名）
-     ,account                   fnd_lookup_values.attribute4%TYPE                         -- 勘定科目
-     ,sub_account               fnd_lookup_values.attribute5%TYPE                         -- 補助科目
-     ,corp_code                 fnd_lookup_values.attribute1%TYPE                         -- 企業コード
-     ,customer_code             fnd_lookup_values.attribute4%TYPE                         -- 顧客コード
-
-  );
+-- 2024/01/29 Ver1.5 DEL Start
+--  -- 販売控除消込情報ワークテーブル定義
+--  TYPE gr_recon_deductions_rec IS RECORD(
+--      deduction_recon_head_id   xxcok_deduction_recon_head.deduction_recon_head_id%TYPE   -- 控除消込ヘッダーID
+--     ,carry_payment_slip_num    xxcok_sales_deduction.carry_payment_slip_num%TYPE         -- 支払伝票番号
+--     ,interface_div             xxcok_deduction_recon_head.interface_div%TYPE             -- 連携先
+--     ,data_type                 fnd_lookup_values.attribute2%TYPE                         -- 控除タイプ
+--     ,gl_date                   xxcok_deduction_recon_head.gl_date%TYPE                   -- GL記帳日
+--     ,period_name               gl_periods.period_name%TYPE                               -- 会計期間
+--     ,recon_base_code           xxcok_sales_deduction.recon_base_code%TYPE                -- 消込時計上拠点
+--     ,deduction_amount          xxcok_sales_deduction.deduction_amount%TYPE               -- 控除額
+--     ,tax_code                  fnd_lookup_values.attribute1%TYPE                         -- 税コード
+--     ,tax_rate                  xxcok_sales_deduction.tax_rate%TYPE                       -- 税率
+--     ,deduction_tax_amount      xxcok_sales_deduction.deduction_tax_amount%TYPE           -- 控除税額
+--     ,source_category           xxcok_sales_deduction.source_category%TYPE                -- 作成元区分
+--     ,meaning                   fnd_lookup_values.meaning%TYPE                            -- 内容（データ種類名）
+--     ,account                   fnd_lookup_values.attribute4%TYPE                         -- 勘定科目
+--     ,sub_account               fnd_lookup_values.attribute5%TYPE                         -- 補助科目
+--     ,corp_code                 fnd_lookup_values.attribute1%TYPE                         -- 企業コード
+--     ,customer_code             fnd_lookup_values.attribute4%TYPE                         -- 顧客コード
 --
-  -- 差額調整情報ワークテーブル定義
-  TYPE gr_recon_dedu_debt_rec IS RECORD(
-      deduction_recon_head_id   xxcok_deduction_recon_head.deduction_recon_head_id%TYPE   -- 支払伝票番号
-     ,carry_payment_slip_num    xxcok_sales_deduction.carry_payment_slip_num%TYPE         -- 支払伝票番号
-     ,gl_date                   gl_periods.end_date%TYPE                                  -- GL記帳日
-     ,period_name               gl_periods.period_name%TYPE                               -- 会計期間
-     ,meaning                   fnd_lookup_values.meaning%TYPE                            -- 内容
-     ,debt_account              fnd_lookup_values.attribute6%TYPE                         -- 負債勘定科目
-     ,debt_sub_account          fnd_lookup_values.attribute7%TYPE                         -- 負債補助科目
-     ,interface_div             xxcok_deduction_recon_head.interface_div%TYPE             -- 連携先
-     ,debt_deduction_amount     xxcok_sales_deduction.deduction_amount%TYPE               -- 負債額
-  );
+--  );
+----
+--  -- 差額調整情報ワークテーブル定義
+--  TYPE gr_recon_dedu_debt_rec IS RECORD(
+--      deduction_recon_head_id   xxcok_deduction_recon_head.deduction_recon_head_id%TYPE   -- 支払伝票番号
+--     ,carry_payment_slip_num    xxcok_sales_deduction.carry_payment_slip_num%TYPE         -- 支払伝票番号
+--     ,gl_date                   gl_periods.end_date%TYPE                                  -- GL記帳日
+--     ,period_name               gl_periods.period_name%TYPE                               -- 会計期間
+--     ,meaning                   fnd_lookup_values.meaning%TYPE                            -- 内容
+--     ,debt_account              fnd_lookup_values.attribute6%TYPE                         -- 負債勘定科目
+--     ,debt_sub_account          fnd_lookup_values.attribute7%TYPE                         -- 負債補助科目
+--     ,interface_div             xxcok_deduction_recon_head.interface_div%TYPE             -- 連携先
+--     ,debt_deduction_amount     xxcok_sales_deduction.deduction_amount%TYPE               -- 負債額
+--  );
+-- 2024/01/29 Ver1.5 DEL End
 --
   TYPE gr_recon_work_rec IS RECORD(
       deduction_recon_head_id   xxcok_deduction_recon_head.deduction_recon_head_id%TYPE   -- 控除消込ヘッダーID
@@ -220,6 +225,9 @@ AS
      ,period_name               gl_interface.period_name%TYPE                             -- 会計期間
      ,accounting_date           gl_interface.accounting_date%TYPE                         -- 記帳日
      ,category_name             gl_interface.user_je_category_name%TYPE                   -- カテゴリ
+-- 2024/01/29 Ver1.5 ADD Start
+     ,company                   gl_interface.segment1%TYPE                                -- 会社
+-- 2024/01/29 Ver1.5 ADD End
      ,base_code                 gl_interface.segment2%TYPE                                -- 部門
      ,account                   fnd_lookup_values.attribute4%TYPE                         -- 勘定科目
      ,sub_account               fnd_lookup_values.attribute5%TYPE                         -- 補助科目
@@ -232,13 +240,15 @@ AS
   );
 --
   -- ワークテーブル型定義
-  -- 控除消込データ
-  TYPE g_recon_deductions_ttype     IS TABLE OF gr_recon_deductions_rec INDEX BY BINARY_INTEGER;
-    gt_recon_deductions_tbl         g_recon_deductions_ttype;
---
-  -- 控除消込負債データ
-  TYPE g_recon_dedu_debt_ttype      IS TABLE OF gr_recon_dedu_debt_rec INDEX BY BINARY_INTEGER;
-    gt_recon_dedu_debt_tbl        g_recon_dedu_debt_ttype;
+-- 2024/01/29 Ver1.5 DEL Start
+--  -- 控除消込データ
+--  TYPE g_recon_deductions_ttype     IS TABLE OF gr_recon_deductions_rec INDEX BY BINARY_INTEGER;
+--    gt_recon_deductions_tbl         g_recon_deductions_ttype;
+----
+--  -- 控除消込負債データ
+--  TYPE g_recon_dedu_debt_ttype      IS TABLE OF gr_recon_dedu_debt_rec INDEX BY BINARY_INTEGER;
+--    gt_recon_dedu_debt_tbl        g_recon_dedu_debt_ttype;
+-- 2024/01/29 Ver1.5 DEL End
 --
   -- 控除消込ワークデータ
   TYPE g_recon_work_ttype           IS TABLE OF gr_recon_work_rec INDEX BY BINARY_INTEGER;
@@ -268,8 +278,10 @@ AS
   gn_org_id                           NUMBER;                                       -- 組織ID
   gn_set_bks_id                       NUMBER;                                       -- 会計帳簿ID
   gv_set_bks_nm                       VARCHAR2(30);                                 -- 会計帳簿名称
-  gv_company_code                     VARCHAR2(30);                                 -- 会社コード
-  gv_dept_fin_code                    VARCHAR2(30);                                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.5 DEL Start
+--  gv_company_code                     VARCHAR2(30);                                 -- 会社コード
+--  gv_dept_fin_code                    VARCHAR2(30);                                 -- 部門コード（財務経理部）
+-- 2024/01/29 Ver1.5 DEL End
   gv_account_code                     VARCHAR2(30);                                 -- 勘定科目コード_負債（引当等）
   gv_sub_account_code                 VARCHAR2(30);                                 -- 補助科目コード_負債（引当等）
   gv_customer_code                    VARCHAR2(30);                                 -- 顧客コード
@@ -296,7 +308,9 @@ AS
           ,SUM(NVL(deduction_amount,0))                                                                 deduction_amount         -- 控除額
           ,decode(source_category,cv_d_flag,tax_code,cv_syuyaku_flag)                                   tax_code                 -- 税コード
           ,decode(source_category,cv_d_flag,tax_rate,1)                                                 tax_rate                 -- 税率
-          ,SUM(NVL(deduction_tax_amount,0))                                                             deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL Start
+--          ,SUM(NVL(deduction_tax_amount,0))                                                             deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL End
           ,decode(source_category,cv_d_flag,source_category,cv_o_flag,source_category,cv_syuyaku_flag)  source_category          -- 作成元区分
           ,decode(source_category,cv_d_flag,meaning,cv_syuyaku_flag)                                    meaning                  -- データ種類名
           ,decode(source_category,cv_d_flag,account,cv_syuyaku_flag)                                    account                  -- 勘定科目
@@ -314,7 +328,9 @@ AS
                 ,xsd.deduction_amount                          deduction_amount         -- 控除額
                 ,flv2.attribute1                               tax_code                 -- 税コード
                 ,xsd.tax_rate                                  tax_rate                 -- 税率
-                ,xsd.deduction_tax_amount                      deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL Start
+--                ,xsd.deduction_tax_amount                      deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL End
                 ,xsd.source_category                           source_category          -- 作成元区分
                 ,flv1.meaning                                  meaning                  -- データ種類名
                 ,flv1.attribute4                               account                  -- 勘定科目
@@ -365,7 +381,9 @@ AS
                 ,xsd.deduction_amount                          deduction_amount         -- 控除額
                 ,flv2.attribute1                               tax_code                 -- 税コード
                 ,xsd.tax_rate                                  tax_rate                 -- 税率
-                ,xsd.deduction_tax_amount                      deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL Start
+--                ,xsd.deduction_tax_amount                      deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL End
                 ,xsd.source_category                           source_category          -- 作成元区分
                 ,flv1.meaning                                  meaning                  -- データ種類名
                 ,flv1.attribute4                               account                  -- 勘定科目
@@ -416,7 +434,9 @@ AS
                 ,xsd.deduction_amount                          deduction_amount         -- 控除額
                 ,flv2.attribute1                               tax_code                 -- 税コード
                 ,xsd.tax_rate                                  tax_rate                 -- 税率
-                ,xsd.deduction_tax_amount                      deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL Start
+--                ,xsd.deduction_tax_amount                      deduction_tax_amount     -- 控除税額
+-- 2024/01/29 Ver1.5 DEL End
                 ,xsd.source_category                           source_category          -- 作成元区分
                 ,flv1.meaning                                  meaning                  -- データ種類名
                 ,flv1.attribute4                               account                  -- 勘定科目
@@ -479,6 +499,69 @@ AS
           ,customer_code                                        -- 顧客コード
     ;
 --
+-- 2024/01/29 Ver1.5 ADD Start
+  -- 控除消込データ
+  TYPE g_recon_deductions_ttype IS TABLE OF recon_deductions_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  gt_recon_deductions_tbl       g_recon_deductions_ttype;
+--
+  -- 税情報
+  CURSOR recon_dedu_tax_data_cur
+  IS
+    SELECT  drh.deduction_recon_head_id   deduction_recon_head_id , -- 控除消込ヘッダーID
+            drh.recon_slip_num            recon_slip_num          , -- 支払伝票番号
+            gp.end_date                   gl_date                 , -- GL記帳日
+            gp.period_name                period_name             , -- 会計期間
+            xbdc.company_code_bd          company                 , -- 会社コード（基準日）
+            xbci.attribute1               dept_fin                , -- 財務経理部
+            flv2.attribute1               tax_code                , -- 税コード
+            tax.tax_code_combination_id   tax_code_combination_id , -- 税CCID
+            tax.attribute5                debt_account            , -- 勘定科目(負債)
+            tax.attribute6                debt_sub_account        , -- 補助科目(負債)
+            SUM(xsd.deduction_tax_amount) deduction_tax_amount      -- 控除税額
+    FROM    xxcfr_bd_company_info_v     xbci, -- 各社部門情報
+            xxcfr_bd_dept_comp_info_v   xbdc, -- 基準日部門会社情報ビュー
+            ap_tax_codes_all            tax , -- AP税コードマスタ
+            fnd_lookup_values           flv2, -- クイックコード(税コード変換)
+            xxcok_sales_deduction       xsd , -- 販売控除情報
+            gl_periods                  gp  , -- 会計期間情報
+            xxcok_deduction_recon_head  drh   -- 控除消込ヘッダー情報
+    WHERE   drh.recon_status            = cv_recon_status_ad          -- 消込スタータス：承認済
+    AND     drh.gl_if_flag              = cv_n_flag                   -- 消込GL連携フラグ：N
+    AND     gp.period_set_name          = cv_period_set_name          -- 会計カレンダ
+    AND     drh.gl_date                 BETWEEN gp.start_date         -- 会計期間有効開始日
+                                        AND     gp.end_date           -- 会計期間有効終了日
+    AND     gp.adjustment_period_flag   = cv_n_flag                   -- 調整期間：N
+    AND     xsd.carry_payment_slip_num  = drh.recon_slip_num          -- 支払伝票番号
+    AND     xsd.source_category         = cv_d_flag                   -- 作成元区分:D(差額調整)
+    AND     flv2.lookup_type            = cv_lookup_tax_conv_code     -- 消費税コード変換マスタ
+    AND     flv2.lookup_code            = xsd.tax_code                -- 税コード
+    AND     flv2.language               = USERENV('LANG')             -- 言語：USERENV('LANG')
+    AND     tax.set_of_books_id         = gn_set_bks_id               -- SET_OF_BOOKS_ID
+    AND     tax.name                    = flv2.attribute1             -- 税コード
+    AND     xbdc.dept_code              = xsd.recon_base_code         -- 消込時計上拠点
+    AND     xbdc.set_of_books_id        = gn_set_bks_id               -- 会計帳簿ID
+    AND     drh.gl_date                 BETWEEN NVL(xbdc.comp_start_date,   TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                        AND     NVL(xbdc.comp_end_date,     TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+    AND     xbci.company_code           = xbdc.company_code           -- 伝票作成会社
+    AND     drh.gl_date                 BETWEEN NVL(xbci.start_date_active, TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                        AND     NVL(xbci.end_date_active,   TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+    AND     xbci.lookup_type            = 'XXCFO1_DRAFTING_COMPANY'
+    GROUP BY  drh.deduction_recon_head_id , -- 控除消込ヘッダーID
+              drh.recon_slip_num          , -- 支払伝票番号
+              gp.end_date                 , -- GL記帳日
+              gp.period_name              , -- 会計期間
+              xbdc.company_code_bd        , -- 会社コード（基準日）
+              xbci.attribute1             , -- 財務経理部
+              flv2.attribute1             , -- 税コード
+              tax.tax_code_combination_id , -- 税CCID
+              tax.attribute5              , -- 勘定科目(負債)
+              tax.attribute6              ; -- 補助科目(負債)
+--
+  -- 税情報データ
+  TYPE g_recon_dedu_tax_ttype  IS  TABLE OF recon_dedu_tax_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  gt_recon_dedu_tax_tbl        g_recon_dedu_tax_ttype;
+--
+-- 2024/01/29 Ver1.5 ADD End
   -- 差額調整情報
   CURSOR recon_dedu_debt_data_cur
   IS
@@ -486,15 +569,28 @@ AS
           ,xsd.carry_payment_slip_num                    carry_payment_slip_num   -- 支払伝票番号
           ,gp.end_date                                   gl_date                  -- GL記帳日
           ,gp.period_name                                period_name              -- 会計期間
+-- 2024/01/29 Ver1.5 ADD Start
+          ,xbdc.company_code_bd                          company                  -- 会社コード（基準日）
+          ,xbci.attribute1                               dept_fin                 -- 財務経理部
+-- 2024/01/29 Ver1.5 ADD End
           ,flv1.meaning                                  meaning                  -- データ種類名
           ,flv1.attribute6                               debt_account             -- 負債勘定科目
           ,flv1.attribute7                               debt_sub_account         -- 負債補助科目
-          ,drh.interface_div                             interface_div            -- 連携先
-          ,SUM(xsd.deduction_amount)                     debt_deducation_amount   -- 負債額
+-- 2024/01/29 Ver1.5 DEL Start
+--          ,drh.interface_div                             interface_div            -- 連携先
+-- 2024/01/29 Ver1.5 DEL End
+-- 2024/01/29 Ver1.5 MOD Start
+          ,SUM(xsd.deduction_amount)                     debt_deduction_amount    -- 負債額
+--          ,SUM(xsd.deduction_amount)                     debt_deducation_amount   -- 負債額
+-- 2024/01/29 Ver1.5 MOD End
     FROM   xxcok_deduction_recon_head drh         -- 控除消込ヘッダー情報
           ,xxcok_sales_deduction      xsd         -- 販売控除情報
           ,fnd_lookup_values          flv1        -- クイックコード(データ種類)
           ,gl_periods                 gp          -- 会計期間情報
+-- 2024/01/29 Ver1.5 ADD Start
+          ,xxcfr_bd_company_info_v    xbci        -- 各社部門情報
+          ,xxcfr_bd_dept_comp_info_v  xbdc        -- 基準日部門会社情報ビュー
+-- 2024/01/29 Ver1.5 ADD End
     WHERE  drh.recon_status           = cv_recon_status_ad             -- 消込スタータス：承認済
     AND    drh.recon_slip_num         = xsd.carry_payment_slip_num     -- 支払伝票番号
     AND    drh.gl_if_flag             = cv_n_flag                      -- 消込GL連携フラグ：N
@@ -507,15 +603,31 @@ AS
     AND    drh.gl_date          BETWEEN gp.start_date                  -- 会計期間有効開始日
                                     AND gp.end_date                    -- 会計期間有効終了日
     AND    gp.adjustment_period_flag  = cv_n_flag                      -- 調整期間：N
+-- 2024/01/29 Ver1.5 ADD Start
+    AND    xbdc.dept_code             = xsd.recon_base_code
+    AND    xbdc.set_of_books_id       = gn_set_bks_id
+    AND    drh.gl_date                BETWEEN NVL(xbdc.comp_start_date,   TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                      AND     NVL(xbdc.comp_end_date,     TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+    AND    xbci.company_code          = xbdc.company_code
+    AND    drh.gl_date                BETWEEN NVL(xbci.start_date_active, TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                      AND     NVL(xbci.end_date_active,   TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+    AND    xbci.lookup_type           = 'XXCFO1_DRAFTING_COMPANY'
+-- 2024/01/29 Ver1.5 ADD End
     GROUP BY
            drh.deduction_recon_head_id                     -- 控除消込ヘッダーID
           ,xsd.carry_payment_slip_num                      -- 支払伝票番号
           ,gp.end_date                                     -- GL記帳日
           ,gp.period_name                                  -- 会計期間
+-- 2024/01/29 Ver1.5 ADD Start
+          ,xbdc.company_code_bd                            -- 会社コード（基準日）
+          ,xbci.attribute1                                 -- 財務経理部
+-- 2024/01/29 Ver1.5 ADD End
           ,flv1.attribute6                                 -- 負債勘定科目
           ,flv1.attribute7                                 -- 負債補助科目
           ,flv1.meaning                                    -- データ種類名
-          ,drh.interface_div                               -- 連携先
+-- 2024/01/29 Ver1.5 DEL Start
+--          ,drh.interface_div                               -- 連携先
+-- 2024/01/29 Ver1.5 DEL End
 
     ORDER BY
            xsd.carry_payment_slip_num                      -- 支払伝票番号
@@ -524,6 +636,12 @@ AS
           ,flv1.meaning                                    -- データ種類名
     ;
 --
+-- 2024/01/29 Ver1.5 ADD Start
+  -- 控除消込負債データ
+  TYPE g_recon_dedu_debt_ttype  IS  TABLE OF recon_dedu_debt_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  gt_recon_dedu_debt_tbl        g_recon_dedu_debt_ttype;
+--
+-- 2024/01/29 Ver1.5 ADD End
   -- 消込仕訳取消用カーソル
   CURSOR recon_dedu_cancel_data_cur
   IS
@@ -584,6 +702,9 @@ AS
                                       AND gp.end_date                    -- 会計期間有効終了日
     AND    gp.adjustment_period_flag    = cv_n_flag                      -- 調整期間：N
     AND    gp.period_name               = gjh.period_name                -- 会計期間
+-- 2024/01/29 Ver1.5 ADD Start
+    ORDER BY drh.deduction_recon_head_id
+-- 2024/01/29 Ver1.5 ADD End
     FOR UPDATE OF drh.deduction_recon_head_id NOWAIT
     ;
 --
@@ -615,8 +736,10 @@ AS
     cv_pro_bks_id_1             CONSTANT VARCHAR2(40) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
     cv_pro_bks_nm_1             CONSTANT VARCHAR2(40) := 'GL_SET_OF_BKS_NAME';               -- 会計帳簿名称
     cv_pro_org_id_1             CONSTANT VARCHAR2(40) := 'ORG_ID';                           -- XXCOK:組織ID
-    cv_pro_company_cd_1         CONSTANT VARCHAR2(40) := 'XXCOK1_AFF1_COMPANY_CODE';         -- XXCOK:会社コード
-    cv_pro_dept_fin_cd_1        CONSTANT VARCHAR2(40) := 'XXCOK1_AFF2_DEPT_FIN';             -- XXCOK:部門コード_財務経理部
+-- 2024/01/29 Ver1.5 DEL Start
+--    cv_pro_company_cd_1         CONSTANT VARCHAR2(40) := 'XXCOK1_AFF1_COMPANY_CODE';         -- XXCOK:会社コード
+--    cv_pro_dept_fin_cd_1        CONSTANT VARCHAR2(40) := 'XXCOK1_AFF2_DEPT_FIN';             -- XXCOK:部門コード_財務経理部
+-- 2024/01/29 Ver1.5 DEL End
     cv_pro_customer_cd_1        CONSTANT VARCHAR2(40) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';       -- XXCOK:顧客コード_ダミー値
     cv_pro_comp_cd_1            CONSTANT VARCHAR2(40) := 'XXCOK1_AFF6_COMPANY_DUMMY';        -- XXCOK:企業コード_ダミー値
     cv_pro_preliminary1_cd_1    CONSTANT VARCHAR2(40) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- XXCOK:予備１_ダミー値:0
@@ -711,43 +834,45 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    --==================================
-    -- ５．プロファイル取得：会社コード
-    --==================================
-    gv_company_code := FND_PROFILE.VALUE( cv_pro_company_cd_1 );
---
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_company_code IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
-                                                 , iv_name        => cv_pro_company_cd               -- メッセージID
-                                                  );
-      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
-                                                 , iv_name         => cv_pro_msg
-                                                 , iv_token_name1  => cv_tkn_pro
-                                                 , iv_token_value1 => lv_profile_name
-                                                  );
-      lv_errbuf       := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    --==================================
-    -- ６．プロファイル取得：部門コード（財務経理部）
-    --==================================
-    gv_dept_fin_code := FND_PROFILE.VALUE( cv_pro_dept_fin_cd_1 );
---
-    -- プロファイルが取得できない場合はエラー
-    IF ( gv_dept_fin_code IS NULL ) THEN
-      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
-                                                 , iv_name        => cv_pro_dept_fin_cd              -- メッセージID
-                                                  );
-      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
-                                                 , iv_name         => cv_pro_msg
-                                                 , iv_token_name1  => cv_tkn_pro
-                                                 , iv_token_value1 => lv_profile_name
-                                                  );
-      lv_errbuf       := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- 2024/01/29 Ver1.5 DEL Start
+--    --==================================
+--    -- ５．プロファイル取得：会社コード
+--    --==================================
+--    gv_company_code := FND_PROFILE.VALUE( cv_pro_company_cd_1 );
+----
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( gv_company_code IS NULL ) THEN
+--      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
+--                                                 , iv_name        => cv_pro_company_cd               -- メッセージID
+--                                                  );
+--      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
+--                                                 , iv_name         => cv_pro_msg
+--                                                 , iv_token_name1  => cv_tkn_pro
+--                                                 , iv_token_value1 => lv_profile_name
+--                                                  );
+--      lv_errbuf       := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    --==================================
+--    -- ６．プロファイル取得：部門コード（財務経理部）
+--    --==================================
+--    gv_dept_fin_code := FND_PROFILE.VALUE( cv_pro_dept_fin_cd_1 );
+----
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( gv_dept_fin_code IS NULL ) THEN
+--      lv_profile_name := xxccp_common_pkg.get_msg( iv_application => cv_xxcok_short_nm               -- アプリケーション短縮名
+--                                                 , iv_name        => cv_pro_dept_fin_cd              -- メッセージID
+--                                                  );
+--      lv_errmsg       := xxccp_common_pkg.get_msg( iv_application  => cv_xxcok_short_nm
+--                                                 , iv_name         => cv_pro_msg
+--                                                 , iv_token_name1  => cv_tkn_pro
+--                                                 , iv_token_value1 => lv_profile_name
+--                                                  );
+--      lv_errbuf       := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- 2024/01/29 Ver1.5 DEL End
 --
     --==================================
     -- ７．プロファイル取得：顧客コード_ダミー値
@@ -945,6 +1070,15 @@ AS
     -- カーソルクローズ
     CLOSE recon_deductions_data_cur;
 --
+-- 2024/01/29 Ver1.5 ADD Start
+    -- 税情報カーソルオープン
+    OPEN  recon_dedu_tax_data_cur;
+    -- データ取得
+    FETCH recon_dedu_tax_data_cur BULK COLLECT INTO gt_recon_dedu_tax_tbl;
+    -- カーソルクローズ
+    CLOSE recon_dedu_tax_data_cur;
+--
+-- 2024/01/29 Ver1.5 ADD End
     -- 差額調整情報カーソルオープン
     OPEN  recon_dedu_debt_data_cur;
     -- データ取得
@@ -1045,32 +1179,38 @@ AS
     lv_tax_cr                    CONSTANT VARCHAR2(10) := '負債税行';
 --
     -- *** ローカル変数 ***
-    ln_deduction_amount_1        NUMBER DEFAULT 0;                               -- 売上控除:実際の売上控除額集計
-    ln_deduction_tax_amount_1    NUMBER DEFAULT 0;                               -- 仮払消費税:実際の仮払消費税額集計
+-- 2024/01/29 Ver1.5 DEL Start
+--    ln_deduction_amount_1        NUMBER DEFAULT 0;                               -- 売上控除:実際の売上控除額集計
+--    ln_deduction_tax_amount_1    NUMBER DEFAULT 0;                               -- 仮払消費税:実際の仮払消費税額集計
+-- 2024/01/29 Ver1.5 DEL End
 --
     ln_loop_index1               NUMBER DEFAULT 0;                               -- ワークテーブル販売控除インデックス
     ln_loop_index2               NUMBER DEFAULT 0;                               -- 更新用販売控除インデックス
-    lv_account_code1             VARCHAR2(5);                                    -- 実際の税コード勘定科目用
-    lv_sub_account_code1         VARCHAR2(5);                                    -- 実際の税コード補助科目用
-    lv_debt_account_code1        VARCHAR2(5);                                    -- 実際の税コード負債勘定科目用
-    lv_debt_sub_account_code1    VARCHAR2(5);                                    -- 実際の税コード負債補助科目用
---
-    -- 集計キー
-    lt_dedu_recon_head_id        xxcok_deduction_recon_head.deduction_recon_head_id%TYPE;     -- 集計キー：拠点コード(消込ヘッダーID)
-    lt_recon_base_code           xxcok_sales_deduction.recon_base_code%TYPE;                  -- 集計キー：拠点コード(消込時計上拠点)
-    lt_gl_date                   xxcok_deduction_recon_head.gl_date%TYPE;                     -- 集計キー：GL記帳日
-    lt_gl_period                 gl_periods.period_name%TYPE;                                 -- 集計キー：会計期間
-    lt_account                   fnd_lookup_values.attribute4%TYPE;                           -- 集計キー：勘定科目
-    lt_sub_account               fnd_lookup_values.attribute5%TYPE;                           -- 集計キー：補助科目
-    lt_corp_code                 fnd_lookup_values.attribute1%TYPE;                           -- 集計キー：企業コード
-    lt_customer_code             fnd_lookup_values.attribute4%TYPE;                           -- 集計キー：顧客コード
-    lt_tax_code                  xxcok_sales_deduction.tax_code%TYPE;                         -- 集計キー：税コード
-    lt_tax_rate                  xxcok_sales_deduction.tax_rate%TYPE;                         -- 集計キー：税率
-    lt_interface_div             xxcok_deduction_recon_head.interface_div%TYPE;               -- 集計キー：連携先
-    lt_data_type                 fnd_lookup_values.attribute2%TYPE;                           -- 集計キー：データ種類
+-- 2024/01/29 Ver1.5 DEL Start
+--    lv_account_code1             VARCHAR2(5);                                    -- 実際の税コード勘定科目用
+--    lv_sub_account_code1         VARCHAR2(5);                                    -- 実際の税コード補助科目用
+--    lv_debt_account_code1        VARCHAR2(5);                                    -- 実際の税コード負債勘定科目用
+--    lv_debt_sub_account_code1    VARCHAR2(5);                                    -- 実際の税コード負債補助科目用
+----
+--    -- 集計キー
+--    lt_dedu_recon_head_id        xxcok_deduction_recon_head.deduction_recon_head_id%TYPE;     -- 集計キー：拠点コード(消込ヘッダーID)
+--    lt_recon_base_code           xxcok_sales_deduction.recon_base_code%TYPE;                  -- 集計キー：拠点コード(消込時計上拠点)
+--    lt_gl_date                   xxcok_deduction_recon_head.gl_date%TYPE;                     -- 集計キー：GL記帳日
+--    lt_gl_period                 gl_periods.period_name%TYPE;                                 -- 集計キー：会計期間
+--    lt_account                   fnd_lookup_values.attribute4%TYPE;                           -- 集計キー：勘定科目
+--    lt_sub_account               fnd_lookup_values.attribute5%TYPE;                           -- 集計キー：補助科目
+--    lt_corp_code                 fnd_lookup_values.attribute1%TYPE;                           -- 集計キー：企業コード
+--    lt_customer_code             fnd_lookup_values.attribute4%TYPE;                           -- 集計キー：顧客コード
+--    lt_tax_code                  xxcok_sales_deduction.tax_code%TYPE;                         -- 集計キー：税コード
+--    lt_tax_rate                  xxcok_sales_deduction.tax_rate%TYPE;                         -- 集計キー：税率
+--    lt_interface_div             xxcok_deduction_recon_head.interface_div%TYPE;               -- 集計キー：連携先
+--    lt_data_type                 fnd_lookup_values.attribute2%TYPE;                           -- 集計キー：データ種類
+-- 2024/01/29 Ver1.5 DEL End
     lt_carry_payment_slip_num    xxcok_sales_deduction.carry_payment_slip_num%TYPE;           -- 集計キー：支払伝票番号
-    lt_meaning                   fnd_lookup_values.meaning%TYPE;                              -- 集計キー：摘要
-    lt_source_category           xxcok_sales_deduction.source_category%TYPE;                  -- 集計キー：作成元区分
+-- 2024/01/29 Ver1.5 DEL Start
+--    lt_meaning                   fnd_lookup_values.meaning%TYPE;                              -- 集計キー：摘要
+--    lt_source_category           xxcok_sales_deduction.source_category%TYPE;                  -- 集計キー：作成元区分
+-- 2024/01/29 Ver1.5 DEL End
 --
     -- *** ローカル例外 ***
     edit_gl_expt                 EXCEPTION;                                      -- 一般会計作成エラー
@@ -1087,21 +1227,25 @@ AS
     -- 1.仕訳パターンの取得
     --=====================================
     -- ブレイク用集約キーの初期化
-    lt_dedu_recon_head_id      := gt_recon_deductions_tbl(1).deduction_recon_head_id;            -- 消込ヘッダーID
-    lt_recon_base_code         := gt_recon_deductions_tbl(1).recon_base_code;                    -- 消込時計上拠点
-    lt_gl_date                 := gt_recon_deductions_tbl(1).gl_date;                            -- GL記帳日
-    lt_gl_period               := gt_recon_deductions_tbl(1).period_name;                        -- 会計期間
-    lt_account                 := gt_recon_deductions_tbl(1).account;                            -- 勘定科目
-    lt_sub_account             := gt_recon_deductions_tbl(1).sub_account;                        -- 補助科目
-    lt_corp_code               := gt_recon_deductions_tbl(1).corp_code;                          -- 企業コード
-    lt_customer_code           := gt_recon_deductions_tbl(1).customer_code;                      -- 顧客コード
-    lt_tax_code                := gt_recon_deductions_tbl(1).tax_code;                           -- 税コード
-    lt_tax_rate                := gt_recon_deductions_tbl(1).tax_rate;                           -- 税率
-    lt_interface_div           := gt_recon_deductions_tbl(1).interface_div;                      -- 連携先
-    lt_data_type               := gt_recon_deductions_tbl(1).data_type;                          -- 控除タイプ
+-- 2024/01/29 Ver1.5 DEL Start
+--    lt_dedu_recon_head_id      := gt_recon_deductions_tbl(1).deduction_recon_head_id;            -- 消込ヘッダーID
+--    lt_recon_base_code         := gt_recon_deductions_tbl(1).recon_base_code;                    -- 消込時計上拠点
+--    lt_gl_date                 := gt_recon_deductions_tbl(1).gl_date;                            -- GL記帳日
+--    lt_gl_period               := gt_recon_deductions_tbl(1).period_name;                        -- 会計期間
+--    lt_account                 := gt_recon_deductions_tbl(1).account;                            -- 勘定科目
+--    lt_sub_account             := gt_recon_deductions_tbl(1).sub_account;                        -- 補助科目
+--    lt_corp_code               := gt_recon_deductions_tbl(1).corp_code;                          -- 企業コード
+--    lt_customer_code           := gt_recon_deductions_tbl(1).customer_code;                      -- 顧客コード
+--    lt_tax_code                := gt_recon_deductions_tbl(1).tax_code;                           -- 税コード
+--    lt_tax_rate                := gt_recon_deductions_tbl(1).tax_rate;                           -- 税率
+--    lt_interface_div           := gt_recon_deductions_tbl(1).interface_div;                      -- 連携先
+--    lt_data_type               := gt_recon_deductions_tbl(1).data_type;                          -- 控除タイプ
+-- 2024/01/29 Ver1.5 DEL End
     lt_carry_payment_slip_num  := gt_recon_deductions_tbl(1).carry_payment_slip_num;             -- 支払伝票番号
-    lt_meaning                 := gt_recon_deductions_tbl(1).meaning;                            -- データ種類名
-    lt_source_category         := gt_recon_deductions_tbl(1).source_category;                    -- 作成元区分
+-- 2024/01/29 Ver1.5 DEL Start
+--    lt_meaning                 := gt_recon_deductions_tbl(1).meaning;                            -- データ種類名
+--    lt_source_category         := gt_recon_deductions_tbl(1).source_category;                    -- 作成元区分
+-- 2024/01/29 Ver1.5 DEL End
 --
     -- 消込控除データループスタート
     <<main_data_loop>>
@@ -1130,269 +1274,388 @@ AS
         END IF;
       END IF;
       -- 差額調整データ以外の場合
-      IF (lt_source_category != cv_d_flag ) THEN
+-- 2024/01/29 Ver1.5 MOD Start
+      IF (gt_recon_deductions_tbl(i).source_category != cv_d_flag ) THEN
+--      IF (lt_source_category != cv_d_flag ) THEN
+-- 2024/01/29 Ver1.5 MOD End
         NULL;
 --
       -- 差額調整データ、残高調整データ(立替払い)の場合
       ELSE
-        -- ==========================
-        --  レコードブレイク判定
-        -- ==========================
-        -- 消込時拠点コード/勘定科目/補助科目/企業コード/顧客コード/税コード/控除タイプ/支払伝票番号のいずれかが前処理データ異なった場合
-        IF ( lt_recon_base_code  <> gt_recon_deductions_tbl(i).recon_base_code )               -- 消込時拠点コード
-          OR  ( lt_account                <> gt_recon_deductions_tbl(i).account )                 -- 勘定科目
-          OR  ( lt_sub_account            <> gt_recon_deductions_tbl(i).sub_account )             -- 補助科目
-          OR  ( lt_corp_code              <> gt_recon_deductions_tbl(i).corp_code )               -- 企業コード
-          OR  ( lt_customer_code          <> gt_recon_deductions_tbl(i).customer_code )           -- 顧客コード
-          OR  ( lt_tax_code               <> gt_recon_deductions_tbl(i).tax_code )                -- 税コード
-          OR  ( lt_data_type              <> gt_recon_deductions_tbl(i).data_type )               -- 控除タイプ
-          OR  ( lt_carry_payment_slip_num <> gt_recon_deductions_tbl(i).carry_payment_slip_num )  -- 支払伝票番号
-          OR  ( lt_source_category        <> gt_recon_deductions_tbl(i).source_category ) THEN    -- 作成元区分
+-- 2024/01/29 Ver1.5 MOD Start
+        ln_loop_index1 := ln_loop_index1 + 1;
 --
-          ln_loop_index1 := ln_loop_index1 + 1;
+        -- 控除消込の差額調整額データをワークテーブルに退避
+        gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id := gt_recon_deductions_tbl(i).deduction_recon_head_id;            -- 消込ヘッダーID
+        gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num  := gt_recon_deductions_tbl(i).carry_payment_slip_num;             -- 支払伝票番号
+        gt_recon_work_tbl(ln_loop_index1).accounting_date         := gt_recon_deductions_tbl(i).gl_date;                            -- GL記帳日
+        gt_recon_work_tbl(ln_loop_index1).period_name             := gt_recon_deductions_tbl(i).period_name;                        -- 会計期間
+        gt_recon_work_tbl(ln_loop_index1).category_name           := gv_category_code2;
 --
-          -- 控除消込の差額調整額データをワークテーブルに退避
-          gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
-          gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
-          gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
-          gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
-          gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-          gt_recon_work_tbl(ln_loop_index1).base_code                := lt_recon_base_code;
-          gt_recon_work_tbl(ln_loop_index1).account                  := lt_account;
-          gt_recon_work_tbl(ln_loop_index1).sub_account              := lt_sub_account;
-          gt_recon_work_tbl(ln_loop_index1).corp_code                := lt_corp_code;
-          gt_recon_work_tbl(ln_loop_index1).customer_code            := lt_customer_code;
-          IF ( ln_deduction_amount_1 >= 0 ) THEN
-            gt_recon_work_tbl(ln_loop_index1).entered_dr           := ln_deduction_amount_1;
-            gt_recon_work_tbl(ln_loop_index1).entered_cr           := NULL;
-          ELSE
-            gt_recon_work_tbl(ln_loop_index1).entered_dr           := NULL;
-            gt_recon_work_tbl(ln_loop_index1).entered_cr           := NVL(ln_deduction_amount_1,0) * -1;
-          END IF;
-          gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
-          gt_recon_work_tbl(ln_loop_index1).reference10              := lt_recon_base_code || cv_underbar || lt_meaning
-                                                                                           || cv_underbar || lt_tax_code;
+        BEGIN
+          SELECT  xbdc.company_code_bd      company -- 会社コード（基準日）
+          INTO    gt_recon_work_tbl(ln_loop_index1).company
+          FROM    xxcfr_bd_dept_comp_info_v xbdc    -- 基準日部門会社情報ビュー
+          WHERE   xbdc.dept_code        = gt_recon_deductions_tbl(i).recon_base_code
+          AND     xbdc.set_of_books_id  = gn_set_bks_id
+          AND     gt_recon_deductions_tbl(i).gl_date
+                                        BETWEEN NVL(xbdc.comp_start_date,   TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                        AND     NVL(xbdc.comp_end_date,     TO_DATE('9999/12/31', 'YYYY/MM/DD'));
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- 会社コード（基準日）が取得出来ない場合
+            gt_recon_work_tbl(ln_loop_index1).company :=  NULL;
+        END;
 --
-          -- 控除消込の差額調整額集約値初期化
-          ln_deduction_amount_1 := 0;
---
+        gt_recon_work_tbl(ln_loop_index1).base_code               := gt_recon_deductions_tbl(i).recon_base_code;                    -- 消込時計上拠点
+        gt_recon_work_tbl(ln_loop_index1).account                 := gt_recon_deductions_tbl(i).account;                            -- 勘定科目
+        gt_recon_work_tbl(ln_loop_index1).sub_account             := gt_recon_deductions_tbl(i).sub_account;                        -- 補助科目
+        gt_recon_work_tbl(ln_loop_index1).corp_code               := gt_recon_deductions_tbl(i).corp_code;                          -- 企業コード
+        gt_recon_work_tbl(ln_loop_index1).customer_code           := gt_recon_deductions_tbl(i).customer_code;                      -- 顧客コード
+        IF ( gt_recon_deductions_tbl(i).deduction_amount >= 0 ) THEN
+          gt_recon_work_tbl(ln_loop_index1).entered_dr            := gt_recon_deductions_tbl(i).deduction_amount;
+          gt_recon_work_tbl(ln_loop_index1).entered_cr            := NULL;
+        ELSE
+          gt_recon_work_tbl(ln_loop_index1).entered_dr            := NULL;
+          gt_recon_work_tbl(ln_loop_index1).entered_cr            := gt_recon_deductions_tbl(i).deduction_amount * -1;
         END IF;
+        gt_recon_work_tbl(ln_loop_index1).tax_code                := gt_recon_deductions_tbl(i).tax_code;                           -- 税コード
+        gt_recon_work_tbl(ln_loop_index1).reference10             := gt_recon_deductions_tbl(i).recon_base_code || cv_underbar || gt_recon_deductions_tbl(i).meaning || cv_underbar || gt_recon_deductions_tbl(i).tax_code;
 --
-        -- ==========================
-        --  税コードブレイク判定
-        -- ==========================
-        -- 税コード/支払伝票番号のいずれかが前処理データと異なる場合
-        IF ( lt_tax_code                   <> gt_recon_deductions_tbl(i).tax_code )                -- 税コード
-          OR  ( lt_carry_payment_slip_num  <> gt_recon_deductions_tbl(i).carry_payment_slip_num )  -- 支払伝票番号
-          OR  ( lt_source_category         <> gt_recon_deductions_tbl(i).source_category ) THEN    -- 作成元区分
+--        -- ==========================
+--        --  レコードブレイク判定
+--        -- ==========================
+--        -- 消込時拠点コード/勘定科目/補助科目/企業コード/顧客コード/税コード/控除タイプ/支払伝票番号のいずれかが前処理データ異なった場合
+--        IF ( lt_recon_base_code  <> gt_recon_deductions_tbl(i).recon_base_code )               -- 消込時拠点コード
+--          OR  ( lt_account                <> gt_recon_deductions_tbl(i).account )                 -- 勘定科目
+--          OR  ( lt_sub_account            <> gt_recon_deductions_tbl(i).sub_account )             -- 補助科目
+--          OR  ( lt_corp_code              <> gt_recon_deductions_tbl(i).corp_code )               -- 企業コード
+--          OR  ( lt_customer_code          <> gt_recon_deductions_tbl(i).customer_code )           -- 顧客コード
+--          OR  ( lt_tax_code               <> gt_recon_deductions_tbl(i).tax_code )                -- 税コード
+--          OR  ( lt_data_type              <> gt_recon_deductions_tbl(i).data_type )               -- 控除タイプ
+--          OR  ( lt_carry_payment_slip_num <> gt_recon_deductions_tbl(i).carry_payment_slip_num )  -- 支払伝票番号
+--          OR  ( lt_source_category        <> gt_recon_deductions_tbl(i).source_category ) THEN    -- 作成元区分
+----
+--          ln_loop_index1 := ln_loop_index1 + 1;
+----
+--          -- 控除消込の差額調整額データをワークテーブルに退避
+--          gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
+--          gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
+--          gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
+--          gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
+--          gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
+--          gt_recon_work_tbl(ln_loop_index1).base_code                := lt_recon_base_code;
+--          gt_recon_work_tbl(ln_loop_index1).account                  := lt_account;
+--          gt_recon_work_tbl(ln_loop_index1).sub_account              := lt_sub_account;
+--          gt_recon_work_tbl(ln_loop_index1).corp_code                := lt_corp_code;
+--          gt_recon_work_tbl(ln_loop_index1).customer_code            := lt_customer_code;
+--          IF ( ln_deduction_amount_1 >= 0 ) THEN
+--            gt_recon_work_tbl(ln_loop_index1).entered_dr           := ln_deduction_amount_1;
+--            gt_recon_work_tbl(ln_loop_index1).entered_cr           := NULL;
+--          ELSE
+--            gt_recon_work_tbl(ln_loop_index1).entered_dr           := NULL;
+--            gt_recon_work_tbl(ln_loop_index1).entered_cr           := NVL(ln_deduction_amount_1,0) * -1;
+--          END IF;
+--          gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
+--          gt_recon_work_tbl(ln_loop_index1).reference10              := lt_recon_base_code || cv_underbar || lt_meaning
+--                                                                                           || cv_underbar || lt_tax_code;
+----
+--          -- 控除消込の差額調整額集約値初期化
+--          ln_deduction_amount_1 := 0;
+----
+--        END IF;
+----
+--        -- ==========================
+--        --  税コードブレイク判定
+--        -- ==========================
+--        -- 税コード/支払伝票番号のいずれかが前処理データと異なる場合
+--        IF ( lt_tax_code                   <> gt_recon_deductions_tbl(i).tax_code )                -- 税コード
+--          OR  ( lt_carry_payment_slip_num  <> gt_recon_deductions_tbl(i).carry_payment_slip_num )  -- 支払伝票番号
+--          OR  ( lt_source_category         <> gt_recon_deductions_tbl(i).source_category ) THEN    -- 作成元区分
+----
+--          -- 税勘定科目を取得(実際の税勘定科目、税補助科目)
+--          BEGIN
+--            SELECT gcc.segment3            -- 税額_勘定科目
+--                  ,gcc.segment4            -- 税額_補助科目
+--                  ,tax.attribute5          -- 負債税額_勘定科目
+--                  ,tax.attribute6          -- 負債税額_補助科目
+--            INTO   lv_account_code1
+--                  ,lv_sub_account_code1
+--                  ,lv_debt_account_code1
+--                  ,lv_debt_sub_account_code1
+--            FROM   apps.ap_tax_codes_all     tax  -- AP税コードマスタ
+--                  ,apps.gl_code_combinations gcc  -- 勘定組合情報
+--            WHERE  tax.set_of_books_id     = gn_set_bks_id                  -- SET_OF_BOOKS_ID
+--            and    tax.org_id              = gn_org_id                      -- ORG_ID
+--            and    gcc.code_combination_id = tax.tax_code_combination_id    -- 税CCID
+--            and    tax.name                = lt_tax_code                    -- 税コード
+--            AND    tax.enabled_flag        = cv_y_flag                      -- 有効
+--            ;
+----
+--          EXCEPTION
+--            WHEN OTHERS THEN
+--            -- 勘定科目が取得出来ない場合
+--              lv_errmsg  := xxccp_common_pkg.get_msg( cv_xxcok_short_nm
+--                                                    , cv_tax_account_error_msg
+--                                                     );
+--              lv_errbuf := lv_errmsg;
+--              RAISE global_api_expt;
+--          END;
+----
+--          ln_loop_index1 := ln_loop_index1 + 1;
+----
+--          -- 控除消込の差額調整仮払消費税をワークテーブルに退避
+--          gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
+--          gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
+--          gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
+--          gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
+--          gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
+--          gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
+--          gt_recon_work_tbl(ln_loop_index1).account                  := lv_account_code1;
+--          gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_sub_account_code1;
+--          gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
+--          gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
+--          IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
+--            gt_recon_work_tbl(ln_loop_index1).entered_dr             := ln_deduction_tax_amount_1;
+--            gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+--          ELSE
+--            gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
+--            gt_recon_work_tbl(ln_loop_index1).entered_cr             := NVL(ln_deduction_tax_amount_1,0) * -1;
+--          END IF;
+--          gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
+--          gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_dr || cv_underbar || lt_tax_code;
+----
+--          ln_loop_index1 := ln_loop_index1 + 1;
 --
-          -- 税勘定科目を取得(実際の税勘定科目、税補助科目)
-          BEGIN
-            SELECT gcc.segment3            -- 税額_勘定科目
-                  ,gcc.segment4            -- 税額_補助科目
-                  ,tax.attribute5          -- 負債税額_勘定科目
-                  ,tax.attribute6          -- 負債税額_補助科目
-            INTO   lv_account_code1
-                  ,lv_sub_account_code1
-                  ,lv_debt_account_code1
-                  ,lv_debt_sub_account_code1
-            FROM   apps.ap_tax_codes_all     tax  -- AP税コードマスタ
-                  ,apps.gl_code_combinations gcc  -- 勘定組合情報
-            WHERE  tax.set_of_books_id     = gn_set_bks_id                  -- SET_OF_BOOKS_ID
-            and    tax.org_id              = gn_org_id                      -- ORG_ID
-            and    gcc.code_combination_id = tax.tax_code_combination_id    -- 税CCID
-            and    tax.name                = lt_tax_code                    -- 税コード
-            AND    tax.enabled_flag        = cv_y_flag                      -- 有効
-            ;
---
-          EXCEPTION
-            WHEN OTHERS THEN
-            -- 勘定科目が取得出来ない場合
-              lv_errmsg  := xxccp_common_pkg.get_msg( cv_xxcok_short_nm
-                                                    , cv_tax_account_error_msg
-                                                     );
-              lv_errbuf := lv_errmsg;
-              RAISE global_api_expt;
-          END;
---
-          ln_loop_index1 := ln_loop_index1 + 1;
---
-          -- 控除消込の差額調整仮払消費税をワークテーブルに退避
-          gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
-          gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
-          gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
-          gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
-          gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-          gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
-          gt_recon_work_tbl(ln_loop_index1).account                  := lv_account_code1;
-          gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_sub_account_code1;
-          gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
-          gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
-          IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
-            gt_recon_work_tbl(ln_loop_index1).entered_dr             := ln_deduction_tax_amount_1;
-            gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
-          ELSE
-            gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
-            gt_recon_work_tbl(ln_loop_index1).entered_cr             := NVL(ln_deduction_tax_amount_1,0) * -1;
-          END IF;
-          gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
-          gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_dr || cv_underbar || lt_tax_code;
---
-          ln_loop_index1 := ln_loop_index1 + 1;
-
-          -- 差額調整分の負債（引当等）_消費税をワークテーブルに退避
-          gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
-          gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
-          gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
-          gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
-          gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-          gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
-          gt_recon_work_tbl(ln_loop_index1).account                  := lv_debt_account_code1;
-          gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_debt_sub_account_code1;
-          gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
-          gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
-          IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
-            gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
-            gt_recon_work_tbl(ln_loop_index1).entered_cr             := ln_deduction_tax_amount_1;
-          ELSE
-            gt_recon_work_tbl(ln_loop_index1).entered_dr             := NVL(ln_deduction_tax_amount_1,0) * -1;
-            gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
-          END IF;
-          gt_recon_work_tbl(ln_loop_index1).tax_code                 := NULL;
-          gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_cr || cv_underbar || lt_tax_code;
---
-          -- 控除消込の差額調整仮払消費税集約値初期化
-          ln_deduction_tax_amount_1 := 0;
---
-        END IF;
---
-        -- 差額調整データの場合、控除消込の差額調整額、控除消込の差額調整仮払消費税を加算
-        ln_deduction_amount_1      := ln_deduction_amount_1     + gt_recon_deductions_tbl(i).deduction_amount;
-        ln_deduction_tax_amount_1  := ln_deduction_tax_amount_1 + gt_recon_deductions_tbl(i).deduction_tax_amount;
+--          -- 差額調整分の負債（引当等）_消費税をワークテーブルに退避
+--          gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
+--          gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
+--          gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
+--          gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
+--          gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
+--          gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
+--          gt_recon_work_tbl(ln_loop_index1).account                  := lv_debt_account_code1;
+--          gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_debt_sub_account_code1;
+--          gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
+--          gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
+--          IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
+--            gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
+--            gt_recon_work_tbl(ln_loop_index1).entered_cr             := ln_deduction_tax_amount_1;
+--          ELSE
+--            gt_recon_work_tbl(ln_loop_index1).entered_dr             := NVL(ln_deduction_tax_amount_1,0) * -1;
+--            gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+--          END IF;
+--          gt_recon_work_tbl(ln_loop_index1).tax_code                 := NULL;
+--          gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_cr || cv_underbar || lt_tax_code;
+----
+--          -- 控除消込の差額調整仮払消費税集約値初期化
+--          ln_deduction_tax_amount_1 := 0;
+----
+--        END IF;
+----
+--        -- 差額調整データの場合、控除消込の差額調整額、控除消込の差額調整仮払消費税を加算
+--        ln_deduction_amount_1      := ln_deduction_amount_1     + gt_recon_deductions_tbl(i).deduction_amount;
+--        ln_deduction_tax_amount_1  := ln_deduction_tax_amount_1 + gt_recon_deductions_tbl(i).deduction_tax_amount;
+-- 2024/01/29 Ver1.5 MOD End
 --
       END IF;
 --
       -- ブレイク用集約キーセット
-      lt_dedu_recon_head_id      := gt_recon_deductions_tbl(i).deduction_recon_head_id; -- 控除消込ヘッダーID
-      lt_recon_base_code         := gt_recon_deductions_tbl(i).recon_base_code;         -- 消込時計上拠点
-      lt_gl_date                 := gt_recon_deductions_tbl(i).gl_date;                 -- GL記帳日
-      lt_gl_period               := gt_recon_deductions_tbl(i).period_name;             -- 会計期間
-      lt_account                 := gt_recon_deductions_tbl(i).account;                 -- 勘定科目
-      lt_sub_account             := gt_recon_deductions_tbl(i).sub_account;             -- 補助科目
-      lt_corp_code               := gt_recon_deductions_tbl(i).corp_code;               -- 企業コード
-      lt_customer_code           := gt_recon_deductions_tbl(i).customer_code;           -- 顧客コード
-      lt_tax_code                := gt_recon_deductions_tbl(i).tax_code;                -- 税コード
-      lt_tax_rate                := gt_recon_deductions_tbl(i).tax_rate;                -- 税率
-      lt_data_type               := gt_recon_deductions_tbl(i).data_type;               -- 控除タイプ
-      lt_source_category         := gt_recon_deductions_tbl(i).source_category;         -- 作成元区分
-      lt_meaning                 := gt_recon_deductions_tbl(i).meaning;                 -- データ種類名
+-- 2024/01/29 Ver1.5 DEL Start
+--      lt_dedu_recon_head_id      := gt_recon_deductions_tbl(i).deduction_recon_head_id; -- 控除消込ヘッダーID
+--      lt_recon_base_code         := gt_recon_deductions_tbl(i).recon_base_code;         -- 消込時計上拠点
+--      lt_gl_date                 := gt_recon_deductions_tbl(i).gl_date;                 -- GL記帳日
+--      lt_gl_period               := gt_recon_deductions_tbl(i).period_name;             -- 会計期間
+--      lt_account                 := gt_recon_deductions_tbl(i).account;                 -- 勘定科目
+--      lt_sub_account             := gt_recon_deductions_tbl(i).sub_account;             -- 補助科目
+--      lt_corp_code               := gt_recon_deductions_tbl(i).corp_code;               -- 企業コード
+--      lt_customer_code           := gt_recon_deductions_tbl(i).customer_code;           -- 顧客コード
+--      lt_tax_code                := gt_recon_deductions_tbl(i).tax_code;                -- 税コード
+--      lt_tax_rate                := gt_recon_deductions_tbl(i).tax_rate;                -- 税率
+--      lt_data_type               := gt_recon_deductions_tbl(i).data_type;               -- 控除タイプ
+--      lt_source_category         := gt_recon_deductions_tbl(i).source_category;         -- 作成元区分
+--      lt_meaning                 := gt_recon_deductions_tbl(i).meaning;                 -- データ種類名
+-- 2024/01/29 Ver1.5 DEL End
       lt_carry_payment_slip_num  := gt_recon_deductions_tbl(i).carry_payment_slip_num;  -- 支払伝票番号
-      lt_interface_div           := gt_recon_deductions_tbl(i).interface_div;           -- 連携先
+-- 2024/01/29 Ver1.5 DEL Start
+--      lt_interface_div           := gt_recon_deductions_tbl(i).interface_div;           -- 連携先
+-- 2024/01/29 Ver1.5 DEL End
 --
     END LOOP main_data_loop;
 --
-    IF (lt_source_category = cv_d_flag ) THEN
-      -- 最終行出力
-      ln_loop_index1 := ln_loop_index1 + 1;
+-- 2024/01/29 Ver1.5 DEL Start
+--    IF (lt_source_category = cv_d_flag ) THEN
+--      -- 最終行出力
+--      ln_loop_index1 := ln_loop_index1 + 1;
+----
+--      -- 控除消込の差額調整額データをワークテーブルに退避
+--      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
+--      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
+--      gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
+--      gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
+--      gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
+--      gt_recon_work_tbl(ln_loop_index1).base_code                := lt_recon_base_code;
+--      gt_recon_work_tbl(ln_loop_index1).account                  := lt_account;
+--      gt_recon_work_tbl(ln_loop_index1).sub_account              := lt_sub_account;
+--      gt_recon_work_tbl(ln_loop_index1).corp_code                := lt_corp_code;
+--      gt_recon_work_tbl(ln_loop_index1).customer_code            := lt_customer_code;
+--      IF ( ln_deduction_amount_1 >= 0 ) THEN
+--        gt_recon_work_tbl(ln_loop_index1).entered_dr             := ln_deduction_amount_1;
+--        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+--      ELSE
+--        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
+--        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NVL(ln_deduction_amount_1,0) * -1;
+--      END IF;
+--      gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
+--      gt_recon_work_tbl(ln_loop_index1).reference10              := lt_recon_base_code || cv_underbar || lt_meaning
+--                                                                                       || cv_underbar || lt_tax_code;
+----
+--      -- 税勘定科目を取得(実際の税勘定科目、税補助科目)
+--      BEGIN
+--        SELECT gcc.segment3            -- 税額_勘定科目
+--              ,gcc.segment4            -- 税額_補助科目
+--              ,tax.attribute5          -- 負債税額_勘定科目
+--              ,tax.attribute6          -- 負債税額_補助科目
+--        INTO   lv_account_code1
+--              ,lv_sub_account_code1
+--              ,lv_debt_account_code1
+--              ,lv_debt_sub_account_code1
+--        FROM   apps.ap_tax_codes_all     tax  -- AP税コードマスタ
+--              ,apps.gl_code_combinations gcc  -- 勘定組合情報
+--        WHERE  tax.set_of_books_id     = gn_set_bks_id                  -- SET_OF_BOOKS_ID
+--        and    tax.org_id              = gn_org_id                      -- ORG_ID
+--        and    gcc.code_combination_id = tax.tax_code_combination_id    -- 税CCID
+--        and    tax.name                = lt_tax_code                    -- 税コード
+--        and    tax.enabled_flag        = cv_y_flag                      -- 有効
+--        ;
+----
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--        -- 勘定科目が取得出来ない場合
+--          lv_errmsg  := xxccp_common_pkg.get_msg( cv_xxcok_short_nm
+--                                                , cv_tax_account_error_msg
+--                                                 );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_api_expt;
+--      END;
+----
+--      ln_loop_index1 := ln_loop_index1 + 1;
+----
+--      -- 控除消込の差額調整仮払消費税をワークテーブルに退避
+--      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
+--      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
+--      gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
+--      gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
+--      gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
+--      gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
+--      gt_recon_work_tbl(ln_loop_index1).account                  := lv_account_code1;
+--      gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_sub_account_code1;
+--      gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
+--      gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
+--      IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
+--        gt_recon_work_tbl(ln_loop_index1).entered_dr             := ln_deduction_tax_amount_1;
+--        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+--      ELSE
+--        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
+--        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NVL(ln_deduction_tax_amount_1,0) * -1;
+--      END IF;
+--      gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
+--      gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_dr || cv_underbar || lt_tax_code;
+----
+--      ln_loop_index1 := ln_loop_index1 + 1;
+----
+--      -- 差額調整分の負債（引当等）_消費税をワークテーブルに退避
+--      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
+--      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
+--      gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
+--      gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
+--      gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
+--      gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
+--      gt_recon_work_tbl(ln_loop_index1).account                  := lv_debt_account_code1;
+--      gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_debt_sub_account_code1;
+--      gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
+--      gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
+--      IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
+--        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
+--        gt_recon_work_tbl(ln_loop_index1).entered_cr             := ln_deduction_tax_amount_1;
+--      ELSE
+--        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NVL(ln_deduction_tax_amount_1,0) * -1;
+--        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+--      END IF;
+--      gt_recon_work_tbl(ln_loop_index1).tax_code                 := NULL;
+--      gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_cr || cv_underbar || lt_tax_code;
+--    END IF;
+-- 2024/01/29 Ver1.5 DEL End
 --
-      -- 控除消込の差額調整額データをワークテーブルに退避
-      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
-      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
-      gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
-      gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
-      gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-      gt_recon_work_tbl(ln_loop_index1).base_code                := lt_recon_base_code;
-      gt_recon_work_tbl(ln_loop_index1).account                  := lt_account;
-      gt_recon_work_tbl(ln_loop_index1).sub_account              := lt_sub_account;
-      gt_recon_work_tbl(ln_loop_index1).corp_code                := lt_corp_code;
-      gt_recon_work_tbl(ln_loop_index1).customer_code            := lt_customer_code;
-      IF ( ln_deduction_amount_1 >= 0 ) THEN
-        gt_recon_work_tbl(ln_loop_index1).entered_dr             := ln_deduction_amount_1;
-        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
-      ELSE
-        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
-        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NVL(ln_deduction_amount_1,0) * -1;
-      END IF;
-      gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
-      gt_recon_work_tbl(ln_loop_index1).reference10              := lt_recon_base_code || cv_underbar || lt_meaning
-                                                                                       || cv_underbar || lt_tax_code;
---
-      -- 税勘定科目を取得(実際の税勘定科目、税補助科目)
-      BEGIN
-        SELECT gcc.segment3            -- 税額_勘定科目
-              ,gcc.segment4            -- 税額_補助科目
-              ,tax.attribute5          -- 負債税額_勘定科目
-              ,tax.attribute6          -- 負債税額_補助科目
-        INTO   lv_account_code1
-              ,lv_sub_account_code1
-              ,lv_debt_account_code1
-              ,lv_debt_sub_account_code1
-        FROM   apps.ap_tax_codes_all     tax  -- AP税コードマスタ
-              ,apps.gl_code_combinations gcc  -- 勘定組合情報
-        WHERE  tax.set_of_books_id     = gn_set_bks_id                  -- SET_OF_BOOKS_ID
-        and    tax.org_id              = gn_org_id                      -- ORG_ID
-        and    gcc.code_combination_id = tax.tax_code_combination_id    -- 税CCID
-        and    tax.name                = lt_tax_code                    -- 税コード
-        and    tax.enabled_flag        = cv_y_flag                      -- 有効
-        ;
---
-      EXCEPTION
-        WHEN OTHERS THEN
-        -- 勘定科目が取得出来ない場合
-          lv_errmsg  := xxccp_common_pkg.get_msg( cv_xxcok_short_nm
-                                                , cv_tax_account_error_msg
-                                                 );
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-      END;
+-- 2024/01/29 Ver1.5 ADD Start
+    -- 税情報のループスタート
+    <<recon_dedu_tax_loop>>
+    FOR j IN 1..gt_recon_dedu_tax_tbl.COUNT LOOP
 --
       ln_loop_index1 := ln_loop_index1 + 1;
 --
       -- 控除消込の差額調整仮払消費税をワークテーブルに退避
-      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
-      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
-      gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
-      gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
-      gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-      gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
-      gt_recon_work_tbl(ln_loop_index1).account                  := lv_account_code1;
-      gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_sub_account_code1;
-      gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
-      gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
-      IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
-        gt_recon_work_tbl(ln_loop_index1).entered_dr             := ln_deduction_tax_amount_1;
-        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id := gt_recon_dedu_tax_tbl(j).deduction_recon_head_id;
+      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num  := gt_recon_dedu_tax_tbl(j).recon_slip_num;
+      gt_recon_work_tbl(ln_loop_index1).accounting_date         := gt_recon_dedu_tax_tbl(j).gl_date;
+      gt_recon_work_tbl(ln_loop_index1).period_name             := gt_recon_dedu_tax_tbl(j).period_name;
+      gt_recon_work_tbl(ln_loop_index1).category_name           := gv_category_code2;
+      gt_recon_work_tbl(ln_loop_index1).company                 := gt_recon_dedu_tax_tbl(j).company;
+      gt_recon_work_tbl(ln_loop_index1).base_code               := gt_recon_dedu_tax_tbl(j).dept_fin;
+--
+      BEGIN
+        SELECT  gcc.segment3  account     ,                     -- 勘定科目
+                gcc.segment4  sub_account                       -- 補助科目
+        INTO    gt_recon_work_tbl(ln_loop_index1).account     , -- 勘定科目
+                gt_recon_work_tbl(ln_loop_index1).sub_account   -- 補助科目
+        FROM    gl_code_combinations  gcc                       -- 勘定組合情報
+        WHERE   gcc.code_combination_id = gt_recon_dedu_tax_tbl(j).tax_code_combination_id;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- 税科目が取得出来ない場合
+          gt_recon_work_tbl(ln_loop_index1).account     :=  NULL;
+          gt_recon_work_tbl(ln_loop_index1).sub_account :=  NULL;
+      END;
+--
+      gt_recon_work_tbl(ln_loop_index1).corp_code               := gv_comp_code;
+      gt_recon_work_tbl(ln_loop_index1).customer_code           := gv_customer_code;
+      IF ( gt_recon_dedu_tax_tbl(j).deduction_tax_amount >= 0 ) THEN
+        gt_recon_work_tbl(ln_loop_index1).entered_dr            := gt_recon_dedu_tax_tbl(j).deduction_tax_amount;
+        gt_recon_work_tbl(ln_loop_index1).entered_cr            := NULL;
       ELSE
-        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
-        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NVL(ln_deduction_tax_amount_1,0) * -1;
+        gt_recon_work_tbl(ln_loop_index1).entered_dr            := NULL;
+        gt_recon_work_tbl(ln_loop_index1).entered_cr            := gt_recon_dedu_tax_tbl(j).deduction_tax_amount * -1;
       END IF;
-      gt_recon_work_tbl(ln_loop_index1).tax_code                 := lt_tax_code;
-      gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_dr || cv_underbar || lt_tax_code;
+      gt_recon_work_tbl(ln_loop_index1).tax_code                := gt_recon_dedu_tax_tbl(j).tax_code;
+      gt_recon_work_tbl(ln_loop_index1).reference10             := lv_tax_dr || cv_underbar || gt_recon_dedu_tax_tbl(j).tax_code;
 --
       ln_loop_index1 := ln_loop_index1 + 1;
 --
       -- 差額調整分の負債（引当等）_消費税をワークテーブルに退避
-      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id  := lt_dedu_recon_head_id;
-      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num   := lt_carry_payment_slip_num;
-      gt_recon_work_tbl(ln_loop_index1).accounting_date          := lt_gl_date;
-      gt_recon_work_tbl(ln_loop_index1).period_name              := lt_gl_period;
-      gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-      gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
-      gt_recon_work_tbl(ln_loop_index1).account                  := lv_debt_account_code1;
-      gt_recon_work_tbl(ln_loop_index1).sub_account              := lv_debt_sub_account_code1;
-      gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
-      gt_recon_work_tbl(ln_loop_index1).customer_code            := gv_customer_code;
-      IF ( ln_deduction_tax_amount_1 >= 0 ) THEN
-        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NULL;
-        gt_recon_work_tbl(ln_loop_index1).entered_cr             := ln_deduction_tax_amount_1;
+      gt_recon_work_tbl(ln_loop_index1).deduction_recon_head_id := gt_recon_dedu_tax_tbl(j).deduction_recon_head_id;
+      gt_recon_work_tbl(ln_loop_index1).carry_payment_slip_num  := gt_recon_dedu_tax_tbl(j).recon_slip_num;
+      gt_recon_work_tbl(ln_loop_index1).accounting_date         := gt_recon_dedu_tax_tbl(j).gl_date;
+      gt_recon_work_tbl(ln_loop_index1).period_name             := gt_recon_dedu_tax_tbl(j).period_name;
+      gt_recon_work_tbl(ln_loop_index1).category_name           := gv_category_code2;
+      gt_recon_work_tbl(ln_loop_index1).company                 := gt_recon_dedu_tax_tbl(j).company;
+      gt_recon_work_tbl(ln_loop_index1).base_code               := gt_recon_dedu_tax_tbl(j).dept_fin;
+      gt_recon_work_tbl(ln_loop_index1).account                 := gt_recon_dedu_tax_tbl(j).debt_account;
+      gt_recon_work_tbl(ln_loop_index1).sub_account             := gt_recon_dedu_tax_tbl(j).debt_sub_account;
+      gt_recon_work_tbl(ln_loop_index1).corp_code               := gv_comp_code;
+      gt_recon_work_tbl(ln_loop_index1).customer_code           := gv_customer_code;
+      IF ( gt_recon_dedu_tax_tbl(j).deduction_tax_amount >= 0 ) THEN
+        gt_recon_work_tbl(ln_loop_index1).entered_dr            := NULL;
+        gt_recon_work_tbl(ln_loop_index1).entered_cr            := gt_recon_dedu_tax_tbl(j).deduction_tax_amount;
       ELSE
-        gt_recon_work_tbl(ln_loop_index1).entered_dr             := NVL(ln_deduction_tax_amount_1,0) * -1;
-        gt_recon_work_tbl(ln_loop_index1).entered_cr             := NULL;
+        gt_recon_work_tbl(ln_loop_index1).entered_dr            := gt_recon_dedu_tax_tbl(j).deduction_tax_amount * -1;
+        gt_recon_work_tbl(ln_loop_index1).entered_cr            := NULL;
       END IF;
-      gt_recon_work_tbl(ln_loop_index1).tax_code                 := NULL;
-      gt_recon_work_tbl(ln_loop_index1).reference10              := lv_tax_cr || cv_underbar || lt_tax_code;
-    END IF;
+      gt_recon_work_tbl(ln_loop_index1).tax_code                := NULL;
+      gt_recon_work_tbl(ln_loop_index1).reference10             := lv_tax_cr || cv_underbar || gt_recon_dedu_tax_tbl(j).tax_code;
 --
+    END LOOP recon_dedu_tax_loop;
+--
+-- 2024/01/29 Ver1.5 ADD End
     -- 差額調整情報のループスタート
     <<recon_dedu_debt_loop>>
     FOR j IN 1..gt_recon_dedu_debt_tbl.COUNT LOOP
@@ -1405,7 +1668,11 @@ AS
       gt_recon_work_tbl(ln_loop_index1).accounting_date          := gt_recon_dedu_debt_tbl(j).gl_date;
       gt_recon_work_tbl(ln_loop_index1).period_name              := gt_recon_dedu_debt_tbl(j).period_name;
       gt_recon_work_tbl(ln_loop_index1).category_name            := gv_category_code2;
-      gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
+-- 2024/01/29 Ver1.5 MOD Start
+      gt_recon_work_tbl(ln_loop_index1).company                  := gt_recon_dedu_debt_tbl(j).company;
+      gt_recon_work_tbl(ln_loop_index1).base_code                := gt_recon_dedu_debt_tbl(j).dept_fin;
+--      gt_recon_work_tbl(ln_loop_index1).base_code                := gv_dept_fin_code;
+-- 2024/01/29 Ver1.5 MOD End
       gt_recon_work_tbl(ln_loop_index1).account                  := gt_recon_dedu_debt_tbl(j).debt_account;
       gt_recon_work_tbl(ln_loop_index1).sub_account              := gt_recon_dedu_debt_tbl(j).debt_sub_account;
       gt_recon_work_tbl(ln_loop_index1).corp_code                := gv_comp_code;
@@ -1520,7 +1787,10 @@ AS
       --==============================================================
       ln_ccid_check := xxcok_common_pkg.get_code_combination_id_f(
                                  id_proc_date => gd_process_date                       -- 処理日
-                               , iv_segment1  => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.5 MOD Start
+                               , iv_segment1  => gt_recon_work_tbl(i).company          -- 会社コード
+--                               , iv_segment1  => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.5 MOD End
                                , iv_segment2  => gt_recon_work_tbl(i).base_code        -- 部門コード
                                , iv_segment3  => gt_recon_work_tbl(i).account          -- 勘定科目コード
                                , iv_segment4  => gt_recon_work_tbl(i).sub_account      -- 補助科目コード
@@ -1537,7 +1807,10 @@ AS
                         , iv_token_name1  => cv_tkn_pro_date
                         , iv_token_value1 => gd_process_date                       -- 処理日
                         , iv_token_name2  => cv_tkn_com_code
-                        , iv_token_value2 => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.5 MOD Start
+                        , iv_token_value2 => gt_recon_work_tbl(i).company          -- 会社コード
+--                        , iv_token_value2 => gv_company_code                       -- 会社コード
+-- 2024/01/29 Ver1.5 MOD End
                         , iv_token_name3  => cv_tkn_dept_code
                         , iv_token_value3 => gt_recon_work_tbl(i).base_code        -- 部門コード
                         , iv_token_name4  => cv_tkn_acc_code
@@ -1565,7 +1838,10 @@ AS
       gt_gl_interface_tbl(i).actual_flag           := cv_actual_flag;                                                -- 残高タイプ
       gt_gl_interface_tbl(i).user_je_category_name := gt_recon_work_tbl(i).category_name;                            -- 仕訳カテゴリ名
       gt_gl_interface_tbl(i).user_je_source_name   := cv_source_name;                                                -- 仕訳ソース名
-      gt_gl_interface_tbl(i).segment1              := gv_company_code;                                               -- (会社)
+-- 2024/01/29 Ver1.5 MOD Start
+      gt_gl_interface_tbl(i).segment1              := gt_recon_work_tbl(i).company;                                  -- (会社)
+--      gt_gl_interface_tbl(i).segment1              := gv_company_code;                                               -- (会社)
+-- 2024/01/29 Ver1.5 MOD End
       gt_gl_interface_tbl(i).segment2              := gt_recon_work_tbl(i).base_code;                                -- (部門)
       gt_gl_interface_tbl(i).segment3              := gt_recon_work_tbl(i).account;                                  -- (勘定科目)
       gt_gl_interface_tbl(i).segment4              := gt_recon_work_tbl(i).sub_account;                              -- (補助科目)
@@ -1581,10 +1857,18 @@ AS
       gt_gl_interface_tbl(i).reference2            := cv_source_name                      || cv_underbar ||
                                                       gt_recon_work_tbl(i).period_name    || cv_underbar ||
                                                       TO_CHAR(gd_process_date);                                      -- リファレンス2（バッチ摘要）
-      gt_gl_interface_tbl(i).reference4            := gt_recon_work_tbl(i).carry_payment_slip_num || cv_underbar ||
+-- 2024/01/29 Ver1.5 MOD Start
+      gt_gl_interface_tbl(i).reference4            := gt_recon_work_tbl(i).company                || cv_underbar ||
+                                                      gt_recon_work_tbl(i).carry_payment_slip_num || cv_underbar ||
+--      gt_gl_interface_tbl(i).reference4            := gt_recon_work_tbl(i).carry_payment_slip_num || cv_underbar ||
+-- 2024/01/29 Ver1.5 MOD End
                                                       gt_recon_work_tbl(i).category_name          || cv_underbar ||
                                                       gt_recon_work_tbl(i).period_name;                              -- リファレンス4（仕訳名）
-      gt_gl_interface_tbl(i).reference5            := gt_recon_work_tbl(i).carry_payment_slip_num || cv_underbar ||
+-- 2024/01/29 Ver1.5 MOD Start
+      gt_gl_interface_tbl(i).reference5            := gt_recon_work_tbl(i).company                || cv_underbar ||
+                                                      gt_recon_work_tbl(i).carry_payment_slip_num || cv_underbar ||
+--      gt_gl_interface_tbl(i).reference5            := gt_recon_work_tbl(i).carry_payment_slip_num || cv_underbar ||
+-- 2024/01/29 Ver1.5 MOD End
                                                       gt_recon_work_tbl(i).category_name          || cv_underbar ||
                                                       gt_recon_work_tbl(i).period_name;                              -- リファレンス5（仕訳名摘要）
       gt_gl_interface_tbl(i).reference10           := gt_recon_work_tbl(i).reference10;                              -- リファレンス10（仕訳明細摘要）
@@ -2351,8 +2635,10 @@ AS
     AND    SUBSTR(gi.reference4,1,3)    = lv_cancel
     ;
 --
-    -- 処理対象伝票件数に一般会計OIFに作成した件数を加算
-    gn_target_cnt := gn_target_cnt + gn_cancel_cnt;
+-- 2024/01/29 Ver1.5 DEL Start
+--    -- 処理対象伝票件数に一般会計OIFに作成した件数を加算
+--    gn_target_cnt := gn_target_cnt + gn_cancel_cnt;
+-- 2024/01/29 Ver1.5 DEL End
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -2468,6 +2754,9 @@ AS
           WHERE  xdrh.deduction_recon_head_id  = gt_recon_dedu_cancel_tbl(ln_loop_cnt).deduction_recon_head_id  -- 控除消込ヘッダーID
           ;
 --
+-- 2024/01/29 Ver1.5 ADD Start
+          gn_target_cnt := gn_target_cnt + 1;
+-- 2024/01/29 Ver1.5 ADD End
           ln_recon_head_id := gt_recon_dedu_cancel_tbl(ln_loop_cnt).deduction_recon_head_id;
 --
         END IF;
