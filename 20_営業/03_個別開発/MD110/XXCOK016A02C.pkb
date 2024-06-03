@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2018/08/07    1.11  K.Nara           [E_本稼動_15203対応]本振用FBデータ作成で振込先がダミー口座は作成対象外とする
  *  2023/06/06    1.12  Y.Ooyama         [E_本稼動_19179対応]インボイス対応（BM関連）
  *  2023/10/25    1.13  T.Okuyama        [E_本稼動_19540対応]「振り分け上手」アプリの代替え対応
+ *  2024/02/02    1.14  T.Okuyama        [E_本稼動_19496対応] グループ会社対応
  *****************************************************************************************/
 --
   --===============================
@@ -120,6 +121,10 @@ AS
   cv_appli_xxcok              CONSTANT VARCHAR2(5)   := 'XXCOK';               -- 'XXCOK'
   -- メッセージ
   cv_msg_cok_00044            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00044';    -- コンカレント入力パラメータメッセージ
+-- Ver.1.14 Add Start
+  cv_msg_cok_10878            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10878';    -- コンカレント入力パラメータ（会社コード）
+  cv_msg_cok_10879            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10879';    -- 会社コード取得エラーメッセージ
+-- Ver.1.14 Add End
   cv_msg_cok_00003            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00003';    -- プロファイル値取得エラーメッセージ
   cv_msg_cok_00028            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00028';    -- 業務処理日付取得エラーメッセージ
   cv_msg_cok_00014            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00014';    -- 値セット値取得エラー
@@ -151,6 +156,9 @@ AS
   cv_msg_cok_10863            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10863';    -- テーブルロック取得エラー
 -- Ver.1.13 ADD END
   -- メッセージ・トークン
+-- Ver.1.14 Add Start
+  cv_token_company_code       CONSTANT VARCHAR2(15)  := 'COMPANY_CODE';        -- 会社コードパラメータ
+-- Ver.1.14 Add End
   cv_token_proc_type          CONSTANT VARCHAR2(15)  := 'PROC_TYPE';           -- 処理パラメータ
   cv_token_profile            CONSTANT VARCHAR2(15)  := 'PROFILE';             -- カスタムプロファイルの物理名
   cv_token_flex_value_set     CONSTANT VARCHAR2(15)  := 'FLEX_VALUE_SET';      -- 値セットの物理名
@@ -205,6 +213,10 @@ AS
   cv_tax_calc_kbn_line        CONSTANT VARCHAR2(1)   := '2';                      -- 税計算区分：明細単位
   cv_tax_kbn_with_tax         CONSTANT VARCHAR2(1)   := '1';                      -- 税区分：税込み
 -- Ver.1.12 ADD END
+-- Ver.1.14 Add Start
+  cv_sob_id                   CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';       -- GL会計帳簿ID
+  cv_settlement_kbn           CONSTANT VARCHAR2(1)   := '7';                      -- 振込指定区分（決済優先度）7:電信振込
+-- Ver.1.14 Add End
   --
   --===============================
   -- グローバル変数
@@ -244,6 +256,10 @@ AS
   -- 日付
   gd_pay_date                 DATE;                                                   -- 当月の支払日
   gd_proc_date                DATE;                                                   -- 業務処理日付
+-- Ver.1.14 Add Start
+  gt_set_of_books_id          gl_sets_of_books.set_of_books_id%TYPE;                  -- GL会計帳簿ID
+  gv_company_code             xxcfo_company_v.company_code%TYPE;                      -- パラメータ.会社コード
+-- Ver.1.14 Add End
   --===============================
   -- グローバル・カーソル
   --===============================
@@ -267,6 +283,9 @@ AS
          ,ap_bank_account_uses_all        abaua                     -- 銀行口座使用情報
          ,ap_bank_accounts_all            abaa                      -- 銀行口座マスタ
          ,ap_bank_branches                abb                       -- 銀行支店マスタ
+-- Ver.1.14 Add Start
+         ,xxcfr_bd_dept_comp_info_v       xbdciv                    -- 担当拠点会社情報ビュー
+-- Ver.1.14 Add End
   WHERE pv.vendor_id                   = pvsa.vendor_id
   AND   TRUNC( pvsa.creation_date )    BETWEEN ADD_MONTHS( gd_proc_date, -1 ) AND gd_proc_date
   AND   pvsa.vendor_id                 = abaua.vendor_id
@@ -283,6 +302,13 @@ AS
   AND    abaua.org_id                  = TO_NUMBER( gt_prof_org_id )
   AND    abaa.org_id                   = TO_NUMBER( gt_prof_org_id )
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Ver.1.14 Add Start
+  AND    xbdciv.company_code_bd = gv_company_code                          -- パラメータ.会社コード
+  AND    xbdciv.set_of_books_id = gt_set_of_books_id                       -- GL会計帳簿ID
+  AND    xbdciv.dept_code       = pvsa.attribute5                          -- 担当拠点
+  AND    gd_proc_date BETWEEN NVL(xbdciv.comp_start_date, gd_proc_date)    -- FB作成実行日（業務日付）
+                          AND NVL(xbdciv.comp_end_date,   gd_proc_date)
+-- Ver.1.14 Add End
   ORDER BY pv.segment1 ASC;
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE START
 --  bac_fb_line_rec  bac_fb_line_cur%ROWTYPE;
@@ -326,6 +352,9 @@ AS
         ,abaa.bank_account_type                          AS bank_account_type        -- 預金種別
         ,abaa.bank_account_num                           AS bank_account_num         -- 銀行口座番号
         ,abaa.account_holder_name_alt                    AS account_holder_name_alt  -- 口座名義人カナ
+-- Ver.1.14 Add Start
+        ,xbdciv.company_code_bd                          AS company_code             -- 会社コード
+-- Ver.1.14 Add End
   FROM   xxcok_backmargin_balance      xbb                                           -- 販手残高テーブル
 -- Ver.1.12 ADD START
         ,xxcok_bm_balance_snap         xbbs                                          -- 販手残高テーブルスナップショット
@@ -335,6 +364,9 @@ AS
         ,ap_bank_account_uses_all      abaua                                         -- 銀行口座使用情報
         ,ap_bank_accounts_all          abaa                                          -- 銀行口座マスタ
         ,ap_bank_branches              abb                                           -- 銀行支店マスタ
+-- Ver.1.14 Add Start
+        ,xxcfr_bd_dept_comp_info_v     xbdciv                                        -- 担当拠点会社情報ビュー
+-- Ver.1.14 Add End
   WHERE  xbb.fb_interface_status        = cv_zero
 -- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
   AND    xbb.gl_interface_status        = cv_zero
@@ -368,6 +400,13 @@ AS
   AND    xbbs.snapshot_create_ym(+)     = TO_CHAR(gd_proc_date, 'YYYYMM')  -- スナップショット作成年月   = 業務日付の年月
   AND    xbbs.snapshot_timing(+)        = cv_snapshot_timing_2_bd          -- スナップショットタイミング = 2営
 -- Ver.1.12 ADD END
+-- Ver.1.14 Add Start
+  AND    xbdciv.company_code_bd = gv_company_code                          -- パラメータ.会社コード
+  AND    xbdciv.set_of_books_id = gt_set_of_books_id                       -- GL会計帳簿ID
+  AND    xbdciv.dept_code       = pvsa.attribute5                          -- 担当拠点
+  AND    gd_proc_date BETWEEN NVL(xbdciv.comp_start_date, gd_proc_date)    -- FB作成実行日（業務日付）
+                          AND NVL(xbdciv.comp_end_date,   gd_proc_date)
+-- Ver.1.14 Add End
 -- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
 --  GROUP BY pv.attribute5
   GROUP BY pvsa.attribute5
@@ -382,6 +421,9 @@ AS
           ,abaa.bank_account_type
           ,abaa.bank_account_num
           ,abaa.account_holder_name_alt
+-- Ver.1.14 Add Start
+          ,xbdciv.company_code_bd
+-- Ver.1.14 Add End
 -- Start 2009/04/27 Ver_1.2 T1_0817 M.Hiruta
 --  ORDER BY pv.attribute5 ASC
   ORDER BY pvsa.attribute5 ASC
@@ -446,6 +488,9 @@ AS
      ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ
     ,ov_retcode    OUT VARCHAR2     -- リターン・コード
     ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+-- Ver.1.14 Add Start
+    ,iv_company_code IN  VARCHAR2   -- パラメータ：会社コード
+-- Ver.1.14 Add End
     ,iv_proc_type  IN  VARCHAR2     -- 処理パラメータ
   )
   IS
@@ -479,6 +524,10 @@ AS
     values_err_expt          EXCEPTION;
     --*** 支払日取得例外 ***
     no_pay_date_expt         EXCEPTION;
+-- Ver.1.14 Add Start
+    --*** 初期処理例外 ***
+    init_expt                EXCEPTION;
+-- Ver.1.14 Add End
 --
   BEGIN
     -- ステータス初期化
@@ -486,6 +535,21 @@ AS
     --==========================================================
     --コンカレントプログラム入力項目をメッセージ出力する
     --==========================================================
+-- Ver.1.14 Add Start
+    -- パラメータ：会社コードの出力
+    lv_out_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appli_xxcok
+                   ,iv_name         => cv_msg_cok_10878
+                   ,iv_token_name1  => cv_token_company_code
+                   ,iv_token_value1 => iv_company_code
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which    => FND_FILE.LOG         -- 出力区分
+                   ,iv_message  => lv_out_msg           -- メッセージ
+                   ,in_new_line => 0                    -- 改行
+                  );
+    -- パラメータ：実行区分の出力
+-- Ver.1.14 Add End
     lv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_appli_xxcok
                    ,iv_name         => cv_msg_cok_00044
@@ -535,6 +599,9 @@ AS
 -- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
     gt_prof_acc_type_internal   := FND_PROFILE.VALUE( cv_prof_acc_type_internal );    -- 振込手数料_当社_口座使用
 -- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+-- Ver.1.14 Add Start
+    gt_set_of_books_id          := FND_PROFILE.VALUE( cv_sob_id );                    -- GL会計帳簿ID
+-- Ver.1.14 Add End
 -- Start 2009/08/03 Ver.1.6 0000843 M.Hiruta DELETE
 --    -- プロファイル値取得エラー
 --    IF( gt_prof_bm_acc_number IS NULL ) THEN
@@ -601,6 +668,40 @@ AS
       RAISE no_profile_expt;
     END IF;
 -- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+-- Ver.1.14 Add Start
+    -- プロファイル値取得エラー
+    IF( gt_set_of_books_id IS NULL ) THEN
+      lv_profile := cv_sob_id;
+      RAISE no_profile_expt;
+    END IF;
+--
+    -- 会社コードチェック
+    BEGIN
+      SELECT company_code AS company_code INTO gv_company_code
+      FROM   xxcfo_company_v
+      WHERE  company_code  = iv_company_code;
+    EXCEPTION 
+      WHEN NO_DATA_FOUND THEN
+        gv_company_code := NULL;
+      WHEN OTHERS THEN
+        gv_company_code := NULL;
+    END;
+    IF( gv_company_code IS NULL ) THEN
+      -- 会社コード取得エラーメッセージ
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_xxcok
+                     ,iv_name         => cv_msg_cok_10879
+                     ,iv_token_name1  => cv_token_company_code
+                     ,iv_token_value1 => iv_company_code
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG       -- 出力区分
+                     ,iv_message  => lv_out_msg         -- メッセージ
+                     ,in_new_line => 0                  -- 改行
+                    );
+      RAISE init_expt;
+    END IF;
+-- Ver.1.14 Add End
     --=========================================================
     --当月の支払日を取得する
     --=========================================================
@@ -673,6 +774,12 @@ AS
 -- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
 --
   EXCEPTION
+-- Ver.1.14 Add Start
+    WHEN init_expt THEN
+    --*** 初期処理例外 ***
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := cv_status_error;
+-- Ver.1.14 Add End
     WHEN no_process_date_expt THEN
       -- *** 業務処理日付取得例外ハンドラ ***
       ov_errmsg  := lv_errmsg;
@@ -1170,7 +1277,10 @@ AS
 --    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
     lv_base_code               := LPAD( NVL( i_bac_fb_line_rec.base_code, cv_space ), 10 , cv_zero );     -- 拠点コード
     lv_supplier_code           := LPAD( NVL( i_bac_fb_line_rec.segment1, cv_space ), 10 , cv_zero );      -- 仕入先コード
-    lv_dummy                   := LPAD( cv_space, 9, cv_space );                                          -- ダミー
+-- Ver.1.14 Mod Start
+--    lv_dummy                   := LPAD( cv_space, 9, cv_space );                                          -- ダミー
+    lv_dummy                   := LPAD( cv_space, 8, cv_space );                                          -- ダミー
+-- Ver.1.14 Mod End
 -- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
@@ -1189,6 +1299,9 @@ AS
 -- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
                                   lv_base_code               ||          -- 拠点コード
                                   lv_supplier_code           ||          -- 仕入先コード
+-- Ver.1.14 Add Start
+                                  cv_settlement_kbn          ||         -- 振込指定区分（決済優先度）
+-- Ver.1.14 Add End
                                   lv_dummy;                              -- ダミー
 --
   EXCEPTION
@@ -1422,7 +1535,10 @@ AS
 --    lv_dummy                   := LPAD( cv_space, 17, cv_space );                                                    -- ダミー
     lv_base_code               := LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 10 , cv_zero );     -- 拠点コード
     lv_supplier_code           := LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 10 , cv_zero ); -- 仕入先コード
-    lv_dummy                   := LPAD( cv_space, 9, cv_space );                                      -- ダミー
+-- Ver.1.14 Mod Start
+--    lv_dummy                   := LPAD( cv_space, 9, cv_space );                                      -- ダミー
+    lv_dummy                   := LPAD( cv_space, 8, cv_space );                                      -- ダミー
+-- Ver.1.14 Mod End
 -- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR END
 --
@@ -1441,6 +1557,9 @@ AS
 -- 2009/12/17 Ver.1.9 [E_本稼動_00511] SCS S.Moriyama UPD END
                                   lv_base_code               ||         -- 拠点コード
                                   lv_supplier_code           ||         -- 仕入先コード
+-- Ver.1.14 Add Start
+                                  cv_settlement_kbn          ||         -- 振込指定区分（決済優先度）
+-- Ver.1.14 Add End
                                   lv_dummy;                             -- ダミー
 --
   EXCEPTION
@@ -2466,7 +2585,11 @@ AS
     BEGIN
       -- ワークテーブルに登録
       INSERT INTO xxcok_fb_lines_work
-        (  internal_bank_number                    -- 仕向金融機関番号
+-- Ver.1.14 Mod Start
+        (  company_code                            -- 会社コード
+          ,internal_bank_number                    -- 仕向金融機関番号
+--        (  internal_bank_number                    -- 仕向金融機関番号
+-- Ver.1.14 Mod End
           ,header_data_type                        -- ヘッダーレコード区分
           ,type_code                               -- 種別コード
           ,code_type                               -- コード区分
@@ -2484,6 +2607,9 @@ AS
           ,record_type                             -- 新規レコード
           ,base_code                               -- 拠点コード
           ,supplier_code                           -- 仕入先コード
+-- Ver.1.14 Add Start
+          ,settlement_priority                     -- 振込指定区分（決済優先度）
+-- Ver.1.14 Add End
           ,implemented_flag                        -- FB振分実行済区分
           ,created_by                              -- 作成者
           ,creation_date                           -- 作成日
@@ -2496,7 +2622,11 @@ AS
           ,program_update_date                     -- プログラム更新日
         )
       VALUES
-        (  SUBSTRB(it_bank_number, 1,4)                                            -- 仕向金融機関番号
+-- Ver.1.14 Mod Start
+        (  gv_company_code                                                         -- パラメータ.会社コード
+          ,SUBSTRB(it_bank_number, 1,4)                                            -- 仕向金融機関番号
+--        (  SUBSTRB(it_bank_number, 1,4)                                            -- 仕向金融機関番号
+-- Ver.1.14 Mod End
           ,cv_header_rec_type                                                      -- ヘッダーレコード区分
           ,LPAD( gt_values_type_code, 2, cv_zero )                                 -- 種別コード
           ,cv_code_type                                                            -- コード区分
@@ -2514,6 +2644,9 @@ AS
           ,cv_zero                                                                 -- 新規レコード
           ,LPAD( NVL( i_fb_line_rec.base_code, cv_space ), 10 , cv_zero )          -- 拠点コード
           ,LPAD( NVL( i_fb_line_rec.supplier_code, cv_space ), 10 , cv_zero )      -- 仕入先コード
+-- Ver.1.14 Add Start
+          ,cv_settlement_kbn                                                       -- 振込指定区分（決済優先度）
+-- Ver.1.14 Add End
           ,NULL                                                                    -- FB振分実行済区分
           ,cn_created_by                                                           -- 作成者
           ,cd_creation_date                                                        -- 作成日
@@ -2578,6 +2711,9 @@ AS
     ov_errbuf        OUT VARCHAR2  -- エラー・メッセージ
   , ov_retcode       OUT VARCHAR2  -- リターン・コード
   , ov_errmsg        OUT VARCHAR2  -- ユーザー・エラー・メッセージ
+-- Ver.1.14 Add Start
+  ,iv_company_code   IN  VARCHAR2  -- パラメータ：会社コード
+-- Ver.1.14 Add End
   )
   IS
     -- ===============================================
@@ -2600,7 +2736,11 @@ AS
     IS
       SELECT 'X'
       FROM   xxcok_fb_lines_work  xflw
-      WHERE  xflw.request_id < cn_request_id
+-- Ver.1.14 Mod Start
+--      WHERE  xflw.request_id < cn_request_id
+      WHERE  xflw.request_id <> cn_request_id
+      AND    xflw.company_code = iv_company_code  -- パラメータ：会社コード
+-- Ver.1.14 Mod End
       FOR UPDATE OF xflw.request_id NOWAIT;
 --
   BEGIN
@@ -2619,6 +2759,9 @@ AS
     BEGIN
       DELETE FROM xxcok_fb_lines_work  xflw
       WHERE  xflw.request_id <> cn_request_id
+-- Ver.1.14 Add Start
+      AND    xflw.company_code = iv_company_code  -- パラメータ：会社コード
+-- Ver.1.14 Add End
       ;
 --
     EXCEPTION
@@ -2686,6 +2829,9 @@ AS
      ov_errbuf     OUT VARCHAR2     -- エラー・メッセージ
     ,ov_retcode    OUT VARCHAR2     -- リターン・コード
     ,ov_errmsg     OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+-- Ver.1.14 Add Start
+    ,iv_company_code IN  VARCHAR2   -- パラメータ：会社コード
+-- Ver.1.14 Add End
     ,iv_proc_type  IN  VARCHAR2     -- 処理パラメータ
   )
   IS
@@ -2750,6 +2896,9 @@ AS
       ov_errbuf    => lv_errbuf         -- エラー・メッセージ
     , ov_retcode   => lv_retcode        -- リターン・コード
     , ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ
+-- Ver.1.14 Add Start
+    , iv_company_code => iv_company_code  -- パラメータ：会社コード
+-- Ver.1.14 Add End
     , iv_proc_type => iv_proc_type      -- 処理パラメータ
     );
     IF( lv_retcode = cv_status_error ) THEN
@@ -3039,6 +3188,9 @@ AS
                      ,iv_message  => lv_out_msg         -- メッセージ
                      ,in_new_line => 1                  -- 改行
                     );
+-- Ver.1.14 Add Start
+      ov_retcode  := cv_status_warn;
+-- Ver.1.14 Add End
     END IF;
     --==================================================
     -- A-12.FB作成トレーラレコードの格納
@@ -3105,19 +3257,27 @@ AS
       RAISE global_process_expt;
     END IF;
 -- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+-- Ver.1.14 Add/Mod Start
+    --==================================================
+    -- 処理区分が'2'(本振用FBデータ作成処理)の場合
+    --==================================================
+    IF( iv_proc_type = cv_2 ) THEN
 -- Ver.1.13 ADD START
-    -- ===============================================
-    -- ワークテーブルデータ削除(A-18)
-    -- ===============================================
-    delete_data(
-      ov_errbuf   => lv_errbuf   -- エラー・メッセージ
-    , ov_retcode  => lv_retcode  -- リターン・コード
-    , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
-    );
-    IF ( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
+      -- ===============================================
+      -- ワークテーブルデータ削除(A-18)
+      -- ===============================================
+      delete_data(
+        ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+      , ov_retcode  => lv_retcode  -- リターン・コード
+      , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+      , iv_company_code => iv_company_code  -- パラメータ：会社コード
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
 -- Ver.1.13 ADD END
+    END IF;
+-- Ver.1.14 Add/Mod End
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -3145,6 +3305,9 @@ AS
   PROCEDURE main(
      errbuf        OUT VARCHAR2      -- エラー・メッセージ
     ,retcode       OUT VARCHAR2      -- リターン・コード
+-- Ver.1.14 Add Start
+    ,iv_company_code IN  VARCHAR2    -- パラメータ：会社コード
+-- Ver.1.14 Add End
     ,iv_proc_type  IN  VARCHAR2      -- 処理パラメータ
   )
   IS
@@ -3179,6 +3342,9 @@ AS
        ov_errbuf    => lv_errbuf      -- エラー・メッセージ
       ,ov_retcode   => lv_retcode     -- リターン・コード
       ,ov_errmsg    => lv_errmsg      -- ユーザー・エラー・メッセージ
+-- Ver.1.14 Add Start
+      ,iv_company_code => iv_company_code        -- 会社コードパラメータ
+-- Ver.1.14 Add End
       ,iv_proc_type => iv_proc_type   -- 処理パラメータ
     );
     IF( lv_retcode = cv_status_error ) THEN
