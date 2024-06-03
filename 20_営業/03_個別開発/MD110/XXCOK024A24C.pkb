@@ -7,7 +7,7 @@ AS
  * Description      : 控除額の支払画面の申請ボタン押下時に、
  *                  : 作成された控除消込情報をAP部門入力へ連携します
  * MD.050           : AP部門入力連携 MD050_COK_024_A24
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -27,6 +27,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/05/07    1.0   M.Sato           新規作成
  *  2022/08/24    1.1   SCSK Y.Koh       E_本稼動_18528 証憑台紙に控除マスタ内容の出力
+ *  2024/01/29    1.2   SCSK Y.Koh       E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -115,8 +116,10 @@ AS
   cv_set_of_bks_id       CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
   cv_org_id              CONSTANT VARCHAR2(15) := 'ORG_ID';                           -- 営業単位
   cv_other_tax           CONSTANT VARCHAR2(50) := 'XXCOK1_OTHER_TAX_CODE';            -- 対象外消費税コード
-  cv_com_code            CONSTANT VARCHAR2(50) := 'XXCOK1_AFF1_COMPANY_CODE';         -- 会社コード
-  cv_dept_fin            CONSTANT VARCHAR2(50) := 'XXCOK1_AFF2_DEPT_FIN';             -- 部門コード_財務経理部
+-- 2024/01/29 Ver1.2 DEL Start
+--  cv_com_code            CONSTANT VARCHAR2(50) := 'XXCOK1_AFF1_COMPANY_CODE';         -- 会社コード
+--  cv_dept_fin            CONSTANT VARCHAR2(50) := 'XXCOK1_AFF2_DEPT_FIN';             -- 部門コード_財務経理部
+-- 2024/01/29 Ver1.2 DEL End
   cv_cus_dummy           CONSTANT VARCHAR2(50) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';       -- 顧客コード_ダミー値
   cv_com_dummy           CONSTANT VARCHAR2(50) := 'XXCOK1_AFF6_COMPANY_DUMMY';        -- 企業コード_ダミー値
   cv_pre1_dummy          CONSTANT VARCHAR2(50) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- 予備１_ダミー値
@@ -163,6 +166,10 @@ AS
       ,invoice_number               xxcok_deduction_recon_head.invoice_number%TYPE    -- 受領請求書番号
       ,vendor_site_code             po_vendor_sites_all.vendor_site_code%TYPE         -- 仕入先サイトコード
       ,pay_group_lookup_code        po_vendor_sites_all.pay_group_lookup_code%TYPE    -- 支払グループ
+-- 2024/01/29 Ver1.2 ADD Start
+      ,company_code_bd              xxcfr_bd_company_info_v.company_code_bd%TYPE      -- 会社コード(基準日)
+      ,attribute1                   xxcfr_bd_company_info_v.attribute1%TYPE           -- 部門(債権)
+-- 2024/01/29 Ver1.2 ADD End
   );
   -- 控除消込ヘッダワークテーブル型定義
   TYPE g_recon_head_ttype    IS TABLE OF g_recon_header_rtype INDEX BY BINARY_INTEGER;
@@ -198,8 +205,10 @@ AS
   gn_set_of_bks_id            NUMBER;                                                 -- 会計帳簿ID
   gn_org_id                   NUMBER;                                                 -- 営業単位
   gv_other_tax                VARCHAR2(40);                                           -- 対象外消費税コード
-  gv_com_code                 VARCHAR2(40);                                           -- 会社コード
-  gv_dept_fin                 VARCHAR2(40);                                           -- 部門コード_財務経理部
+-- 2024/01/29 Ver1.2 DEL Start
+--  gv_com_code                 VARCHAR2(40);                                           -- 会社コード
+--  gv_dept_fin                 VARCHAR2(40);                                           -- 部門コード_財務経理部
+-- 2024/01/29 Ver1.2 DEL End
   gv_cus_dummy                VARCHAR2(40);                                           -- 顧客コード_ダミー値
   gv_com_dummy                VARCHAR2(40);                                           -- 企業コード_ダミー値
   gv_pre1_dummy               VARCHAR2(40);                                           -- 予備１_ダミー値
@@ -330,36 +339,38 @@ AS
       lv_errbuf :=  lv_errmsg;
       RAISE global_process_expt;
     END IF;
-    -- ============================================================
-    -- 会社コードのプロファイル値を取得
-    -- ============================================================
-    gv_com_code := FND_PROFILE.VALUE( cv_com_code );                       -- 会社コード
-    -- 会社コードがNULLならエラー終了
-    IF gv_com_code IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_xxcok_short_nm
-                     ,cv_profile_get_msg
-                     ,cv_tkn_profile
-                     ,cv_com_code
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
-    -- ============================================================
-    -- 部門コード_財務経理部のプロファイル値を取得
-    -- ============================================================
-    gv_dept_fin := FND_PROFILE.VALUE( cv_dept_fin );                       -- 部門コード_財務経理部
-    -- 部門コード_財務経理部がNULLならエラー終了
-    IF gv_dept_fin IS NULL THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                      cv_xxcok_short_nm
-                     ,cv_profile_get_msg
-                     ,cv_tkn_profile
-                     ,cv_dept_fin
-                    );
-      lv_errbuf :=  lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- 2024/01/29 Ver1.2 DEL Start
+--    -- ============================================================
+--    -- 会社コードのプロファイル値を取得
+--    -- ============================================================
+--    gv_com_code := FND_PROFILE.VALUE( cv_com_code );                       -- 会社コード
+--    -- 会社コードがNULLならエラー終了
+--    IF gv_com_code IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_xxcok_short_nm
+--                     ,cv_profile_get_msg
+--                     ,cv_tkn_profile
+--                     ,cv_com_code
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+--    -- ============================================================
+--    -- 部門コード_財務経理部のプロファイル値を取得
+--    -- ============================================================
+--    gv_dept_fin := FND_PROFILE.VALUE( cv_dept_fin );                       -- 部門コード_財務経理部
+--    -- 部門コード_財務経理部がNULLならエラー終了
+--    IF gv_dept_fin IS NULL THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                      cv_xxcok_short_nm
+--                     ,cv_profile_get_msg
+--                     ,cv_tkn_profile
+--                     ,cv_dept_fin
+--                    );
+--      lv_errbuf :=  lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+-- 2024/01/29 Ver1.2 DEL End
     -- ============================================================
     -- 顧客コード_ダミー値のプロファイル値を取得
     -- ============================================================
@@ -519,14 +530,27 @@ AS
             ,xdrh.invoice_number           AS invoice_number         -- 受領請求書番号
             ,pvsa.vendor_site_code         AS vendor_site_code       -- 仕入先サイト
             ,pvsa.pay_group_lookup_code    AS pay_group_lookup_code  -- 支払グループ
+-- 2024/01/29 Ver1.2 ADD Start
+            ,xbci.company_code_bd          AS company_code_bd        -- 会社コード(基準日)
+            ,xbci.attribute1               AS attribute1             -- 部門(債権)
+-- 2024/01/29 Ver1.2 ADD End
       FROM   xxcok_deduction_recon_head    xdrh                      -- 控除消込ヘッダー情報
             ,po_vendor_sites_all           pvsa                      -- 仕入先サイト
             ,po_vendors                    pv                        -- 仕入先
+-- 2024/01/29 Ver1.2 ADD Start
+            ,xxcfr_bd_company_info_v       xbci                      -- 基準日会社情報ビュー
+-- 2024/01/29 Ver1.2 ADD End
       WHERE  xdrh.deduction_recon_head_id  = gn_recon_head_id
       AND    xdrh.recon_status             = cv_recon_status_sg
       AND    pv.segment1(+)                = xdrh.payee_code
       AND    pvsa.vendor_id(+)             = pv.vendor_id
       AND    pvsa.org_id(+)                = gn_org_id
+-- 2024/01/29 Ver1.2 ADD Start
+      AND    xbci.company_code             = NVL(pvsa.attribute11, '001')
+      AND    xdrh.gl_date                  BETWEEN NVL(xbci.start_date_active, TO_DATE('1900/01/01', 'YYYY/MM/DD'))
+                                           AND     NVL(xbci.end_date_active,   TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+      AND    xbci.lookup_type              = 'XXCFO1_DRAFTING_COMPANY'
+-- 2024/01/29 Ver1.2 ADD End
       FOR UPDATE OF xdrh.deduction_recon_head_id NOWAIT
       ;
     -- *** ローカル・レコード ***
@@ -706,7 +730,10 @@ AS
 -- 2022/08/24 Ver1.1 MOD End
                                                             AS summary           -- 摘要
              ,gv_other_tax                                  AS tax_class_code    -- 税区分コード
-             ,gv_dept_fin                                   AS dept              -- 部門
+-- 2024/01/29 Ver1.2 MOD Start
+             ,g_recon_head_tbl(1).attribute1                AS dept              -- 部門
+--             ,gv_dept_fin                                   AS dept              -- 部門
+-- 2024/01/29 Ver1.2 MOD End
              ,flv.attribute6                                AS account           -- 勘定科目
              ,flv.attribute7                                AS sub_account       -- 補助科目
       FROM    xxcok_deduction_num_recon     xdnr                                 -- 控除No別消込情報
@@ -733,7 +760,10 @@ AS
              ,gv_recon_line_summ_ded || xdnr.payment_tax_code
                                                             AS summary           -- 摘要
              ,gv_other_tax                                  AS tax_class_code    -- 税区分コード
-             ,gv_dept_fin                                   AS dept              -- 部門
+-- 2024/01/29 Ver1.2 MOD Start
+             ,g_recon_head_tbl(1).attribute1                AS dept              -- 部門
+--             ,gv_dept_fin                                   AS dept              -- 部門
+-- 2024/01/29 Ver1.2 MOD End
              ,atca.attribute5                               AS account           -- 勘定科目
              ,atca.attribute6                               AS sub_account       -- 補助科目
       FROM    xxcok_deduction_num_recon     xdnr                                 -- 控除No別消込情報
@@ -1071,7 +1101,10 @@ AS
           ,g_recon_line_tbl(ln_ins_line).summary               -- 摘要
           ,cv_y_flag                                           -- 内税(Y/N)
           ,g_recon_line_tbl(ln_ins_line).tax_class_code        -- 税区分コード
-          ,gv_com_code                                         -- 会社
+-- 2024/01/29 Ver1.2 MOD Start
+          ,g_recon_head_tbl(1).company_code_bd                 -- 会社
+--          ,gv_com_code                                         -- 会社
+-- 2024/01/29 Ver1.2 MOD End
           ,g_recon_line_tbl(ln_ins_line).dept                  -- 部門
           ,g_recon_line_tbl(ln_ins_line).account               -- 勘定科目
           ,g_recon_line_tbl(ln_ins_line).sub_account           -- 補助科目
