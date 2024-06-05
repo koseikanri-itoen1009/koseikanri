@@ -12,6 +12,7 @@
                        SCSK   吉岡           2023/04/28 Issue1.2 ESSジョブ階層取得対応
                        SCSK   細沼           2023/07/26 Issue1.3 障害対応：E_本稼動_19362
                        SCSK   細沼           2023/09/29 Issue1.4 障害対応：E_本稼動_19531
+                       SCSK   細沼           2024/04/02 Issue1.5 障害対応：E_本稼動_19878 502bad gatewayエラー対応
 
      [戻り値]
         0 : 正常
@@ -45,22 +46,38 @@ from requests.exceptions import ConnectTimeout
 def execApi(com, execPayload, exeName, apiUrl, isExecFunk=True):
 
     try:
-        ## RESTAPI実行
-        apiResponse = requests.request("POST"
-            , com.getEnvValue("OIC_HOST") + apiUrl
-            , headers=com.headers
-            , data=execPayload
-            , timeout=(float(com.getEnvConstValue("REST_CONN_TIMEOUT_SEC")), None))
+        ## サーバーエラーを考慮したREST API呼出し
+        for cnt in range(int(com.getEnvConstValue("MAX_LOOP_CNT_REST_RETRY"))):
+            
+            if cnt > 0 :
+                #初回以外は規定の秒数待機後、RESTAPIを実行
+                time.sleep(int(com.getEnvConstValue("SLEEP_TIME_REST_RETRY")))
+            
+            ## RESTAPI実行
+            apiResponse = requests.request("POST"
+                , com.getEnvValue("OIC_HOST") + apiUrl
+                , headers=com.headers
+                , data=execPayload
+                , timeout=(float(com.getEnvConstValue("REST_CONN_TIMEOUT_SEC")), None))
+                
+            ## RESTAPI サーバーエラー判定
+            if com.oicErrChkSrv(apiResponse) :
+                ## サーバーエラーが発生した場合、RESTAPI呼出しを再試行
+                continue
 
-        ## RESTAPIエラー判定
-        com.oicErrChk(apiResponse, exeName)
+            ## RESTAPIエラー判定
+            com.oicErrChk(apiResponse, exeName)
 
-        rtnRes = None
-        if isExecFunk:
-            ## リターンコードエラー判定
-            rtnRes = com.oicRtnCdChk(apiResponse, exeName)
+            rtnRes = None
+            if isExecFunk:
+                ## リターンコードエラー判定
+                rtnRes = com.oicRtnCdChk(apiResponse, exeName)
 
-        return rtnRes
+            return rtnRes
+        else:
+            ## REST API呼出しのリトライ回数が上限に達した場合のエラー処理
+            com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+            raise PyComnException("CCDE0011", exeName)
 
     ## 例外判定
     except ConnectTimeout as e:

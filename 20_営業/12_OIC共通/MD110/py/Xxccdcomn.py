@@ -10,6 +10,7 @@
                        SCSK   吉岡           2022/10/31 Draft1B  仕様変更対応
                        SCSK   久保田         2023/02/22 Issue1.0 Issue化
                        SCSK   吉岡           2023/03/31 Issue1.1 業務日付更新対応
+                       SCSK   細沼           2024/04/02 Issue1.2 障害対応：E_本稼動_19878 502bad gatewayエラー対応
 
      [パラメータ]
         なし
@@ -174,6 +175,29 @@ class Xxccdcomn:
             msgParam.append(stCode)
             self.endCd = self.getEnvConstValue("JP1_ERR_CD")
             raise PyComnException("CCDE0003", msgParam)
+
+    """
+    OICエラー判定（サーバーエラー）
+      [パラメータ]
+        RESTAPIレスポンス：execResponse string
+      [戻り値]
+        サーバーエラー判定              bool
+      [例外]
+        PyComnException
+    """
+    def oicErrChkSrv(self, execResponse):
+        ## ローカル変数初期化
+        isServerErr = False
+        
+        ## HTTPステータスコード取得
+        stCode = execResponse.status_code
+        ## HTTPステータスコードが502、504の場合
+        if stCode == 502 or stCode == 504 :
+            
+            ## サーバーエラー判定にTrueを設定する
+            isServerErr = True
+        
+        return isServerErr
 
     """
     OICリターンコード判定

@@ -9,6 +9,7 @@
           更新履歴：   SCSK   吉岡           2022/10/31 Draft1A  初版
                        SCSK   久保田         2023/02/22 Issue1.0 Issue化
                        SCSK   吉岡           2023/04/12 Issue1.1 ST0102対応
+                       SCSK   細沼           2024/04/02 Issue1.2 障害対応：E_本稼動_19878 502bad gatewayエラー対応
 
      [戻り値]
         0 : 正常
@@ -41,19 +42,36 @@ from com.PyComnException import PyComnException
 
 def execApi(com, execPayload, exeName, apiUrl):
 
-    ## RESTAPI実行
-    apiResponse = requests.request("POST"
-        , com.getEnvValue("OIC_HOST") + apiUrl
-        , headers=com.headers
-        , data=execPayload)
+    ## サーバーエラーを考慮したREST API呼出し
+    for cnt in range(int(com.getEnvConstValue("MAX_LOOP_CNT_REST_RETRY"))):
 
-    ## RESTAPIエラー判定
-    com.oicErrChk(apiResponse, exeName)
+        if cnt > 0:
+            #初回以外は規定の秒数待機後、RESTAPIを実行
+            time.sleep(int(com.getEnvConstValue("SLEEP_TIME_REST_RETRY")))
 
-    ## リターンコードエラー判定
-    rtnRes = com.oicRtnCdChk(apiResponse, exeName)
+        ## RESTAPI実行
+        apiResponse = requests.request("POST"
+            , com.getEnvValue("OIC_HOST") + apiUrl
+            , headers=com.headers
+            , data=execPayload)
 
-    return rtnRes
+        ## RESTAPI サーバーエラー判定
+        if com.oicErrChkSrv(apiResponse) :
+            ## サーバーエラーが発生した場合、RESTAPI呼出しを再試行
+            continue
+
+        ## RESTAPIエラー判定
+        com.oicErrChk(apiResponse, exeName)
+
+        ## リターンコードエラー判定
+        rtnRes = com.oicRtnCdChk(apiResponse, exeName)
+
+        return rtnRes
+
+    else:
+        ## REST API呼出しのリトライ回数が上限に達した場合のエラー処理
+        com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+        raise PyComnException("CCDE0011", exeName)
 
 def execEssJob(com, essJobJsonList, paramList):
 
