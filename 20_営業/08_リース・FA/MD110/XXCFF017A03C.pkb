@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A03C(body)
  * Description      : 自販機情報FA連携処理リース(FA)
  * MD.050           : MD050_CFF_017_A03_自販機情報FA連携処理
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2017/04/19    1.2   SCSK小路         E_本稼働_14030対応
  *  2017/11/21    1.3   SCSK大塚         E_本稼働_14502対応
  *  2018/11/05    1.4   SCSK佐々木       E_本稼動_14868対応
+ *  2024/02/05    1.5   SCSK赤地         E_本稼動_19496対応
+ *                                       E_本稼動_14868再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -164,6 +166,11 @@ AS
   cv_msg_017a03_t_038 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50293'; -- XXCFF:部門コード_減価償却
   cv_msg_017a03_t_039 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50294'; -- XXCFF:ショーケース_FA連携金額
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- Ver.1.5 Add Start
+  cv_msg_017a03_t_040 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50333'; -- XXCFF:会社コード_工場
+  cv_msg_017a03_t_041 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50096'; -- XXCFF: 本社工場区分_工場
+  cv_msg_017a03_t_042 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50332'; -- 会社別減価償却費勘定
+-- Ver.1.5 Add End
 --
   -- ***トークン名
   cv_tkn_prof        CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -186,6 +193,13 @@ AS
   cv_dep_cd_depreciation  CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_DEPRECIATION';  -- 部門コード_減価償却
   cv_fa_coop_amount_sh    CONSTANT VARCHAR2(30) := 'XXCFF1_FA_COOP_AMOUNT_SH';    -- ショーケース_FA連携金額
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- Ver.1.5 Add Start
+  cv_set_of_books_id      CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';           -- 会計帳簿ID
+  cv_own_company_code     CONSTANT VARCHAR2(30) := 'XXCFF1_OWNER_COMPANY_CODE';  -- 本社/工場区分コード
+  cv_company_deprn        CONSTANT VARCHAR2(30) := 'XXCFF1_COMPANY_DEPRN';       -- 会社別減価償却費勘定
+  cv_comp_cd_sagara       CONSTANT VARCHAR2(30) := 'XXCFF1_COMPANY_CD_SAGARA';   -- 会社コード_工場
+  cv_own_comp_sagara      CONSTANT VARCHAR2(30) := 'XXCFF1_OWN_COMP_SAGARA';     -- 本社工場区分_工場
+-- Ver.1.5 Add End
 --
   -- ***ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT'; -- メッセージ出力
@@ -222,7 +236,10 @@ AS
   TYPE g_object_header_id_ttype        IS TABLE OF xxcff_vd_object_headers.object_header_id%TYPE INDEX BY PLS_INTEGER;
   TYPE g_object_internal_id_ttype      IS TABLE OF xxcff_vd_object_headers.object_header_id%TYPE INDEX BY PLS_INTEGER;
   TYPE g_object_code_ttype             IS TABLE OF xxcff_vd_object_headers.object_code%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_owner_company_type_ttype      IS TABLE OF xxcff_vd_object_headers.owner_company_type%TYPE INDEX BY PLS_INTEGER;
+-- Ver.1.5 Mod Start
+--  TYPE g_owner_company_type_ttype      IS TABLE OF xxcff_vd_object_headers.owner_company_type%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_owner_company_type_ttype      IS TABLE OF xx01_transfer_oif.loc_segment5%TYPE INDEX BY PLS_INTEGER;
+-- Ver.1.5 Mod End
   TYPE g_department_code_ttype         IS TABLE OF xxcff_vd_object_headers.department_code%TYPE INDEX BY PLS_INTEGER;
   TYPE g_machine_type_ttype            IS TABLE OF xxcff_vd_object_headers.machine_type%TYPE INDEX BY PLS_INTEGER;
   TYPE g_manufacturer_name_ttype       IS TABLE OF xxcff_vd_object_headers.manufacturer_name%TYPE INDEX BY PLS_INTEGER;
@@ -368,6 +385,11 @@ AS
   gv_dep_cd_depreciation   VARCHAR2(100); -- 部門コード_減価償却
   gn_fa_coop_amount_sh     NUMBER;        -- ショーケース_FA連携金額
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- Ver.1.5 Add Start
+  gv_comp_cd_sagara        VARCHAR2(100); -- 会社コード_工場
+  gv_own_comp_sagara       VARCHAR2(4);   -- 本社工場区分_工場
+  gn_set_of_bks_id         NUMBER;        -- GL会計帳簿ID
+-- Ver.1.5 Add End
 --
   -- セグメント値配列(EBS標準関数fnd_flex_ext用)
   g_segments_tab  fnd_flex_ext.segmentarray;
@@ -2614,7 +2636,10 @@ AS
 --  V1.4 2018/11/05 Modified START
 --            ,g_date_placed_in_service_tab(ln_loop_cnt)               -- 事業供用日（修正後）
             , CASE WHEN TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101
-                THEN  g_date_placed_in_service_tab(ln_loop_cnt) + 1
+-- Ver.1.5 Mod Start
+--                THEN  g_date_placed_in_service_tab(ln_loop_cnt) + 1
+                THEN  ld_dpis_old
+-- Ver.1.5 Mod End
                 ELSE  g_date_placed_in_service_tab(ln_loop_cnt)
               END                                       --  事業供用日
 --  V1.4 2018/11/05 Modified END
@@ -3423,8 +3448,10 @@ AS
           --==============================================================
           -- 減価償却費勘定セグメント値取得 (A-5-3)
           --==============================================================
-          -- 会社コードに本社コードを設定
-          lv_comp_cd := gv_comp_cd_itoen;
+-- Ver.1.5 Del Start
+--          -- 会社コードに本社コードを設定
+--          lv_comp_cd := gv_comp_cd_itoen;
+-- Ver.1.5 Del End
 --
           -- 減価償却勘定の償却科目を取得
           BEGIN
@@ -3458,16 +3485,77 @@ AS
               RAISE chk_no_data_found_expt;
           END;
 --
+-- Ver.1.5 Add Start
+          --==============================================================
+          -- 会社コード（基準日）、本社工場区分取得 (A-5-6)
+          --==============================================================
+          -- A-5本社工場区分が「工場」以外の場合
+          IF (g_owner_company_type_tab(ln_loop_cnt) <> gv_own_comp_sagara) THEN
+            BEGIN
+              SELECT xbdciv.company_code_bd  AS company_code_bd    -- 会社コード（基準日）
+                    ,flvv.description        AS company_name       -- 本社工場区分
+              INTO   g_segments_tab(1)                             -- セグメント値配列設定(SEG1:会社)
+                    ,g_owner_company_type_tab(ln_loop_cnt)         -- 本社工場区分
+              FROM   xxcfr_bd_dept_comp_info_v xbdciv              -- 基準日部門会社情報ビュー
+                    ,fnd_lookup_values_vl      flvv                -- 参照表(本社/工場区分コード)
+              WHERE xbdciv.dept_code       = g_department_code_tab(ln_loop_cnt)       -- 管理部門
+              AND   xbdciv.set_of_books_id = gn_set_of_bks_id                         -- 会計帳簿ID
+              AND   xbdciv.enabled_flag    = 'Y'
+              AND   g_moved_date_tab(ln_loop_cnt) BETWEEN xbdciv.comp_start_date      -- 移動日
+                                                      AND NVL( xbdciv.comp_end_date, g_moved_date_tab(ln_loop_cnt) )
+              AND   flvv.lookup_type       = cv_own_company_code
+              AND   flvv.lookup_code       = xbdciv.company_code_bd
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+                                                              ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
+                                                              ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
+                                                              ,cv_msg_017a03_t_035)    -- 本社工場区分
+                                                              ,1
+                                                              ,5000);
+                RAISE chk_no_data_found_expt;
+            END;
+          ELSE
+            -- セグメント値配列設定(SEG1:会社) : 会社コード_工場を設定
+            g_segments_tab(1) := gv_comp_cd_sagara;
+          END IF;
+-- Ver.1.5 Add End
           --==============================================================
           -- 移動OIF登録 (A-5-4)
           --==============================================================
 --
-          -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
-          g_segments_tab(1) := gv_comp_cd_itoen;
+-- Ver.1.5 Del Start
+--          -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
+--          g_segments_tab(1) := gv_comp_cd_itoen;
+-- Ver.1.5 Del End
           -- 仕訳区分が1の時
           IF ( lv_segment9 = cv_segment9_1 ) THEN
             -- セグメント値配列設定(SEG2:部門) : 取得した管理部門
             g_segments_tab(2) := g_department_code_tab(ln_loop_cnt);
+-- Ver.1.5 Add Start
+          -- グループ会社かつ仕訳区分が1以外の時、会社別減価償却会社、償却部門コードを設定
+          ELSIF ( g_segments_tab(1) != gv_comp_cd_itoen AND g_segments_tab(1) != gv_comp_cd_sagara ) THEN
+            BEGIN
+              SELECT flvv.attribute1    AS company_code
+                    ,flvv.attribute2    AS dept_code
+              INTO   g_segments_tab(1)                        -- 会社別減価償却会社コード
+                    ,g_segments_tab(2)                        -- 会社別減価償却部門コード
+              FROM   fnd_lookup_values_vl      flvv           -- 参照表(会社別減価償却費勘定)
+              WHERE flvv.lookup_type = cv_company_deprn
+              AND   flvv.lookup_code = g_segments_tab(1)
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+                                                              ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
+                                                              ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
+                                                              ,cv_msg_017a03_t_042 )   -- 会社別減価償却費勘定
+                                                              ,1
+                                                              ,5000);
+                RAISE chk_no_data_found_expt;
+            END;
+-- Ver.1.5 Add End
           -- 仕訳区分が3の時
           ELSIF ( lv_segment9 = cv_segment9_3 ) THEN
             -- セグメント値配列設定(SEG2:部門) : XXCFF:部門コード_減価償却
@@ -3548,7 +3636,10 @@ AS
               ,ln_current_units                         -- 単位変更
               ,cv_yes                                   -- 転記チェックフラグ
               ,cv_status                                -- ステータス
-              ,lv_comp_cd                               -- 減価償却費勘定セグメント-会社
+-- Ver.1.5 Mod Start
+--              ,lv_comp_cd                               -- 減価償却費勘定セグメント-会社
+              ,g_segments_tab(1)                        -- 減価償却費勘定セグメント-会社
+-- Ver.1.5 Mod End
               ,g_segments_tab(2)                        -- 減価償却費勘定セグメント-部門
               ,lv_segment4                              -- 減価償却費勘定セグメント-勘定科目
               ,lv_segment8                              -- 減価償却費勘定セグメント-補助科目
@@ -4266,16 +4357,77 @@ AS
             RAISE global_api_expt;
           END IF;
 --
+-- Ver.1.5 Add Start
+          --==============================================================
+          -- 会社コード（基準日）、本社工場区分取得 (A-4-9)
+          --==============================================================
+          -- A-4本社工場区分が「工場」以外の場合
+          IF (g_owner_company_type_tab(ln_loop_cnt) <> gv_own_comp_sagara) THEN
+            BEGIN
+              SELECT xbdciv.company_code_bd  AS company_code_bd    -- 会社コード（基準日）
+                    ,flvv.description        AS company_name       -- 本社工場区分
+              INTO   g_segments_tab(1)                             -- セグメント値配列設定(SEG1:会社)
+                    ,g_owner_company_type_tab(ln_loop_cnt)         -- 本社工場区分
+              FROM   xxcfr_bd_dept_comp_info_v xbdciv              -- 基準日部門会社情報ビュー
+                    ,fnd_lookup_values_vl      flvv                -- 参照表(本社/工場区分コード)
+              WHERE xbdciv.dept_code       = g_department_code_tab(ln_loop_cnt)       -- 管理部門
+              AND   xbdciv.set_of_books_id = gn_set_of_bks_id                         -- 会計帳簿ID
+              AND   xbdciv.enabled_flag    = 'Y'
+              AND   g_date_placed_in_service_tab(ln_loop_cnt) BETWEEN xbdciv.comp_start_date  -- 事業供用日
+                                                      AND NVL( xbdciv.comp_end_date, g_date_placed_in_service_tab(ln_loop_cnt) )
+              AND   flvv.lookup_type       = cv_own_company_code
+              AND   flvv.lookup_code       = xbdciv.company_code_bd
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+                                                              ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
+                                                              ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
+                                                              ,cv_msg_017a03_t_035)    -- 本社工場区分
+                                                              ,1
+                                                              ,5000);
+                RAISE chk_no_data_found_expt;
+            END;
+          ELSE
+            -- セグメント値配列設定(SEG1:会社) : 会社コード_工場を設定
+            g_segments_tab(1) := gv_comp_cd_sagara;
+          END IF;
+-- Ver.1.5 Add End
           --==============================================================
           -- 減価償却費勘定CCID取得 (A-4-3)
           --==============================================================
 --
-          -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
-          g_segments_tab(1) := gv_comp_cd_itoen;
+-- Ver.1.5 Del Start
+--          -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
+--          g_segments_tab(1) := gv_comp_cd_itoen;
+-- Ver.1.5 Del End
           -- 仕訳区分が1の時
           IF ( lv_segment9 = cv_segment9_1 ) THEN
             -- セグメント値配列設定(SEG2:部門) : 取得した管理部門
             g_segments_tab(2) := g_department_code_tab(ln_loop_cnt);
+-- Ver.1.5 Add Start
+          -- グループ会社かつ仕訳区分が1以外の時、会社別減価償却会社、償却部門コードを設定
+          ELSIF ( g_segments_tab(1) != gv_comp_cd_itoen AND g_segments_tab(1) != gv_comp_cd_sagara ) THEN
+            BEGIN
+              SELECT flvv.attribute1    AS company_code
+                    ,flvv.attribute2    AS dept_code
+              INTO   g_segments_tab(1)                        -- 会社別減価償却会社コード
+                    ,g_segments_tab(2)                        -- 会社別減価償却部門コード
+              FROM   fnd_lookup_values_vl      flvv           -- 参照表(会社別減価償却費勘定)
+              WHERE flvv.lookup_type = cv_company_deprn
+              AND   flvv.lookup_code = g_segments_tab(1)
+              ;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+                                                              ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
+                                                              ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
+                                                              ,cv_msg_017a03_t_042 )   -- 会社別減価償却費勘定
+                                                              ,1
+                                                              ,5000);
+                RAISE chk_no_data_found_expt;
+            END;
+-- Ver.1.5 Add End
           -- 仕訳区分が3の時
           ELSIF ( lv_segment9 = cv_segment9_3 ) THEN
             -- セグメント値配列設定(SEG2:部門) : XXCFF:部門コード_減価償却
@@ -4829,6 +4981,46 @@ AS
     END IF;
 --
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- Ver.1.5 Add Start
+    -- XXCFF:会社コード_工場
+    gv_comp_cd_sagara := FND_PROFILE.VALUE(cv_comp_cd_sagara);
+    IF (gv_comp_cd_sagara IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_017a03_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_017a03_t_040) -- XXCFF:会社コード_工場
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- XXCFF:本社工場区分_工場
+    gv_own_comp_sagara := FND_PROFILE.VALUE(cv_own_comp_sagara);
+    IF (gv_own_comp_sagara IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff
+                                                    ,cv_msg_017a03_m_010
+                                                    ,cv_tkn_prof
+                                                    ,cv_msg_017a03_t_041)
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 会計帳簿ID
+    gn_set_of_bks_id := FND_PROFILE.VALUE(cv_set_of_books_id);
+    IF (gn_set_of_bks_id IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff
+                                                    ,cv_msg_017a03_m_010
+                                                    ,cv_tkn_prof
+                                                    ,cv_set_of_books_id)
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver.1.5 Add End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
