@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -116,6 +116,7 @@ AS
  *  2019/05/22    1.21 SCSK 阿部 直樹    障害E_本稼動_15725 対応
  *  2019/10/16    1.22 SCSK 郭 有司      障害E_本稼動_15852 対応
  *  2022/11/29    1.23 SCSK 水谷 武博    E_本稼動_SaaS 対応
+ *  2024/01/30    1.24 SCSK 細沼 翔太    E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -274,7 +275,9 @@ AS
 --  cv_prf_default               CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEFAULT_CD';   -- デフォルト費用勘定
 -- End Ver1.3
 -- Ver1.3 Add  2009/04/16  デフォルト費用勘定各ＡＦＦセグメント毎にプロファイル定義
-  cv_prf_def_aff1              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEF_AFF1';     -- AFF1(SEG1:会社)
+-- Ver1.24 2023/11/13 Del Start
+--  cv_prf_def_aff1              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEF_AFF1';     -- AFF1(SEG1:会社)
+-- Ver1.24 2023/11/13 Del End
   cv_prf_def_aff3              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEF_AFF3';     -- AFF3(SEG3:勘定科目)
   cv_prf_def_aff4              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEF_AFF4';     -- AFF4(SEG4:補助科目)
   cv_prf_def_aff5              CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_DEF_AFF5';     -- AFF5(SEG5:顧客コード)
@@ -319,11 +322,16 @@ AS
   cv_prf_fil_nm                CONSTANT VARCHAR2(20)  := 'CSVファイル名';      -- プロファイル;
   cv_prf_supervisor_nm         CONSTANT VARCHAR2(20)  := '管理者従業員番号';   -- プロファイル;
   cv_prf_supervisor_nm2        CONSTANT VARCHAR2(40)  := '管理者従業員番号(従業員未登録データ)'; -- プロファイル;
+-- Ver1.24 2023/11/13 Add Start
+  cv_prf_conv_company          CONSTANT VARCHAR2(40)  := '基準日部門会社コード変換';     -- プロファイル;
+-- Ver1.24 2023/11/13 Add End
 -- Ver1.3 Del  2009/04/16  各セグメント毎にプロファイル定義し不要のため
 --  cv_prf_default_nm            CONSTANT VARCHAR2(20)  := 'デフォルト費用勘定'; -- プロファイル;
 -- End Ver1.3
 -- Ver1.3 Add  2009/04/16  デフォルト費用勘定各ＡＦＦセグメント毎にプロファイル定義
-  cv_prf_def_aff1_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ１：会社';
+-- Ver1.24 2023/11/13 Del Start
+--  cv_prf_def_aff1_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ１：会社';
+-- Ver1.24 2023/11/13 Del End
   cv_prf_def_aff3_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ３：勘定科目';
   cv_prf_def_aff4_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ４：補助科目';
   cv_prf_def_aff5_nm           CONSTANT VARCHAR2(40)  := 'デフォルト費用勘定ＡＦＦ５：顧客コード';
@@ -406,6 +414,11 @@ AS
   cv_scp                       CONSTANT VARCHAR2(5)   := 'SCOPE';
 -- 2019/10/16 Ver1.22 ADD End
 --Ver1.20 2019/04/16 N.Abe Add End
+-- Ver1.24 (移行対応) Add Start
+  -- 適用労働時間制コードのダミーコード
+  -- ※ダミーコードは移行データパッチにて設定
+  cv_job_system_dummy          CONSTANT VARCHAR2(2)   := '99';
+-- Ver1.24 (移行対応) Add End
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1609,6 +1622,10 @@ AS
     -- *** ローカル変数 ***
     lb_ret                BOOLEAN;
     ln_ccid               gl_code_combinations.code_combination_id%TYPE;
+--  Ver1.24 2023/11/13 Add Start
+    lc_company_code       xxcfr_bd_dept_comp_info_v.company_code_bd%TYPE;
+--  Ver1.24 2023/11/13 Add End
+
     --
     -- *** テーブル変数 ***
     l_aff_segments_tab    fnd_flex_ext.segmentarray;
@@ -1621,11 +1638,40 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--  Ver1.24 2023/11/13 Add Start
+    ----------------
+    -- 会社コード取得
+    ----------------
+    BEGIN
+      SELECT
+        xbdci.company_code_bd
+      INTO lc_company_code
+      FROM xxcfr_bd_dept_comp_info_v xbdci
+      WHERE xbdci.set_of_books_id = gn_set_of_book_id
+      AND   xbdci.dept_code = iv_aff_segment2 
+      AND   xbdci.enabled_flag = gv_const_y
+      AND   NVL( xbdci.comp_start_date, cd_process_date + 1 ) <= cd_process_date + 1 
+      AND   NVL( xbdci.comp_end_date, cd_process_date + 1 ) >= cd_process_date + 1 ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_file_data_no_err
+                   );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+    END;        
+--  Ver1.24 2023/11/13 Add End
     ----------------
     -- ＡＦＦ設定
     ----------------
     -- セグメント値配列設定(SEG1:会社)
-    l_aff_segments_tab( 1 ) := g_aff_segments_tab( 1 );
+--  Ver1.24 2023/11/13 Mod Start
+--    l_aff_segments_tab( 1 ) := g_aff_segments_tab( 1 );
+    l_aff_segments_tab( 1 ) := lc_company_code;
+--  Ver1.24 2023/11/13 Mod End
     -- セグメント値配列設定(SEG2:部門)  所属部門
     l_aff_segments_tab( 2 ) := iv_aff_segment2;
     -- セグメント値配列設定(SEG3:勘定科目)
@@ -1799,13 +1845,15 @@ AS
     -----------------------------------------
     -- デフォルト費用勘定ＡＦＦ値取得
     -----------------------------------------
-    -- セグメント値配列設定(SEG1:会社)
-    g_aff_segments_tab( 1 ) := FND_PROFILE.VALUE( cv_prf_def_aff1 );
-    -- プロファイルが取得できない場合はエラー
-    IF ( g_aff_segments_tab( 1 ) IS NULL ) THEN
-      lv_token_value1 := cv_prf_def_aff1_nm;
-      RAISE global_process_expt;
-    END IF;
+-- Ver1.24 2023/11/13 Del Start
+--    -- セグメント値配列設定(SEG1:会社)
+--    g_aff_segments_tab( 1 ) := FND_PROFILE.VALUE( cv_prf_def_aff1 );
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( g_aff_segments_tab( 1 ) IS NULL ) THEN
+--      lv_token_value1 := cv_prf_def_aff1_nm;
+--      RAISE global_process_expt;
+--    END IF;
+-- Ver1.24 2023/11/13 Del End
     --
     -- セグメント値配列設定(SEG3:勘定科目)
     g_aff_segments_tab( 3 ) := FND_PROFILE.VALUE( cv_prf_def_aff3 );
@@ -2763,7 +2811,13 @@ AS
 -- Ver1.3 Add 2009/04/16  デフォルト費用勘定取得処理を追加
     -- 新規社員、所属コード変更時取得する
     --   所属未変更時は、デフォルト費用勘定に変更がないため必要ないはず。
-    IF ( ir_masters_rec.resp_kbn = gv_sts_yes ) THEN
+    --   ただし、適用労働時間制コード（旧）がダミー値「99」となっている場合は、デフォルト費用勘定CCIDを再取得させる。
+    --   ※分社化（新会社）の開始タイミングにて、所属コードの変更がない場合でも、会社が変わるため、デフォルト費用勘定の更新が必要になる。
+    --     ダミー値の設定は、別途データパッチにて行う。
+-- Ver1.24 (移行対応) Mod Start 
+--    IF ( ir_masters_rec.resp_kbn = gv_sts_yes ) THEN
+    IF ( ir_masters_rec.resp_kbn = gv_sts_yes OR lr_check_rec.job_system_old = cv_job_system_dummy ) THEN
+-- Ver1.24 (移行対応) Mod End (移行対応)
       -- デフォルト費用勘定CCIDの取得
       get_ccid(
         iv_aff_segment2  =>  ir_masters_rec.location_code             --   AFF02部門(所属コード)
