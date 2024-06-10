@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOI_WK_COST_VARIANCE
  * Description : 原価差額ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/14    1.0   T.Kojima         新規作成
  *  2009/03/26    1.1   H.Sasaki         [障害T1_0120]
  *  2009/07/09    1.2   S.Moriyama       [0000496]Storage句を追加
+ *  2024/01/22    1.3   R.Oikawa         [E_本稼動_19496]グループ会社対応
  *
  **************************************************************************************/
 CREATE TABLE XXCOI.XXCOI_WK_COST_VARIANCE (
@@ -33,6 +34,14 @@ CREATE TABLE XXCOI.XXCOI_WK_COST_VARIANCE (
     ,operation_cost               NUMBER        NOT NULL
     ,cost_variance                NUMBER
     ,status                       VARCHAR2(1)
+-- Ver1.3 ADD START
+    ,company_code                 VARCHAR2(3)
+    ,transaction_type_id          NUMBER
+    ,group_company_flg            VARCHAR2(1)
+    ,transfer_ownership_flg       VARCHAR2(1)
+    ,reverse_flg                  VARCHAR2(1)
+    ,grcp_adj_dept_code           VARCHAR2(4)
+-- Ver1.3 ADD END
     ,created_by                   NUMBER(15)    NOT NULL
     ,creation_date                DATE          NOT NULL
     ,last_updated_by              NUMBER(15)    NOT NULL
@@ -83,6 +92,20 @@ COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.cost_variance                    
 /
 COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.status                                  IS 'ステータス';
 /
+-- Ver1.3 ADD START
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.company_code                            IS '会社コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transaction_type_id                     IS '取引タイプID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.group_company_flg                       IS 'グループ会社フラグ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.transfer_ownership_flg                  IS '所有権移転取引フラグ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.reverse_flg                             IS '反転フラグ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.grcp_adj_dept_code                      IS '調整部門コード(グループ会社)'
+/
+-- Ver1.3 ADD END
 COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.created_by                              IS '作成者';
 /
 COMMENT ON COLUMN xxcoi.xxcoi_wk_cost_variance.creation_date                           IS '作成日';
