@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 2.1
+ * Version          : 2.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -44,7 +44,7 @@ AS
  * 2013/12/30     1.9   SCSK S.NIKI      [障害E_本稼動_02011]入金時値引の勘定科目変更
  * 2019/07/03     2.0   SCSK N.Miyamoto  [E_本稼動_15472]軽減税率対応
  * 2022/06/24     2.1   SCSK M.Akachi    [E_本稼動_18381]実績振替の売上値引の勘定科目変更
- *
+ * 2024/02/02     2.2   SCSK T.Okuyama   [E_本稼動_19496]グループ会社対応
  *****************************************************************************************/
   --===============================
   --グローバル定数
@@ -296,12 +296,27 @@ AS
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
            , xsti.tax_code                                               -- 消費税コード
 -- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
+-- Ver.2.2 Add Start
+           , (SELECT MAX(xbdciv1.company_code_bd)
+              FROM   xxcfr_bd_dept_comp_info_v       xbdciv1                     -- 担当拠点会社情報ビュー
+              WHERE  xbdciv1.set_of_books_id = gn_set_of_bks_id                                               -- GL会計帳簿ID
+              AND    xbdciv1.dept_code       = xsti.base_code                                                 -- 売上振替先拠点コード
+              AND    trunc(xsti.selling_date) BETWEEN NVL(xbdciv1.comp_start_date, trunc(xsti.selling_date))  -- 売上計上日の開始と終了
+                                                  AND NVL(xbdciv1.comp_end_date,   trunc(xsti.selling_date))
+             ) company_code_base                                                                       -- 振替先会社コード
+           , (SELECT MAX(xbdciv2.company_code_bd)
+              FROM   xxcfr_bd_dept_comp_info_v       xbdciv2                     -- 担当拠点会社情報ビュー
+              WHERE  xbdciv2.set_of_books_id = gn_set_of_bks_id                                               -- GL会計帳簿ID
+              AND    xbdciv2.dept_code       = xsti.delivery_base_code                                        -- 売上振替元拠点コード
+              AND    trunc(xsti.selling_date) BETWEEN NVL(xbdciv2.comp_start_date, trunc(xsti.selling_date))  -- 売上計上日の開始と終了
+                                                  AND NVL(xbdciv2.comp_end_date,   trunc(xsti.selling_date))
+             ) company_code_delivery                                                                   -- 振替元会社コード
+-- Ver.2.2 Add End
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
 -- Ver.2.1 Add Start
             ,fnd_lookup_values_vl            v1                          -- 参照表（入金値引）
             ,fnd_lookup_values_vl            v2                          -- 参照表（値引品目）
 -- Ver.2.1 Add End
-    
     WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
     AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
     AND      xsti.report_decision_flag    =  cv_report_decision_flag     -- 速報確定フラグ1(確定)
@@ -938,6 +953,9 @@ AS
     ov_errbuf          OUT VARCHAR2                               -- エラー・メッセージ
   , ov_retcode         OUT VARCHAR2                               -- リターン・コード
   , ov_errmsg          OUT VARCHAR2                               -- ユーザー・エラー・メッセージ
+-- Ver.2.2 Add Start
+  , iv_company_code    IN  VARCHAR2                               -- 会社
+-- Ver.2.2 Add End
   , iv_division        IN  VARCHAR2                               -- 部門
   , iv_account_class   IN  VARCHAR2                               -- 勘定科目
   , iv_adminicle_class IN  VARCHAR2                               -- 補助科目
@@ -1015,7 +1033,10 @@ AS
       , cv_result_flag                                 -- 'A'(実績)
       , gv_gl_category_results                         -- A-1で取得した仕訳カテゴリ名
       , gv_gl_source_results                           -- A-1で取得した仕訳ソース名
-      , gv_comp_code                                   -- A-1で取得した会社コード
+-- Ver.2.2 Mod Start
+--      , gv_comp_code                                   -- A-1で取得した会社コード
+      , iv_company_code                                -- パラメータ会社
+-- Ver.2.2 Mod End
       , iv_division                                    -- パラメータ部門
       , iv_account_class                               -- パラメータ勘定科目
       , iv_adminicle_class                             -- パラメータ補助科目
@@ -1136,6 +1157,9 @@ AS
         ov_errbuf          => lv_errbuf
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+      , iv_company_code    => i_get_rec.company_code_delivery -- 振替元会社コード
+-- Ver.2.2 Add End
       , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
 --      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
@@ -1161,6 +1185,9 @@ AS
         ov_errbuf          => lv_errbuf
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+      , iv_company_code    => i_get_rec.company_code_base  -- 振替先会社コード
+-- Ver.2.2 Add End
       , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
 --      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
@@ -1194,6 +1221,9 @@ AS
         ov_errbuf          => lv_errbuf
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+      , iv_company_code    => i_get_rec.company_code_delivery -- 振替元会社コード
+-- Ver.2.2 Add End
       , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
 --      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
@@ -1223,6 +1253,9 @@ AS
         ov_errbuf          => lv_errbuf
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+      , iv_company_code    => i_get_rec.company_code_base  -- 振替先会社コード
+-- Ver.2.2 Add End
       , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
 --      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
@@ -1271,6 +1304,9 @@ AS
           ov_errbuf          => lv_errbuf
         , ov_retcode         => lv_retcode
         , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+        , iv_company_code    => i_get_rec.company_code_delivery -- 振替元会社コード
+-- Ver.2.2 Add End
         , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
         , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
         , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
@@ -1296,6 +1332,9 @@ AS
          ov_errbuf          => lv_errbuf
        , ov_retcode         => lv_retcode
        , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+       , iv_company_code    => i_get_rec.company_code_base  -- 振替先会社コード
+-- Ver.2.2 Add End
        , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
        , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
        , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
@@ -1336,6 +1375,9 @@ AS
           ov_errbuf          => lv_errbuf
         , ov_retcode         => lv_retcode
         , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+        , iv_company_code    => i_get_rec.company_code_delivery -- 振替元会社コード
+-- Ver.2.2 Add End
         , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
         , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
         , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
@@ -1365,6 +1407,9 @@ AS
           ov_errbuf          => lv_errbuf
         , ov_retcode         => lv_retcode
         , ov_errmsg          => lv_errmsg
+-- Ver.2.2 Add Start
+        , iv_company_code    => i_get_rec.company_code_base  -- 振替先会社コード
+-- Ver.2.2 Add End
         , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
         , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
         , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
@@ -1835,6 +1880,9 @@ AS
     --==================================================================
     --会計期間のステータスを取得
     --==================================================================
+-- Ver.2.2 Add Start
+    BEGIN
+-- Ver.2.2 Add End
     xxcok_common_pkg.get_acctg_calendar_p(
       ov_errbuf                 => lv_errbuf                    -- リターンコード
     , ov_retcode                => lv_retcode                   -- エラーバッファ
@@ -1850,22 +1898,34 @@ AS
     , ov_period_name            => gv_period_name               -- 会計期間名
     , ov_closing_status         => lv_closing_status            -- ステータス
     );
---
-    IF( lv_retcode <> cv_status_normal ) THEN
+-- Ver.2.2 Add/Mod Start
+    EXCEPTION
       -- *** 会計期間情報取得エラー ***
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                      cv_appli_xxcok_name
-                    , cv_acctg_calendar_msg
-                    , cv_proc_token
-                    , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
-                    );
-      lb_retcode := xxcok_common_pkg.put_message_f( 
-                      FND_FILE.OUTPUT    -- 出力区分
-                    , lv_out_msg         -- メッセージ
-                    , 0                  -- 改行
-                    );
-      RAISE global_api_expt;
-    END IF;
+      WHEN global_api_others_expt THEN
+        lv_errbuf   := xxccp_common_pkg.get_msg(
+                        cv_appli_xxcok_name
+                      , cv_acctg_calendar_msg
+                      , cv_proc_token
+                      , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
+                      );
+        RAISE global_api_expt;
+    END;
+--    IF( lv_retcode <> cv_status_normal ) THEN
+--      -- *** 会計期間情報取得エラー ***
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                      cv_appli_xxcok_name
+--                    , cv_acctg_calendar_msg
+--                    , cv_proc_token
+--                    , TO_CHAR(gd_selling_date,'YYYY/MM/DD')
+--                    );
+--      lb_retcode := xxcok_common_pkg.put_message_f( 
+--                      FND_FILE.OUTPUT    -- 出力区分
+--                    , lv_out_msg         -- メッセージ
+--                    , 0                  -- 改行
+--                    );
+--      RAISE global_api_expt;
+--    END IF;
+-- Ver.2.2 Add/Mod End
     --==================================================================
     --会計期間のステータスチェック
     --==================================================================
@@ -1977,7 +2037,9 @@ AS
     --==============================================================
     gn_set_of_bks_id  := TO_NUMBER(FND_PROFILE.VALUE( cv_set_of_bks_id           )); -- 会計帳簿ID
     gv_set_of_bks_name          := FND_PROFILE.VALUE( cv_set_of_bks_name          ); -- 会計帳簿名
-    gv_comp_code                := FND_PROFILE.VALUE( cv_comp_code                ); -- 会社コード
+-- Ver.2.2 Del Start
+--    gv_comp_code                := FND_PROFILE.VALUE( cv_comp_code                ); -- 会社コード
+-- Ver.2.2 Del End
     gv_table_keep_period        := FND_PROFILE.VALUE( cv_table_keep_period        ); -- 保持期間(月数)
     gv_acct_prod_sale           := FND_PROFILE.VALUE( cv_acct_prod_sale           ); -- 勘定科目コード(製品売上高)
     gv_aff4_subacct_dummy       := FND_PROFILE.VALUE( cv_aff4_subacct_dummy       ); -- 補助科目のダミー値
@@ -2010,11 +2072,11 @@ AS
     ELSIF( gv_set_of_bks_name IS NULL ) THEN
       lv_token_value := cv_set_of_bks_name;
       RAISE profile_expt;
---
-    ELSIF( gv_comp_code IS NULL ) THEN
-      lv_token_value := cv_comp_code;
-      RAISE profile_expt;
---
+-- Ver.2.2 Del Start
+--    ELSIF( gv_comp_code IS NULL ) THEN
+--      lv_token_value := cv_comp_code;
+--      RAISE profile_expt;
+-- Ver.2.2 Del End
     ELSIF( gv_table_keep_period IS NULL ) THEN
       lv_token_value := cv_table_keep_period;
       RAISE profile_expt;

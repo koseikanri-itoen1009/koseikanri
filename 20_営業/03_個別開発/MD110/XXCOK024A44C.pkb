@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A44C (body)
  * Description      : 控除未作成入金相殺伝票CSV出力
  * MD.050           : 控除未作成入金相殺伝票CSV出力 MD050_COK_024_A44
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2022/10/21    1.0   R.Oikawa         main新規作成
  *  2023/03/29    1.1   K.Yoshikawa      E_本稼動_18519 特権拠点変更
  *  2023/07/26    1.2   M.Akachi         E_本稼動_19333 入金相殺消込におけるEDI実績振替控除の消込不良
+ *  2024/03/12    1.3   SCSK Y.Koh       [E_本稼動_19496] グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -143,7 +144,9 @@ AS
   --月末日
   cv_last_day_30              CONSTANT  NUMBER        := 30;
   --
-  cv_slip_type_80300          CONSTANT  VARCHAR2(5)   := '80300';                         -- 伝票種別:入金相殺
+-- 2024/03/12 Ver1.3 DEL Start
+--  cv_slip_type_80300          CONSTANT  VARCHAR2(5)   := '80300';                         -- 伝票種別:入金相殺
+-- 2024/03/12 Ver1.3 DEL End
   cv_ar_status_appr           CONSTANT  VARCHAR2(2)   := '80';                            -- 承認済
 --
   -- ===============================
@@ -250,8 +253,13 @@ AS
     AND      xrs.entry_person_id        = ppv7.person_id
     AND      NVL(ppv7.effective_start_date, gd_process_date) <= gd_process_date
     AND      NVL(ppv7.effective_end_date,   gd_process_date) >= gd_process_date
-    AND      xrs.slip_type              = cv_slip_type_80300                    -- 伝票種別
-    AND      xrs.trans_type_name        = gv_trans_type_name                    -- 取引タイプ名
+-- 2024/03/12 Ver1.3 DEL Start
+--    AND      xrs.slip_type              = cv_slip_type_80300                    -- 伝票種別
+-- 2024/03/12 Ver1.3 DEL End
+-- 2024/03/12 Ver1.3 MOD Start
+    AND      xrs.trans_type_name        LIKE gv_trans_type_name || '%'          -- 取引タイプ名
+--    AND      xrs.trans_type_name        = gv_trans_type_name                    -- 取引タイプ名
+-- 2024/03/12 Ver1.3 MOD End
     AND      xrs.wf_status              = cv_ar_status_appr                     -- ステータス（承認済）
     AND      xrsl.attribute8      IS NULL                                       -- 入金相殺消込ステータス
     AND      xrs.orig_invoice_num IS NULL                                       -- 修正元伝票番号

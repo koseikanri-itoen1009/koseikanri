@@ -7,7 +7,7 @@ AS
  * Description      : 入金相殺自動消込処理
  * MD.050           : MD050_COK_024_A42_入金相殺自動消込処理
  *
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------  -------------------------------------------------------------
@@ -29,9 +29,10 @@ AS
  * ------------- ----- ---------------- --------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- --------------------------------------------------
- *  2022-12-13    1.0   M.Akachi         新規作成 E_本稼動_18519 入金相殺の消込（AR連携）
- *  2023-07-26    1.1   M.Akachi         E_本稼動_19275 入金相殺消込の14番顧客のチェック
+ *  2022/12/13    1.0   M.Akachi         新規作成 E_本稼動_18519 入金相殺の消込（AR連携）
+ *  2023/07/26    1.1   M.Akachi         E_本稼動_19275 入金相殺消込の14番顧客のチェック
  *                                       E_本稼動_19333 入金相殺消込におけるEDI実績振替控除の消込不良
+ *  2024/03/12    1.2   SCSK Y.Koh       [E_本稼動_19496] グループ会社統合対応
  *
  *****************************************************************************************/
   --
@@ -108,7 +109,9 @@ AS
   cv_flag_n                 CONSTANT VARCHAR2(1)   := 'N';                                 -- ステータス(新規) / 取消フラグ(未取消)
   cv_flag_o                 CONSTANT VARCHAR2(1)   := 'O';                                 -- 作成元区分(繰越調整) / GL連携フラグ(対象外) 
   cv_flag_y                 CONSTANT VARCHAR2(1)   := 'Y';                                 -- 入金相殺消込ステータス(Y：消込済)
-  cv_slip_type_80300        CONSTANT VARCHAR2(5)   := '80300';                             -- 伝票種別:入金相殺
+-- 2024/03/12 Ver1.2 DEL Start
+--  cv_slip_type_80300        CONSTANT VARCHAR2(5)   := '80300';                             -- 伝票種別:入金相殺
+-- 2024/03/12 Ver1.2 DEL End
   cv_ar_status_appr         CONSTANT VARCHAR2(2)   := '80';                                -- 承認済
   cv_lang                   CONSTANT  VARCHAR2(100) := USERENV( 'LANG' );                  -- 言語
   --
@@ -558,8 +561,13 @@ AS
            ,ar_memo_lines_vl amlv                                           -- メモ明細
        WHERE
        xrs1.receivable_id = xrsl.receivable_id
-       AND xrs1.slip_type = cv_slip_type_80300                              -- 伝票種別:80300(入金相殺)
-       AND xrs1.trans_type_name = gv_trans_type_name_var_cons               -- 取引タイプ名(変動対価相殺)
+-- 2024/03/12 Ver1.2 DEL Start
+--       AND xrs1.slip_type = cv_slip_type_80300                              -- 伝票種別:80300(入金相殺)
+-- 2024/03/12 Ver1.2 DEL End
+-- 2024/03/12 Ver1.2 MOD Start
+       AND xrs1.trans_type_name LIKE gv_trans_type_name_var_cons || '%'     -- 取引タイプ名(変動対価相殺)
+--       AND xrs1.trans_type_name = gv_trans_type_name_var_cons               -- 取引タイプ名(変動対価相殺)
+-- 2024/03/12 Ver1.2 MOD End
        AND xrsl.slip_line_type_name = amlv.name                             -- 請求内容
        AND amlv.attribute3 IS NOT NULL                                      -- メモ明細.入金相殺消込用請求内容に値あり
        AND xrs1.wf_status = cv_ar_status_appr                               -- ステータス:80(承認済)
@@ -624,8 +632,13 @@ AS
           ,ar_memo_lines_vl amlv                                           -- メモ明細
       WHERE
       xrs1.receivable_id = xrsl.receivable_id
-      AND xrs1.slip_type = cv_slip_type_80300                              -- 伝票種別:80300(入金相殺)
-      AND xrs1.trans_type_name = gv_trans_type_name_var_cons               -- 取引タイプ名(変動対価相殺)
+-- 2024/03/12 Ver1.2 DEL Start
+--      AND xrs1.slip_type = cv_slip_type_80300                              -- 伝票種別:80300(入金相殺)
+-- 2024/03/12 Ver1.2 DEL End
+-- 2024/03/12 Ver1.2 MOD Start
+      AND xrs1.trans_type_name LIKE gv_trans_type_name_var_cons || '%'     -- 取引タイプ名(変動対価相殺)
+--      AND xrs1.trans_type_name = gv_trans_type_name_var_cons               -- 取引タイプ名(変動対価相殺)
+-- 2024/03/12 Ver1.2 MOD End
       AND xrsl.slip_line_type_name  = amlv.name                            -- AR部門入力明細. 請求内容 = メモ明細.名称
       AND amlv.attribute3 IS NOT NULL                                      -- メモ明細.入金相殺消込用請求内容に値あり
       AND xrs1.wf_status = cv_ar_status_appr                               -- ステータス:80(承認済)
@@ -714,8 +727,13 @@ AS
           ,xx03_receivable_slips_line xrsl                                 -- AR部門入力明細
       WHERE
       xrs1.receivable_id = xrsl.receivable_id
-      AND xrs1.slip_type = cv_slip_type_80300                              -- 伝票種別:80300(入金相殺)
-      AND xrs1.trans_type_name = gv_trans_type_name_var_cons               -- 取引タイプ名(変動対価相殺)
+-- 2024/03/12 Ver1.2 DEL Start
+--      AND xrs1.slip_type = cv_slip_type_80300                              -- 伝票種別:80300(入金相殺)
+-- 2024/03/12 Ver1.2 DEL End
+-- 2024/03/12 Ver1.2 MOD Start
+      AND xrs1.trans_type_name LIKE gv_trans_type_name_var_cons || '%'     -- 取引タイプ名(変動対価相殺)
+--      AND xrs1.trans_type_name = gv_trans_type_name_var_cons               -- 取引タイプ名(変動対価相殺)
+-- 2024/03/12 Ver1.2 MOD End
       AND xrs1.customer_id = in_customer_id                                -- 顧客ID
       AND xrs1.invoice_date = id_invoice_date                              -- 請求書日付
       AND xrs1.payment_scheduled_date = id_payment_scheduled_date          -- 入金予定日

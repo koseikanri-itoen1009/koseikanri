@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A43C (body)
  * Description      : 自動消込済のAR部門入力伝票取消時に、消込済の控除データを開放します。
  * MD.050           : 入金相殺自動消込取消処理 MD050_COK_024_A43
- * Version          : 1.0
+ * Version          : 1.1
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                    Description
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2022/11/07    1.0   R.Oikawa         新規作成
+ *  2024/03/12    1.1   SCSK Y.Koh       [E_本稼動_19496] グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -119,14 +120,18 @@ AS
   -- 販売控除連携管理情報
   cv_ar_input_flag              CONSTANT VARCHAR2(1)  := 'R';                              -- AR部門入力情報
   -- 伝票種別
-  cv_slip_type_80300            CONSTANT VARCHAR2(5)  := '80300';                          -- 入金相殺
+-- 2024/03/12 Ver1.1 DEL Start
+--  cv_slip_type_80300            CONSTANT VARCHAR2(5)  := '80300';                          -- 入金相殺
+-- 2024/03/12 Ver1.1 DEL End
   -- カレンダーオープン
   cv_open                       CONSTANT VARCHAR2(1)  := 'O';                              -- オープン
   -- カレンダー日付
   cd_minend_date                CONSTANT DATE         := TO_DATE('2010/01/01','YYYY/MM/DD'); -- 最小オープン日付
   --プロファイル
   cv_set_of_bks_id              CONSTANT VARCHAR2(20) := 'GL_SET_OF_BKS_ID';              -- 会計帳簿ID
-  cv_trans_type_name_var_cons   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOK1_RA_TRX_TYPE_VARIABLE_CONS'; -- 取引タイプ名
+-- 2024/03/12 Ver1.1 DEL Start
+--  cv_trans_type_name_var_cons   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOK1_RA_TRX_TYPE_VARIABLE_CONS'; -- 取引タイプ名
+-- 2024/03/12 Ver1.1 DEL End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -601,7 +606,9 @@ AS
       AND     xrsc.receivable_id         = xrslc.receivable_id                       -- 伝票ID(取消)
       AND     xrslc.line_number          = xrsl.line_number                          -- 明細番号(元と取消)
       AND     xrss.receivable_id         = xrsl.receivable_id                        -- 伝票ID(元)
-      AND     xrsc.slip_type             = cv_slip_type_80300                        -- 伝票種別
+-- 2024/03/12 Ver1.1 DEL Start
+--      AND     xrsc.slip_type             = cv_slip_type_80300                        -- 伝票種別
+-- 2024/03/12 Ver1.1 DEL End
       AND     xrsc.orig_invoice_num IS NOT NULL                                      -- 修正元伝票番号
       AND     xrsc.wf_status             = cv_ar_status_appr                         -- ステータス（承認済）
       AND     xrsc.approval_date         > gd_last_process_date                      -- 承認日(前回処理日時)
