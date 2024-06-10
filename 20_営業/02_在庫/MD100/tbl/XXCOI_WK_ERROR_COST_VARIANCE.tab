@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOI_WK_ERROR_COST_VARIANCE
  * Description : 原価差額ワークテーブル（エラー）
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/09/25    1.0   H.Sasaki         新規作成
+ *  2024/01/22    1.1   R.Oikawa         [E_本稼動_19496]グループ会社対応
  *
  **************************************************************************************/
 CREATE TABLE XXCOI.XXCOI_WK_ERROR_COST_VARIANCE (
@@ -32,6 +33,9 @@ CREATE TABLE XXCOI.XXCOI_WK_ERROR_COST_VARIANCE (
     ,operation_cost               NUMBER        NOT NULL
     ,cost_variance                NUMBER
     ,status                       VARCHAR2(1)
+-- Ver1.1 ADD START
+    ,company_code                 VARCHAR2(3)
+-- Ver1.1 ADD END
     ,created_by                   NUMBER(15)    NOT NULL
     ,creation_date                DATE          NOT NULL
     ,last_updated_by              NUMBER(15)    NOT NULL
@@ -84,6 +88,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.cost_variance              
 /
 COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.status                                  IS 'ステータス';
 /
+-- Ver1.1 ADD START
+COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.company_code                            IS '会社コード';
+/
+-- Ver1.1 ADD END
 COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.created_by                              IS '作成者';
 /
 COMMENT ON COLUMN xxcoi.xxcoi_wk_error_cost_variance.creation_date                           IS '作成日';
