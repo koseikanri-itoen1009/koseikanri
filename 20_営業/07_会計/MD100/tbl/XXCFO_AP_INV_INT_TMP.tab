@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCFO_AP_INV_INT_TMP
  * Description : AP請求書ヘッダーOIF一時表
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2015-03-02    1.0   Y.Shoji          新規作成
+ *  2024-05-22    1.1   R.Oikawa         E_本稼動_19497 生産インボイス対応
  *
  **************************************************************************************/
 CREATE TABLE XXCFO.XXCFO_AP_INV_INT_TMP (
@@ -37,6 +38,16 @@ CREATE TABLE XXCFO.XXCFO_AP_INV_INT_TMP (
         , accts_pay_code_combination_id           NUMBER(15)
         , org_id                                  NUMBER(15)
         , terms_date                              DATE
+-- Ver1.1 Add Start
+        , request_id                              NUMBER(15)
+        , attribute5                              VARCHAR2(150)
+        , attribute6                              VARCHAR2(150)
+        , attribute7                              VARCHAR2(150)
+        , attribute8                              VARCHAR2(150)
+        , attribute9                              VARCHAR2(150)
+        , attribute10                             VARCHAR2(150)
+        , attribute11                             VARCHAR2(150)
+-- Ver1.1 Add End
 )
 /
 COMMENT ON TABLE xxcfo.xxcfo_ap_inv_int_tmp IS 'AP請求書ヘッダーOIF一時表'
@@ -89,3 +100,21 @@ COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.org_id                          IS 
 /
 COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.terms_date                      IS '支払起算日'
 /
+-- Ver1.1 Add Start
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.request_id                      IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute5                      IS '請求金額(税抜)'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute6                      IS '税率'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute7                      IS '請求金額(税抜)2'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute8                      IS '税率2'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute9                      IS '請求金額(税抜)3'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute10                     IS '税率3'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_int_tmp.attribute11                     IS '差額計算対象外フラグ'
+/
+-- Ver1.1 Add End
