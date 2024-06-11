@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  upd_proc_flag          処理済フラグ更新(A-10)
  *  del_offset_data        処理済データ削除(A-11)
  *  ins_mfg_if_control     連携管理テーブル登録(A-12)
+ *  upd_invoice_oif        AP請求書OIF更新(A-14)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -59,6 +60,7 @@ AS
  *                                       ・口銭の消費税を標準税率にて処理
  *  2019-11-14    1.8   S.Kuwako         E_本稼動_16049対応
  *  2020-03-17    1.9   S.Kuwako         E_本稼動_16232対応
+ *  2024-05-21    1.10  R.Oikawa         E_本稼動_19497対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1064,6 +1066,9 @@ AS
       , accts_pay_code_combination_id           -- 負債勘定CCID
       , org_id                                  -- 組織ID
       , terms_date                              -- 支払起算日
+-- Ver1.10 Add Start
+      , request_id                              -- 要求ID
+-- Ver1.10 Add End
       )
       VALUES (
         ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
@@ -1096,6 +1101,9 @@ AS
       , ln_sales_accts_pay_ccid                 -- 負債勘定科目CCID
       , gn_org_id_sales                         -- 組織ID(initで取得)
       , gd_target_date_to                       -- 支払起算日(対象月の月末)
+-- Ver1.10 Add Start
+      , cn_request_id                           -- 要求ID
+-- Ver1.10 Add End
       );
     EXCEPTION
       WHEN OTHERS THEN
@@ -2440,6 +2448,159 @@ AS
 --  END upd_proc_flag;
 ----
 -- 2015-02-26 Ver1.4 Del End
+-- Ver1.10 Add Start
+  /**********************************************************************************
+   * Procedure Name   : upd_invoice_oif
+   * Description      : AP請求書OIF更新(A-14)
+   ***********************************************************************************/
+  PROCEDURE upd_invoice_oif(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'upd_invoice_oif'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_tax_code_0000    CONSTANT VARCHAR2(4) := '0000'; -- 税コード：0000（対象外）
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    CURSOR get_ap_invoice_oif_cur
+    IS
+      SELECT MAX(ai.invoice_id)               AS invoice_id,    -- 請求書ID
+             ai.vendor_num                    AS vendor_num,    -- 仕入先
+             SUM(vendor_adjust.adjust_amount) AS adjust_amount  -- 差額
+      FROM   ap_invoices_interface ai,
+             (
+              SELECT  MAX(ai2.invoice_id)              AS invoice_id,
+                      ai2.vendor_num                   AS vendor_num,
+                      ail.tax_code                     AS tax_code,
+                      SUM(ail.amount) + ROUND(SUM(ail.amount) * atc.tax_rate / 100)
+                       + SUM(NVL(kousen_hukakin.amount,0))
+                       - SUM(ai2.invoice_amount)
+                                                       AS adjust_amount
+              FROM    ap_invoices_interface ai2,
+                      ap_invoice_lines_interface ail,
+                      ap_tax_codes_all atc,
+                      ( SELECT ai3.invoice_id         invoice_id,
+                               SUM(NVL(ail3.amount,0)) amount
+                        FROM   ap_invoices_interface ai3,
+                               ap_invoice_lines_interface ail3
+                        WHERE  ai3.invoice_id =  ail3.invoice_id
+                        AND    ai3.request_id =  cn_request_id
+                        AND    ail3.tax_code  =  cv_tax_code_0000                 -- 口銭/賦課金
+                        AND    ail3.line_type_lookup_code = gv_detail_type_item   -- 明細(ITEM)
+                        GROUP BY ai3.invoice_id
+                      )  kousen_hukakin
+              WHERE   ai2.invoice_id =  ail.invoice_id
+              AND     ai2.invoice_id =  kousen_hukakin.invoice_id(+)
+              AND     ai2.request_id =  cn_request_id
+              AND     ail.tax_code   <> cv_tax_code_0000                 -- 口銭/賦課金以外
+              AND     ail.tax_code   =  atc.name                         -- 税コード
+              AND     atc.org_id     =  gn_org_id_sales                  -- 営業単位
+              AND     ail.line_type_lookup_code = gv_detail_type_item    -- 明細(ITEM)
+              GROUP BY ai2.vendor_num,
+                       ail.tax_code,
+                       atc.tax_rate
+             ) vendor_adjust
+      WHERE  vendor_adjust.adjust_amount <> 0   -- 差額あり
+      AND    vendor_adjust.invoice_id    =  ai.invoice_id
+      AND    vendor_adjust.vendor_num    =  ai.vendor_num
+      AND    ai.request_id               =  cn_request_id
+      GROUP BY ai.vendor_num
+      ;
+--
+    -- *** ローカル・レコード ***
+    ap_invoice_oif_rec get_ap_invoice_oif_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- =========================================================
+    -- 差額が発生している請求仕訳を調整
+    -- =========================================================
+    <<ap_oif_loop>>
+    FOR ap_invoice_oif_rec IN get_ap_invoice_oif_cur LOOP
+--
+      BEGIN
+        -- AP請求書OIF更新
+        UPDATE ap_invoices_interface aii
+        SET    aii.invoice_amount  = ( aii.invoice_amount + ap_invoice_oif_rec.adjust_amount)  -- 差額調整
+        WHERE  aii.invoice_id      = ap_invoice_oif_rec.invoice_id
+        ;
+--
+        -- AP請求書明細OIF更新
+        UPDATE ap_invoice_lines_interface ail
+        SET    ail.amount          = ( ail.amount + ap_invoice_oif_rec.adjust_amount)          -- 差額調整
+        WHERE  ail.invoice_id      = ap_invoice_oif_rec.invoice_id
+        AND    ail.invoice_line_id = (
+                                      SELECT MAX(ail2.invoice_line_id) AS invoice_line_id
+                                      FROM   ap_invoice_lines_interface ail2
+                                      WHERE  ail2.invoice_id = ap_invoice_oif_rec.invoice_id
+                                      AND    ail2.line_type_lookup_code = gv_detail_type_tax    -- 税金(TAX)
+                                     )
+        ;
+      END;
+--
+    END LOOP ap_oif_loop;
+--
+    -- AP請求書OIFの要求IDクリア
+    UPDATE ap_invoices_interface aii
+    SET    aii.request_id  = NULL
+    WHERE  aii.request_id  = cn_request_id
+    ;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_invoice_oif;
+-- Ver1.10 Add End
   /**********************************************************************************
    * Procedure Name   : get_ap_invoice_data
    * Description      : AP請求書OIF情報抽出(A-3,4)
@@ -3893,6 +4054,19 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Ver1.10 Add Start
+    -- ===============================
+    -- AP請求書OIF更新(A-14)
+    -- ===============================
+    upd_invoice_oif(
+      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
+      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+-- Ver1.10 Add End
 -- 2015-02-26 Ver1.4 Del Start
 --    -- ===============================
 --    -- 処理済データ削除(A-11)

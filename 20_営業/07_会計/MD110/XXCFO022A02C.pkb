@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A02C(body)
  * Description      : AP仕入請求情報生成（有償支給）
  * MD.050           : AP仕入請求情報生成（有償支給）<MD050_CFO_022_A02>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  del_offset_data        処理済データ削除(A-7)
  *  ins_mfg_if_control     連携管理テーブル登録(A-8)
  *  ins_ap_invoice_tmp     OIF一時表データ登録(A-10)
+ *  upd_invoice_oif        AP請求書OIF更新(A-11)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -43,7 +44,9 @@ AS
  *  2019-06-15    1.5   N.Miyamoto       E_本稼動_15601 生産_軽減税率対応
  *                                         ・税率を品目ごとに消費税率ビューから取得するよう仕様変更
  *                                         ・前月繰越対象のロジック削除
- *
+ *  2024-05-27    1.6   R.Oikawa         E_本稼動_19497 生産インボイス対応
+ *                                         ・仕入先/税率ごとに税計算を行い明細積上げと差額がある場合は調整額をいれる
+ * 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -277,6 +280,15 @@ AS
   gn_invoice_id_01            NUMBER;                        -- invoice_id 保存用
   gn_invoice_id_02            NUMBER;                        -- invoice_id 保存用
 --
+-- Ver1.6 Add Start
+  gn_payment_amount_net       NUMBER        DEFAULT 0;       -- 請求書単位：支払金額（税抜）
+  gn_payment_tax_rate         NUMBER        DEFAULT NULL;    -- 請求書単位：税率
+  gn_payment_amount_net2      NUMBER        DEFAULT 0;       -- 請求書単位：支払金額（税抜）2
+  gn_payment_tax_rate2        NUMBER        DEFAULT NULL;    -- 請求書単位：税率2
+  gn_payment_amount_net3      NUMBER        DEFAULT 0;       -- 請求書単位：支払金額（税抜）3
+  gn_payment_tax_rate3        NUMBER        DEFAULT NULL;    -- 請求書単位：税率3
+  gv_skip_flg                 VARCHAR2(1);                   -- 差額計算対象外フラグ(Y:計算対象外 N:計算対象)
+-- Ver1.6 Add End
   -- ===============================
   -- グローバル例外
   -- ===============================
@@ -970,6 +982,16 @@ AS
           , accts_pay_code_combination_id           -- 負債勘定CCID
           , org_id                                  -- 組織ID
           , terms_date                              -- 支払起算日
+-- Ver1.6 Add Start
+          , request_id                              -- 要求ID
+          , attribute5                              -- 請求金額(税抜)
+          , attribute6                              -- 税率
+          , attribute7                              -- 請求金額(税抜)2
+          , attribute8                              -- 税率2
+          , attribute9                              -- 請求金額(税抜)3
+          , attribute10                             -- 税率3
+          , attribute11                             -- 差額計算対象外フラグ
+-- Ver1.6 Add End
           )
           VALUES (
             ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
@@ -999,6 +1021,16 @@ AS
           , gn_sales_accts_pay_ccid                 -- 負債勘定科目CCID
           , gn_org_id_sales                         -- 組織ID(initで取得)
           , gd_due_date                             -- 支払起算日(支払予定日)
+-- Ver1.6 Add Start
+          , cn_request_id                           -- 要求ID
+          , TO_CHAR(gn_payment_amount_net * cn_minus)  -- 請求金額(税抜)
+          , TO_CHAR(gn_payment_tax_rate)            -- 税率
+          , TO_CHAR(gn_payment_amount_net2 * cn_minus) -- 請求金額(税抜)2
+          , TO_CHAR(gn_payment_tax_rate2)           -- 税率2
+          , TO_CHAR(gn_payment_amount_net3 * cn_minus) -- 請求金額(税抜)3
+          , TO_CHAR(gn_payment_tax_rate3)           -- 税率3
+          , gv_skip_flg                             -- 差額計算対象外フラグ
+-- Ver1.6 Add End
           );
         EXCEPTION
           WHEN OTHERS THEN
@@ -1053,6 +1085,16 @@ AS
           , accts_pay_code_combination_id           -- 負債勘定CCID
           , org_id                                  -- 組織ID
           , terms_date                              -- 支払起算日
+-- Ver1.6 Add Start
+          , request_id                              -- 要求ID
+          , attribute5                              -- 請求金額(税抜)
+          , attribute6                              -- 税率
+          , attribute7                              -- 請求金額(税抜)2
+          , attribute8                              -- 税率2
+          , attribute9                              -- 請求金額(税抜)3
+          , attribute10                             -- 税率3
+          , attribute11                             -- 差額計算対象外フラグ
+-- Ver1.6 Add End
           )
           VALUES (
             ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
@@ -1082,6 +1124,16 @@ AS
           , gn_sales_accts_pay_ccid                 -- 負債勘定科目CCID
           , gn_org_id_sales                         -- 組織ID(initで取得)
           , gd_due_date                             -- 支払起算日(支払予定日)
+-- Ver1.6 Add Start
+          , cn_request_id                           -- 要求ID
+          , TO_CHAR(gn_payment_amount_net * cn_minus)  -- 請求金額(税抜)
+          , TO_CHAR(gn_payment_tax_rate)            -- 税率
+          , TO_CHAR(gn_payment_amount_net2 * cn_minus) -- 請求金額(税抜)2
+          , TO_CHAR(gn_payment_tax_rate2)           -- 税率2
+          , TO_CHAR(gn_payment_amount_net3 * cn_minus) -- 請求金額(税抜)3
+          , TO_CHAR(gn_payment_tax_rate3)           -- 税率3
+          , gv_skip_flg                             -- 差額計算対象外フラグ
+-- Ver1.6 Add End
           );
         EXCEPTION
           WHEN OTHERS THEN
@@ -1530,6 +1582,11 @@ AS
               SUM(ROUND(actual_quantity * sign * unit_price * tax_rate / 100)) 
                                                               AS amount                   -- 金額（税込）
 -- 2019/06/15 Ver1.5 Mod End
+-- Ver1.6 Add Start
+             ,SUM(ROUND(trn.actual_quantity * trn.sign * trn.unit_price))
+                                                              AS amount_net               -- 金額（税抜）
+             ,trn.tax_rate                                    AS tax_rate                 -- 税率
+-- Ver1.6 Add End
       FROM(-- 抽出①（有償支給）
            SELECT
 -- 2019/06/15 Ver1.5 Add Start
@@ -1648,6 +1705,9 @@ AS
             ,department_code
             ,item_class_code
 -- 2019/06/15 Ver1.5 Add End
+-- Ver1.6 Add Start
+            ,trn.tax_rate
+-- Ver1.6 Add End
       ORDER BY
               vendor_code                      -- 仕入先コード
              -- 2015-02-10 Ver1.2 Del Start
@@ -1655,6 +1715,9 @@ AS
              -- 2015-02-10 Ver1.2 Del End
              ,department_code                  -- 部門コード
              ,item_class_code                  -- 品目区分
+-- Ver1.6 Add Start
+             ,tax_rate                         -- 税率
+-- Ver1.6 Add End
     ;
     -- レコード型
     ap_fee_payment_rec get_fee_payment_cur%ROWTYPE;
@@ -1671,6 +1734,10 @@ AS
     -- ***       処理部の呼び出し          ***
     -- ***************************************
 --
+-- Ver1.6 Add Start
+    -- フラグの初期化
+    gv_skip_flg               := cv_flag_n;           -- 差額計算の対象外
+-- Ver1.6 Add End
     <<main_loop>>
     OPEN get_fee_payment_cur;
     LOOP 
@@ -1775,6 +1842,15 @@ AS
         gn_prev_month_amount      := 0;                   -- 請求書単位：前月相殺金額
         gn_this_month_amount      := 0;                   -- 請求書単位：当月相殺金額
         gn_next_month_amount      := 0;                   -- 請求書単位：翌月繰越金額
+-- Ver1.6 Add Start
+        gn_payment_amount_net     := 0;                   -- 請求書単位：相殺金額（税抜）
+        gn_payment_tax_rate       := NULL;                -- 請求書単位：税率
+        gn_payment_amount_net2    := 0;                   -- 請求書単位：相殺金額（税抜）2
+        gn_payment_tax_rate2      := NULL;                -- 請求書単位：税率2
+        gn_payment_amount_net3    := 0;                   -- 請求書単位：相殺金額（税抜）3
+        gn_payment_tax_rate3      := NULL;                -- 請求書単位：税率3
+        gv_skip_flg               := cv_flag_n;           -- 差額計算の対象外
+-- Ver1.6 Add End
         --
 -- 2019/06/15 Ver1.5 Del Start
 --        ln_transfer_amount        := 0;                   -- 前月繰越分相殺金額
@@ -1793,6 +1869,32 @@ AS
       -- 値の積み上げを行う。
       gn_payment_amount_all     := NVL(gn_payment_amount_all,0) 
                                    + ap_fee_payment_rec.amount;                -- 請求書単位：相殺金額（税込）
+-- Ver1.6 Add Start
+      IF ( gn_payment_tax_rate IS NULL
+       OR  gn_payment_tax_rate = ap_fee_payment_rec.tax_rate ) THEN
+        gn_payment_amount_net     := NVL(gn_payment_amount_net,0) 
+                                     + ap_fee_payment_rec.amount_net;            -- 請求書単位：相殺金額（税抜）
+        gn_payment_tax_rate       := ap_fee_payment_rec.tax_rate;                -- 請求書単位：税率
+      ELSIF ( gn_payment_tax_rate2 IS NULL
+             AND gn_payment_tax_rate <> ap_fee_payment_rec.tax_rate
+            )
+            OR
+            ( gn_payment_tax_rate2 = ap_fee_payment_rec.tax_rate ) THEN
+        gn_payment_amount_net2     := NVL(gn_payment_amount_net2,0) 
+                                     + ap_fee_payment_rec.amount_net;            -- 請求書単位：相殺金額（税抜）2
+        gn_payment_tax_rate2       := ap_fee_payment_rec.tax_rate;               -- 請求書単位：税率2
+      ELSIF ( gn_payment_tax_rate3 IS NULL
+             AND gn_payment_tax_rate2 <> ap_fee_payment_rec.tax_rate
+            )
+            OR
+            ( gn_payment_tax_rate3 = ap_fee_payment_rec.tax_rate ) THEN
+        gn_payment_amount_net3     := NVL(gn_payment_amount_net3,0) 
+                                     + ap_fee_payment_rec.amount_net;            -- 請求書単位：相殺金額（税抜）3
+        gn_payment_tax_rate3       := ap_fee_payment_rec.tax_rate;               -- 請求書単位：税率3
+      ELSE
+        gv_skip_flg := cv_flag_y;   -- 差額計算の対象外
+      END IF;
+-- Ver1.6 Add End
 --
 -- 2019/06/15 Ver1.5 Del Start
 --      -- 前月繰越対象フラグが立っている場合
@@ -2135,6 +2237,16 @@ AS
        ,accts_pay_code_combination_id                 -- 負債勘定CCID
        ,org_id                                        -- 組織ID
        ,terms_date                                    -- 支払起算日
+-- Ver1.6 Add Start
+       ,request_id                                    -- 要求ID
+       ,attribute5                                    -- 請求金額(税抜)
+       ,attribute6                                    -- 税率
+       ,attribute7                                    -- 請求金額(税抜)2
+       ,attribute8                                    -- 税率2
+       ,attribute9                                    -- 請求金額(税抜)3
+       ,attribute10                                   -- 税率3
+       ,attribute11                                   -- 差額計算対象外フラグ
+-- Ver1.6 Add End
       )
       SELECT
         xaiit.invoice_id                              -- 請求書ID
@@ -2161,6 +2273,16 @@ AS
        ,xaiit.accts_pay_code_combination_id           -- 負債勘定CCID
        ,xaiit.org_id                                  -- 組織ID
        ,xaiit.terms_date                              -- 支払起算日
+-- Ver1.6 Add Start
+       ,cn_request_id                                 -- 要求ID
+       ,attribute5                                    -- 請求金額(税抜)
+       ,attribute6                                    -- 税率
+       ,attribute7                                    -- 請求金額(税抜)2
+       ,attribute8                                    -- 税率2
+       ,attribute9                                    -- 請求金額(税抜)3
+       ,attribute10                                   -- 税率3
+       ,attribute11                                   -- 差額計算対象外フラグ
+-- Ver1.6 Add End
       FROM   xxcfo_ap_inv_int_tmp        xaiit        -- AP請求書ヘッダーOIF一時表
       WHERE  xaiit.invoice_id = get_invoice_id_rec.invoice_id
       ;
@@ -2249,6 +2371,146 @@ AS
   END ins_ap_invoice_tmp;
 --
 -- 2015-03-09 Ver1.4 Add End
+-- Ver1.6 Add Start
+  /**********************************************************************************
+   * Procedure Name   : upd_invoice_oif
+   * Description      : AP請求書OIF更新(A-11)
+   ***********************************************************************************/
+  PROCEDURE upd_invoice_oif(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'upd_invoice_oif'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    CURSOR get_ap_invoice_oif_cur
+    IS
+      SELECT MAX(ai.invoice_id)               AS invoice_id,    -- 請求書ID
+             ai.vendor_num                    AS vendor_num,    -- 仕入先
+             SUM(vendor_adjust.adjust_amount) AS adjust_amount  -- 差額
+      FROM   ap_invoices_interface ai,
+             (
+              SELECT  MAX(ai2.invoice_id)               AS invoice_id,
+                      ai2.vendor_num                    AS vendor_num,
+                      TO_NUMBER(NVL(ai2.attribute6,0))  AS tax_rate1,
+                      TO_NUMBER(NVL(ai2.attribute8,0))  AS tax_rate2,
+                      TO_NUMBER(NVL(ai2.attribute10,0)) AS tax_rate3,
+                      (SUM(TO_NUMBER(ai2.attribute5)) + ROUND(SUM(TO_NUMBER(ai2.attribute5)) * TO_NUMBER(NVL(ai2.attribute6,0)) / 100))
+                       + (SUM(TO_NUMBER(ai2.attribute7)) + ROUND(SUM(TO_NUMBER(ai2.attribute7)) * TO_NUMBER(NVL(ai2.attribute8,0)) / 100))
+                       + (SUM(TO_NUMBER(ai2.attribute9)) + ROUND(SUM(TO_NUMBER(ai2.attribute9)) * TO_NUMBER(NVL(ai2.attribute10,0)) / 100))
+                       - SUM(ai2.invoice_amount)       AS adjust_amount
+              FROM    ap_invoices_interface ai2
+              WHERE   ai2.request_id  = cn_request_id
+              AND     ai2.attribute11 = cv_flag_n
+              GROUP BY ai2.vendor_num,
+                       TO_NUMBER(NVL(ai2.attribute6,0)),
+                       TO_NUMBER(NVL(ai2.attribute8,0)),
+                       TO_NUMBER(NVL(ai2.attribute10,0))
+             ) vendor_adjust
+      WHERE  vendor_adjust.adjust_amount <> 0   -- 差額あり
+      AND    vendor_adjust.invoice_id    =  ai.invoice_id
+      AND    vendor_adjust.vendor_num    =  ai.vendor_num
+      AND    ai.request_id               =  cn_request_id
+      GROUP BY ai.vendor_num
+      ;
+--
+    -- *** ローカル・レコード ***
+    ap_invoice_oif_rec get_ap_invoice_oif_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- =========================================================
+    -- 差額が発生している請求仕訳を調整
+    -- =========================================================
+    <<ap_oif_loop>>
+    FOR ap_invoice_oif_rec IN get_ap_invoice_oif_cur LOOP
+--
+      BEGIN
+        -- AP請求書OIF更新
+        UPDATE ap_invoices_interface aii
+        SET    aii.invoice_amount  = ( aii.invoice_amount + ap_invoice_oif_rec.adjust_amount)  -- 差額調整
+        WHERE  aii.invoice_id      = ap_invoice_oif_rec.invoice_id
+        ;
+--
+        -- AP請求書明細OIF更新
+        UPDATE ap_invoice_lines_interface ail
+        SET    ail.amount          = ( ail.amount + ap_invoice_oif_rec.adjust_amount)          -- 差額調整
+        WHERE  ail.invoice_id      = ap_invoice_oif_rec.invoice_id
+        ;
+      END;
+--
+    END LOOP ap_oif_loop;
+--
+    -- AP請求書OIFの要求ID/請求金額(税抜)/税率クリア
+    UPDATE ap_invoices_interface aii
+    SET    aii.request_id  = NULL,
+           aii.attribute5  = NULL,
+           aii.attribute6  = NULL,
+           aii.attribute7  = NULL,
+           aii.attribute8  = NULL,
+           aii.attribute9  = NULL,
+           aii.attribute10 = NULL,
+           aii.attribute11 = NULL
+    WHERE  aii.request_id  = cn_request_id
+    ;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_invoice_oif;
+-- Ver1.6 Add End
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2376,6 +2638,19 @@ AS
     END IF;
 --
 -- 2015-03-09 Ver1.4 Add End
+-- Ver1.6 Add Start
+    -- ===============================
+    -- AP請求書OIF更新(A-11)
+    -- ===============================
+    upd_invoice_oif(
+      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
+      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+-- Ver1.6 Add End
     -- ===============================
     -- 連携管理テーブル登録(A-8)
     -- ===============================
