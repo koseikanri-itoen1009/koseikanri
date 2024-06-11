@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A01C(spec)
  * Description      : 仕入先マスタIF出力（情報系）
  * MD.050           : 仕入先マスタIF出力（情報系）MD050_CMM_001_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/12/04    1.3   SCS 仁木 重人    E_本稼動_00307対応
  *  2010/03/08    1.4   SCS 久保島 豊    E_本稼動_01820対応
  *                                       ・預金種別名称に「貯蓄預金,別段預金」を追加
+ *  2024/05/15    1.5   SCSK 赤地 学     E_本稼動_19529対応
  *
  *****************************************************************************************/
 --
@@ -112,6 +113,14 @@ AS
   -- 参照タイプ
   cv_koza_type         CONSTANT VARCHAR2(30) := 'XXCSO1_KOZA_TYPE';  -- 参照タイプ(口座種別)
 -- 2010/03/08 Ver1.4 E_本稼動_01820 add end by Y.Kuboshima
+-- Ver1.5 Add Start
+  cv_vendor_type        CONSTANT VARCHAR2(30) := 'VENDOR TYPE';                  -- 参照タイプ(仕入先タイプ)
+  cv_bank_charge_bearer CONSTANT VARCHAR2(30) := 'BANK CHARGE BEARER';           -- 参照タイプ(振込手数料負担者)
+  cv_sp_tran_fee_type   CONSTANT VARCHAR2(30) := 'XXCSO1_SP_TRANSFER_FEE_TYPE';  -- 参照タイプ(ＳＰ専決振込手数料負担区分)
+  cv_bm_payment_kbn     CONSTANT VARCHAR2(30) := 'XXCMM_BM_PAYMENT_KBN';         -- 参照タイプ(BM支払区分)
+  cv_bm_tax_kbn         CONSTANT VARCHAR2(30) := 'XXCSO1_BM_TAX_KBN';            -- 参照タイプ(BM税区分)
+  cv_invoice_tax_div_bm CONSTANT VARCHAR2(30) := 'XXCMM_INVOICE_TAX_DIV_BM';     -- 参照タイプ(税計算区分)
+-- Ver1.5 Add End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -136,6 +145,37 @@ AS
         bank_account_type_nm    VARCHAR2(30),   --振込先預金種別名称
         bank_account_num        VARCHAR2(30),   --銀行口座番号
         account_holder_nm_alt   VARCHAR2(50)    --振込先口座名義人名カナ
+-- Ver1.5 Add Start
+       ,vendor_name_alt             VARCHAR2(320)  --仕入先名ｶﾅ
+       ,vendor_type_lookup_code     VARCHAR2(30)   --仕入先ﾀｲﾌﾟ
+       ,vendor_type_name            VARCHAR2(80)   --仕入先ﾀｲﾌﾟ名
+       ,pay_group_lookup_code       VARCHAR2(25)   --支払ｸﾞﾙｰﾌﾟ
+       ,end_date_active             VARCHAR2(8)    --無効日(ﾍｯﾀﾞ)
+       ,inactive_date               VARCHAR2(8)    --無効日(ｻｲﾄ)
+       ,address_line2               VARCHAR2(100)  --所在地２
+       ,address_line3               VARCHAR2(100)  --所在地３
+       ,area_code                   VARCHAR2(10)   --市外局番
+       ,phone                       VARCHAR2(15)   --電話番号
+       ,pay_description             VARCHAR2(80)   --支払条件名
+       ,bank_charge_bearer          VARCHAR2(1)    --振込手数料負担者
+       ,bank_charge_bearer_name     VARCHAR2(80)   --振込手数料負担者名(標準画面)
+       ,bank_charge_bearer_name_bm  VARCHAR2(80)   --振込手数料負担者名(BM用)
+       ,vendor_formal_name          VARCHAR2(90)   --仕入先正式名称
+       ,bm_payment_kbn              VARCHAR2(1)    --BM支払区分
+       ,bm_payment_kbn_name         VARCHAR2(80)   --BM支払区分名
+       ,inquiry_base_code           VARCHAR2(4)    --問合せ担当拠点コード
+       ,bm_tax_kbn                  VARCHAR2(1)    --BM税区分
+       ,bm_tax_kbn_name             VARCHAR2(80)   --BM税区分名
+       ,vendor_site_e_mail          VARCHAR2(150)  --仕入先ｻｲﾄEﾒｰﾙｱﾄﾞﾚｽ
+       ,invoice_t                   VARCHAR2(1)    --適格請求書発行事業者登録
+       ,invoice_t_no                VARCHAR2(13)   --課税事業者番号
+       ,tax_calc_type               VARCHAR2(1)    --税計算区分
+       ,tax_calc_type_name          VARCHAR2(80)   --税計算区分名
+       ,creation_date               VARCHAR2(14)   --作成日
+       ,created_by                  VARCHAR2(20)   --作成者
+       ,last_update_date            VARCHAR2(14)   --最終更新日
+       ,last_updated_by             VARCHAR2(20)   --最終更新者
+-- Ver1.5 Add End
   );
 --
   -- 仕入先マスタ情報を格納するテーブル型の定義
@@ -367,6 +407,9 @@ AS
                       gv_directory    -- 出力先
                      ,gv_file_name    -- CSVファイル名
                      ,cc_output       -- 出力ステータス
+                     -- Ver1.5 Add Start
+                     ,5000            -- max_linesize
+                     -- Ver1.5 Add End
                     );
     EXCEPTION
       -- ファイルパス不正エラー
@@ -481,6 +524,37 @@ AS
         || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bank_account_type_nm) || lv_char_dq  -- 振込先預金種別名称
         || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bank_account_num) || lv_char_dq  -- 銀行口座番号
         || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).account_holder_nm_alt) || lv_char_dq  -- 振込先口座名義人名カナ
+-- Ver1.5 Add Start
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vendor_name_alt) || lv_char_dq             --仕入先名ｶﾅ
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vendor_type_lookup_code) || lv_char_dq     --仕入先ﾀｲﾌﾟ
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vendor_type_name) || lv_char_dq            --仕入先ﾀｲﾌﾟ名
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).pay_group_lookup_code) || lv_char_dq       --支払ｸﾞﾙｰﾌﾟ
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).end_date_active) || lv_char_dq             --無効日(ﾍｯﾀﾞ)
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).inactive_date) || lv_char_dq               --無効日(ｻｲﾄ)
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).address_line2) || lv_char_dq               --所在地２
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).address_line3) || lv_char_dq               --所在地３
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).area_code) || lv_char_dq                   --市外局番
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).phone) || lv_char_dq                       --電話番号
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).pay_description) || lv_char_dq             --支払条件名
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bank_charge_bearer) || lv_char_dq          --振込手数料負担者
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bank_charge_bearer_name) || lv_char_dq     --振込手数料負担者名(標準画面)
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bank_charge_bearer_name_bm) || lv_char_dq  --振込手数料負担者名(BM用)
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vendor_formal_name) || lv_char_dq          --仕入先正式名称
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bm_payment_kbn) || lv_char_dq              --BM支払区分
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bm_payment_kbn_name) || lv_char_dq         --BM支払区分名
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).inquiry_base_code) || lv_char_dq           --問合せ担当拠点コード
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bm_tax_kbn) || lv_char_dq                  --BM税区分
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).bm_tax_kbn_name) || lv_char_dq             --BM税区分名
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).vendor_site_e_mail) || lv_char_dq          --仕入先ｻｲﾄEﾒｰﾙｱﾄﾞﾚｽ
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).invoice_t) || lv_char_dq                   --適格請求書発行事業者登録
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).invoice_t_no) || lv_char_dq                --課税事業者番号
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).tax_calc_type) || lv_char_dq               --税計算区分
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).tax_calc_type_name) || lv_char_dq          --税計算区分名
+        || lv_sep_com || gt_csv_out_tbl(out_cnt).creation_date                                                  --作成日
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).created_by) || lv_char_dq                  --作成者
+        || lv_sep_com || gt_csv_out_tbl(out_cnt).last_update_date                                               --最終更新日
+        || lv_sep_com || lv_char_dq || RTRIM(gt_csv_out_tbl(out_cnt).last_updated_by) || lv_char_dq             --最終更新者
+-- Ver1.5 Add End
         || lv_sep_com || lc_last_update;                        -- 最終更新日時
 --
       BEGIN
@@ -614,6 +688,71 @@ AS
              SUBSTRB(aba.bank_account_num,1,30) bank_account_num,   --銀行口座番号
              SUBSTRB(aba.account_holder_name_alt,1,50)
                                                 account_holder_nm_alt --口座名義人名カナ
+-- Ver1.5 Add Start
+            ,pv.vendor_name_alt                 vendor_name_alt             --仕入先名ｶﾅ
+            ,pv.vendor_type_lookup_code         vendor_type_lookup_code     --仕入先ﾀｲﾌﾟ
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_vendor_type
+              AND    flvv.lookup_code = pv.vendor_type_lookup_code)
+                                                vendor_type_name            --仕入先ﾀｲﾌﾟ名
+            ,pv.pay_group_lookup_code           pay_group_lookup_code       --支払ｸﾞﾙｰﾌﾟ
+            ,TO_CHAR(pv.end_date_active,'YYYYMMDD') 
+                                                end_date_active             --無効日(ﾍｯﾀﾞ)
+            ,TO_CHAR(pvs.inactive_date,'YYYYMMDD') 
+                                                inactive_date               --無効日(ｻｲﾄ)
+            ,SUBSTRB(pvs.address_line2,1,100)   address_line2               --所在地２
+            ,SUBSTRB(pvs.address_line3,1,100)   address_line3               --所在地３
+            ,pvs.area_code                      area_code                   --市外局番
+            ,pvs.phone                          phone                       --電話番号
+            ,SUBSTRB(att.description,1,80)      pay_description             --支払条件名
+            ,pvs.bank_charge_bearer             bank_charge_bearer          --振込手数料負担者
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_bank_charge_bearer
+              AND    flvv.lookup_code = pvs.bank_charge_bearer)
+                                                bank_charge_bearer_name     --振込手数料負担者名(標準画面)
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_sp_tran_fee_type
+              AND    flvv.lookup_code = pvs.bank_charge_bearer)
+                                                bank_charge_bearer_name_bm  --振込手数料負担者名(BM用)
+            ,SUBSTRB(pvs.ATTRIBUTE1,1,90)       vendor_formal_name          --仕入先正式名称
+            ,SUBSTRB(pvs.attribute4,1,1)        bm_payment_kbn              --BM支払区分
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_bm_payment_kbn
+              AND    flvv.lookup_code = pvs.attribute4)
+                                                bm_payment_kbn_name         --BM支払区分名
+            ,SUBSTRB(pvs.attribute5,1,4)        inquiry_base_code           --問合せ担当拠点コード
+            ,SUBSTRB(pvs.attribute6,1,1)        bm_tax_kbn                  --BM税区分
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_bm_tax_kbn
+              AND    flvv.lookup_code = pvs.attribute6)
+                                                bm_tax_kbn_name             --BM税区分名
+            ,pvs.attribute7                     vendor_site_e_mail          --仕入先ｻｲﾄEﾒｰﾙｱﾄﾞﾚｽ
+            ,SUBSTRB(pvs.attribute8,1,1)        invoice_t                   --適格請求書発行事業者登録
+            ,SUBSTRB(pvs.attribute9,1,13)       invoice_t_no                --課税事業者番号
+            ,SUBSTRB(pvs.attribute10,1,1)       tax_calc_type               --税計算区分
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_invoice_tax_div_bm
+              AND    flvv.lookup_code = pvs.attribute10)
+                                                tax_calc_type_name          --税計算区分名
+            ,TO_CHAR(pv.creation_date, 'YYYYMMDDHH24MISS')
+                                                creation_date               --作成日
+            ,(SELECT SUBSTRB(fu.user_name,1,20)
+              FROM   fnd_user fu
+              WHERE  fu.user_id = pv.created_by)
+                                                created_by                  --作成者
+            ,TO_CHAR(pvs.last_update_date, 'YYYYMMDDHH24MISS')
+                                                last_update_date            --最終更新日
+            ,(SELECT SUBSTRB(fu.user_name,1,20)
+              FROM   fnd_user fu
+              WHERE  fu.user_id = pvs.last_updated_by)
+                                                last_updated_by             --最終更新者
+-- Ver1.5 Add End
       FROM   ap_bank_accounts_all aba,   --銀行口座マスタ
              ap_bank_branches abb,       --銀行支店マスタ
              ap_terms att,               --支払条件マスタ
@@ -669,6 +808,71 @@ AS
              NULL                               bank_account_type_nm, --預金種別名称
              NULL                               bank_account_num,   --銀行口座番号
              NULL                               account_holder_nm_alt --口座名義人名カナ
+-- Ver1.5 Add Start
+            ,pv.vendor_name_alt                 vendor_name_alt             --仕入先名ｶﾅ
+            ,pv.vendor_type_lookup_code         vendor_type_lookup_code     --仕入先ﾀｲﾌﾟ
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_vendor_type
+              AND    flvv.lookup_code = pv.vendor_type_lookup_code)
+                                                vendor_type_name            --仕入先ﾀｲﾌﾟ名
+            ,pv.pay_group_lookup_code           pay_group_lookup_code       --支払ｸﾞﾙｰﾌﾟ
+            ,TO_CHAR(pv.end_date_active,'YYYYMMDD') 
+                                                end_date_active             --無効日(ﾍｯﾀﾞ)
+            ,TO_CHAR(pvs.inactive_date,'YYYYMMDD') 
+                                                inactive_date               --無効日(ｻｲﾄ)
+            ,SUBSTRB(pvs.address_line2,1,100)   address_line2               --所在地２
+            ,SUBSTRB(pvs.address_line3,1,100)   address_line3               --所在地３
+            ,pvs.area_code                      area_code                   --市外局番
+            ,pvs.phone                          phone                       --電話番号
+            ,SUBSTRB(att.description,1,80)      pay_description             --支払条件名
+            ,pvs.bank_charge_bearer             bank_charge_bearer          --振込手数料負担者
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_bank_charge_bearer
+              AND    flvv.lookup_code = pvs.bank_charge_bearer)
+                                                bank_charge_bearer_name     --振込手数料負担者名(標準画面)
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_sp_tran_fee_type
+              AND    flvv.lookup_code = pvs.bank_charge_bearer)
+                                                bank_charge_bearer_name_bm  --振込手数料負担者名(BM用)
+            ,SUBSTRB(pvs.ATTRIBUTE1,1,90)       vendor_formal_name          --仕入先正式名称
+            ,SUBSTRB(pvs.attribute4,1,1)        bm_payment_kbn              --BM支払区分
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_bm_payment_kbn
+              AND    flvv.lookup_code = pvs.attribute4)
+                                                bm_payment_kbn_name         --BM支払区分名
+            ,SUBSTRB(pvs.attribute5,1,4)        inquiry_base_code           --問合せ担当拠点コード
+            ,SUBSTRB(pvs.attribute6,1,1)        bm_tax_kbn                  --BM税区分
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_bm_tax_kbn
+              AND    flvv.lookup_code = pvs.attribute6)
+                                                bm_tax_kbn_name             --BM税区分名
+            ,pvs.attribute7                     vendor_site_e_mail          --仕入先ｻｲﾄEﾒｰﾙｱﾄﾞﾚｽ
+            ,SUBSTRB(pvs.attribute8,1,1)        invoice_t                   --適格請求書発行事業者登録
+            ,SUBSTRB(pvs.attribute9,1,13)       invoice_t_no                --課税事業者番号
+            ,SUBSTRB(pvs.attribute10,1,1)       tax_calc_type               --税計算区分
+            ,(SELECT flvv.meaning
+              FROM   fnd_lookup_values_vl flvv
+              WHERE  flvv.lookup_type = cv_invoice_tax_div_bm
+              AND    flvv.lookup_code = pvs.attribute10)
+                                                tax_calc_type_name          --税計算区分名
+            ,TO_CHAR(pv.creation_date, 'YYYYMMDDHH24MISS')
+                                                creation_date               --作成日
+            ,(SELECT SUBSTRB(fu.user_name,1,20)
+              FROM   fnd_user fu
+              WHERE  fu.user_id = pv.created_by)
+                                                created_by                  --作成者
+            ,TO_CHAR(pvs.last_update_date, 'YYYYMMDDHH24MISS')
+                                                last_update_date            --最終更新日
+            ,(SELECT SUBSTRB(fu.user_name,1,20)
+              FROM   fnd_user fu
+              WHERE  fu.user_id = pvs.last_updated_by)
+                                                last_updated_by             --最終更新者
+-- Ver1.5 Add End
       FROM   ap_terms att,               --支払条件マスタ
              po_vendors pv,              --仕入先マスタ
 -- Ver1.2 Mod 2009/05/13 T1_0978対応 営業OUのみ対象とする
