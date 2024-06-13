@@ -7,7 +7,7 @@ AS
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
- * Version          : 1.39
+ * Version          : 1.40
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,7 +83,8 @@ AS
  *  2017-01-27    1.36  S.Niki           E_本稼動_13903追加対応
  *  2023-04-05    1.37  M.Akachi         E_本稼動_18758対応
  *  2023-04-27    1.38  M.Akachi         E_本稼動_18758不具合対応
- *  2024-04-11    1.39  M.Akachi         E_本稼動_19496不具合対応
+ *  2024-04-11    1.39  M.Akachi         E_本稼動_19496グループ会社統合対応対応
+ *  2024-05-15    1.40  M.Akachi         E_本稼動_19496不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5413,6 +5414,9 @@ AS
 /* Ver.1.34 ADD START */
     lv_ib_ext_attr_flg         VARCHAR2(1);                               -- 設置機器拡張属性値登録フラグ
 /* Ver.1.34 ADD END */
+-- Ver.1.40 Add Start
+    lt_dept_code               xxcfr_bd_dept_comp_info_v.dept_code%TYPE;  -- 部門コード
+-- Ver.1.40 Add End
 --
     -- API入出力レコード値格納用
     l_txn_rec                  csi_datastructures_pub.transaction_rec;
@@ -5553,6 +5557,9 @@ AS
     ln_cnt2               := cn_num0;    --設置機器拡張属性値登録用カウンタ
     lv_ib_ext_attr_flg    := cv_flg_no;  --設置機器拡張属性値登録フラグ
 /* Ver.1.34 ADD END */
+-- Ver.1.40 Add Start
+    lt_dept_code      := NULL;
+-- Ver.1.40 Add End
 --
     -- 3.設置機器拡張属性値(更新用)データ作成
 --
@@ -6626,18 +6633,100 @@ AS
         l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
       END IF;
 --
-      -- 機器区分が’1’でかつ「引揚拠点コード」がNOT NULLかつ、自拠点作業以外の場合
+      -- 機器区分が’1’かつ、自拠点作業以外の場合
       IF (io_inst_base_data_rec.machinery_kbn = cv_kbn1 AND
       /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD START */
 --          gv_withdraw_base_code IS NOT NULL)THEN
-          -- Ver.1.39 Mod Start
-          --( gv_withdraw_base_code IS NOT NULL ) AND
-          ( lt_comp_withdraw_base_code IS NOT NULL ) AND
-          -- Ver.1.39 Mod End
+-- Ver.1.40 Del Start
+--          -- Ver.1.39 Mod Start
+--          --( gv_withdraw_base_code IS NOT NULL ) AND
+--          ( lt_comp_withdraw_base_code IS NOT NULL ) AND
+--          -- Ver.1.39 Mod End
+-- Ver.1.40 Del End
           ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code )
       ) THEN
       /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD END */
         -- アカウントID、パーティサイトID、パーティID、地区コードの設定
+-- Ver.1.40 Add Start
+          IF ( lt_comp_withdraw_base_code IS NULL ) THEN
+            -- メッセージ出力用に拠点コードを保持
+            BEGIN
+              SELECT CASE
+                     WHEN TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')
+                     THEN lt_sale_base_code             -- 売上拠点コード
+                     ELSE lt_past_sale_base_code        -- 前月売上拠点コード
+                     END
+              INTO   lt_dept_code
+              FROM   dual;
+            END;
+            -- 会社別引揚拠点コードに紐付く顧客情報を取得する
+            BEGIN
+              SELECT flvv.attribute1       AS  comp_withdraw_base_code  -- 会社別引揚拠点コード
+                    ,casv.cust_account_id  AS  comp_withdraw_base_code  -- アカウントID
+                    ,casv.party_site_id    AS  party_site_id_withdraw   -- パーティサイトID
+                    ,casv.party_id         AS  party_id_withdraw        -- パーティID
+                    ,casv.area_code        AS  area_code_withdraw       -- 地区コード
+              INTO   lt_comp_withdraw_base_code
+                    ,ln_account_id_withdraw
+                    ,ln_party_site_id_withdraw
+                    ,ln_party_id_withdraw
+                    ,lv_area_code_withdraw
+              FROM   xxcfr_bd_dept_comp_info_v xbdciv              -- 基準日部門会社情報ビュー
+                    ,fnd_lookup_values_vl      flvv                -- 参照表(会社別引揚拠点コード)
+                    ,xxcso_cust_acct_sites_v   casv                -- 顧客マスタサイトビュー
+              WHERE  xbdciv.dept_code          =  (CASE
+                                                   WHEN TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')
+                                                   THEN lt_sale_base_code             -- 売上拠点コード
+                                                   ELSE lt_past_sale_base_code        -- 前月売上拠点コード
+                                                   END)
+              AND    xbdciv.set_of_books_id    = gn_set_of_bks_id                     -- 会計帳簿ID
+              AND    xbdciv.enabled_flag       = 'Y'
+              AND    ld_actual_work_date BETWEEN xbdciv.comp_start_date            -- 実作業日
+                                             AND NVL( xbdciv.comp_end_date, ld_actual_work_date )
+              AND    flvv.lookup_type          = cv_cp_withdraw_base_code_type
+              AND    flvv.lookup_code          = xbdciv.company_code_bd
+              AND    flvv.enabled_flag         = 'Y'
+              AND    casv.account_number(+)    = flvv.attribute1      -- 会社別引揚拠点コード
+              AND    casv.account_status(+)    = cv_active
+              AND    casv.acct_site_status(+)  = cv_active
+              AND    casv.party_status(+)      = cv_active
+              AND    casv.party_site_status(+) = cv_active
+              ;
+              IF ( ln_account_id_withdraw IS NULL ) THEN
+                  RAISE skip_process_expt;
+              END IF;
+            EXCEPTION
+              WHEN skip_process_expt THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_14             -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                               ,iv_token_value1 => cv_cust_acct_sites_info      -- トークン値1
+                               ,iv_token_name2  => cv_tkn_item                  -- トークンコード2
+                               ,iv_token_value2 => cv_cust_account_number       -- トークン値2
+                               ,iv_token_name3  => cv_tkn_base_value            -- トークンコード3
+                               ,iv_token_value3 => lt_comp_withdraw_base_code   -- トークン値3
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_15             -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                               ,iv_token_value1 => cv_cust_acct_sites_info      -- トークン値1
+                               ,iv_token_name2  => cv_tkn_item                  -- トークンコード2
+                               ,iv_token_value2 => cv_cust_account_number       -- トークン値2
+                               ,iv_token_name3  => cv_tkn_base_value            -- トークンコード3
+                               ,iv_token_value3 => lt_dept_code                 -- トークン値3
+                               ,iv_token_name4  => cv_tkn_errmsg                -- トークンコード4
+                               ,iv_token_value4 => SQLERRM                      -- トークン値4
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+            END;
+          END IF;
+-- Ver.1.40 Add End
         -- Ver.1.39 Mod Start
         --ln_account_id     := gn_account_id;
         --ln_party_site_id  := gn_party_site_id;
@@ -6648,18 +6737,101 @@ AS
         ln_party_id       := ln_party_id_withdraw;
         lv_area_code      := lv_area_code_withdraw;
         -- Ver.1.39 Mod End
-      -- 機器区分が’1’以外でかつ「什器引揚拠点コード」がNOT NULLである場合かつ、自拠点作業以外の場合
+      -- 機器区分が’1’以外かつ、自拠点作業以外の場合
       ELSIF (io_inst_base_data_rec.machinery_kbn <> cv_kbn1 AND
       /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD START */
 --             gv_jyki_withdraw_base_code IS NOT NULL) THEN
-             -- Ver.1.39 Mod Start
-             --( gv_jyki_withdraw_base_code IS NOT NULL ) AND
-             ( lt_comp_j_wthdrw_base_code IS NOT NULL ) AND
-             -- Ver.1.39 Mod End
+-- Ver.1.40 Del Start
+--             -- Ver.1.39 Mod Start
+--             --( gv_jyki_withdraw_base_code IS NOT NULL ) AND
+--             ( lt_comp_j_wthdrw_base_code IS NOT NULL ) AND
+--             -- Ver.1.39 Mod End
+-- Ver.1.40 Del End
              ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code )
       ) THEN
       /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD END */
         -- アカウントID、パーティサイトID、パーティID、地区コードの設定
+-- Ver.1.40 Add Start
+          IF ( lt_comp_j_wthdrw_base_code IS NULL ) THEN
+            -- メッセージ出力用に拠点コードを保持
+            BEGIN
+              SELECT CASE
+                     WHEN TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')
+                     THEN lt_sale_base_code             -- 売上拠点コード
+                     ELSE lt_past_sale_base_code        -- 前月売上拠点コード
+                     END
+              INTO   lt_dept_code
+              FROM   dual;
+            END;
+            -- 会社別什器引揚拠点コードに紐付く顧客情報を取得する
+            BEGIN
+              SELECT flvv.attribute1       AS  comp_j_wthdrw_base_code  -- 会社別什器引揚拠点コード
+                    ,casv.cust_account_id  AS  jyki_account_id          -- アカウントID
+                    ,casv.party_site_id    AS  jyki_party_site_id       -- パーティサイトID
+                    ,casv.party_id         AS  jyki_party_id            -- パーティID
+                    ,casv.area_code        AS  jyki_area_code           -- 地区コード
+              INTO   lt_comp_j_wthdrw_base_code
+                    ,ln_jyki_account_id
+                    ,ln_jyki_party_site_id
+                    ,ln_jyki_party_id
+                    ,lv_jyki_area_code
+              FROM   xxcfr_bd_dept_comp_info_v xbdciv              -- 基準日部門会社情報ビュー
+                    ,fnd_lookup_values_vl      flvv                -- 参照表(会社別引揚拠点コード)
+                    ,xxcso_cust_acct_sites_v   casv                -- 顧客マスタサイトビュー
+              WHERE  xbdciv.dept_code          =  (CASE
+                                                   WHEN TO_CHAR(ld_actual_work_date,'YYYYMM') = TO_CHAR(ld_date,'YYYYMM')
+                                                   THEN lt_sale_base_code             -- 売上拠点コード
+                                                   ELSE lt_past_sale_base_code        -- 前月売上拠点コード
+                                                   END)
+              AND    xbdciv.set_of_books_id    = gn_set_of_bks_id                     -- 会計帳簿ID
+              AND    xbdciv.enabled_flag       = 'Y'
+              AND    ld_actual_work_date BETWEEN xbdciv.comp_start_date            -- 実作業日
+                                             AND NVL( xbdciv.comp_end_date, ld_actual_work_date )
+              AND    flvv.lookup_type          = cv_cp_j_wthdrw_base_code_type
+              AND    flvv.lookup_code          = xbdciv.company_code_bd
+              AND    flvv.enabled_flag         = 'Y'
+              AND    casv.account_number(+)    = flvv.attribute1      -- 会社別什器引揚拠点コード
+              AND    casv.account_status(+)    = cv_active
+              AND    casv.acct_site_status(+)  = cv_active
+              AND    casv.party_status(+)      = cv_active
+              AND    casv.party_site_status(+) = cv_active
+              ;
+              IF ( ln_jyki_account_id IS NULL ) THEN
+                  RAISE skip_process_expt;
+              END IF;
+            EXCEPTION
+              WHEN skip_process_expt THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_14             -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                               ,iv_token_value1 => cv_cust_acct_sites_info1      -- トークン値1
+                               ,iv_token_name2  => cv_tkn_item                  -- トークンコード2
+                               ,iv_token_value2 => cv_cust_account_number       -- トークン値2
+                               ,iv_token_name3  => cv_tkn_base_value            -- トークンコード3
+                               ,iv_token_value3 => lt_comp_j_wthdrw_base_code   -- トークン値3
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+              -- 抽出に失敗した場合
+              WHEN OTHERS THEN
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_app_name                  -- アプリケーション短縮名
+                               ,iv_name         => cv_tkn_number_15             -- メッセージコード
+                               ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                               ,iv_token_value1 => cv_cust_acct_sites_info1     -- トークン値1
+                               ,iv_token_name2  => cv_tkn_item                  -- トークンコード2
+                               ,iv_token_value2 => cv_cust_account_number       -- トークン値2
+                               ,iv_token_name3  => cv_tkn_base_value            -- トークンコード3
+                               ,iv_token_value3 => lt_dept_code                 -- トークン値3
+                               ,iv_token_name4  => cv_tkn_errmsg                -- トークンコード4
+                               ,iv_token_value4 => SQLERRM                      -- トークン値4
+                             );
+                lv_errbuf := lv_errmsg;
+                RAISE skip_process_expt;
+            END;
+          END IF;
+-- Ver.1.40 Add End
         -- Ver.1.39 Mod Start
         --ln_account_id     := gn_jyki_account_id;
         --ln_party_site_id  := gn_jyki_party_site_id;
