@@ -8,7 +8,7 @@ AS
  *                  : APへ連携します。また、承認後APに連携済の支払伝票が取消された場合、
  *                  : 赤伝票をAPへ連携します。
  * MD.050           : 問屋控除支払AP連携 MD050_COK_024_A16
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -33,6 +33,7 @@ AS
  * ------------- -------------------------------------------------------------------------
  *  2020/08/25    1.0   N.Abe            新規作成
  *  2022/11/29    1.1   T.Mizutani       E_本稼動_SaaS対応
+ *  2023/12/13    1.2   Y.Ooyama         E_本稼動_19496対応
  *
  *****************************************************************************************/
 --
@@ -159,6 +160,10 @@ AS
       ,vendor_code              xxcok_deduction_recon_head.payee_code%TYPE                -- 仕入先コード
       ,vendor_site_code         po_vendor_sites_all.vendor_site_code%TYPE                 -- 仕入先サイトコード
       ,header_id                xxcok_deduction_recon_head.deduction_recon_head_id%TYPE   -- 控除消込ヘッダーID
+-- Ver1.2 ADD START
+      ,drafting_company         fnd_lookup_values_vl.lookup_code%TYPE                     -- 伝票作成会社
+      ,fin_dept_code            fnd_lookup_values_vl.attribute1%TYPE                      -- 管理部門コード
+-- Ver1.2 ADD END
       ,terms_name               xxcok_deduction_recon_head.terms_name%TYPE                -- 支払条件
   );
   -- 控除消込ヘッダワークテーブル型定義
@@ -222,6 +227,9 @@ AS
       ,description              ap_invoice_distributions_all.description%TYPE               -- 摘要
       ,tax_code                 ap_tax_codes_all.name%TYPE                                  -- 税区分
       ,ccid                     ap_invoice_distributions_all.dist_code_combination_id%TYPE  -- CCID
+-- Ver1.2 ADD START
+      ,drafting_company         ap_invoice_distributions_all.attribute15%TYPE               -- 伝票作成会社
+-- Ver1.2 ADD END
   );
   -- 取消明細情報ワークテーブル型定義
   TYPE g_cancel_line_ttype    IS TABLE OF g_cancel_line_rtype INDEX BY BINARY_INTEGER;
@@ -610,12 +618,20 @@ AS
             ,pv.segment1                   AS vendor_code             -- 仕入先
             ,pvsa.vendor_site_code         AS vendor_site_code        -- 仕入先サイト
             ,xdrh.deduction_recon_head_id  AS header_id               -- 控除消込ヘッダーID
+-- Ver1.2 ADD START
+            ,flvv_comp.lookup_code         AS drafting_company        -- 伝票作成会社
+            ,flvv_comp.attribute1          AS fin_dept_code           -- 管理部門コード
+-- Ver1.2 ADD END
             ,xdrh.terms_name               AS terms_name              -- 支払条件
       FROM   xxcok_deduction_recon_head    xdrh                       -- 控除消込ヘッダー情報
             ,po_vendor_sites_all           pvsa                       -- 仕入先サイト
             ,po_vendors                    pv                         -- 仕入先
             ,fnd_user                      fu                         -- ユーザーマスタ
             ,per_all_people_f              papf                       -- 従業員マスタ
+-- Ver1.2 ADD START
+            ,fnd_lookup_values_vl          flvv_conv                  -- 参照表ビュー(XXCMM_CONV_COMPANY_CODE)
+            ,fnd_lookup_values_vl          flvv_comp                  -- 参照表ビュー(XXCFO1_DRAFTING_COMPANY)
+-- Ver1.2 ADD END
       WHERE  xdrh.recon_status             =        cv_ad             -- 承認済
       AND    xdrh.interface_div            =        cv_wp             -- AP問屋
       AND    xdrh.ap_ar_if_flag            =        'N'               -- 未連携
@@ -626,6 +642,14 @@ AS
       AND    papf.person_id                =        fu.employee_id(+)
       AND    TRUNC(gd_process_date)        BETWEEN  TRUNC(papf.effective_start_date(+))
                                            AND      TRUNC(NVL(papf.effective_end_date(+), gd_process_date))
+-- Ver1.2 ADD START
+      AND    NVL(pvsa.attribute11, '001')  =        flvv_conv.attribute1
+      AND    flvv_conv.lookup_type         =        'XXCMM_CONV_COMPANY_CODE'
+      AND    xdrh.gl_date                  BETWEEN flvv_conv.start_date_active
+                                           AND     NVL(flvv_conv.end_date_active, xdrh.gl_date)
+      AND    flvv_conv.attribute2          =        flvv_comp.lookup_code
+      AND    flvv_comp.lookup_type         =        'XXCFO1_DRAFTING_COMPANY'
+-- Ver1.2 ADD END
       FOR UPDATE OF xdrh.deduction_recon_head_id NOWAIT
       ;
     -- *** ローカル・レコード ***
@@ -741,7 +765,11 @@ AS
              ,xdnr.remarks      AS  remarks         -- 摘要
              ,cv_0000           AS  tax_code        -- 税コード
              ,cv_item           AS  line_type       -- 明細タイプ 
-             ,gv_dept_fin       AS  dept_code       -- 部門コード
+-- Ver1.2 MOD START
+--             ,gv_dept_fin       AS  dept_code       -- 部門コード
+             ,g_recon_head_tbl(gn_head_cnt).fin_dept_code
+                                AS  dept_code       -- 部門コード
+-- Ver1.2 MOD END
              ,flv.attribute6    AS  acct_code       -- 勘定科目
              ,flv.attribute7    AS  sub_acct_code   -- 補助科目
              ,gv_comp_dummy     AS  comp_code       -- 企業コード
@@ -762,7 +790,11 @@ AS
              ,atca.name             AS  remarks         -- 摘要
              ,cv_0000               AS  tax_code        -- 税コード
              ,cv_item               AS  line_type       -- 明細タイプ 
-             ,gv_dept_fin           AS  dept_code       -- 部門コード
+-- Ver1.2 MOD START
+--             ,gv_dept_fin           AS  dept_code       -- 部門コード
+             ,g_recon_head_tbl(gn_head_cnt).fin_dept_code
+                                    AS  dept_code       -- 部門コード
+-- Ver1.2 MOD END
              ,atca.attribute5       AS  acct_code       -- 勘定科目
              ,atca.attribute6       AS  sub_acct_code   -- 補助科目
              ,gv_comp_dummy         AS  comp_code       -- 企業コード
@@ -790,7 +822,11 @@ AS
              ,flv.meaning               AS  remarks         -- 摘要
              ,cv_0000                   AS  tax_code        -- 税コード
              ,cv_item                   AS  line_type       -- 明細タイプ 
-             ,gv_dept_fin               AS  dept_code       -- 部門コード
+-- Ver1.2 MOD START
+--             ,gv_dept_fin               AS  dept_code       -- 部門コード
+             ,g_recon_head_tbl(gn_head_cnt).fin_dept_code
+                                        AS  dept_code       -- 部門コード
+-- Ver1.2 MOD END
              ,flv.attribute6            AS  acct_code       -- 勘定科目
              ,flv.attribute7            AS  sub_acct_code   -- 補助科目
              ,gv_comp_dummy             AS  comp_code       -- 企業コード
@@ -815,7 +851,11 @@ AS
              ,atca.name                     AS  remarks         -- 摘要
              ,cv_0000                       AS  tax_code        -- 税コード
              ,cv_item                       AS  line_type       -- 明細タイプ 
-             ,gv_dept_fin                   AS  dept_code       -- 部門コード
+-- Ver1.2 MOD START
+--             ,gv_dept_fin                   AS  dept_code       -- 部門コード
+             ,g_recon_head_tbl(gn_head_cnt).fin_dept_code
+                                            AS  dept_code       -- 部門コード
+-- Ver1.2 MOD END
              ,atca.attribute5               AS  acct_code       -- 勘定科目
              ,atca.attribute6               AS  sub_acct_code   -- 補助科目
              ,gv_comp_dummy                 AS  comp_code       -- 企業コード
@@ -972,6 +1012,15 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- Ver1.2 ADD START
+    ln_ap_tax_ccid            NUMBER;                                 -- 科目支払情報_税CCID
+    lv_ap_tax_segment3        gl_code_combinations.segment3%TYPE;     -- 勘定科目
+    lv_ap_tax_segment4        gl_code_combinations.segment4%TYPE;     -- 補助科目
+    lv_ap_tax_segment5        gl_code_combinations.segment5%TYPE;     -- 顧客コード
+    lv_ap_tax_segment6        gl_code_combinations.segment6%TYPE;     -- 企業コード
+    lv_ap_tax_segment7        gl_code_combinations.segment7%TYPE;     -- 予備1
+    lv_ap_tax_segment8        gl_code_combinations.segment8%TYPE;     -- 予備2
+-- Ver1.2 ADD END
 --
     -- *** ローカル例外 ***
 --
@@ -1006,7 +1055,10 @@ AS
     IF ( g_recon_line_tbl(gn_line_cnt).ccid IS NULL ) THEN
       gn_detail_ccid := xxcok_common_pkg.get_code_combination_id_f(
                           id_proc_date => gd_process_date                             -- 処理日
-                        , iv_segment1  => gv_comp_code                                -- 会社コード
+-- Ver1.2 MOD START
+--                        , iv_segment1  => gv_comp_code                                -- 会社コード
+                        , iv_segment1  => g_recon_head_tbl(gn_head_cnt).drafting_company  -- 会社コード(伝票作成会社)
+-- Ver1.2 MOD END
                         , iv_segment2  => g_recon_line_tbl(gn_line_cnt).dept_code     -- 部門コード
                         , iv_segment3  => g_recon_line_tbl(gn_line_cnt).acct_code     -- 勘定科目コード
                         , iv_segment4  => g_recon_line_tbl(gn_line_cnt).sub_acct_code -- 補助科目コード
@@ -1025,8 +1077,71 @@ AS
       END IF;
     END IF;
 --
+-- Ver1.2 ADD START
     -- ============================================================
-    -- 4-4.請求書明細OIF登録
+    -- 4-4.伝票作成会社用の科目支払情報_税「CCID」の再取得
+    -- ============================================================
+    ln_ap_tax_ccid     := NULL;
+    lv_ap_tax_segment3 := NULL;
+    lv_ap_tax_segment4 := NULL;
+    lv_ap_tax_segment5 := NULL;
+    lv_ap_tax_segment6 := NULL;
+    lv_ap_tax_segment7 := NULL;
+    lv_ap_tax_segment8 := NULL;
+    IF ( g_recon_head_tbl(gn_head_cnt).drafting_company <>  gv_comp_code ) THEN
+      -- 伝票作成会社が伊藤園(001)以外の場合
+      IF ( g_recon_line_tbl(gn_line_cnt).ccid IS NOT NULL ) THEN
+        -- 明細から取得したCCIDがNULLでない場合(科目支払情報_税の場合)
+        BEGIN
+          -- 明細から取得したCCIDの勘定科目～予備2までを取得
+          SELECT gcc.segment3
+                ,gcc.segment4
+                ,gcc.segment5
+                ,gcc.segment6
+                ,gcc.segment7
+                ,gcc.segment8
+          INTO   lv_ap_tax_segment3
+                ,lv_ap_tax_segment4
+                ,lv_ap_tax_segment5
+                ,lv_ap_tax_segment6
+                ,lv_ap_tax_segment7
+                ,lv_ap_tax_segment8
+          FROM   gl_code_combinations  gcc
+          WHERE  gcc.code_combination_id  =  g_recon_line_tbl(gn_line_cnt).ccid
+          ;
+          --
+          -- 伝票作成会社用の科目支払情報_税「CCID」を再取得
+          ln_ap_tax_ccid := xxcok_common_pkg.get_code_combination_id_f(
+                              id_proc_date => gd_process_date                                 -- 処理日
+                            , iv_segment1  => g_recon_head_tbl(gn_head_cnt).drafting_company  -- 会社コード(伝票作成会社)
+                            , iv_segment2  => g_recon_head_tbl(gn_head_cnt).fin_dept_code     -- 部門コード(伝票作成会社の管理部門)
+                            , iv_segment3  => lv_ap_tax_segment3                              -- 勘定科目コード
+                            , iv_segment4  => lv_ap_tax_segment4                              -- 補助科目コード
+                            , iv_segment5  => lv_ap_tax_segment5                              -- 顧客コード
+                            , iv_segment6  => lv_ap_tax_segment6                              -- 企業コード
+                            , iv_segment7  => lv_ap_tax_segment7                              -- 予備１コード
+                            , iv_segment8  => lv_ap_tax_segment8                              -- 予備２コード
+                            );
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_ap_tax_ccid := NULL;
+        END;
+        --
+        -- 4-5
+        IF ( ln_ap_tax_ccid IS NULL ) THEN
+          lv_errmsg :=  xxccp_common_pkg.get_msg(
+                          cv_xxcok_short_nm
+                         ,cv_msg_xxcok_00034
+                        );
+          lv_errbuf :=  lv_errmsg;
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+    END IF;
+-- Ver1.2 ADD END
+--
+    -- ============================================================
+    -- 4-6.請求書明細OIF登録
     -- ============================================================
     INSERT INTO ap_invoice_lines_interface(
       invoice_id                                        -- 請求書ID
@@ -1037,6 +1152,9 @@ AS
     , description                                       -- 摘要
     , tax_code                                          -- 税区分
     , dist_code_combination_id                          -- CCID
+-- Ver1.2 ADD START
+    , attribute15                                       -- DFF15(伝票作成会社)
+-- Ver1.2 ADD END
     , last_updated_by                                   -- 最終更新者
     , last_update_date                                  -- 最終更新日
     , last_update_login                                 -- 最終ログインID
@@ -1053,7 +1171,23 @@ AS
     , g_recon_line_tbl(gn_line_cnt).payment_amt                 -- 明細金額
     , g_recon_line_tbl(gn_line_cnt).remarks                     -- 摘要
     , g_recon_line_tbl(gn_line_cnt).tax_code                    -- 税区分
-    , NVL( g_recon_line_tbl(gn_line_cnt).ccid, gn_detail_ccid ) -- CCID
+-- Ver1.2 MOD START
+--    , NVL( g_recon_line_tbl(gn_line_cnt).ccid, gn_detail_ccid ) -- CCID
+    , CASE
+        WHEN ( g_recon_line_tbl(gn_line_cnt).ccid IS NULL ) THEN
+          -- 明細から取得したCCIDがNULLの場合
+          gn_detail_ccid
+        WHEN ( g_recon_head_tbl(gn_head_cnt).drafting_company <>  gv_comp_code ) THEN
+          -- 明細から取得したCCIDがNOT NULL、かつ伝票作成会社が伊藤園(001)以外の場合
+          ln_ap_tax_ccid
+        ELSE
+          -- 明細から取得したCCIDがNOT NULL、伝票作成会社が伊藤園(001)の場合
+          g_recon_line_tbl(gn_line_cnt).ccid
+      END                                                       -- CCID
+-- Ver1.2 MOD END
+-- Ver1.2 ADD START
+    , g_recon_head_tbl(gn_head_cnt).drafting_company            -- DFF15(伝票作成会社)
+-- Ver1.2 ADD END
     , cn_last_updated_by                                        -- 最終更新者
     , SYSDATE                                                   -- 最終更新日
     , cn_last_update_login                                      -- 最終ログインID
@@ -1121,7 +1255,10 @@ AS
 --
     -- *** ローカル変数 ***
     lt_attribute1   ap_terms_v.attribute1%TYPE;
-    lt_term_id     ap_terms_v.term_id%TYPE;
+    lt_term_id      ap_terms_v.term_id%TYPE;
+-- Ver1.2 ADD START
+    ln_debt_acct_ccid         NUMBER;             -- 負債勘定CCID
+-- Ver1.2 ADD END
 --
     -- *** ローカル例外 ***
 --
@@ -1137,8 +1274,38 @@ AS
 --
 --#############################  固定ステータス初期化部 END  #############################
 --
+-- Ver1.2 ADD START
     -- ============================================================
-    -- 5-1.支払条件情報取得
+    -- 5-1.負債勘定CCID取得
+    -- ============================================================
+    ln_debt_acct_ccid := NULL;
+    IF ( g_recon_head_tbl(gn_head_cnt).drafting_company <>  gv_comp_code ) THEN
+      -- 伝票作成会社が伊藤園(001)以外の場合
+      ln_debt_acct_ccid := xxcok_common_pkg.get_code_combination_id_f(
+                             id_proc_date => gd_process_date   -- 処理日
+                           , iv_segment1  => g_recon_head_tbl(gn_head_cnt).drafting_company  -- 会社コード(伝票作成会社)
+                           , iv_segment2  => g_recon_head_tbl(gn_head_cnt).fin_dept_code     -- 部門コード(伝票作成会社の管理部門)
+                           , iv_segment3  => gv_payable        -- 勘定科目コード(未払金)
+                           , iv_segment4  => gv_asst_dummy     -- 補助科目コード(ダミー値)
+                           , iv_segment5  => gv_cust_dummy     -- 顧客コード(ダミー値)
+                           , iv_segment6  => gv_comp_dummy     -- 企業コード(ダミー値)
+                           , iv_segment7  => gv_pre1_dummy     -- 予備１コード(ダミー値)
+                           , iv_segment8  => gv_pre2_dummy     -- 予備２コード(ダミー値)
+                         );
+      -- 5-2
+      IF ( ln_debt_acct_ccid IS NULL ) THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg(
+                        cv_xxcok_short_nm
+                       ,cv_msg_xxcok_00034
+                      );
+        lv_errbuf :=  lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- Ver1.2 ADD END
+--
+    -- ============================================================
+    -- 5-3.支払条件情報取得
     -- ============================================================
     BEGIN
       SELECT atv.attribute1   AS  attribute1
@@ -1170,7 +1337,7 @@ AS
     END IF;
 --
     -- ============================================================
-    -- 5-2.請求書ヘッダー登録
+    -- 5-5.請求書ヘッダー登録
     -- ============================================================
 --
     INSERT INTO ap_invoices_interface (
@@ -1224,7 +1391,17 @@ AS
     , g_recon_head_tbl(gn_head_cnt).applicant           -- 伝票入力者
     , gv_source_dedu                                    -- 請求書ソース
     , g_recon_head_tbl(gn_head_cnt).gl_date             -- 仕訳計上日
-    , gn_debt_acct_ccid                                 -- 負債勘定科目CCID
+-- Ver1.2 MOD START
+--    , gn_debt_acct_ccid                                 -- 負債勘定科目CCID
+    , CASE
+        WHEN ( g_recon_head_tbl(gn_head_cnt).drafting_company <>  gv_comp_code ) THEN
+          -- 伝票作成会社が伊藤園(001)以外の場合
+          ln_debt_acct_ccid
+        ELSE
+          -- 伝票作成会社が伊藤園(001)の場合
+          gn_debt_acct_ccid
+      END
+-- Ver1.2 MOD END
     , gn_org_id                                         -- 組織ID
     , CASE
         WHEN lt_attribute1 = 'Y' THEN
@@ -1614,6 +1791,9 @@ AS
             ,aili.description                   AS description        -- 摘要
             ,aili.tax_code                      AS tax_code           -- 税区分
             ,aili.dist_code_combination_id      AS ccid               -- CCID
+-- Ver1.2 ADD START
+            ,NVL(aili.attribute15, '001')       AS drafting_company   -- 伝票作成会社
+-- Ver1.2 ADD END
       FROM   ap_invoice_lines_interface     aili                      -- 請求書明細OIF
       WHERE  aili.invoice_id            = g_cancel_head_tbl(gn_c_head_cnt).invoice_id
       ;
@@ -1627,6 +1807,9 @@ AS
             ,apda.description                   AS description        -- 摘要
             ,atca.name                          AS tax_code           -- 税区分
             ,apda.dist_code_combination_id      AS ccid               -- CCID
+-- Ver1.2 ADD START
+            ,NVL(apda.attribute15, '001')       AS drafting_company   -- 伝票作成会社
+-- Ver1.2 ADD END
       FROM   ap_invoice_distributions_all   apda                      -- 請求書配布
             ,ap_tax_codes_all               atca                      -- AP税コードマスタ
       WHERE  apda.invoice_id            = g_cancel_head_tbl(gn_c_head_cnt).invoice_id
@@ -1887,6 +2070,9 @@ AS
     , description                                       -- 摘要
     , tax_code                                          -- 税区分
     , dist_code_combination_id                          -- CCID
+-- Ver1.2 ADD START
+    , attribute15                                       -- DFF15(伝票作成会社)
+-- Ver1.2 ADD END
     , last_updated_by                                   -- 最終更新者
     , last_update_date                                  -- 最終更新日
     , last_update_login                                 -- 最終ログインID
@@ -1904,6 +2090,9 @@ AS
     , g_cancel_line_tbl(gn_c_line_cnt).description      -- 摘要
     , g_cancel_line_tbl(gn_c_line_cnt).tax_code         -- 税区分
     , g_cancel_line_tbl(gn_c_line_cnt).ccid             -- CCID
+-- Ver1.2 ADD START
+    , g_cancel_line_tbl(gn_c_line_cnt).drafting_company -- DFF15(伝票作成会社)
+-- Ver1.2 ADD END
     , cn_last_updated_by                                -- 最終更新者
     , SYSDATE                                           -- 最終更新日
     , cn_last_update_login                              -- 最終ログインID

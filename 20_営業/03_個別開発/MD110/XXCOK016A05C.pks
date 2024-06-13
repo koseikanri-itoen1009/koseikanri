@@ -8,7 +8,7 @@ AS
  *                    仕向銀行の振り分け処理を行います。
  *
  * MD.050           : FBデータファイル振り分け処理 MD050_COK_016_A05
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -21,14 +21,20 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2023/11/08    1.0   T.Okuyama        [E_本稼動_19540対応] 新規作成
- *
+ *  2024/02/02    1.1   T.Okuyama        [E_本稼動_19496対応] グループ会社対応
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ
   PROCEDURE main(
     errbuf             OUT VARCHAR2     -- エラーメッセージ
   , retcode            OUT VARCHAR2     -- エラーコード
+-- Ver.1.1 Add Start
+  , iv_company_code    IN  VARCHAR2     -- パラメータ：会社コード
+-- Ver.1.1 Add End
   , in_request_id      IN  NUMBER       -- パラメータ：FBデータファイル作成時の要求ID
+-- Ver.1.1 Add Start
+  , iv_fb_output_bank  IN  VARCHAR2     -- パラメータ：FBファイル出力銀行
+-- Ver.1.1 Add End
   , iv_internal_bank1  IN  VARCHAR2     -- パラメータ：他行分仕向銀行1
   , in_bank_cnt1       IN  NUMBER       -- パラメータ：仕向銀行1への按分件数
   , iv_internal_bank2  IN  VARCHAR2     -- パラメータ：他行分仕向銀行2
