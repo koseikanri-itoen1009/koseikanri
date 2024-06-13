@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(body)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -27,6 +27,13 @@ AS
 -- Modify 2010.07.09 Ver1.3 Start
  *  awi_ship_code             P           ARWebInquiry用 納品先顧客コード値リスト
 -- Modify 2010.07.09 Ver1.3 End
+ *  get_invoice_regnum        F    VAR    インボイス登録番号取得（部門経由）関数
+ *  get_invoice_regnum        F    VAR    インボイス登録番号取得関数
+ *  get_company_code          F    VAR    会社コード取得（部門経由）関数
+ *  conv_company_code         F    VAR    会社コード変換関数
+ *  get_fin_dept_code         F    VAR    財務経理部門コード取得関数
+ *  get_invoice_svf_info      P           請求書SVF情報取得関数
+ *  get_invoice_issuer_info   P           適格請求書発行事業者情報取得関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -47,6 +54,11 @@ AS
  *  2010-07-09   1.3    SCS 廣瀬 真佐人  障害「E_本稼動_01990」対応
  *                                       新規Prucedure「awi_ship_code」を追加
  *  2011-10-20   1.4    SCSK 仁木 重人   [E_本稼動_07906]流通BMS対応
+ *  2023-10-24   1.5    SCSK 大山 洋介   障害「E_本稼動_19496対応」対応
+ *                                       新規Function「get_invoice_regnum」「get_company_code」
+ *                                        「conv_company_code」「get_fin_dept_code」を追加
+ *                                       新規Prucedure「get_invoice_svf_info」
+ *                                        「get_invoice_issuer_info」を追加
  *
  *****************************************************************************************/
 --
@@ -1279,6 +1291,456 @@ AS
     -- xgv_common.sql_rtype型に格納したSQL文を、通常の文字列型のSQL文に変換
     xgv_common.get_plain_sql_statement(p_sql, l_sql_rec);
   END awi_ship_code;
+--
+-- Ver1.5 ADD START
+  /**********************************************************************************
+   * Function Name    : get_invoice_regnum
+   * Description      : インボイス登録番号取得（部門経由）関数
+   ***********************************************************************************/
+  FUNCTION get_invoice_regnum(
+    iv_dept_code        IN   VARCHAR2                     -- 1.部門コード
+   ,in_set_of_books_id  IN   NUMBER                       -- 2.会計帳簿ID
+   ,id_base_date        IN   DATE                         -- 3.基準日
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 4.取得日付
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_invoice_regnum'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_company_code        VARCHAR2(3);   -- 会社コード
+    lv_invoice_regnum      VARCHAR2(14);  -- インボイス登録番号(T番号)
+--
+  BEGIN
+--
+    -- 会社コードの取得
+    lv_company_code := get_company_code(
+                         iv_dept_code
+                        ,in_set_of_books_id
+                        ,id_base_date
+                       );
+    --
+    -- インボイス登録番号の取得
+    lv_invoice_regnum := get_invoice_regnum(
+                         lv_company_code
+                        ,id_get_date
+                       );
+    --
+    RETURN lv_invoice_regnum;
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_invoice_regnum;
+--
+--
+  /**********************************************************************************
+   * Function Name    : get_invoice_regnum
+   * Description      : インボイス登録番号取得関数
+   ***********************************************************************************/
+  FUNCTION get_invoice_regnum(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 2.取得日付
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_invoice_regnum'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_invoice_regnum      VARCHAR2(14);  -- インボイス登録番号(T番号)
+--
+  BEGIN
+--
+    -- インボイス登録番号の取得
+    -- ※データが見つからない場合（NO DATA FOUND）は、NULLを出力する。
+    BEGIN
+      SELECT flvv.meaning       -- 内容:インボイス登録番号(T番号)
+      INTO   lv_invoice_regnum
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type = 'XXCMM_INVOICE_T_NO' -- 参照タイプ:適格請求書発行事業者情報
+      AND    NVL(flvv.start_date_active, id_get_date)  <= id_get_date
+      AND    NVL(flvv.end_date_active, id_get_date)    >= id_get_date
+      AND    flvv.enabled_flag = 'Y'
+      AND    flvv.lookup_code  = iv_company_code
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_invoice_regnum := NULL;
+    END;
+    --
+    RETURN lv_invoice_regnum;
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_invoice_regnum;
+--
+--
+  /**********************************************************************************
+   * Function Name    : get_company_code
+   * Description      : 会社コード取得（部門経由）関数
+   ***********************************************************************************/
+  FUNCTION get_company_code(
+    iv_dept_code        IN   VARCHAR2                     -- 1.部門コード
+   ,in_set_of_books_id  IN   NUMBER                       -- 2.会計帳簿ID
+   ,id_base_date        IN   DATE                         -- 3.基準日
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_company_code'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_company_code        VARCHAR2(3);  -- 会社コード
+--
+  BEGIN
+--
+    -- 会社コード（部門経由）の取得
+    -- ※データが見つからない場合（NO DATA FOUND）は、NULLを出力する。
+    BEGIN
+      SELECT xbdciv.company_code_bd       -- 会社コード(基準日)
+      INTO   lv_company_code
+      FROM   xxcfr_bd_dept_comp_info_v  xbdciv  -- 基準日部門会社情報ビュー
+      WHERE  xbdciv.dept_code       = iv_dept_code
+      AND    xbdciv.set_of_books_id = in_set_of_books_id
+      AND    xbdciv.comp_start_date <= id_base_date
+      AND    NVL(xbdciv.comp_end_date, id_base_date) >= id_base_date
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_company_code := NULL;
+    END;
+    --
+    RETURN lv_company_code;
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_company_code;
+--
+--
+  /**********************************************************************************
+   * Function Name    : conv_company_code
+   * Description      : 会社コード変換関数
+   ***********************************************************************************/
+  FUNCTION conv_company_code(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_base_date        IN   DATE                         -- 2.基準日
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'conv_company_code'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_company_code_bd     VARCHAR2(3);  -- 会社コード(基準日)
+--
+  BEGIN
+--
+    -- 会社コード（基準日）の取得
+    -- ※データが見つからない場合（NO DATA FOUND）は、NULLを出力する。
+    BEGIN
+      SELECT flvv.attribute2       -- 会社コード(基準日)
+      INTO   lv_company_code_bd
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type = 'XXCMM_CONV_COMPANY_CODE'  -- 参照タイプ:会社コード変換
+      AND    flvv.start_date_active <= id_base_date
+      AND    NVL(flvv.end_date_active, id_base_date) >= id_base_date
+      AND    flvv.enabled_flag = 'Y'
+      AND    flvv.attribute1   = iv_company_code
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_company_code_bd := NULL;
+    END;
+    --
+    RETURN lv_company_code_bd;
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END conv_company_code;
+--
+--
+  /**********************************************************************************
+   * Function Name    : get_fin_dept_code
+   * Description      : 財務経理部門コード取得関数
+   ***********************************************************************************/
+  FUNCTION get_fin_dept_code(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_base_date        IN   DATE                         -- 2.基準日
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_fin_dept_code'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_company_code_bd     VARCHAR2(3);  -- 会社コード(基準日)
+    lv_fin_dept_code       VARCHAR2(4);  -- 財務経理部門コード
+--
+  BEGIN
+--
+    -- 会社コード（基準日）の取得
+    lv_company_code_bd := conv_company_code(iv_company_code, id_base_date);
+    --
+    -- インボイス登録番号の取得
+    -- ※データが見つからない場合（NO DATA FOUND）は、NULLを出力する。
+    BEGIN
+      SELECT flvv.attribute1       -- DFF1:財務経理部門コード
+      INTO   lv_fin_dept_code
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type  = 'XXCFO1_DRAFTING_COMPANY' -- 参照タイプ:各社部門情報
+      AND    NVL(flvv.start_date_active, id_base_date)  <= id_base_date
+      AND    NVL(flvv.end_date_active, id_base_date)    >= id_base_date
+      AND    flvv.enabled_flag = 'Y'
+      AND    flvv.lookup_code  = lv_company_code_bd        -- 会社コード（基準日）
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_fin_dept_code := NULL;
+    END;
+    --
+    RETURN lv_fin_dept_code;
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_fin_dept_code;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : get_invoice_svf_info
+   * Description      : 請求書SVF情報取得関数
+   ***********************************************************************************/
+  PROCEDURE get_invoice_svf_info(
+    iv_file_id          IN   VARCHAR2                     -- 1.帳票ID
+   ,iv_invoice_type     IN   VARCHAR2                     -- 2.請求書タイプ
+   ,iv_company_code     IN   VARCHAR2                     -- 3.会社コード
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 4.取得日付
+   ,ov_frm_file         OUT  VARCHAR2                     -- 5.フォーム様式ファイル名
+   ,ov_vrq_file         OUT  VARCHAR2                     -- 6.クエリー様式ファイル名
+   ,ov_errbuf           OUT  VARCHAR2                     -- 7.エラーメッセージ
+   ,ov_retcode          OUT  VARCHAR2                     -- 8.リターンコード
+   ,ov_errmsg           OUT  VARCHAR2                     -- 9.ユーザーエラーメッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_invoice_svf_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    ov_frm_file := NULL;
+    ov_vrq_file := NULL;
+    ov_errbuf   := NULL;
+    ov_errmsg   := NULL;
+    --
+    -- 請求書SVF情報の取得
+    -- ※データが見つからない場合（NO DATA FOUND）は、各ファイル名はNULLを出力する。
+    BEGIN
+      SELECT flvv.attribute4       -- フォーム様式ファイル名
+            ,flvv.attribute5       -- クエリー様式ファイル名
+      INTO   ov_frm_file
+            ,ov_vrq_file
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type = 'XXCFR1_INVOICE_SVF_INFO' -- 参照タイプ:請求書SVF情報
+      AND    NVL(flvv.start_date_active, id_get_date)  <= id_get_date
+      AND    NVL(flvv.end_date_active, id_get_date)    >= id_get_date
+      AND    flvv.enabled_flag = 'Y'
+      AND    flvv.attribute1   = iv_file_id       -- 帳票ID
+      AND    flvv.attribute2   = iv_invoice_type  -- 請求書タイプ
+      AND    flvv.attribute3   = iv_company_code  -- 会社コード
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ov_frm_file := NULL;
+        ov_vrq_file := NULL;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_invoice_svf_info;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : get_invoice_issuer_info
+   * Description      : 適格請求書発行事業者情報取得関数
+   ***********************************************************************************/
+  PROCEDURE get_invoice_issuer_info(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 2.取得日付
+   ,ov_regnum           OUT  VARCHAR2                     -- 3.登録番号
+   ,ov_issuer           OUT  VARCHAR2                     -- 4.発行事業者(会社名)
+   ,ov_errbuf           OUT  VARCHAR2                     -- 5.エラーメッセージ
+   ,ov_retcode          OUT  VARCHAR2                     -- 6.リターンコード
+   ,ov_errmsg           OUT  VARCHAR2                     -- 7.ユーザーエラーメッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_invoice_issuer_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    ov_regnum   := NULL;
+    ov_issuer   := NULL;
+    ov_errbuf   := NULL;
+    ov_errmsg   := NULL;
+    --
+    -- 適格請求書発行事業者情報の取得
+    BEGIN
+      SELECT flvv.meaning       -- 内容:インボイス登録番号(T番号)
+            ,flvv.description   -- 摘要:発行事業者(会社名)
+      INTO   ov_regnum
+            ,ov_issuer
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type = 'XXCMM_INVOICE_T_NO' -- 参照タイプ:適格請求書発行事業者情報
+      AND    NVL(flvv.start_date_active, id_get_date)  <= id_get_date
+      AND    NVL(flvv.end_date_active, id_get_date)    >= id_get_date
+      AND    flvv.enabled_flag = 'Y'
+      AND    flvv.lookup_code  = iv_company_code
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ov_regnum := NULL;
+        ov_issuer := NULL;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_invoice_issuer_info;
+--
+-- Ver1.5 ADD END
 --
 END xxcfr_common_pkg;
 /

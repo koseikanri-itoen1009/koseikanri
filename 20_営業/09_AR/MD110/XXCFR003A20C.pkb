@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFR003A20C(body)
  * Description      : 店舗別明細出力
  * MD.050           : MD050_CFR_003_A20_店舗別明細出力
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  * ------------- ----- ---------------- --------------------------------------------
  *  2015/07/23    1.0   SCSK 小路 恭弘   新規作成
  *  2022/04/11    1.1   SCSK 冨江 広大   [E_本稼動_18096] 対応
+ *  2023/11/20    1.2   SCSK 大山 洋介   [E_本稼動_19496] グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -81,7 +82,10 @@ AS
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
-  cv_pkg_name                 CONSTANT VARCHAR2(20) := 'XXCFR003A20';             -- パッケージ名
+-- Ver1.2 MOD START
+--  cv_pkg_name                 CONSTANT VARCHAR2(20) := 'XXCFR003A20';             -- パッケージ名
+  cv_pkg_name                 CONSTANT VARCHAR2(20) := 'XXCFR003A20C';            -- パッケージ名
+-- Ver1.2 MOD END
   -- アプリケーション短縮名
   cv_application              CONSTANT VARCHAR2(5)  := 'XXCFR';                   -- アプリケーション
   -- 帳票名
@@ -91,11 +95,19 @@ AS
   cv_msg_xxcfr_00024          CONSTANT VARCHAR2(16) := 'APP-XXCFR1-00024';        -- 帳票０件ログメッセージ
   cv_msg_xxcfr_00152          CONSTANT VARCHAR2(16) := 'APP-XXCFR1-00152';        -- パラメータ出力メッセージ
   cv_msg_xxcfr_00153          CONSTANT VARCHAR2(16) := 'APP-XXCFR1-00153';        -- 請求書タイプ定義なしエラーメッセージ
+-- Ver1.2 ADD START
+  cv_msg_xxcfr_00015          CONSTANT VARCHAR2(16) := 'APP-XXCFR1-00015';        -- 値取得エラーメッセージ
+  cv_msg_xxcfr_00164          CONSTANT VARCHAR2(16) := 'APP-XXCFR1-00164';        -- トークン値(請求書SVF情報)
+-- Ver1.2 ADD END
   -- トークンコード
   cv_tkn_param1               CONSTANT VARCHAR2(30) := 'PARAM1';                  -- パラメータ名１
   cv_tkn_param2               CONSTANT VARCHAR2(30) := 'PARAM2';                  -- パラメータ名２
   cv_tkn_param3               CONSTANT VARCHAR2(30) := 'PARAM3';                  -- パラメータ名３
   cv_tkn_param4               CONSTANT VARCHAR2(30) := 'PARAM4';                  -- パラメータ名４
+-- Ver1.2 ADD START
+  cv_tkn_param5               CONSTANT VARCHAR2(30) := 'PARAM5';                  -- パラメータ名５
+  cv_tkn_get_data             CONSTANT VARCHAR2(30) := 'DATA';                    -- 取得対象データ
+-- Ver1.2 ADD END
   cv_tkn_lookup_type          CONSTANT VARCHAR2(30) := 'LOOKUP_TYPE';             -- 参照タイプ
   cv_tkn_lookup_code          CONSTANT VARCHAR2(30) := 'LOOKUP_CODE';             -- 参照コード
   cv_tkn_api                  CONSTANT VARCHAR2(30) := 'API_NAME';                -- API名
@@ -105,6 +117,10 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- Ver1.2 ADD START
+  gv_frm_file           VARCHAR2(150);                             -- フォーム様式ファイル名
+  gv_vrq_file           VARCHAR2(150);                             -- クエリー様式ファイル名
+-- Ver1.2 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -115,6 +131,9 @@ AS
    ,iv_bill_type                IN  VARCHAR2  -- 請求書タイプ
    ,in_org_request_id           IN  NUMBER    -- 発行元要求ID
    ,in_target_cnt               IN  NUMBER    -- 対象件数
+-- Ver1.2 ADD START
+   ,iv_company_cd               IN  VARCHAR2  -- 会社コード
+-- Ver1.2 ADD END
    ,ov_svf_file_xml             OUT VARCHAR2  -- 帳票フォームファイル名
    ,ov_svf_file_vrq             OUT VARCHAR2  -- 帳票クエリーファイル名
    ,ov_errbuf                   OUT VARCHAR2  -- エラー・メッセージ           --# 固定 #
@@ -153,6 +172,10 @@ AS
 --    lv_file_id                  VARCHAR2(3);                            -- 帳票ID
     lv_file_id                  VARCHAR2(5);                            -- 帳票ID
 -- Ver1.1 mod end
+-- Ver1.2 ADD START
+    lv_frm_file                 VARCHAR2(150);                          -- フォーム様式ファイル名
+    lv_vrq_file                 VARCHAR2(150);                          -- クエリー様式ファイル名
+-- Ver1.2 ADD END
 --
   BEGIN
 --
@@ -177,6 +200,10 @@ AS
                       , iv_token_value3  => TO_CHAR(in_org_request_id)  -- 発行元要求ID
                       , iv_token_name4   => cv_tkn_param4               -- トークンコード４
                       , iv_token_value4  => TO_CHAR(in_target_cnt)      -- 処理件数
+-- Ver1.2 ADD START
+                      , iv_token_name5   => cv_tkn_param5               -- トークンコード５
+                      , iv_token_value5  => iv_company_cd               -- 会社コード
+-- Ver1.2 ADD END
                     );
     -- ログ
     FND_FILE.PUT_LINE(
@@ -189,43 +216,79 @@ AS
       ,buff   => ''
     );
 --
-    --==================================
-    -- 帳票ID取得
-    --==================================
-    BEGIN
-      SELECT flvv.meaning AS file_id
-      INTO   lv_file_id
-      FROM   fnd_lookup_values_vl flvv
-      WHERE  flvv.lookup_type  = cv_xxcfr_bill_type
-      AND    flvv.lookup_code  = iv_bill_type
-      AND    flvv.enabled_flag = cv_enabled_flag
-      AND    TRUNC(NVL(flvv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
-      AND    TRUNC(NVL(flvv.end_date_active,   SYSDATE)) >= TRUNC(SYSDATE)
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application         -- アプリケーション短縮名
-                         , iv_name         => cv_msg_xxcfr_00153     -- メッセージコード
-                         , iv_token_name1  => cv_tkn_lookup_type     -- トークンコード1
-                         , iv_token_value1 => cv_xxcfr_bill_type     -- トークン値1
-                         , iv_token_name2  => cv_tkn_lookup_code     -- トークンコード2
-                         , iv_token_value2 => iv_bill_type           -- トークン値2
-                       );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-    END;
+-- Ver1.2 MOD START
+--    --==================================
+--    -- 帳票ID取得
+--    --==================================
+--    BEGIN
+--      SELECT flvv.meaning AS file_id
+--      INTO   lv_file_id
+--      FROM   fnd_lookup_values_vl flvv
+--      WHERE  flvv.lookup_type  = cv_xxcfr_bill_type
+--      AND    flvv.lookup_code  = iv_bill_type
+--      AND    flvv.enabled_flag = cv_enabled_flag
+--      AND    TRUNC(NVL(flvv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
+--      AND    TRUNC(NVL(flvv.end_date_active,   SYSDATE)) >= TRUNC(SYSDATE)
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_application         -- アプリケーション短縮名
+--                         , iv_name         => cv_msg_xxcfr_00153     -- メッセージコード
+--                         , iv_token_name1  => cv_tkn_lookup_type     -- トークンコード1
+--                         , iv_token_value1 => cv_xxcfr_bill_type     -- トークン値1
+--                         , iv_token_name2  => cv_tkn_lookup_code     -- トークンコード2
+--                         , iv_token_value2 => iv_bill_type           -- トークン値2
+--                       );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_api_expt;
+--    END;
+----
+--    --==================================
+--    -- ファイル名編集
+--    --==================================
+--    -- 帳票フォームファイル名編集
+--    ov_svf_file_xml := cv_svf_name || lv_file_id || cv_xml;
+--    -- 帳票クエリーファイル名編集
+---- Ver1.1 mod start
+----    ov_svf_file_vrq := cv_svf_name || lv_file_id || cv_vrq;
+--    ov_svf_file_vrq := cv_svf_name || SUBSTR(lv_file_id,1,3) || cv_vrq;
+---- Ver 1.1 mod end
 --
-    --==================================
-    -- ファイル名編集
-    --==================================
-    -- 帳票フォームファイル名編集
-    ov_svf_file_xml := cv_svf_name || lv_file_id || cv_xml;
-    -- 帳票クエリーファイル名編集
--- Ver1.1 mod start
---    ov_svf_file_vrq := cv_svf_name || lv_file_id || cv_vrq;
-    ov_svf_file_vrq := cv_svf_name || SUBSTR(lv_file_id,1,3) || cv_vrq;
--- Ver 1.1 mod end
+    --============================================
+    -- 請求書作成会社の請求書SVF情報を取得
+    --============================================
+    -- 請求書SVF情報取得関数
+    xxcfr_common_pkg.get_invoice_svf_info(
+      iv_file_id          => cv_pkg_name               -- 帳票ID
+     ,iv_invoice_type     => iv_bill_type              -- 請求書タイプ
+     ,iv_company_code     => iv_company_cd             -- 会社コード(請求書作成会社コード)
+     ,ov_frm_file         => lv_frm_file               -- フォーム様式ファイル名
+     ,ov_vrq_file         => lv_vrq_file               -- クエリー様式ファイル名
+     ,ov_errbuf           => lv_errbuf                 -- エラーメッセージ
+     ,ov_retcode          => lv_retcode                -- リターンコード
+     ,ov_errmsg           => lv_errmsg                 -- ユーザーエラーメッセージ
+    );
+    --
+    IF (lv_errbuf <> cv_status_normal) THEN
+      -- 正常終了しなかった場合
+      RAISE global_api_expt;
+    ELSIF (lv_frm_file IS NULL OR lv_vrq_file IS NULL) THEN
+      -- 様式ファイル名のいずれかがNULLの場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     cv_application      -- 'XXCFR'
+                    ,cv_msg_xxcfr_00015  -- 値取得エラーメッセージ
+                    ,cv_tkn_get_data     -- トークン
+                    ,cv_msg_xxcfr_00164  -- トークン値(請求書SVF情報)
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    ELSE
+      -- 各様式ファイル名をグローバル変数に格納
+      gv_frm_file := lv_frm_file;  -- フォーム様式ファイル名
+      gv_vrq_file := lv_vrq_file;  -- クエリー様式ファイル名
+    END IF;
+-- Ver1.2 MOD END
 --
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
@@ -336,8 +399,14 @@ AS
      ,iv_file_name    => lv_svf_file_name      -- 出力ファイル名
      ,iv_file_id      => cv_svf_name           -- 帳票ID
      ,iv_output_mode  => iv_report_type        -- 出力区分
-     ,iv_frm_file     => iv_svf_form_nm        -- 帳票フォームファイル名
-     ,iv_vrq_file     => iv_svf_query_nm       -- 帳票クエリーファイル名
+-- Ver1.2 MOD START
+--     ,iv_frm_file     => iv_svf_form_nm        -- 帳票フォームファイル名
+     ,iv_frm_file     => gv_frm_file           -- 帳票フォームファイル名
+-- Ver1.2 MOD END
+-- Ver1.2 MOD START
+--     ,iv_vrq_file     => iv_svf_query_nm       -- 帳票クエリーファイル名
+     ,iv_vrq_file     => gv_vrq_file           -- 帳票クエリーファイル名
+-- Ver1.2 MOD END
      ,iv_org_id       => fnd_global.org_id     -- ORG_ID
      ,iv_user_name    => lv_user_name          -- ログイン・ユーザ名
      ,iv_resp_name    => lv_resp_name          -- ログイン・ユーザの職責名
@@ -397,6 +466,9 @@ AS
    ,iv_bill_type                IN  VARCHAR2  -- 請求書タイプ
    ,in_org_request_id           IN  NUMBER    -- 発行元要求ID
    ,in_target_cnt               IN  NUMBER    -- 対象件数
+-- Ver1.2 ADD START
+   ,iv_company_cd               IN  VARCHAR2  -- 会社コード
+-- Ver1.2 ADD END
    ,ov_errbuf                   OUT VARCHAR2  -- エラー・メッセージ           --# 固定 #
    ,ov_retcode                  OUT VARCHAR2  -- リターン・コード             --# 固定 #
    ,ov_errmsg                   OUT VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -450,6 +522,9 @@ AS
       ,iv_bill_type      => iv_bill_type      -- 請求書タイプ
       ,in_org_request_id => in_org_request_id -- 発行元要求ID
       ,in_target_cnt     => in_target_cnt     -- 対象件数
+-- Ver1.2 ADD START
+      ,iv_company_cd     => iv_company_cd     -- 会社コード
+-- Ver1.2 ADD END
       ,ov_svf_file_xml   => lv_svf_file_xml   -- 帳票フォームファイル名
       ,ov_svf_file_vrq   => lv_svf_file_vrq   -- 帳票クエリーファイル名
       ,ov_errbuf         => lv_errbuf         -- エラー・メッセージ            --# 固定 #
@@ -531,6 +606,9 @@ AS
    ,iv_bill_type                IN  VARCHAR2  -- 請求書タイプ
    ,in_org_request_id           IN  NUMBER    -- 発行元要求ID
    ,in_target_cnt               IN  NUMBER    -- 対象件数
+-- Ver1.2 ADD START
+   ,iv_company_cd               IN  VARCHAR2  -- 会社コード
+-- Ver1.2 ADD END
   )
 --
 --
@@ -585,6 +663,9 @@ AS
       , iv_bill_type                -- 請求書タイプ
       , in_org_request_id           -- 発行元要求ID
       , in_target_cnt               -- 対象件数
+-- Ver1.2 ADD START
+      ,iv_company_cd                -- 会社コード
+-- Ver1.2 ADD END
       , lv_errbuf                   -- エラー・メッセージ           --# 固定 #
       , lv_retcode                  -- リターン・コード             --# 固定 #
       , lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #

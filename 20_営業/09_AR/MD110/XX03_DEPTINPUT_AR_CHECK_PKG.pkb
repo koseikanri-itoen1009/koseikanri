@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.25
+ * Version                : 11.5.10.2.26
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2021/04/28   11.5.10.2.23   障害 [E_本稼動_16026] 対応
  *  2021/12/20   11.5.10.2.24   障害 [E_本稼働_17678] 対応
  *  2022/03/29   11.5.10.2.25   [E_本稼動_17926]対応 部門入力の科目制限
+ *  2022/11/01   11.5.10.2.26   [E_本稼動_19496]対応 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -225,6 +226,9 @@ AS
 --2021/04/28 Ver11.5.10.2.23 ADD START
     ln_count               NUMBER       := 0;
 --2021/04/28 Ver11.5.10.2.23 ADD END
+-- Ver11.5.10.2.26 ADD START
+    lv_fin_dept_code       VARCHAR2(4);            -- 財務経理部門コード
+-- Ver11.5.10.2.26 ADD END
 --
     -- *** ローカル・カーソル ***
     -- 処理対象データ取得カーソル
@@ -1097,6 +1101,45 @@ AS
     ;
 -- ver 11.5.10.2.24 Add End
 --
+-- Ver11.5.10.2.26 ADD START
+    -- 伝票作成会社の有効チェック
+    CURSOR xx03_drafting_company_cur
+    IS
+      SELECT xrs.gl_date                       AS gl_date              -- 計上日
+            ,NVL(xrs.drafting_company, '001')  AS drafting_company     -- 伝票作成会社
+             -- 会社コード変換
+            ,xxcfr_common_pkg.conv_company_code(
+               NVL(xrs.drafting_company, '001')
+              ,xrs.gl_date
+             )                                 AS drafting_company_bd  -- 計上日時点の伝票作成会社
+      FROM   xx03_receivable_slips  xrs
+      WHERE  xrs.receivable_id = in_receivable_id
+    ;
+--
+    -- 伝票作成会社と明細会社の整合性チェック
+    CURSOR xx03_drafting_company_2_cur(
+      in_line_number  IN NUMBER    -- 1.明細番号
+    )
+    IS
+      SELECT xrsl.line_number         AS line_number          -- 明細番号
+            ,NVL(
+               xrs.drafting_company
+              ,'001'
+             )                        AS drafting_company     -- 伝票作成会社
+            ,DECODE(
+               xrsl.segment1
+              ,'999'
+              ,'001'  -- 相良会計(999)は伊藤園(001)に置換
+              ,xrsl.segment1
+             )                        AS segment1             -- 明細の会社
+      FROM   xx03_receivable_slips      xrs
+            ,xx03_receivable_slips_line xrsl
+      WHERE  xrs.receivable_id   = xrsl.receivable_id
+      AND    xrs.receivable_id   = in_receivable_id
+      AND    xrsl.line_number    = in_line_number
+    ;
+-- Ver11.5.10.2.26 ADD END
+--
     -- *** ローカル・レコード ***
     xx03_xrsjlv_rec            xx03_xrsjlv_cur          %ROWTYPE;       -- 処理対象データ取得カーソルレコード型
     xx03_rate_rec              xx03_rate_cur            %ROWTYPE;       -- レートカーソルレコード型
@@ -1173,6 +1216,10 @@ AS
 -- ver 11.5.10.2.24 Add Start
     xx03_payment_ele_data_rec    xx03_payment_ele_data_cur%ROWTYPE;
 -- ver 11.5.10.2.24 Add End
+-- Ver11.5.10.2.26 ADD START
+    xx03_drafting_company_rec    xx03_drafting_company_cur%ROWTYPE;
+    xx03_drafting_company_2_rec  xx03_drafting_company_2_cur%ROWTYPE;
+-- Ver11.5.10.2.26 ADD END
 --
     -- 相互検証用パラメータ
     lb_retcode          BOOLEAN;
@@ -1980,6 +2027,26 @@ AS
         CLOSE xx03_payment_ele_data_cur;
 -- ver 11.5.10.2.24 Add End
 --
+-- Ver11.5.10.2.26 ADD START
+        -- 伝票作成会社の有効チェック
+        OPEN xx03_drafting_company_cur;
+        FETCH xx03_drafting_company_cur INTO xx03_drafting_company_rec;
+        IF ( xx03_drafting_company_rec.drafting_company <> xx03_drafting_company_rec.drafting_company_bd ) THEN
+          -- 伝票作成会社と計上日時点の伝票作成会社が異なる場合
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg(
+                                      'XXCFO'
+                                     ,'APP-XXCFO1-00065'
+                                     ,'DATE'
+                                     ,TO_CHAR(xx03_drafting_company_rec.gl_date, 'YYYY/MM/DD')
+                                     ,'DRAFTING_COMPANY'
+                                     ,xx03_drafting_company_rec.drafting_company
+                                    );
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_drafting_company_cur;
+-- Ver11.5.10.2.26 ADD END
+--
         -- 部門入力エラーチェックでエラーがなかった場合のみチェックID取得
         IF ( ln_err_cnt <= 0 ) THEN
           --チェックID取得
@@ -2022,7 +2089,21 @@ AS
         ;
         -- 負債科目の場合、部門、企業コード、顧客コードの整合性チェック
         IF (ln_count > 0) THEN
-          IF (NVL(xx03_xrsjlv_rec.segment2,cv_z) != cv_dept_fin OR
+-- Ver11.5.10.2.26 ADD START
+          -- 財務経理部門コードを取得
+          SELECT xxcfr_common_pkg.get_fin_dept_code(
+                   NVL(xrs.drafting_company, '001')
+                  ,xrs.gl_date
+                 )
+          INTO   lv_fin_dept_code
+          FROM   xx03_receivable_slips  xrs
+          WHERE  xrs.receivable_id = in_receivable_id
+          ;
+-- Ver11.5.10.2.26 ADD END
+-- Ver11.5.10.2.26 MOD START
+--          IF (NVL(xx03_xrsjlv_rec.segment2,cv_z) != cv_dept_fin OR
+          IF (NVL(xx03_xrsjlv_rec.segment2,cv_z) != lv_fin_dept_code OR
+-- Ver11.5.10.2.26 MOD END
               NVL(xx03_xrsjlv_rec.segment5,cv_z) != cv_cust_def OR
               NVL(xx03_xrsjlv_rec.segment6,cv_z) != cv_corp_def) THEN
             errflg_tbl(ln_err_cnt) := 'E';
@@ -2030,6 +2111,9 @@ AS
                                                               ,'SLIP_NUM' ,''
                                                               ,'TOK_COUNT',xx03_xrsjlv_rec.line_number
                                                               ,'TOK_ACCT_CODE' ,xx03_xrsjlv_rec.segment3
+-- Ver11.5.10.2.26 ADD START
+                                                              ,'DEPT_CODE',lv_fin_dept_code
+-- Ver11.5.10.2.26 ADD END
                                                               );
             ln_err_cnt := ln_err_cnt + 1;
           END IF;
@@ -2199,6 +2283,31 @@ AS
           END;
         END IF;
 --2016/12/01 Ver11.5.10.2.20 ADD END
+--
+-- Ver11.5.10.2.26 ADD START
+        -- 伝票作成会社と明細会社の整合性チェック
+        OPEN xx03_drafting_company_2_cur(
+          xx03_xrsjlv_rec.line_number     -- 1.明細番号
+        );
+        FETCH xx03_drafting_company_2_cur INTO xx03_drafting_company_2_rec;
+        IF ( xx03_drafting_company_2_rec.drafting_company <> xx03_drafting_company_2_rec.segment1 ) THEN
+          -- 伝票作成会社と明細の会社が異なる場合
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg(
+                                      'XXCFO'
+                                     ,'APP-XXCFO1-00070'
+                                     ,'LINE_NUM'
+                                     ,xx03_drafting_company_2_rec.line_number
+                                     ,'DRAFTING_COMPANY'
+                                     ,xx03_drafting_company_2_rec.drafting_company
+                                     ,'SEGMENT1'
+                                     ,xx03_drafting_company_2_rec.segment1
+                                    );
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_drafting_company_2_cur;
+-- Ver11.5.10.2.26 ADD END
+--
       END IF;
 --
 -- 2006/02/18 Ver11.5.10.1.6E add END

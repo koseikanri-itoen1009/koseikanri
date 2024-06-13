@@ -6,7 +6,7 @@ create or replace PACKAGE BODY XXCFR003A06C AS
  * Description     : 汎用店別請求データ作成
  * MD.050          : MD050_CFR_003_A06_汎用店別請求データ作成
  * MD.070          : MD050_CFR_003_A06_汎用店別請求データ作成
- * Version         : 1.6
+ * Version         : 1.7
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -36,6 +36,7 @@ create or replace PACKAGE BODY XXCFR003A06C AS
  *  2009-09-16    1.4  SCS 白砂 幸世  AR課題対応
  *  2010-01-29    1.5  SCS 安川 智博  障害「E_本稼動_01503」対応
  *  2023-05-17    1.6  SCSK Y.Koh     E_本稼動_19168【AR】インボイス対応_イセトー、汎用請求書、請求金額一覧
+ *  2023-12-15    1.7  SCSK Y.Ryu     E_本稼動_19496対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -85,9 +86,12 @@ create or replace PACKAGE BODY XXCFR003A06C AS
   -- プロファイルオプション
   ct_prof_name_set_of_bks_id  CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'GL_SET_OF_BKS_ID';
   ct_prof_name_org_id         CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'ORG_ID';
--- 2023/05/17 Ver1.6 ADD Start
-  ct_invoice_t_no             CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'XXCMM1_INVOICE_T_NO';
--- 2023/05/17 Ver1.6 ADD End
+-- 2023/12/15 Ver1.7 MOD Start
+---- 2023/05/17 Ver1.6 ADD Start
+--  ct_invoice_t_no             CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'XXCMM1_INVOICE_T_NO';
+---- 2023/05/17 Ver1.6 ADD End
+  cv_hkd_start_date           CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'XXCMM1_ITOEN_HKD_START_DATE';
+-- 2023/12/15 Ver1.7 MOD End
   --
   -- 参照タイプ
   ct_lookup_type_out          CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_003A06_BILL_DATA_SET';  -- 汎用請求出力用参照タイプ名
@@ -98,6 +102,10 @@ create or replace PACKAGE BODY XXCFR003A06C AS
 -- Modify 2009/09/16 Ver1.4 Start ----------------------------------------------
   cv_dict_cr_relate    CONSTANT VARCHAR2(12) := 'CFR003A02006'; -- 与信関連
   cv_dict_ar           CONSTANT VARCHAR2(12) := 'CFR003A02007'; -- 売掛管理先
+-- 2023/12/15 Ver1.7 ADD Start
+  cv_dict_t_no         CONSTANT VARCHAR2(12) := 'CFR003A06001'; -- 登録番号
+  cv_dict_issuer       CONSTANT VARCHAR2(12) := 'CFR003A06002'; -- 発行事業者(会社名)
+-- 2023/12/15 Ver1.7 ADD End
   --
   -- 顧客名称取得関数パラメータ(全角)
   cv_get_acct_name_f   CONSTANT VARCHAR2(1)  := '0';
@@ -156,6 +164,9 @@ create or replace PACKAGE BODY XXCFR003A06C AS
   -- 一括請求書発行フラグ
   cv_cons_inv_flag CONSTANT VARCHAR2(1) := 'Y';  -- 有効
   --
+-- 2023/12/15 Ver1.7 ADD Start
+  cv_itoen         CONSTANT VARCHAR2(3) := '001';  -- 伊藤園会社コード
+-- 2023/12/15 Ver1.7 ADD End
 -- Modify 2009/09/16 Ver1.4 Start ----------------------------------------------
 --  -- ソートキー項目NULL時の値
 --  cv_sort_null_value CONSTANT VARCHAR2(1) := '0';
@@ -194,9 +205,17 @@ create or replace PACKAGE BODY XXCFR003A06C AS
   gn_bm3_amt                NUMBER;                                    -- BM3額
   gn_bm3_all                NUMBER;                                    -- BM3手数料額
   gn_electric_amt           NUMBER;                                    -- 電気代
+
 -- 2023/05/17 Ver1.6 ADD Start
-  gv_invoice_t_no           VARCHAR2(14);                              -- プロファイル・インボイス適格請求書発行事業者登録番号
+  gv_invoice_t_no           VARCHAR2(14);                              -- インボイス適格請求書発行事業者登録番号
 -- 2023/05/17 Ver1.6 ADD End
+-- 2023/12/15 Ver1.7 ADD Start
+  gv_hkd_start_date         VARCHAR2(10);                              -- 伊藤園北海道適用開始日付
+  gv_drafting_company       VARCHAR2(3);                               -- 請求データ作成会社コード
+  gv_invoice_issuer         VARCHAR2(100);                             -- 発行事業者(会社名)
+  gv_t_no                   VARCHAR2(50);                              -- エラー文言：登録番号
+  gv_issuer                 VARCHAR2(50);                              -- エラー文言：発行事業者(会社名)
+-- 2023/12/15 Ver1.7 ADD End
   --
   --===============================================================
   -- グローバルカーソル
@@ -701,22 +720,36 @@ create or replace PACKAGE BODY XXCFR003A06C AS
       RAISE global_api_expt;
     END IF;
     --
--- 2023/05/17 Ver1.6 ADD Start
-    -- プロファイル:インボイス適格請求書発行事業者登録番号
-    gv_invoice_t_no := FND_PROFILE.VALUE(ct_invoice_t_no);
-    --
-    -- 取得できない場合はエラー
-    IF (gv_invoice_t_no IS NULL) THEN
+-- 2023/12/15 Ver1.7 MOD Start
+---- 2023/05/17 Ver1.6 ADD Start
+--    -- プロファイル:インボイス適格請求書発行事業者登録番号
+--    gv_invoice_t_no := FND_PROFILE.VALUE(ct_invoice_t_no);
+--    --
+--    -- 取得できない場合はエラー
+--    IF (gv_invoice_t_no IS NULL) THEN
+--      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_xxcfr_app_name -- 'XXCFR'
+--                                                    ,ct_msg_cfr_00004  -- プロファイル取得エラー
+--                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+--                                                    ,xxcfr_common_pkg.get_user_profile_name(ct_invoice_t_no))
+--                                                       -- 適格請求書発行事業者登録番号
+--                                                   ,1
+--                                                   ,5000);
+--      RAISE global_api_expt;
+--    END IF;
+---- 2023/05/17 Ver1.6 ADD End
+    -- プロファイル:XXCMM:伊藤園北海道適用開始日付
+    gv_hkd_start_date := FND_PROFILE.VALUE(cv_hkd_start_date);
+    IF (gv_hkd_start_date IS NULL) THEN
       lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_xxcfr_app_name -- 'XXCFR'
                                                     ,ct_msg_cfr_00004  -- プロファイル取得エラー
                                                     ,cv_tkn_prof       -- トークン'PROF_NAME'
-                                                    ,xxcfr_common_pkg.get_user_profile_name(ct_invoice_t_no))
-                                                       -- 適格請求書発行事業者登録番号
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_hkd_start_date))
+                                                       -- XXCMM:伊藤園北海道適用開始日付
                                                    ,1
                                                    ,5000);
       RAISE global_api_expt;
     END IF;
--- 2023/05/17 Ver1.6 ADD End
+-- 2023/12/15 Ver1.7 MOD End
     -- 所属部門コード取得
     gt_user_dept_code := xxcfr_common_pkg.get_user_dept(in_user_id  => FND_GLOBAL.USER_ID,
                                                         id_get_date => SYSDATE
@@ -760,6 +793,69 @@ create or replace PACKAGE BODY XXCFR003A06C AS
                           ,iv_keyword            => cv_dict_ar);
 --
 -- Modify 2009/09/16 Ver1.4 End   ----------------------------------------------
+-- 2023/12/15 Ver1.7 ADD Start
+    -- 請求データ作成会社コード取得
+    IF (TO_DATE(gv_hkd_start_date, 'YYYYMMDD') <= xxcfr_common_pkg.get_date_param_trans(iv_target_date)) THEN
+      BEGIN
+        SELECT xxcfr_common_pkg.get_company_code(
+                 iv_dept_code       => xca.bill_base_code
+                ,in_set_of_books_id => gt_gl_set_of_bks_id
+                ,id_base_date       => xxcfr_common_pkg.get_date_param_trans(iv_target_date))
+               AS drafting_company
+        INTO   gv_drafting_company
+        FROM   xxcmm_cust_accounts xca       --顧客追加情報
+        WHERE  xca.customer_code = iv_cust_code
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          gv_drafting_company := cv_itoen;
+      END;
+    ELSE
+      gv_drafting_company := cv_itoen;
+    END IF;
+    --
+    -- 適格請求書発行事業者報取得
+    xxcfr_common_pkg.get_invoice_issuer_info(
+      iv_company_code => gv_drafting_company  -- (IN)請求データ作成会社コード
+     ,ov_regnum       => gv_invoice_t_no      -- (OUT)登録番号
+     ,ov_issuer       => gv_invoice_issuer    -- (OUT)発行事業者(会社名)
+     ,ov_errbuf       => lv_errbuf
+     ,ov_retcode      => lv_retcode
+     ,ov_errmsg       => lv_errmsg
+    );
+    --
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- 登録番号のチェック
+    IF (gv_invoice_t_no IS NULL) THEN
+      -- エラーメッセージ出力用文言(登録番号)取得
+      gv_t_no := xxcfr_common_pkg.lookup_dictionary(
+                           iv_loopup_type_prefix => cv_xxcfr_app_name
+                          ,iv_keyword            => cv_dict_t_no);
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(iv_application => cv_xxcfr_app_name,
+                                            iv_name => ct_msg_cfr_00015,
+                                            iv_token_name1 => cv_tkn_get_data,
+                                            iv_token_value1 => gv_t_no);
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- 発行事業者(会社名)のチェック
+    IF (gv_invoice_issuer IS NULL) THEN
+      -- エラーメッセージ出力用文言(発行事業者(会社名))取得
+      gv_issuer := xxcfr_common_pkg.lookup_dictionary(
+                           iv_loopup_type_prefix => cv_xxcfr_app_name
+                          ,iv_keyword            => cv_dict_issuer);
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(iv_application => cv_xxcfr_app_name,
+                                            iv_name => ct_msg_cfr_00015,
+                                            iv_token_name1 => cv_tkn_get_data,
+                                            iv_token_value1 => gv_issuer);
+      RAISE global_api_expt;
+    END IF;
+-- 2023/12/15 Ver1.7 ADD End
     --
   EXCEPTION
     -- *** 共通関数エラー発生時 ***
@@ -1741,7 +1837,10 @@ create or replace PACKAGE BODY XXCFR003A06C AS
 -- 2023/05/17 Ver1.6 ADD End
     (SELECT gn_conc_request_id
            ,ROWNUM
-           ,col1
+-- Ver1.7 MOD Start
+--           ,col1
+           ,gv_invoice_issuer  -- 発行事業者(会社名)
+-- Ver1.7 MOD End
            ,col2
            ,col3
            ,col4

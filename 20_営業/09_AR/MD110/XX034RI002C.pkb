@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求依頼データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AR）       OCSJ/BFAFIN/MD050/F702
  * MD.070(CMD.050)  : 部門入力（AR）データインポート OCSJ/BFAFIN/MD070/F702
- * Version          : 11.5.10.2.13
+ * Version          : 11.5.10.2.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *                              XX03_COMMITMENT_NUMBER_LOV_Vをコメントアウトするように修正
  *  2016/12/06   11.5.10.2.12   障害対応E_本稼動_13901
  *  2021/12/17   11.5.10.2.13   [E_本稼働_17678]対応 電子帳簿保存法改正対応
+ *  2023/11/02   11.5.10.2.14   [E_本稼動_19496]対応 グループ会社統合対応
  *****************************************************************************************/
 --
 --#####################  固定共通例外宣言部 START   ####################
@@ -474,6 +475,12 @@ AS
      , HEAD.PAYMENT_ELE_DATA_YES   as HEAD_PAYMENT_ELE_DATA_YES          -- 支払案内書電子データ受領あり
      , HEAD.PAYMENT_ELE_DATA_NO    as HEAD_PAYMENT_ELE_DATA_NO           -- 支払案内書電子データ受領なし
      -- ver 11.5.10.2.13 Add End
+-- Ver11.5.10.2.14 ADD START
+     , NVL(
+         HEAD.DRAFTING_COMPANY
+        ,'001'
+       )                           as DRAFTING_COMPANY                   -- 伝票作成会社
+-- Ver11.5.10.2.14 ADD END
      , LINE.INTERFACE_ID           as LINE_INTERFACE_ID                  -- インターフェースID
      , LINE.LINE_NUMBER            as LINE_LINE_NUMBER                   -- ラインナンバー
      , LINE.SLIP_LINE_TYPE_NAME    as LINE_SLIP_LINE_TYPE_NAME           -- 請求内容
@@ -610,6 +617,9 @@ AS
          , xrsi.PAYMENT_ELE_DATA_YES   as PAYMENT_ELE_DATA_YES               -- 支払案内書電子データ受領あり
          , xrsi.PAYMENT_ELE_DATA_NO    as PAYMENT_ELE_DATA_NO                -- 支払案内書電子データ受領なし
          -- ver 11.5.10.2.13 Add End
+-- Ver11.5.10.2.14 ADD START
+         , xttl.DRAFTING_COMPANY       as DRAFTING_COMPANY                   -- 伝票作成会社
+-- Ver11.5.10.2.14 ADD END
         FROM
            XX03_RECEIVABLE_SLIPS_IF    xrsi    --「請求伝票インターフェイス表」
 -- ver 11.5.10.2.7 Chg Start
@@ -690,6 +700,9 @@ AS
          -- ver 11.5.10.2.6 Chg Start
          --, RA_CUST_TRX_TYPES           xttl
          ,(SELECT RCT.CUST_TRX_TYPE_ID , RCT.NAME ,xrsi.INTERFACE_ID
+-- Ver11.5.10.2.14 ADD START
+                 ,RCT.ATTRIBUTE13   AS DRAFTING_COMPANY
+-- Ver11.5.10.2.14 ADD END
            FROM RA_CUST_TRX_TYPES_ALL RCT , FND_LOOKUP_VALUES FVL,XX03_SLIP_TYPES_LOV_V XSTLV ,XX03_RECEIVABLE_SLIPS_IF xrsi 
            WHERE RCT.SET_OF_BOOKS_ID = XX00_PROFILE_PKG.VALUE('GL_SET_OF_BKS_ID') AND RCT.ORG_ID = XX00_PROFILE_PKG.VALUE('ORG_ID') AND FVL.LOOKUP_TYPE = 'XX03_SLIP_TYPES'
              AND FVL.LANGUAGE = XX00_GLOBAL_PKG.CURRENT_LANGUAGE AND FVL.ATTRIBUTE15 = RCT.ORG_ID AND FVL.ATTRIBUTE12 = RCT.TYPE
@@ -3205,6 +3218,9 @@ AS
       , PAYMENT_ELE_DATA_YES                                -- 支払案内書電子データ受領あり
       , PAYMENT_ELE_DATA_NO                                 -- 支払案内書電子データ受領なし
       -- ver 11.5.10.2.13 Add End
+-- Ver11.5.10.2.14 ADD START
+      , DRAFTING_COMPANY                                    -- 伝票作成会社
+-- Ver11.5.10.2.14 ADD END
     )
     VALUES(
         gn_receivable_id                                    -- 伝票ID
@@ -3301,6 +3317,9 @@ AS
       , xx03_if_head_line_rec.HEAD_PAYMENT_ELE_DATA_YES     -- 支払案内書電子データ受領あり
       , xx03_if_head_line_rec.HEAD_PAYMENT_ELE_DATA_NO      -- 支払案内書電子データ受領なし
       -- ver 11.5.10.2.13 Add End
+-- Ver11.5.10.2.14 ADD START
+      , xx03_if_head_line_rec.DRAFTING_COMPANY              -- 伝票作成会社
+-- Ver11.5.10.2.14 ADD END
     );
 --
   EXCEPTION

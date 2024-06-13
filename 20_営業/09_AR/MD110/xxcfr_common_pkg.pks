@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcfr_common_pkg(spec)
  * Description      : 
  * MD.050           : なし
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -27,6 +27,13 @@ AS
 -- Modify 2010.07.09 Ver1.2 Start
  *  awi_ship_code             P           ARWebInquiry用 納品先顧客コード値リスト
 -- Modify 2010.07.09 Ver1.2 End
+ *  get_invoice_regnum        F    VAR    インボイス登録番号取得（部門経由）関数
+ *  get_invoice_regnum        F    VAR    インボイス登録番号取得関数
+ *  get_company_code          F    VAR    会社コード取得（部門経由）関数
+ *  conv_company_code         F    VAR    会社コード変換関数
+ *  get_fin_dept_code         F    VAR    財務経理部門コード取得関数
+ *  get_invoice_svf_info      P           請求書SVF情報取得関数
+ *  get_invoice_issuer_info   P           適格請求書発行事業者情報取得関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -45,6 +52,11 @@ AS
  *                                       新規function「get_receive_updatable」を追加
  *  2010-07-09   1.2    SCS 廣瀬 真佐人  障害「E_本稼動_01990」対応
  *                                       新規Prucedure「awi_ship_code」を追加
+ *  2023-10-24   1.3    SCSK 大山 洋介   障害「E_本稼動_19496対応」対応
+ *                                       新規Function「get_invoice_regnum」「get_company_code」
+ *                                        「conv_company_code」「get_fin_dept_code」を追加
+ *                                       新規Prucedure「get_invoice_svf_info」
+ *                                        「get_invoice_issuer_info」を追加
  *
  *****************************************************************************************/
 --
@@ -146,6 +158,70 @@ AS
     p_parent_condition IN     VARCHAR2 DEFAULT NULL)
   ;
 -- Modify 2010.07.09 Ver1.2 End
+--
+-- Ver1.3 ADD START
+  -- インボイス登録番号取得（部門経由）関数
+  FUNCTION get_invoice_regnum(
+    iv_dept_code        IN   VARCHAR2                     -- 1.部門コード
+   ,in_set_of_books_id  IN   NUMBER                       -- 2.会計帳簿ID
+   ,id_base_date        IN   DATE                         -- 3.基準日
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 4.取得日付
+  )
+  RETURN VARCHAR2;
+--
+  -- インボイス登録番号取得関数
+  FUNCTION get_invoice_regnum(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 2.取得日付
+  )
+  RETURN VARCHAR2;
+--
+  -- 会社コード取得（部門経由）関数
+  FUNCTION get_company_code(
+    iv_dept_code        IN   VARCHAR2                     -- 1.部門コード
+   ,in_set_of_books_id  IN   NUMBER                       -- 2.会計帳簿ID
+   ,id_base_date        IN   DATE                         -- 3.基準日
+  )
+  RETURN VARCHAR2;
+--
+  -- 会社コード変換関数
+  FUNCTION conv_company_code(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_base_date        IN   DATE                         -- 2.基準日
+  )
+  RETURN VARCHAR2;
+--
+  -- 財務経理部門コード取得関数
+  FUNCTION get_fin_dept_code(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_base_date        IN   DATE                         -- 2.基準日
+  )
+  RETURN VARCHAR2;
+--
+  -- 請求書SVF情報取得関数
+  PROCEDURE get_invoice_svf_info(
+    iv_file_id          IN   VARCHAR2                     -- 1.帳票ID
+   ,iv_invoice_type     IN   VARCHAR2                     -- 2.請求書タイプ
+   ,iv_company_code     IN   VARCHAR2                     -- 3.会社コード
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 4.取得日付
+   ,ov_frm_file         OUT  VARCHAR2                     -- 5.フォーム様式ファイル名
+   ,ov_vrq_file         OUT  VARCHAR2                     -- 6.クエリー様式ファイル名
+   ,ov_errbuf           OUT  VARCHAR2                     -- 7.エラーメッセージ
+   ,ov_retcode          OUT  VARCHAR2                     -- 8.リターンコード
+   ,ov_errmsg           OUT  VARCHAR2                     -- 9.ユーザーエラーメッセージ
+  );
+--
+  -- 適格請求書発行事業者情報取得関数
+  PROCEDURE get_invoice_issuer_info(
+    iv_company_code     IN   VARCHAR2                     -- 1.会社コード
+   ,id_get_date         IN   DATE DEFAULT TRUNC(SYSDATE)  -- 2.取得日付
+   ,ov_regnum           OUT  VARCHAR2                     -- 3.登録番号
+   ,ov_issuer           OUT  VARCHAR2                     -- 4.発行事業者(会社名)
+   ,ov_errbuf           OUT  VARCHAR2                     -- 5.エラーメッセージ
+   ,ov_retcode          OUT  VARCHAR2                     -- 6.リターンコード
+   ,ov_errmsg           OUT  VARCHAR2                     -- 7.ユーザーエラーメッセージ
+  );
+-- Ver1.3 ADD END
 --
 END XXCFR_COMMON_PKG;--(変更)
 /

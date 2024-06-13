@@ -7,7 +7,7 @@ AS
  * Description      : 請求金額一覧表出力
  * MD.050           : MD050_CFR_003_A05_請求金額一覧表出力
  * MD.070           : MD050_CFR_003_A05_請求金額一覧表出力
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2014/11/05    1.6  SCSK 竹下 昭範   E_本稼動_12310 対応
  *  2019/07/25    1.7  SCSK 郭 有司     E_本稼動_15472 対応
  *  2023/05/17    1.8  SCSK 及川領      E_本稼動_19168 対応
+ *  2023/11/21    1.9  SCSK 大山 洋介   E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -141,6 +142,9 @@ AS
 -- ADD Ver1.8 Start
   cv_t_number        CONSTANT VARCHAR2(30) := 'XXCMM1_INVOICE_T_NO'; -- XXCMM:適格請求書発行事業者登録番号
 -- ADD Ver1.8 End
+-- Ver1.9 ADD START
+  cv_hkd_start_date  CONSTANT VARCHAR2(30) := 'XXCMM1_ITOEN_HKD_START_DATE'; -- XXCMM:伊藤園北海道適用開始日付  (※YYYYMMDD)
+-- Ver1.9 ADD END
 --
   -- 使用DB名
   cv_table           CONSTANT VARCHAR2(50) := 'XXCFR_REP_INVOICE_LIST'; -- 請求金額一覧表帳票ワークテーブル
@@ -196,6 +200,9 @@ AS
 -- ADD Ver1.8 Start
   gv_t_number           VARCHAR2(14);                              -- 登録番号
 -- ADD Ver1.8 End
+-- Ver1.9 ADD START
+  gd_hkd_start_date     DATE;                                      -- 伊藤園北海道適用開始日付
+-- Ver1.9 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -407,6 +414,23 @@ AS
       RAISE global_api_expt;
     END IF;
 -- ADD Ver1.8 End
+--
+-- Ver1.9 ADD START
+    -- プロファイルから伊藤園北海道適用開始日付を取得
+    gd_hkd_start_date := TO_DATE(FND_PROFILE.VALUE(cv_hkd_start_date), cv_format_date_ymd);
+    --
+    -- 取得エラー時
+    IF (gd_hkd_start_date IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_003a05_010 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_hkd_start_date))
+                          ,1
+                          ,5000);
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.9 ADD END
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1091,7 +1115,28 @@ AS
            ,SUM( xil.tax_amount_sum2 )  tax_amount_sum2    -- 税額合計２
            ,SUM( xil.inv_amount_sum )   inv_amount_sum     -- 税抜合計１
            ,SUM( xil.inv_amount_sum2 )  inv_amount_sum2    -- 税抜合計２
-           ,gv_t_number                                     -- 登録番号
+-- Ver1.9 MOD START
+--           ,gv_t_number                                     -- 登録番号
+           ,(CASE
+               WHEN gd_target_date < gd_hkd_start_date THEN
+                 -- パラメータ「締日」 ＜ プロファイル「伊藤園北海道適用開始日付」の場合
+                 gv_t_number
+               ELSE
+                 -- インボイス登録番号取得（部門経由）関数
+                 xxcfr_common_pkg.get_invoice_regnum(
+                   (CASE
+                      -- パラメータ.出力基準='0'(入金拠点)の場合
+                      WHEN iv_output_kbn = cv_out_0 THEN
+                        xxca.receiv_base_code  -- 入金
+                      -- 上記以外の場合
+                      ELSE
+                        xxca.bill_base_code    -- 請求
+                    END)               -- 拠点コード
+                  ,gn_set_of_bks_id    -- 会計帳簿ID
+                  ,gd_target_date      -- 締日
+                 )
+             END)                       invoice_t_no       -- 登録番号
+-- Ver1.9 MOD END
 -- ADD Ver1.8 End
     FROM xxcfr_invoice_headers          xih,  -- 請求ヘッダ
          xxcfr_invoice_lines            xil,  -- 請求明細

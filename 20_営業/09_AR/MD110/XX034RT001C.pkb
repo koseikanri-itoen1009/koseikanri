@@ -8,7 +8,7 @@ AS
  * Description      : 承認済部門入力データをARAPI、AR標準I/Fに転送後、部門入力転送日を更新する
  * MD.050           : 部門入力バッチ処理(AR)   OCSJ/BFAFIN/MD050/F702
  * MD.070           : 承認済請求依頼の転送     OCSJ/BFAFIN/MD070/F702
- * Version          : 11.5.10.2.11
+ * Version          : 11.5.10.2.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                              判定が考慮されていないことの対応
  *  2007/11/26   11.5.10.2.10   データ転送と転送済フラグ更新タイミングの修正
  *  2021/12/17   11.5.10.2.11   [E_本稼働_17678]対応 電子帳簿保存法改正対応
+ *  2023/12/22   11.5.10.2.12   [E_本稼動_19496]対応 分社化対応
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,9 @@ AS
 --Ver11.5.10.2.11 add start
             , XRS.PAYMENT_ELE_DATA_YES       AS PAYMENT_ELE_DATA_YES       -- 支払案内書電子データ受領あり
 --Ver11.5.10.2.11 add end
+--Ver11.5.10.2.12 add start
+            , XRS.DRAFTING_COMPANY           AS DRAFTING_COMPANY           -- 伝票作成会社
+--Ver11.5.10.2.12 add end
             , SYSDATE                        AS UPD_DATE
             , STV.ATTRIBUTE12                AS ATTRIBUTE12                -- 'INV' OR 'DEP'
             , REC_SEG.REC_SEG1               AS REC_SEG1                  --
@@ -1326,7 +1330,10 @@ AS
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE10                        := i_ar_tran_rec.PAYMENT_ELE_DATA_YES;
 --        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE10                        := l_get_rec_slip_lines_rec.ATTRIBUTE8;
 --Ver11.5.10.2.11 mod end
-        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := NULL;
+--Ver11.5.10.2.12 mod start
+        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := i_ar_tran_rec.DRAFTING_COMPANY;
+--        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := NULL;
+--Ver11.5.10.2.12 mod end
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE12                        := NULL;
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE13                        := NULL;
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE14                        := NULL;
@@ -1763,7 +1770,10 @@ AS
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE10                        := i_ar_tran_rec.PAYMENT_ELE_DATA_YES;
 --        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE10                        := NULL;
 --Ver11.5.10.2.11 mod end
-        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := NULL;
+--Ver11.5.10.2.12 mod start
+        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := i_ar_tran_rec.DRAFTING_COMPANY;
+--        i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := NULL;
+--Ver11.5.10.2.12 mod end
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE12                        := NULL;
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE13                        := NULL;
         i_if_dist_rec(ln_rec_cnt).ATTRIBUTE14                        := NULL;
@@ -1888,7 +1898,10 @@ AS
       i_if_dist_rec(ln_rec_cnt).ATTRIBUTE10                        := i_ar_tran_rec.PAYMENT_ELE_DATA_YES;
 --      i_if_dist_rec(ln_rec_cnt).ATTRIBUTE10                        := NULL;
 --Ver11.5.10.2.11 mod end
-      i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := NULL;
+--Ver11.5.10.2.12 mod start
+      i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := i_ar_tran_rec.DRAFTING_COMPANY;
+--      i_if_dist_rec(ln_rec_cnt).ATTRIBUTE11                        := NULL;
+--Ver11.5.10.2.12 mod end
       i_if_dist_rec(ln_rec_cnt).ATTRIBUTE12                        := NULL;
       i_if_dist_rec(ln_rec_cnt).ATTRIBUTE13                        := NULL;
       i_if_dist_rec(ln_rec_cnt).ATTRIBUTE14                        := NULL;
