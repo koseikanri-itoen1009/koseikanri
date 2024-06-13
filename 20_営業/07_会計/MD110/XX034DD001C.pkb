@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求書データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AP） OCSJ/BFAFIN/MD050/F212
  * MD.070(CMD.050)  : 部門入力（AP）データインポート OCSJ/BFAFIN/MD070/F423
- * Version          : 11.5.10.2.12
+ * Version          : 11.5.10.2.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2020/02/02   11.5.10.2.10I  障害対応E_本稼動_16026
  *  2021/12/20   11.5.10.2.11   [E_本稼働_17678]対応 電子帳簿保存法改正対応
  *  2023/08/09   11.5.10.2.12   [E_本稼働_19332]対応 インボイス対応（部門入力への適格請求書チェック追加）
+ *  2023/11/02   11.5.10.2.13   [E_本稼動_19496]対応 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -267,6 +268,12 @@ AS
      , HEAD.PROGRAM_APPLICATION_ID as HEAD_PROGRAM_APPLICATION_ID        --
      , HEAD.PROGRAM_ID             as HEAD_PROGRAM_ID                    --
      , HEAD.PROGRAM_UPDATE_DATE    as HEAD_PROGRAM_UPDATE_DATE           --
+-- Ver11.5.10.2.13 ADD START
+     , NVL(
+         HEAD.DRAFTING_COMPANY
+        ,'001'
+       )                           as DRAFTING_COMPANY                   -- 伝票作成会社
+-- Ver11.5.10.2.13 ADD END
      , LINE.INTERFACE_ID           as LINE_INTERFACE_ID                  -- インターフェースID
      , LINE.LINE_NUMBER            as LINE_LINE_NUMBER                   -- ラインナンバー
      , LINE.SLIP_LINE_TYPE         as LINE_SLIP_LINE_TYPE                -- 摘要コード
@@ -400,6 +407,9 @@ AS
          , xpsi.PROGRAM_APPLICATION_ID as PROGRAM_APPLICATION_ID             --
          , xpsi.PROGRAM_ID             as PROGRAM_ID                         --
          , xpsi.PROGRAM_UPDATE_DATE    as PROGRAM_UPDATE_DATE                --
+-- Ver11.5.10.2.13 ADD START
+         , xvsl.DRAFTING_COMPANY       as DRAFTING_COMPANY                   -- 伝票作成会社
+-- Ver11.5.10.2.13 ADD END
         FROM
            XX03_PAYMENT_SLIPS_IF       xpsi
 -- ver 11.5.10.2.7 Chg Start
@@ -470,6 +480,9 @@ AS
                  --,PVS.VENDOR_SITE_ID VENDOR_SITE_ID ,PVS.PAYMENT_METHOD_LOOKUP_CODE PAYMETHOD ,AP_BANK.NAME BANK_NAME
                  ,PVS.VENDOR_SITE_ID VENDOR_SITE_ID ,AP_BANK.NAME BANK_NAME
                  -- ver 11.5.10.2.10D Chg End
+-- Ver11.5.10.2.13 ADD START
+                 ,PVS.ATTRIBUTE11   AS DRAFTING_COMPANY
+-- Ver11.5.10.2.13 ADD END
              FROM PO_VENDORS PV ,PO_VENDOR_SITES_ALL PVS
                  ,(SELECT ABAU.VENDOR_ID VENDOR_ID ,ABAU.VENDOR_SITE_ID VENDOR_SITE_ID
                          ,NVL2(ABB.BANK_NAME ,ABB.BANK_NAME || ' ' || ABB.BANK_BRANCH_NAME || ' ' || DECODE(ABA.BANK_ACCOUNT_TYPE, '1', '普通', '2', '当座', '')
@@ -2539,6 +2552,9 @@ AS
       PROGRAM_APPLICATION_ID       ,
       PROGRAM_UPDATE_DATE          ,
       PROGRAM_ID
+-- Ver11.5.10.2.13 ADD START
+     ,DRAFTING_COMPANY                  -- 伝票作成会社
+-- Ver11.5.10.2.13 ADD END
     )
     VALUES(
       gn_invoice_id,
@@ -2632,6 +2648,9 @@ AS
       xx00_global_pkg.prog_appl_id,
       xx00_date_pkg.get_system_datetime_f,
       xx00_global_pkg.conc_program_id
+-- Ver11.5.10.2.13 ADD START
+     ,xx03_if_head_line_rec.DRAFTING_COMPANY      -- 伝票作成会社
+-- Ver11.5.10.2.13 ADD END
     );
 --
   EXCEPTION

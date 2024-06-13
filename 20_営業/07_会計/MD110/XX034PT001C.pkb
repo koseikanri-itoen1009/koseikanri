@@ -8,7 +8,7 @@ AS
  * Description      : 承認済部門入力データをAP標準I/Fに転送後、部門入力転送日を更新する
  * MD.050           : 部門入力バッチ処理(AP)   OCSJ/BFAFIN/MD050/F212
  * MD.070           : 承認済仕入先請求書の転送 OCSJ/BFAFIN/MD070/F406
- * Version          : 11.5.10.2.12
+ * Version          : 11.5.10.2.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2007/11/26   11.5.10.2.10   データ転送と転送済フラグ更新タイミングの修正
  *  2021/12/17   11.5.10.2.11   [E_本稼働_17678]対応 電子帳簿保存法改正対応
  *  2023/08/09   11.5.10.2.12   [E_本稼動_19332]対応 インボイス対応
+ *  2023/12/20   11.5.10.2.13   [E_本稼動_19496]対応 分社化対応
  *
  *****************************************************************************************/
 --
@@ -332,6 +333,12 @@ AS
 --Ver11.5.10.2.12 add start
               xps.invoice_t_num_yes    AS invoice_t_num_yes,          -- 適格請求書(インボイス)あり
 --Ver11.5.10.2.12 add end
+--Ver11.5.10.2.13 add start
+              xxcfr_common_pkg.conv_company_code(  -- 会社コード変換関数
+                NVL(xps.drafting_company, '001')   -- 伝票作成会社
+               ,xps.gl_date                        -- 計上日
+              )                 AS drafting_company,                  -- 伝票作成会社
+--Ver11.5.10.2.13 add end
               xpsjlv.attribute1 AS attribute1,                        -- 予備１
               xpsjlv.attribute2 AS attribute2,                        -- 予備２
               xpsjlv.attribute3 AS attribute3,                        -- 予備３
@@ -415,6 +422,9 @@ AS
 --Ver11.5.10.2.12 add start
         attribute13,
 --Ver11.5.10.2.12 add end
+--Ver11.5.10.2.13 add start
+        attribute15,
+--Ver11.5.10.2.13 add end
         org_id,
         tax_code_override_flag
       )
@@ -454,6 +464,9 @@ AS
 --Ver11.5.10.2.12 add start
         get_pay_slip_lines_rec.invoice_t_num_yes,
 --Ver11.5.10.2.12 add end
+--Ver11.5.10.2.13 add start
+        get_pay_slip_lines_rec.drafting_company,
+--Ver11.5.10.2.13 add end
         in_org_id,
         cv_tax_code_override
       );

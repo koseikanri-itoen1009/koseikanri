@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの仕訳伝票データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（GL）       OCSJ/BFAFIN/MD050/F602
  * MD.070(CMD.050)  : 部門入力（GL）データインポート OCSJ/BFAFIN/MD070/F602/03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *                              伝票情報取得時に通貨書式に丸める処理を削除
  *  2016/11/04   1.1            障害対応E_本稼動_13901
  *  2020/06/17   1.2            障害対応E_本稼動_16418
+ *  2023/11/02   1.3            [E_本稼動_19496]対応 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -325,6 +326,9 @@ AS
      , HEAD.PROGRAM_APPLICATION_ID as HEAD_PROGRAM_APPLICATION_ID
      , HEAD.PROGRAM_ID             as HEAD_PROGRAM_ID
      , HEAD.PROGRAM_UPDATE_DATE    as HEAD_PROGRAM_UPDATE_DATE
+-- Ver1.3 ADD START
+     , HEAD.DRAFTING_COMPANY       as DRAFTING_COMPANY                   -- 伝票作成会社
+-- Ver1.3 ADD END
      , LINE.INTERFACE_ID           as LINE_INTERFACE_ID                  -- インターフェースID
      , LINE.LINE_NUMBER            as LINE_LINE_NUMBER                   -- 明細番号
      -- ver 11.5.10.2.10C Chg Start
@@ -454,6 +458,9 @@ AS
          , xjsi.PROGRAM_APPLICATION_ID  as PROGRAM_APPLICATION_ID
          , xjsi.PROGRAM_ID           as PROGRAM_ID
          , xjsi.PROGRAM_UPDATE_DATE  as PROGRAM_UPDATE_DATE
+-- Ver1.3 ADD START
+         , xjsi.DRAFTING_COMPANY     as DRAFTING_COMPANY              -- 伝票作成会社
+-- Ver1.3 ADD END
         FROM
            XX03_JOURNAL_SLIPS_IF      xjsi
 -- ver 11.5.10.2.7 Chg Start
@@ -2808,6 +2815,9 @@ AS
       PROGRAM_APPLICATION_ID       ,
       PROGRAM_UPDATE_DATE          ,
       PROGRAM_ID
+-- Ver1.3 ADD START
+     ,DRAFTING_COMPANY                  -- 伝票作成会社
+-- Ver1.3 ADD END
     )
     VALUES(
       gn_journal_id,
@@ -2881,6 +2891,9 @@ AS
       xx00_global_pkg.prog_appl_id,
       xx00_date_pkg.get_system_datetime_f,
       xx00_global_pkg.conc_program_id
+-- Ver1.3 ADD START
+     ,xx03_if_head_line_rec.DRAFTING_COMPANY                -- 伝票作成会社
+-- Ver1.3 ADD END
     );
 --
   EXCEPTION

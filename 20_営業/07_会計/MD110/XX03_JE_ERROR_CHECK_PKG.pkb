@@ -7,7 +7,7 @@ AS
  * Package Name     : xx03_je_error_check_pkg(body)
  * Description      : 仕訳エラーチェック共通関数
  * MD.070           : 仕訳エラーチェック共通関数 OCSJ/BFAFIN/MD070/F313
- * Version          : 11.5.10.2.9
+ * Version          : 11.5.10.2.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -102,6 +102,8 @@ AS
  *  2015/12/17   11.5.10.2.8    S.Niki       [E_本稼動_13421]aff_dff_checkに中止顧客チェック追加
  *  2017/01/31   11.5.10.2.9    Y.Shoji      [E_本稼動_13997]aff_dff_checkの中止顧客チェックを
  *                                           釣銭対象顧客チェックに変更。
+ *  2023/11/17   11.5.10.2.10   Y.Ooyama     [E_本稼動_19496]aff_dff_checkの固定部門コードチェックを
+ *                                           各社の部門コードに変換した上でチェックするよう修正
  *
  *****************************************************************************************/
 --
@@ -1154,7 +1156,9 @@ AS
 
     ln_application_id               gl_period_statuses.application_id%TYPE;     --アプリケーションID
 
-
+-- Ver11.5.10.2.10 ADD START
+    lv_conv_fixed_dept_code         VARCHAR2(4);                                --変換後の固定部門コード
+-- Ver11.5.10.2.10 ADD END
 
     --GL会計帳簿
     CURSOR gl_sets_of_books_cur(
@@ -1790,12 +1794,67 @@ AS
               --報テーブルを出力します。
 
               IF lv_is_accounts_exists AND xx03_accounts_v_rec.attribute1 IS NOT NULL  THEN
-                IF xx03_accounts_v_rec.attribute1 != xx03_error_checks_rec.segment2 THEN
+--
+-- Ver11.5.10.2.10 ADD START
+                BEGIN
+                  -- 部門コード変換
+                  -- 勘定科目マスタのDFF1(固定部門コード)は伊藤園の部門コードのため、
+                  -- 対象会社の該当する部門コードに変換する
+                  SELECT flvv.attribute3          -- DFF3:部門コード
+                  INTO   lv_conv_fixed_dept_code  -- 変換後の固定部門コード
+                  FROM   fnd_lookup_values_vl  flvv
+                  WHERE  flvv.lookup_type = 'XXCFO1_CONV_DEPT_CODE'  -- 部門コード変換
+                  AND    flvv.enabled_flag = 'Y'
+                  AND    xx03_error_checks_rec.gl_date
+                         BETWEEN flvv.start_date_active
+                         AND     NVL(flvv.end_date_active, xx03_error_checks_rec.gl_date)
+                  AND    flvv.attribute1  = DECODE(
+                                              xx03_error_checks_rec.segment1
+                                             ,'999'
+                                             ,'001'
+                                             ,xx03_error_checks_rec.segment1
+                                            )                               -- DFF1:会社コード
+                  AND    flvv.attribute2  = xx03_accounts_v_rec.attribute1  -- DFF2:部門コード（伊藤園）
+                  ;
+                EXCEPTION
+                  WHEN OTHERS THEN
+                    -- 部門コード変換に失敗した場合
+                    lv_conv_fixed_dept_code := NULL;
+                    --
+                    lv_error_code   := 'APP-XX03-03091';
+                    lt_tokeninfo.DELETE;
+                    lt_tokeninfo(0).token_name := 'COMPANY_CODE';
+                    lt_tokeninfo(0).token_value := xx03_error_checks_rec.segment1;
+                    lt_tokeninfo(1).token_name := 'DEPT_CODE_ITOEN';
+                    lt_tokeninfo(1).token_value := xx03_accounts_v_rec.attribute1;
+                    lv_ret := xx03_je_error_check_pkg.ins_error_tbl(
+                        xx03_error_checks_rec.check_id    , --1.チェックID
+                        xx03_error_checks_rec.journal_id  , --2.仕訳キー
+                        xx03_error_checks_rec.line_number , --3.行番号
+                        xx03_error_checks_rec.dr_cr       , --4.貸借区分
+                        lv_error_code   ,                   --5.エラーコード
+                        lt_tokeninfo    ,                   --6.トークン情報
+                        cv_status_error );
+                    lt_tokeninfo.DELETE;
+                    --戻り値更新
+                    lv_ret_status := cv_status_error;
+                END;
+-- Ver11.5.10.2.10 ADD END
+--
+-- Ver11.5.10.2.10 MOD START
+--                IF xx03_accounts_v_rec.attribute1 != xx03_error_checks_rec.segment2 THEN
+                -- 変換後の固定部門コードとチェック部門コードが異なる場合
+                IF (lv_conv_fixed_dept_code IS NOT NULL AND
+                    lv_conv_fixed_dept_code != xx03_error_checks_rec.segment2) THEN
+-- Ver11.5.10.2.10 MOD END
                   --エラー情報テーブル出力サブ関数(ins_error_tbl)を呼び出し、エラー情報テーブルを出力します。
                   lv_error_code   := 'APP-XX03-03026';
                   lt_tokeninfo.DELETE;
                   lt_tokeninfo(0).token_name := 'TOK_INVAQLID_FIX_DIV';
-                  lt_tokeninfo(0).token_value := xx03_accounts_v_rec.attribute1;
+-- Ver11.5.10.2.10 MOD START
+--                  lt_tokeninfo(0).token_value := xx03_accounts_v_rec.attribute1;
+                  lt_tokeninfo(0).token_value := lv_conv_fixed_dept_code;
+-- Ver11.5.10.2.10 MOD END
 -- 変更 1.11 BEGIN
                   lt_tokeninfo(1).token_name := 'TOK_XX03_SEGMENT_PROMPT';
                   lt_tokeninfo(1).token_value := xx03_get_prompt_pkg.aff_segment('SEGMENT2');

@@ -3,11 +3,11 @@
 -- 機能概要      : 部門入力（GL）データロード
 -- MD.050        : 部門入力バッチ処理(GL)     OCSJ/BFAFIN/MD050/F602
 -- MD.070        : 部門入力（GL）データロード OCSJ/BFAFIN/MD070/F602/02
--- バージョン    : 11.5.10.2.6
+-- バージョン    : 11.5.10.2.7
 -- 作成者        : OCSJ BFA-Fin
 -- 作成日        : 2004-11-12
--- 変更者        : SCSK渡邊
--- 最終変更日    : 2016-11-11
+-- 変更者        : SCSK大山
+-- 最終変更日    : 2023-11-02
 -- 変更履歴      :
 --     2004-11-12 新規作成
 --     2005-03-03 LOAD内でのPROFILE取得→SHELLで処理する対応
@@ -15,6 +15,7 @@
 --     2006-09-05 REQUEST_IDをSHELLの文字変換で処理し、ORG_ID,SET_OF_BKS_IDを
 --                後続のプログラムでUPDATEで処理する対応に変更
 --     2016-11-01 障害対応E_本稼動_13901
+--     2023-11-02 障害対応E_本稼動_19496
 --
 -- Copyright (c) 2005 Oracle Corporation Japan All Rights Reserved
 -- 当プログラム使用に際して一切の保証は行わない
@@ -75,7 +76,10 @@ FIELDS TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' TRAILING NULLCOLS
   DESCRIPTION               CHAR          TERMINATED BY ",",
   INVOICE_CURRENCY_CODE     CHAR          TERMINATED BY ",",
   EXCHANGE_RATE_TYPE_NAME   CHAR          TERMINATED BY ",",
-  EXCHANGE_RATE             CHAR          TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' "TO_NUMBER(:EXCHANGE_RATE, '999,999,999,999,999.000')"
+  EXCHANGE_RATE             CHAR          TERMINATED BY "," OPTIONALLY ENCLOSED BY '"' "TO_NUMBER(:EXCHANGE_RATE, '999,999,999,999,999.000')",
+-- ver 11.5.10.2.7 Add Start
+  DRAFTING_COMPANY          CHAR          TERMINATED BY ","
+-- ver 11.5.10.2.7 Add End
        )
 
 INTO TABLE XX03_JOURNAL_SLIP_LINES_IF

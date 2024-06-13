@@ -6,7 +6,7 @@ AS
  * Package Name    : XXCFO010A05C
  * Description     : EBS仕訳抽出
  * MD.050          : T_MD050_CFO_010_A05_EBS仕訳抽出_EBSコンカレント
- * Version         : 1.6
+ * Version         : 1.7
  * 
  * Program List
  * -------------------- -----------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2023-03-17    1.4   Y.Ooyama      シナリオテスト不具合No.0090対応
  *  2023-05-10    1.5   S.Yoshioka    開発残課題07対応
  *  2023-08-01    1.6   Y.Ryu         E_本稼動_19360【会計】ERP売掛管理仕訳転記処理の改善対応
+ *  2023-11-15    1.7   Y.Ooyama      E_本稼動_19496 グループ会社統合対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1585,9 +1586,12 @@ AS
       , gjl.je_line_num                                     AS je_line_num            -- 40.仕訳明細番号
       , gjl.code_combination_id                             AS code_combination_id    -- 41.勘定科目組合せID
       , gjl.subledger_doc_sequence_value                    AS subledger_value        -- 42.補助簿文書番号
-      , gsob.name                                           AS sob_name               -- 43.会計帳簿名
-      , gjh.period_name                                     AS period_name            -- 44.会計期間名
-      , gjh.je_header_id                                    AS je_header_id           -- 45.仕訳ヘッダID
+-- Ver1.7 Add Start
+      , gjl.attribute15                                     AS drafting_company       -- 43.伝票作成会社
+-- Ver1.7 Add End
+      , gsob.name                                           AS sob_name               -- 44.会計帳簿名
+      , gjh.period_name                                     AS period_name            -- 45.会計期間名
+      , gjh.je_header_id                                    AS je_header_id           -- 46.仕訳ヘッダID
 -- Ver1.2 Del Start
 --      , (CASE WHEN gjh.je_source = cv_receivables AND iv_execute_kbn = cv_execute_kbn_n THEN
 --                DECODE( MOD(DENSE_RANK() OVER(
@@ -1604,9 +1608,9 @@ AS
 --                     cv_group_id1
 --              ELSE
 --                     NULL
---         END)                                               AS group_id               -- 46.グループID
+--         END)                                               AS group_id               -- 47.グループID
 -- Ver1.2 Del End
-      , xxojh.unsent_min_je_header_id                       AS min_je_header_id       -- 47.未連携_最小仕訳ヘッダID
+      , xxojh.unsent_min_je_header_id                       AS min_je_header_id       -- 48.未連携_最小仕訳ヘッダID
     FROM
         gl_sets_of_books          gsob                                -- 会計帳簿
       , gl_je_batches             gjb                                 -- 仕訳バッチ
@@ -1867,7 +1871,10 @@ AS
         || to_csv_string( data1_tbl_rec.code_combination_id, cv_lf_str )              || cv_delimiter        --  81.勘定科目組合せID
         || to_csv_string( data1_tbl_rec.subledger_value, cv_lf_str )                  || cv_delimiter        --  82.補助簿文書番号
         -- Ver1.5 Mod End
-        || NULL || cv_delimiter                                                                              --  83.Attribute15 Value for Captured Information
+-- Ver1.7 Mod Start
+--        || NULL || cv_delimiter                                                                              --  83.Attribute15 Value for Captured Information
+        || to_csv_string( data1_tbl_rec.drafting_company, cv_lf_str )                 || cv_delimiter        --  83.Attribute15 Value for Captured Information
+-- Ver1.7 Mod End
         || NULL || cv_delimiter                                                                              --  84.Attribute16 Value for Captured Information
         || NULL || cv_delimiter                                                                              --  85.Attribute17 Value for Captured Information
         || NULL || cv_delimiter                                                                              --  86.Attribute18 Value for Captured Information

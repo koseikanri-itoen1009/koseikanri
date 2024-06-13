@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_gl_check_pkg(body)
  * Description            : 部門入力(GL)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(GL)共通関数 OCSJ/BFAFIN/MD070/F601/01
- * Version                : 11.5.10.2.15
+ * Version                : 11.5.10.2.16
  *
  * Program List
  *  -------------------------- ---- ----- ------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *                                              会社コードを固定値：001（本社）に変更
  *  2016/11/14   11.5.10.2.14   [E_本稼動_13901]稟議決裁番号のチェックを追加
  *  2018/02/07   11.5.10.2.15   [E_本稼動_14663]稟議決裁番号の固定値チェック修正(SPで始まる番号に対応)
+ *  2023/10/27   11.5.10.2.16   [E_本稼動_19496]伝票作成会社チェック、仕訳明細会社チェックを追加
  *
  *****************************************************************************************/
 --
@@ -202,6 +203,10 @@ AS
     ln_amount_precision    NUMBER(1)    := 0;      -- 伝票での金額の精度
     cv_precision_char      VARCHAR2(1)  := '.';    -- 小数点記号
     -- ver 11.5.10.2.10B Add End
+-- Ver11.5.10.2.16 ADD START
+    -- 伊藤園北海道適用開始日付
+    ld_itoen_hkd_start_date DATE;
+-- Ver11.5.10.2.16 ADD END
 --
     -- *** ローカル・カーソル ***
     -- 処理対象データ取得カーソル
@@ -735,6 +740,46 @@ AS
           )
       ;
 -- 2013/09/19 ver 11.5.10.2.12 ADD END
+-- Ver11.5.10.2.16 ADD START
+    -- 伝票作成会社チェック
+    CURSOR xx03_drafting_company_cur
+    IS
+      SELECT xjs.gl_date           AS gl_date              -- 計上日
+            ,xjs.drafting_company  AS drafting_company     -- 伝票作成会社
+            -- 会社コード変換
+            ,xxcfr_common_pkg.conv_company_code(
+               xjs.drafting_company
+              ,xjs.gl_date
+             )                     AS drafting_company_bd  -- 計上日時点の伝票作成会社
+      FROM   xx03_journal_slips  xjs
+      WHERE  xjs.journal_id = in_journal_id  -- 伝票ID
+    ;
+--
+    -- 仕訳明細会社チェック
+    CURSOR xx03_line_segment1_cur(
+      in_line_number IN NUMBER    -- 1.明細番号
+     ,iv_drcr_flg    IN VARCHAR2  -- 2.貸借フラグ('DR'or'CR')
+    )
+    IS
+      SELECT NVL(xjs.drafting_company, '001')  AS drafting_company   -- 伝票作成会社
+            ,DECODE(
+               xjsl.segment1
+              ,'999'
+              ,'001'  -- 相良会計(999)は伊藤園(001)に置換
+              ,xjsl.segment1
+             )                                 AS segment1           -- 仕訳明細の会社
+      FROM   xx03_journal_slips       xjs
+            ,xx03_journal_slip_lines  xjsl
+      WHERE  xjs.journal_id   = in_journal_id   -- 伝票ID
+      AND    xjs.journal_id   = xjsl.journal_id
+      AND    xjsl.line_number = in_line_number  -- 明細番号
+      AND    (
+               (iv_drcr_flg = 'DR' AND xjsl.entered_amount_dr IS NOT NULL)
+               OR
+               (iv_drcr_flg = 'CR' AND xjsl.entered_amount_cr IS NOT NULL)
+             )
+    ;
+-- Ver11.5.10.2.16 ADD END
 --
     -- *** ローカル・レコード ***
     -- 処理対象データ取得カーソルレコード型
@@ -774,6 +819,12 @@ AS
     -- 項目整合性チェックカーソルレコード型
     xx03_save_code_chk_rec       xx03_save_code_chk_cur%ROWTYPE;
 -- 2013/09/19 ver 11.5.10.2.12 ADD END
+-- Ver11.5.10.2.16 ADD START
+    -- 伝票作成会社チェックカーソルレコード型
+    xx03_drafting_company_rec    xx03_drafting_company_cur%ROWTYPE;
+    -- 仕訳明細会社チェックカーソルレコード型
+    xx03_line_segment1_rec       xx03_line_segment1_cur%ROWTYPE;
+-- Ver11.5.10.2.16 ADD END
 --
     -- ===============================
     -- ユーザー定義例外
@@ -801,6 +852,11 @@ AS
     -- オルグID取得
     ln_org_id := xx00_profile_pkg.value ('ORG_ID') ;
 --
+-- Ver11.5.10.2.16 ADD START
+    -- 伊藤園北海道適用開始日付
+    ld_itoen_hkd_start_date := TO_DATE(XX00_PROFILE_PKG.VALUE('XXCMM1_ITOEN_HKD_START_DATE'), 'YYYYMMDD');
+-- Ver11.5.10.2.16 ADD END
+-- 
     -- 処理対象データ取得カーソルオープン
     OPEN xx03_xjsjlv_cur;
     <<xx03_xjsjlv_loop>>
@@ -1167,6 +1223,46 @@ AS
         --カーソルのクローズ
         CLOSE gl_tax_options_cur;
 --
+-- Ver11.5.10.2.16 ADD START
+        -- 伝票作成会社チェック
+        OPEN xx03_drafting_company_cur;
+        FETCH xx03_drafting_company_cur INTO xx03_drafting_company_rec;
+        IF ( xx03_drafting_company_rec.drafting_company IS NULL ) THEN
+          -- 伝票作成会社がNULLの場合
+          IF ( xx03_drafting_company_rec.gl_date < ld_itoen_hkd_start_date ) THEN
+            -- 計上日 < プロファイル「伊藤園北海道適用開始日付」の場合
+            NULL;
+          ELSE
+            -- 計上日 >= プロファイル「伊藤園北海道適用開始日付」の場合
+            -- 必須チェックエラー
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg(
+                                        'XXCFO'
+                                       ,'APP-XXCFO1-00068'
+                                      );
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+        ELSE
+          -- 伝票作成会社がNULLでない場合
+          IF ( xx03_drafting_company_rec.drafting_company_bd IS NULL
+               OR
+               xx03_drafting_company_rec.drafting_company_bd <> xx03_drafting_company_rec.drafting_company ) THEN
+            -- 計上日時点の伝票作成会社がNULL、または伝票作成会社と異なる場合はエラー
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg(
+                                        'XXCFO'
+                                       ,'APP-XXCFO1-00066'
+                                       ,'DRAFTING_COMPANY'
+                                       ,xx03_drafting_company_rec.drafting_company
+                                       ,'DATE'
+                                       ,TO_CHAR(xx03_drafting_company_rec.gl_date, 'YYYY/MM/DD')
+                                      );
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+        END IF;
+        CLOSE xx03_drafting_company_cur;
+-- Ver11.5.10.2.16 ADD END
+--
         --チェックID取得
         SELECT xx03_err_check_s.NEXTVAL
         INTO   ln_check_seq
@@ -1414,6 +1510,33 @@ AS
           CLOSE xx03_enter_account_cur;
         END IF;
 -- ver 11.5.10.2.9 Add End
+--
+-- Ver11.5.10.2.16 ADD START
+        -- 仕訳明細会社チェック
+        OPEN xx03_line_segment1_cur(
+               xx03_xjsjlv_rec.line_number    -- 1.明細番号
+              ,lv_chk_dr_cr                   -- 2.貸借フラグ
+             );
+        FETCH xx03_line_segment1_cur INTO xx03_line_segment1_rec;
+        IF ( xx03_line_segment1_rec.drafting_company <> xx03_line_segment1_rec.segment1 ) THEN
+          -- 伝票作成会社と仕訳明細の会社が異なる場合はエラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xxccp_common_pkg.get_msg(
+                                      iv_application  => 'XXCFO'
+                                     ,iv_name         => 'APP-XXCFO1-00069'
+                                     ,iv_token_name1  => 'DRCR'
+                                     ,iv_token_value1 => (CASE WHEN lv_chk_dr_cr = 'DR' THEN 'APP-XXCFO1-50005' ELSE 'APP-XXCFO1-50006' END)
+                                     ,iv_token_name2  => 'LINE_NUM'
+                                     ,iv_token_value2 => xx03_xjsjlv_rec.line_number
+                                     ,iv_token_name3  => 'DRAFTING_COMPANY'
+                                     ,iv_token_value3 => xx03_line_segment1_rec.drafting_company
+                                     ,iv_token_name4  => 'SEGMENT1'
+                                     ,iv_token_value4 => xx03_line_segment1_rec.segment1
+                                    );
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_line_segment1_cur;
+-- Ver11.5.10.2.16 ADD END
 --
       END IF;
 -- Ver11.5.10.1.6G Add End
