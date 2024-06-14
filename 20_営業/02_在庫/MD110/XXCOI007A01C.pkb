@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,6 +21,10 @@ AS
  *                         - 原価差額情報の抽出 (A-6)
  *                         - 会計期間チェック処理 (A-7)
  *                         - GLインターフェース格納 (A-8)
+ *  ins_gl_if_gr_comp      棚卸資産情報GL-IF登録(グループ会社) (A-10)
+ *  ins_gl_if_reg          GL-IF登録処理(A-11)
+ *  ins_xwcv_bk            在庫受払表（Ｇ会社）テーブルの作成 (A-12)
+ *  ins_gl_if_round_Journal 丸め誤差GL-IF登録 (A-13)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *                         終了処理 (A-9)
@@ -39,6 +43,7 @@ AS
  *  2009/09/04    1.7   H.Sasaki        [0001241]勘定科目名の設定内容変更
  *  2009/09/28    1.8   H.Sasaki        [E_T3_00605]リカバリ処理を実装
  *  2010/01/29    1.9   H.Sasaki        [E_本稼動_01335]GLバッチID取得エラー時のエラーハンドリングを修正
+ *  2024/03/18    1.10  R.Oikawa        [E_本稼動_19496] グループ会社対応
  *
  *****************************************************************************************/
 --
@@ -164,6 +169,24 @@ AS
 -- == 2009/09/28 V1.8 Added START ===============================================================
   cv_tkn_xxcoi_msg_10405     CONSTANT VARCHAR2(30)  :=  'ACCT_PERIOD';            -- 会計期間比較対象日付
 -- == 2009/09/28 V1.8 Added END   ===============================================================
+-- Ver1.10 ADD START
+  cv_prf_aff2_acc_dept_code  CONSTANT VARCHAR2(50)  :=  'XXCOI1_ACCOUT_DEPT_CODE';     -- XXCOI:経理部用部門コード
+  cv_prf_gl_category_inv_gr  CONSTANT VARCHAR2(50)  :=  'XXCOI1_GL_CATEGORY_INV_GR';   -- XXCOI:仕訳カテゴリ_在庫グループ会社振替
+  cv_company_profit_rate     CONSTANT VARCHAR2(30)  :=  'XXCOI1_COMPANY_PROFIT_RATE';  -- 各社利益率
+  cv_conv_dept_code          CONSTANT VARCHAR2(30)  :=  'XXCFO1_CONV_DEPT_CODE';       -- 部門コード変換
+  cv_conv_cost_dept          CONSTANT VARCHAR2(50)  :=  'XXCFO1_CONV_COST_DEPT';       -- 売上原価の計上部門
+  cv_conv_cost_account       CONSTANT VARCHAR2(50)  :=  'XXCFO1_CONV_COST_ACCOUNT';    -- 売上原価の勘定科目・補助科目コード変換
+  cv_msg_code_xxcoi_10750    CONSTANT VARCHAR2(100) :=  'APP-XXCOI1-10750';            -- 参照タイプ取得エラーメッセージ
+  cv_msg_code_xxcoi_10751    CONSTANT VARCHAR2(100) :=  'APP-XXCOI1-10751';            -- グループ会社集約単位件数
+  cv_tkn_lookup_type         CONSTANT VARCHAR2(25)  :=  'LOOKUP_TYPE';                 -- 参照タイプ
+  cv_0                       CONSTANT VARCHAR2(1)   :=  '0';                           -- 0
+  cv_1                       CONSTANT VARCHAR2(1)   :=  '1';                           -- 1
+  cn_transaction_type_118    CONSTANT NUMBER        :=  118;                           -- 工場直送入庫
+  cn_transaction_type_119    CONSTANT NUMBER        :=  119;                           -- 工場直送入庫振戻
+  cn_transaction_type_120    CONSTANT NUMBER        :=  120;                           -- 工場直送出庫
+  cn_transaction_type_121    CONSTANT NUMBER        :=  121;                           -- 工場直送出庫振戻
+  cv_pkg_name_gr_comp        CONSTANT VARCHAR2(2)   :=  '_2';                          -- 仕訳名(グループ会社用)
+-- Ver1.10 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -240,6 +263,20 @@ AS
   gt_aff3_seihin                gl_interface.segment3%TYPE;                          -- 勘定科目_製品
   gt_aff3_shouhin               gl_interface.segment3%TYPE;                          -- 勘定科目_商品
 -- == 2009/09/04 V1.7 Added END   ===============================================================
+-- Ver1.10 ADD START
+  gt_aff2_acc_dept_code         gl_interface.segment2%TYPE;                          -- 経理部用部門コード
+  gt_aff2_cost_dept_dr          gl_interface.segment2%TYPE;                          -- 売上原価の計上部門（借方）
+  gt_aff2_cost_dept_cr          gl_interface.segment2%TYPE;                          -- 売上原価の計上部門（貸方）
+  gt_aff3_cost_account          gl_interface.segment3%TYPE;                          -- 売上原価の勘定科目
+  gt_aff4_cost_sub_acct         gl_interface.segment4%TYPE;                          -- 売上原価の補助科目
+  gt_aff3_payable               gl_interface.segment3%TYPE;                          -- 勘定科目_買掛金
+  gt_aff4_payable               gl_interface.segment4%TYPE;                          -- 補助科目_買掛金
+  gt_aff3_rounding_error        gl_interface.segment3%TYPE;                          -- 勘定科目_丸め誤差
+  gt_aff4_rounding_error        gl_interface.segment4%TYPE;                          -- 補助科目_丸め誤差
+  gt_je_category_name_inv_gr    gl_interface.user_je_category_name%TYPE;             -- 仕訳カテゴリ名(在庫グループ会社振替)
+  gn_target_sum_cnt_gr          NUMBER;                                              -- 対象件数  (グループ会社集約単位)
+  gn_error_sum_cnt_gr           NUMBER;                                              -- エラー件数(グループ会社集約単位)
+-- Ver1.10 ADD END
 --
 -- == 2009/09/28 V1.8 Added START ===============================================================
   CURSOR mtl_txn_acct_cur
@@ -260,6 +297,15 @@ AS
            ,sub.mta_gl_batch_id                     -- 14.GLバッチID
            ,sub.transaction_type_id                 -- 15.取引タイプID
            ,sub.data_type                           -- 16.データタイプ（1:資材配賦データ、2:リカバリ用データ）
+-- Ver1.10 ADD START
+           ,CASE WHEN sub.transaction_type_id IN (cn_transaction_type_118,cn_transaction_type_119,
+                                              cn_transaction_type_120,cn_transaction_type_121) THEN  -- 工場直送入庫/出庫
+                   NVL(sub.company_code, gt_aff1_company_code)
+                 ELSE
+                   xbdciv.company_code_bd
+            END company_code                                  -- 17.会社コード
+           ,NVL(mtt.attribute6, cv_0) transfer_ownership_flg  -- 18.所有権移転取引フラグ
+-- Ver1.10 ADD END
     FROM    (SELECT  /*+ LEADING(MTA) USE_NL(MTA MMT GCC MSIB) */
                      mta.transaction_id              AS mta_transaction_id            --  1
                     ,gcc.segment2                    AS gcc_dept_code                 --  2
@@ -281,6 +327,9 @@ AS
                     ,mta.gl_batch_id                 AS mta_gl_batch_id               -- 14
                     ,mmt.transaction_type_id         AS transaction_type_id           -- 15
                     ,1                               AS data_type                     -- 16
+-- Ver1.10 ADD START
+                    ,mmt.attribute7                  AS company_code                  -- 17
+-- Ver1.10 ADD END
              FROM    mtl_transaction_accounts        mta                              -- 資材配賦テーブル
                     ,gl_code_combinations            gcc                              -- 勘定科目テーブル
                     ,mtl_system_items_b              msib                             -- Disc品目マスタ
@@ -308,8 +357,21 @@ AS
                     ,xwecv.gl_batch_id               AS mta_gl_batch_id               -- 14
                     ,xwecv.transaction_type_id       AS transaction_type_id           -- 15
                     ,2                               AS data_type                     -- 16
+-- Ver1.10 ADD START
+                    ,xwecv.company_code              AS company_code                  -- 17
+-- Ver1.10 ADD END
              FROM    xxcoi_wk_error_cost_variance    xwecv                            -- 原価差額ワークテーブル（エラー）
             ) sub
+-- Ver1.10 ADD START
+            ,xxcfr_bd_dept_comp_info_v xbdciv                              -- 基準日部門会社情報ビュー
+            ,mtl_transaction_types     mtt                                 -- 取引タイプマスタ
+    WHERE  xbdciv.dept_code        = sub.gcc_dept_code                     -- 部門
+    AND    xbdciv.set_of_books_id  = gt_gl_set_of_bks_id                   -- 会計帳簿ID
+    AND    xbdciv.enabled_flag     = 'Y'
+    AND    sub.mta_transaction_date BETWEEN NVL( xbdciv.comp_start_date, sub.mta_transaction_date )
+                                AND     NVL( xbdciv.comp_end_date, sub.mta_transaction_date )
+    AND    mtt.transaction_type_id = sub.transaction_type_id
+-- Ver1.10 ADD END
     ORDER BY sub.mta_inventory_item_id                                                -- 品目ID
            , sub.mta_transaction_date;                                                -- 取引日
   --
@@ -368,6 +430,12 @@ AS
 -- == 2009/08/17 V1.5 Added START ===============================================================
     cv_flag_n                          CONSTANT VARCHAR2(1)  := 'N';                                -- フラグ値：N
 -- == 2009/08/17 V1.5 Added END   ===============================================================
+-- Ver1.10 ADD START
+    cv_prf_aff3_payable               CONSTANT VARCHAR2(50) := 'XXCOI1_AFF3_PAYABLE';               -- XXCOI:勘定科目_買掛金
+    cv_prf_aff4_payable               CONSTANT VARCHAR2(50) := 'XXCOI1_AFF4_PAYABLE';               -- XXCOI:勘定科目_買掛金
+    cv_prf_aff3_rounding_error        CONSTANT VARCHAR2(50) := 'XXCOI1_AFF3_ROUNDING_ERROR';        -- XXCOI:勘定科目_丸め誤差
+    cv_prf_aff4_rounding_error        CONSTANT VARCHAR2(50) := 'XXCOI1_AFF4_ROUNDING_ERROR';        -- XXCOI:補助科目_丸め誤差
+-- Ver1.10 ADD END
 --
     -- *** ローカル変数 ***
     lv_tkn_profile   VARCHAR2(50);  -- トークン：プロファイル
@@ -455,6 +523,49 @@ AS
       RAISE profile_expt;
     END IF;
 --
+-- Ver1.10 ADD START
+    -- 経理部用部門コード
+    gt_aff2_acc_dept_code := fnd_profile.value( cv_prf_aff2_acc_dept_code );
+    IF( gt_aff2_acc_dept_code IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff2_acc_dept_code;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 勘定科目_買掛金
+    gt_aff3_payable := fnd_profile.value( cv_prf_aff3_payable );
+    IF( gt_aff3_payable IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff3_payable;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 補助科目_買掛金
+    gt_aff4_payable := fnd_profile.value( cv_prf_aff4_payable );
+    IF( gt_aff4_payable IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff4_payable;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 仕訳カテゴリ名(在庫グループ会社振替)
+    gt_je_category_name_inv_gr := fnd_profile.value( cv_prf_gl_category_inv_gr );
+    IF( gt_je_category_name_inv_gr IS NULL ) THEN
+      lv_tkn_profile := cv_prf_gl_category_inv_gr;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 勘定科目_丸め誤差
+    gt_aff3_rounding_error := fnd_profile.value( cv_prf_aff3_rounding_error );
+    IF( gt_aff3_rounding_error IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff3_rounding_error;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 補助科目_丸め誤差
+    gt_aff4_rounding_error := fnd_profile.value( cv_prf_aff4_rounding_error );
+    IF( gt_aff4_rounding_error IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff4_rounding_error;
+      RAISE profile_expt;
+    END IF;
+-- Ver1.10 ADD END
     -- 勘定科目_静岡工場勘定
     gt_aff3_shizuoka_factory := fnd_profile.value( cv_prf_aff3_shizuoka_factory );
     IF( gt_aff3_shizuoka_factory IS NULL ) THEN
@@ -1396,6 +1507,9 @@ AS
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
+-- Ver1.10 ADD START
+    lv_group_company_flg         xxcoi_wk_cost_variance.group_company_flg%TYPE;       -- グループ会社フラグ
+-- Ver1.10 ADD END
 --
   BEGIN
 --
@@ -1470,6 +1584,14 @@ AS
 --      , SYSDATE                                                              -- 25.プログラム更新日
 --    );
 --
+-- Ver1.10 ADD START
+    -- グループ会社判定
+    IF ( ir_txn_acct_rec.company_code = gt_aff1_company_code ) THEN
+      lv_group_company_flg := cv_0;
+    ELSE
+      lv_group_company_flg := cv_1;
+    END IF;
+-- Ver1.10 ADD END
     IF (iv_status = cv_error_record AND ir_txn_acct_rec.data_type = 1)  THEN
       -- エラーデータで、資材配賦情報の場合
       INSERT INTO xxcoi_wk_error_cost_variance(
@@ -1501,6 +1623,11 @@ AS
        ,program_application_id                            -- 26.コンカレント・プログラム・アプリケーションID
        ,program_id                                        -- 27.コンカレント・プログラムID
        ,program_update_date                               -- 28.プログラム更新日
+-- Ver1.10 ADD START
+       ,company_code                                      -- 29.会社コード
+       ,group_company_flg                                 -- 30.グループ会社フラグ
+       ,transfer_ownership_flg                            -- 31.所有権移転取引フラグ
+-- Ver1.10 ADD END
       )VALUES(
         ir_txn_acct_rec.mta_transaction_id                -- 01
        ,ir_txn_acct_rec.gcc_dept_code                     -- 02
@@ -1533,6 +1660,11 @@ AS
        ,cn_program_application_id                         -- 26
        ,cn_program_id                                     -- 27
        ,SYSDATE                                           -- 28
+-- Ver1.10 ADD START
+       ,ir_txn_acct_rec.company_code                      -- 29
+       ,lv_group_company_flg                              -- 30
+       ,ir_txn_acct_rec.transfer_ownership_flg            -- 31
+-- Ver1.10 ADD END
       );
       --
     ELSIF (iv_status <> cv_error_record)  THEN
@@ -1564,6 +1696,13 @@ AS
         , program_application_id                          -- 23.コンカレント・プログラム・アプリケーションID
         , program_id                                      -- 24.コンカレント・プログラムID
         , program_update_date                             -- 25.プログラム更新日
+-- Ver1.10 ADD START
+        , company_code                                    -- 26.会社コード
+        , transaction_type_id                             -- 27.取引タイプID
+        , group_company_flg                               -- 28.グループ会社フラグ
+        , transfer_ownership_flg                          -- 29.所有権移転取引フラグ
+        , reverse_flg                                     -- 30.反転フラグ
+-- Ver1.10 ADD END
       ) VALUES (
           ir_txn_acct_rec.mta_transaction_id              --  1.在庫取引ID
         , ir_txn_acct_rec.gcc_dept_code                   --  2.部門コード
@@ -1593,8 +1732,86 @@ AS
         , cn_program_application_id                       -- 23.コンカレント・プログラム・アプリケーションID
         , cn_program_id                                   -- 24.コンカレント・プログラムID
         , SYSDATE                                         -- 25.プログラム更新日
+-- Ver1.10 ADD START
+        , ir_txn_acct_rec.company_code                    -- 26.会社コード
+        , ir_txn_acct_rec.transaction_type_id             -- 27.取引タイプID
+        , lv_group_company_flg                            -- 28.グループ会社フラグ
+        , ir_txn_acct_rec.transfer_ownership_flg          -- 29.所有権移転取引フラグ
+        , cv_0                                            -- 30.反転フラグ
+-- Ver1.10 ADD END
       );
       --
+-- Ver1.10 ADD START
+      -- 伊藤園以外は赤データ作成
+      IF ( ir_txn_acct_rec.company_code <> gt_aff1_company_code ) THEN
+        INSERT INTO xxcoi_wk_cost_variance(
+            transaction_id                                  --  1.在庫取引ID
+          , dept_code                                       --  2.部門コード
+          , adj_dept_code                                   --  3.調整部門コード
+          , account_code                                    --  4.勘定科目コード
+          , subacct_code                                    --  5.補助科目コード
+          , inventory_item_id                               --  6.品目ID
+          , transaction_date                                --  7.取引日
+          , transaction_value                               --  8.取引金額
+          , primary_quantity                                --  9.取引数量
+          , base_transaction_value                          -- 10.基準単位金額
+          , organization_id                                 -- 11.組織ID
+          , gl_batch_id                                     -- 12.GLバッチID
+          , standard_cost                                   -- 13.標準原価
+          , operation_cost                                  -- 14.営業原価
+          , cost_variance                                   -- 15.原価差額
+          , status                                          -- 16.ステータス
+          , created_by                                      -- 17.作成者
+          , creation_date                                   -- 18.作成日
+          , last_updated_by                                 -- 19.最終更新者
+          , last_update_date                                -- 20.最終更新日
+          , last_update_login                               -- 21.最終更新ログイン
+          , request_id                                      -- 22.要求ID
+          , program_application_id                          -- 23.コンカレント・プログラム・アプリケーションID
+          , program_id                                      -- 24.コンカレント・プログラムID
+          , program_update_date                             -- 25.プログラム更新日
+          , company_code                                    -- 26.会社コード
+          , transaction_type_id                             -- 27.取引タイプID
+          , group_company_flg                               -- 28.グループ会社フラグ
+          , transfer_ownership_flg                          -- 29.所有権移転取引フラグ
+          , reverse_flg                                     -- 30.反転フラグ
+        ) VALUES (
+            ir_txn_acct_rec.mta_transaction_id              --  1.在庫取引ID
+          , ir_txn_acct_rec.gcc_dept_code                   --  2.部門コード
+          , ir_txn_acct_rec.xwcv_adj_dept_code              --  3.調整部門コード
+          , ir_txn_acct_rec.gcc_account_code                --  4.勘定科目コード
+          , ir_txn_acct_rec.gcc_subacct_code                --  5.補助科目コード
+          , ir_txn_acct_rec.mta_inventory_item_id           --  6.品目ID
+          , CASE WHEN ir_txn_acct_rec.mta_transaction_date > gt_last_period_date
+              THEN gt_effective_date
+              ELSE gt_last_period_date
+            END                                               --  7.取引日
+          , ir_txn_acct_rec.mta_transaction_value             --  8.取引金額
+          , (ir_txn_acct_rec.mta_primary_quantity * -1)       --  9.取引数量
+          , (ir_txn_acct_rec.mta_base_transaction_value * -1) -- 10.基準単位金額
+          , ir_txn_acct_rec.mta_organization_id               -- 11.組織ID
+          , ir_txn_acct_rec.mta_gl_batch_id                   -- 12.GLバッチID
+          , in_standard_cost                                  -- 13.標準原価
+          , in_operation_cost                                 -- 14.営業原価
+          , (in_cost_variance * -1)                           -- 15.原価差額
+          , iv_status                                         -- 16.ステータス
+          , cn_created_by                                     -- 17.作成者
+          , SYSDATE                                           -- 18.作成日
+          , cn_last_updated_by                                -- 19.最終更新者
+          , SYSDATE                                           -- 20.最終更新日
+          , cn_last_update_login                              -- 21.最終更新ログイン
+          , cn_request_id                                     -- 22.要求ID
+          , cn_program_application_id                         -- 23.コンカレント・プログラム・アプリケーションID
+          , cn_program_id                                     -- 24.コンカレント・プログラムID
+          , SYSDATE                                           -- 25.プログラム更新日
+          , ir_txn_acct_rec.company_code                      -- 26.会社コード
+          , ir_txn_acct_rec.transaction_type_id               -- 27.取引タイプID
+          , lv_group_company_flg                              -- 28.グループ会社フラグ
+          , ir_txn_acct_rec.transfer_ownership_flg            -- 29.所有権移転取引フラグ
+          , cv_1                                              -- 30.反転フラグ
+        );
+      END IF;
+-- Ver1.10 ADD END
       IF (ir_txn_acct_rec.data_type = 2) THEN
         -- リカバリ用データの場合
         DELETE  xxcoi_wk_error_cost_variance
@@ -1706,6 +1923,9 @@ AS
 -- == 2009/09/28 V1.8 Deleted START ===============================================================
 --      WHERE    xwcv.status                <> cv_error_record               -- エラーレコードでない
 -- == 2009/09/28 V1.8 Deleted END   ===============================================================
+-- Ver1.10 ADD START
+      WHERE   xwcv.group_company_flg = cv_0                               -- 会社：伊藤園
+-- Ver1.10 ADD END
       GROUP BY xwcv.adj_dept_code
              , xwcv.account_code
              , xwcv.subacct_code
@@ -1964,6 +2184,970 @@ AS
 --
   END ins_gl_if;
 --
+-- Ver1.10 ADD START
+  /**********************************************************************************
+   * Procedure Name   : ins_gl_if_reg
+   * Description      : GL-IF登録処理 (A-11)
+   ***********************************************************************************/
+  PROCEDURE ins_gl_if_reg(
+    id_accounting_date       IN  DATE,         --   仕訳有効日付
+    iv_segment1              IN  VARCHAR2,     --   会社コード
+    iv_segment2              IN  VARCHAR2,     --   部門コード
+    iv_segment3              IN  VARCHAR2,     --   勘定科目コード
+    iv_segment4              IN  VARCHAR2,     --   補助科目コード
+    in_entered_dr            IN  NUMBER,       --   借方金額
+    in_entered_cr            IN  NUMBER,       --   貸方金額
+    iv_reference21           IN  VARCHAR2,     --   GLバッチID
+    iv_period_name           IN  VARCHAR2,     --   会計期間名
+    iv_user_je_category_name IN  VARCHAR2,     --   仕訳カテゴリ名
+    ov_errbuf                OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode               OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg                OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_gl_if_reg'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_n            CONSTANT VARCHAR2(1) := 'N';     -- フラグ値：N
+    cv_status_new        CONSTANT VARCHAR2(3) := 'NEW';   -- 固定値：NEW
+    cv_code_jpy          CONSTANT VARCHAR2(3) := 'JPY';   -- 固定値：JPY
+    cv_flag_a            CONSTANT VARCHAR2(1) := 'A';     -- 固定値：A
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 一般会計OIF挿入
+    INSERT INTO gl_interface(
+        status                               --  1.ステータス
+      , set_of_books_id                      --  2.会計帳簿ID
+      , accounting_date                      --  3.仕訳有効日付
+      , currency_code                        --  4.通貨コード
+      , date_created                         --  5.新規作成日付
+      , created_by                           --  6.新規作成者ID
+      , actual_flag                          --  7.残高タイプ
+      , user_je_category_name                --  8.仕訳カテゴリ名
+      , user_je_source_name                  --  9.仕訳ソース名
+      , segment1                             -- 10.会社コード
+      , segment2                             -- 11.部門コード
+      , segment3                             -- 12.勘定科目コード
+      , segment4                             -- 13.補助科目コード
+      , segment5                             -- 14.顧客コード
+      , segment6                             -- 15.企業コード
+      , segment7                             -- 16.予備1
+      , segment8                             -- 17.予備2
+      , entered_dr                           -- 18.借方金額
+      , entered_cr                           -- 19.貸方金額
+      , reference1                           -- 20.仕訳バッチ名
+      , reference4                           -- 21.仕訳名
+      , reference21                          -- 22.GLバッチID
+      , period_name                          -- 23.会計期間名
+      , group_id                             -- 24.グループID
+      , attribute3                           -- 25.伝票番号
+      , attribute4                           -- 26.起票部門コード
+      , attribute5                           -- 27.伝票入力者
+      , context                              -- 28.DFFコンテキスト
+    ) VALUES (
+        cv_status_new                        --  1.固定値：NEW
+      , gt_gl_set_of_bks_id                  --  2.プロファイル値：会計帳簿ID
+      , id_accounting_date                   --  3.取引日
+      , cv_code_jpy                          --  4.固定値：JPY
+      , SYSDATE                              --  5.システム日付
+      , cn_created_by                        --  6.ユーザーID
+      , cv_flag_a                            --  7.固定値：A
+      , iv_user_je_category_name             --  8.仕訳カテゴリ名
+      , gt_je_source_name_inv_cost           --  9.プロファイル値：在庫原価振替
+      , iv_segment1                          -- 10.会社コード
+      , iv_segment2                          -- 11.調整部門コード
+      , iv_segment3                          -- 12.勘定科目コード
+      , iv_segment4                          -- 13.補助科目コード
+      , gt_aff5_dummy                        -- 14.プロファイル値：顧客コード_ダミー値
+      , gt_aff6_dummy                        -- 15.プロファイル値：企業コード_ダミー値
+      , gt_aff7_dummy                        -- 16.プロファイル値：予備１_ダミー値
+      , gt_aff8_dummy                        -- 17.プロファイル値：予備２_ダミー値
+      , in_entered_dr                        -- 18.借方金額
+      , in_entered_cr                        -- 19.貸方金額
+      , gt_je_batch_name                     -- 20.仕訳バッチ名
+      , cv_pkg_name || cv_pkg_name_gr_comp   -- 21.固定値：XCOI007A01C(プログラム短縮名)
+      , iv_reference21                       -- 22.GLバッチID
+      , iv_period_name                       -- 23.会計期間名
+      , gt_group_id                          -- 24.グループID
+      , TO_CHAR( cn_request_id )             -- 25.要求ID
+      , gt_aff2_adj_dept_code                -- 26.調整部門コード
+      , TO_CHAR( cn_created_by )             -- 27.ユーザーID
+      , gt_gl_set_of_bks_name                -- 28.プロファイル値：会計帳簿名
+    );
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_gl_if_reg;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_gl_if_gr_comp
+   * Description      : 棚卸資産情報GL-IF登録(グループ会社) (A-10)
+   ***********************************************************************************/
+  PROCEDURE ins_gl_if_gr_comp(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_gl_if_gr_comp'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_n            CONSTANT VARCHAR2(1) := 'N';     -- フラグ値：N
+    cv_status_new        CONSTANT VARCHAR2(3) := 'NEW';   -- 固定値：NEW
+    cv_code_jpy          CONSTANT VARCHAR2(3) := 'JPY';   -- 固定値：JPY
+    cv_flag_a            CONSTANT VARCHAR2(1) := 'A';     -- 固定値：A
+--
+    -- *** ローカル変数 ***
+    lt_entered_dr        gl_interface.entered_dr%TYPE;    -- 借方金額
+    lt_entered_cr        gl_interface.entered_cr%TYPE;    -- 貸方金額
+    lt_segment2          gl_interface.segment2%TYPE;      -- 部門
+    lt_segment3          gl_interface.segment3%TYPE;      -- 勘定科目
+    lt_segment4          gl_interface.segment4%TYPE;      -- 補助科目
+--
+    -- ===============================
+    -- 棚卸資産情報の抽出
+    -- ===============================
+    -- 棚卸資産仕訳情報カーソル
+    CURSOR xwcv_sum_gr_cur
+    IS
+      SELECT
+              xwcv2.dept_code                    AS xwcv_dept_code              -- 部門コード
+            , xwcv2.grcp_adj_dept_code           AS xwcv_grcp_adj_dept_code     -- 変換後調整部門コード
+            , xwcv2.account_code                 AS xwcv_account_code           -- 勘定科目コード
+            , xwcv2.subacct_code                 AS xwcv_subacct_code           -- 補助科目コード
+            , xwcv2.transaction_date             AS xwcv_transaction_date       -- 取引日
+            , xwcv2.gl_batch_id                  AS xwcv_gl_batch_id            -- GLバッチID
+            , NULL                               AS gp_period_name              -- 会計期間名
+            , xwcv2.company_code                 AS xwcv_company_code           -- 会社コード
+            , xwcv2.transfer_ownership_flg       AS transfer_ownership_flg      -- 所有権移転取引フラグ
+            , ROUND( SUM( xwcv2.primary_quantity * operation_cost ),0)
+                                                 AS sum_amount                  -- 営業原価金額
+            , ROUND( SUM( xwcv2.primary_quantity * standard_cost ),0)
+                                                 AS sum_cost_amount             -- 標準原価金額
+            , ROUND( SUM( xwcv2.primary_quantity *
+                ROUND( xwcv2.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)),0)
+                                                 AS sum_purchase_amount         -- 購入金額
+      FROM    xxcoi_wk_cost_variance    xwcv2                              -- 原価差額ワークテーブル
+            , xxcfr_bd_company_info_v   flv                                -- 各社利益率
+      WHERE   xwcv2.group_company_flg = cv_1                               -- 1:グループ会社
+      AND     xwcv2.reverse_flg       = cv_0                               -- 0:元データ
+      AND     flv.lookup_type         = cv_company_profit_rate
+      AND     flv.company_code        = xwcv2.company_code
+      AND     TRUNC( xwcv2.transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv2.transaction_date )
+                                           AND     NVL( flv.end_date_active, xwcv2.transaction_date )
+      AND     xwcv2.transaction_type_id <> gt_trans_type_std_cost_upd      -- 標準原価更新は除く
+      GROUP BY xwcv2.dept_code
+             , xwcv2.grcp_adj_dept_code
+             , xwcv2.account_code
+             , xwcv2.subacct_code
+             , xwcv2.transaction_date
+             , xwcv2.gl_batch_id
+             , xwcv2.company_code
+             , xwcv2.transfer_ownership_flg
+      ;
+    -- 棚卸資産情報カーソル レコード型
+    xwcv_sumr_gr_rec xwcv_sum_gr_cur%ROWTYPE;
+--
+    -- ===============================
+    -- 標準原価更新情報の抽出
+    -- ===============================
+    -- 標準原価更新情報カーソル
+    CURSOR xwcv_sum_gr_cur2
+    IS
+      SELECT
+              xwcv2.dept_code                    AS xwcv_dept_code              -- 部門コード
+            , xwcv2.grcp_adj_dept_code           AS xwcv_grcp_adj_dept_code     -- 変換後調整部門コード
+            , xwcv2.account_code                 AS xwcv_account_code           -- 勘定科目コード
+            , xwcv2.subacct_code                 AS xwcv_subacct_code           -- 補助科目コード
+            , xwcv2.transaction_date             AS xwcv_transaction_date       -- 取引日
+            , xwcv2.gl_batch_id                  AS xwcv_gl_batch_id            -- GLバッチID
+            , NULL                               AS gp_period_name              -- 会計期間名
+            , xwcv2.company_code                 AS xwcv_company_code           -- 会社コード
+            , xwcv2.transfer_ownership_flg       AS transfer_ownership_flg      -- 所有権移転取引フラグ
+            , ROUND(SUM(xwcv2.base_transaction_value),0)
+                                                 AS sum_amount                  -- 営業原価金額
+      FROM    xxcoi_wk_cost_variance    xwcv2                                -- 原価差額ワークテーブル
+      WHERE   xwcv2.group_company_flg   = cv_1                               -- 1:グループ会社
+      AND     xwcv2.reverse_flg         = cv_0                               -- 0:元データ
+      AND     xwcv2.transaction_type_id = gt_trans_type_std_cost_upd         -- 標準原価更新
+      GROUP BY xwcv2.dept_code
+             , xwcv2.grcp_adj_dept_code
+             , xwcv2.account_code
+             , xwcv2.subacct_code
+             , xwcv2.transaction_date
+             , xwcv2.gl_batch_id
+             , xwcv2.company_code
+             , xwcv2.transfer_ownership_flg
+      ;
+    -- 標準原価更新情報カーソル レコード型
+    xwcv_sumr_gr_rec2 xwcv_sum_gr_cur2%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ============================================================
+    -- グループ会社と対になる仕訳が伊藤園の場合、グループ会社と判定
+    -- ============================================================
+    -- グループ会社フラグを更新
+    UPDATE xxcoi_wk_cost_variance xwcv
+    SET    xwcv.group_company_flg = cv_1   -- 1:グループ会社
+    WHERE  EXISTS ( SELECT 1
+                    FROM   xxcoi_wk_cost_variance xwcv2
+                    WHERE  xwcv.transaction_id     = xwcv2.transaction_id
+                    AND    xwcv2.group_company_flg = cv_1
+                  )
+    ;
+--
+    -- 対になる伊藤園仕訳の赤データ作成
+    INSERT INTO xxcoi_wk_cost_variance(
+        transaction_id                                  --  1.在庫取引ID
+      , dept_code                                       --  2.部門コード
+      , adj_dept_code                                   --  3.調整部門コード
+      , account_code                                    --  4.勘定科目コード
+      , subacct_code                                    --  5.補助科目コード
+      , inventory_item_id                               --  6.品目ID
+      , transaction_date                                --  7.取引日
+      , transaction_value                               --  8.取引金額
+      , primary_quantity                                --  9.取引数量
+      , base_transaction_value                          -- 10.基準単位金額
+      , organization_id                                 -- 11.組織ID
+      , gl_batch_id                                     -- 12.GLバッチID
+      , standard_cost                                   -- 13.標準原価
+      , operation_cost                                  -- 14.営業原価
+      , cost_variance                                   -- 15.原価差額
+      , status                                          -- 16.ステータス
+      , created_by                                      -- 17.作成者
+      , creation_date                                   -- 18.作成日
+      , last_updated_by                                 -- 19.最終更新者
+      , last_update_date                                -- 20.最終更新日
+      , last_update_login                               -- 21.最終更新ログイン
+      , request_id                                      -- 22.要求ID
+      , program_application_id                          -- 23.コンカレント・プログラム・アプリケーションID
+      , program_id                                      -- 24.コンカレント・プログラムID
+      , program_update_date                             -- 25.プログラム更新日
+      , company_code                                    -- 26.会社コード
+      , transaction_type_id                             -- 27.取引タイプID
+      , group_company_flg                               -- 28.グループ会社フラグ
+      , transfer_ownership_flg                          -- 29.所有権移転取引フラグ
+      , reverse_flg                                     -- 30.反転フラグ
+    )
+    SELECT
+        xwcv.transaction_id                             --  1.在庫取引ID
+      , xwcv.dept_code                                  --  2.部門コード
+      , xwcv.adj_dept_code                              --  3.調整部門コード
+      , xwcv.account_code                               --  4.勘定科目コード
+      , xwcv.subacct_code                               --  5.補助科目コード
+      , xwcv.inventory_item_id                          --  6.品目ID
+      , xwcv.transaction_date                           --  7.取引日
+      , xwcv.transaction_value                          --  8.取引金額
+      , (xwcv.primary_quantity * -1)                    --  9.取引数量
+      , (xwcv.base_transaction_value * -1)              -- 10.基準単位金額
+      , xwcv.organization_id                            -- 11.組織ID
+      , xwcv.gl_batch_id                                -- 12.GLバッチID
+      , xwcv.standard_cost                              -- 13.標準原価
+      , xwcv.operation_cost                             -- 14.営業原価
+      , (xwcv.cost_variance * -1)                       -- 15.原価差額
+      , xwcv.status                                     -- 16.ステータス
+      , xwcv.created_by                                 -- 17.作成者
+      , xwcv.creation_date                              -- 18.作成日
+      , xwcv.last_updated_by                            -- 19.最終更新者
+      , xwcv.last_update_date                           -- 20.最終更新日
+      , xwcv.last_update_login                          -- 21.最終更新ログイン
+      , xwcv.request_id                                 -- 22.要求ID
+      , xwcv.program_application_id                     -- 23.コンカレント・プログラム・アプリケーションID
+      , xwcv.program_id                                 -- 24.コンカレント・プログラムID
+      , xwcv.program_update_date                        -- 25.プログラム更新日
+      , xwcv.company_code                               -- 26.会社コード
+      , xwcv.transaction_type_id                        -- 27.取引タイプID
+      , xwcv.group_company_flg                          -- 28.グループ会社フラグ
+      , xwcv.transfer_ownership_flg                     -- 29.所有権移転取引フラグ
+      , cv_1                                            -- 30.反転フラグ
+    FROM  xxcoi_wk_cost_variance xwcv
+    WHERE xwcv.group_company_flg = cv_1
+    AND   xwcv.company_code      = gt_aff1_company_code
+    ;
+--
+    -- ============================================================
+    -- グループ会社を更新
+    -- ============================================================
+    UPDATE xxcoi_wk_cost_variance xwcv
+    SET    xwcv.company_code = (SELECT xwcv2.company_code
+                                FROM   xxcoi_wk_cost_variance xwcv2
+                                WHERE  xwcv.transaction_id    = xwcv2.transaction_id
+                                AND    xwcv2.company_code    <> gt_aff1_company_code
+                                AND    ROWNUM = 1)
+    WHERE  xwcv.group_company_flg = cv_1                  -- 1:グループ会社
+    AND    xwcv.company_code      = gt_aff1_company_code  -- 伊藤園
+    ;
+--
+    -- ============================================================
+    -- グループ会社の調整部門変換
+    -- ============================================================
+    UPDATE xxcoi_wk_cost_variance xwcv
+    SET    xwcv.grcp_adj_dept_code = (CASE
+                                      WHEN (xwcv.dept_code IN (gt_aff2_adj_dept_code,gt_aff2_acc_dept_code)  ) THEN
+                                          (SELECT flv.attribute3
+                                           FROM   fnd_lookup_values   flv
+                                           WHERE  flv.lookup_type   = cv_conv_dept_code
+                                           AND    flv.attribute1    = xwcv.company_code
+                                           AND    flv.attribute2    = xwcv.dept_code
+                                           AND    flv.language      = USERENV( 'LANG' ))
+                                      ELSE
+                                        xwcv.dept_code
+                                      END)
+    WHERE  xwcv.group_company_flg = cv_1      -- 1:グループ会社
+    ;
+--
+    -- ====================================
+    -- GLインターフェース格納(棚卸資産情報)
+    -- ====================================
+    OPEN xwcv_sum_gr_cur;
+    LOOP
+      FETCH xwcv_sum_gr_cur INTO xwcv_sumr_gr_rec;
+      EXIT WHEN xwcv_sum_gr_cur%NOTFOUND; 
+--
+      IF (xwcv_sumr_gr_rec.sum_amount <> 0) THEN
+        --金額が0でなければ以下の処理を実施する
+        IF (xwcv_sumr_gr_rec.xwcv_transaction_date > gt_last_period_date) THEN
+          xwcv_sumr_gr_rec.gp_period_name := gt_period_name_tm;
+        ELSE
+          xwcv_sumr_gr_rec.gp_period_name := gt_period_name_lm;
+        END IF;
+--
+        -- 初期化
+        lt_entered_dr      := NULL;  -- 借方金額
+        lt_entered_cr      := NULL;  -- 貸方金額
+--
+        -- 金額が＋なら借方金額にセット
+        IF ( xwcv_sumr_gr_rec.sum_amount * -1 ) > 0 THEN
+          lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_amount );
+        -- 金額が－なら貸方金額にセット
+        ELSE
+          lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_amount );
+        END IF;
+--
+        -- ===============================
+        -- GL-IF登録処理（振り戻し）
+        -- ===============================
+        ins_gl_if_reg(
+            id_accounting_date       => xwcv_sumr_gr_rec.xwcv_transaction_date,        -- 仕訳有効日付
+            iv_segment1              => gt_aff1_company_code,                          -- 会社コード
+            iv_segment2              => xwcv_sumr_gr_rec.xwcv_dept_code,               -- 部門コード
+            iv_segment3              => xwcv_sumr_gr_rec.xwcv_account_code,            -- 勘定科目コード
+            iv_segment4              => xwcv_sumr_gr_rec.xwcv_subacct_code,            -- 補助科目コード
+            in_entered_dr            => lt_entered_dr,                                 -- 借方金額
+            in_entered_cr            => lt_entered_cr,                                 -- 貸方金額
+            iv_reference21           => TO_CHAR( xwcv_sumr_gr_rec.xwcv_gl_batch_id ),  -- GLバッチID
+            iv_period_name           => xwcv_sumr_gr_rec.gp_period_name,               -- 会計期間名
+            iv_user_je_category_name => gt_je_category_name_inv_gr,                    -- 仕訳カテゴリ名
+            ov_errbuf                => lv_errbuf    -- エラー・メッセージ
+          , ov_retcode               => lv_retcode   -- リターン・コード
+          , ov_errmsg                => lv_errmsg    -- ユーザー・エラー・メッセージ
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 所有権移転取引の場合
+        IF ( xwcv_sumr_gr_rec.transfer_ownership_flg = cv_1 ) THEN
+          -- 初期化
+          lt_entered_dr      := NULL;  -- 借方金額
+          lt_entered_cr      := NULL;  -- 貸方金額
+          lt_segment2        := NULL;  -- 部門
+          lt_segment3        := NULL;  -- 勘定科目
+          lt_segment4        := NULL;  -- 補助科目
+--
+          -- 計上部門取得
+          BEGIN
+            SELECT  flv.attribute1  AS attribute1
+                  , flv.attribute2  AS attribute2
+            INTO    gt_aff2_cost_dept_dr
+                  , gt_aff2_cost_dept_cr
+            FROM   fnd_lookup_values   flv
+            WHERE  flv.lookup_type   = cv_conv_cost_dept
+            AND    flv.language      = USERENV( 'LANG' )
+            AND    flv.enabled_flag  = 'Y'
+            AND    TRUNC( xwcv_sumr_gr_rec.xwcv_transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv_sumr_gr_rec.xwcv_transaction_date )
+                                             AND     NVL( flv.end_date_active, xwcv_sumr_gr_rec.xwcv_transaction_date )
+            ;
+          EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_appl_short_name_xxcoi
+                           , iv_name         => cv_msg_code_xxcoi_10750
+                           , iv_token_name1  => cv_tkn_lookup_type
+                           , iv_token_value1 => cv_conv_cost_dept
+                         );
+            lv_errbuf :=  lv_errmsg;
+            RAISE global_api_expt;
+          END;
+--
+          -- 売上原価の勘定科目・補助科目取得
+          BEGIN
+            SELECT  flv.attribute1  AS attribute1
+                  , flv.attribute2  AS attribute2
+            INTO    gt_aff3_cost_account
+                  , gt_aff4_cost_sub_acct
+            FROM    fnd_lookup_values   flv
+            WHERE   flv.lookup_type   = cv_conv_cost_account
+            AND     flv.attribute3    = xwcv_sumr_gr_rec.xwcv_account_code
+            AND     flv.attribute4    = xwcv_sumr_gr_rec.xwcv_subacct_code
+            AND     flv.language      = USERENV( 'LANG' )
+            AND     flv.enabled_flag  = 'Y'
+            AND     TRUNC( xwcv_sumr_gr_rec.xwcv_transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv_sumr_gr_rec.xwcv_transaction_date )
+                                              AND     NVL( flv.end_date_active, xwcv_sumr_gr_rec.xwcv_transaction_date )
+            ;
+          EXCEPTION
+          WHEN OTHERS THEN
+            -- 変換対象外の勘定科目
+            gt_aff3_cost_account  := xwcv_sumr_gr_rec.xwcv_account_code;
+            gt_aff4_cost_sub_acct := xwcv_sumr_gr_rec.xwcv_subacct_code;
+          END;
+--
+          -- 金額が＋なら借方金額にセット
+          IF xwcv_sumr_gr_rec.sum_cost_amount > 0 THEN
+            lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+            lt_segment2   := gt_aff2_cost_dept_dr;
+            lt_segment3   := gt_aff3_cost_account;
+            lt_segment4   := gt_aff4_cost_sub_acct;
+          -- 金額が－なら貸方金額にセット
+          ELSE
+            lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+            lt_segment2   := gt_aff2_cost_dept_cr;
+            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
+            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+          END IF;
+--
+          -- ===============================
+          -- GL-IF登録処理（売上原価）
+          -- ===============================
+          ins_gl_if_reg(
+              id_accounting_date       => xwcv_sumr_gr_rec.xwcv_transaction_date,        -- 仕訳有効日付
+              iv_segment1              => gt_aff1_company_code,                          -- 会社コード
+              iv_segment2              => lt_segment2,                                   -- 部門コード
+              iv_segment3              => lt_segment3,                                   -- 勘定科目コード
+              iv_segment4              => lt_segment4,                                   -- 補助科目コード
+              in_entered_dr            => lt_entered_dr,                                 -- 借方金額
+              in_entered_cr            => lt_entered_cr,                                 -- 貸方金額
+              iv_reference21           => TO_CHAR( xwcv_sumr_gr_rec.xwcv_gl_batch_id ),  -- GLバッチID
+              iv_period_name           => xwcv_sumr_gr_rec.gp_period_name,               -- 会計期間名
+              iv_user_je_category_name => gt_je_category_name_inv_gr,                    -- 仕訳カテゴリ名
+              ov_errbuf                => lv_errbuf   -- エラー・メッセージ
+            , ov_retcode               => lv_retcode  -- リターン・コード
+            , ov_errmsg                => lv_errmsg   -- ユーザー・エラー・メッセージ
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- 初期化
+          lt_entered_dr      := NULL;  -- 借方金額
+          lt_entered_cr      := NULL;  -- 貸方金額
+          lt_segment2        := NULL;  -- 部門
+          lt_segment3        := NULL;  -- 勘定科目
+          lt_segment4        := NULL;  -- 補助科目
+          -- 金額が＋なら借方金額にセット
+          IF xwcv_sumr_gr_rec.sum_purchase_amount > 0 THEN
+            lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_purchase_amount );
+            lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
+            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
+            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+          -- 金額が－なら貸方金額にセット
+          ELSE
+            lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_purchase_amount );
+            lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
+            lt_segment3   := gt_aff3_payable;    -- 買掛金
+            lt_segment4   := gt_aff4_payable;    -- 買掛金(補助)
+          END IF;
+          -- ===============================
+          -- GL-IF登録処理（棚卸資産仕訳）
+          -- ===============================
+          ins_gl_if_reg(
+              id_accounting_date       => xwcv_sumr_gr_rec.xwcv_transaction_date,        -- 仕訳有効日付
+              iv_segment1              => xwcv_sumr_gr_rec.xwcv_company_code,            -- 会社コード
+              iv_segment2              => lt_segment2,                                   -- 部門コード
+              iv_segment3              => lt_segment3,                                   -- 勘定科目コード
+              iv_segment4              => lt_segment4,                                   -- 補助科目コード
+              in_entered_dr            => lt_entered_dr,                                 -- 借方金額
+              in_entered_cr            => lt_entered_cr,                                 -- 貸方金額
+              iv_reference21           => TO_CHAR( xwcv_sumr_gr_rec.xwcv_gl_batch_id ),  -- GLバッチID
+              iv_period_name           => xwcv_sumr_gr_rec.gp_period_name,               -- 会計期間名
+              iv_user_je_category_name => gt_je_category_name_inv_gr,                    -- 仕訳カテゴリ名
+              ov_errbuf                => lv_errbuf   -- エラー・メッセージ
+            , ov_retcode               => lv_retcode  -- リターン・コード
+            , ov_errmsg                => lv_errmsg   -- ユーザー・エラー・メッセージ
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+        ELSE
+          -- 所有権移転取引以外
+          -- 初期化
+          lt_entered_dr      := NULL;  -- 借方金額
+          lt_entered_cr      := NULL;  -- 貸方金額
+          -- 金額が＋なら借方金額にセット
+          IF xwcv_sumr_gr_rec.sum_purchase_amount > 0 THEN
+            lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_purchase_amount );
+          -- 金額が－なら貸方金額にセット
+          ELSE
+            lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_purchase_amount );
+          END IF;
+--
+          -- ===============================
+          -- GL-IF登録処理（棚卸資産仕訳）
+          -- ===============================
+          ins_gl_if_reg(
+              id_accounting_date       => xwcv_sumr_gr_rec.xwcv_transaction_date,        -- 仕訳有効日付
+              iv_segment1              => xwcv_sumr_gr_rec.xwcv_company_code,            -- 会社コード
+              iv_segment2              => xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code,      -- 部門コード
+              iv_segment3              => xwcv_sumr_gr_rec.xwcv_account_code,            -- 勘定科目コード
+              iv_segment4              => xwcv_sumr_gr_rec.xwcv_subacct_code,            -- 補助科目コード
+              in_entered_dr            => lt_entered_dr,                                 -- 借方金額
+              in_entered_cr            => lt_entered_cr,                                 -- 貸方金額
+              iv_reference21           => TO_CHAR( xwcv_sumr_gr_rec.xwcv_gl_batch_id ),  -- GLバッチID
+              iv_period_name           => xwcv_sumr_gr_rec.gp_period_name,               -- 会計期間名
+              iv_user_je_category_name => gt_je_category_name_inv_gr,                    -- 仕訳カテゴリ名
+              ov_errbuf                => lv_errbuf   -- エラー・メッセージ
+            , ov_retcode               => lv_retcode  -- リターン・コード
+            , ov_errmsg                => lv_errmsg   -- ユーザー・エラー・メッセージ
+          );
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END IF;
+      END IF;
+    END LOOP;
+    -- 対象件数(グループ会社集約単位)セット
+    gn_target_sum_cnt_gr := xwcv_sum_gr_cur%ROWCOUNT;
+    CLOSE xwcv_sum_gr_cur;
+--
+    -- ========================================
+    -- GLインターフェース格納(標準原価更新情報)
+    -- ========================================
+    OPEN xwcv_sum_gr_cur2;
+    LOOP
+      FETCH xwcv_sum_gr_cur2 INTO xwcv_sumr_gr_rec2;
+      EXIT WHEN xwcv_sum_gr_cur2%NOTFOUND; 
+--
+      IF (xwcv_sumr_gr_rec2.sum_amount <> 0) THEN
+        --金額が0でなければ以下の処理を実施する
+        IF (xwcv_sumr_gr_rec2.xwcv_transaction_date > gt_last_period_date) THEN
+          xwcv_sumr_gr_rec2.gp_period_name := gt_period_name_tm;
+        ELSE
+          xwcv_sumr_gr_rec2.gp_period_name := gt_period_name_lm;
+        END IF;
+--
+        -- 初期化
+        lt_entered_dr      := NULL;  -- 借方金額
+        lt_entered_cr      := NULL;  -- 貸方金額
+--
+        -- 金額が＋なら借方金額にセット
+        IF ( xwcv_sumr_gr_rec2.sum_amount * -1 ) > 0 THEN
+          lt_entered_dr := ABS( xwcv_sumr_gr_rec2.sum_amount );
+        -- 金額が－なら貸方金額にセット
+        ELSE
+          lt_entered_cr := ABS( xwcv_sumr_gr_rec2.sum_amount );
+        END IF;
+--
+        -- ===============================
+        -- GL-IF登録処理（振り戻し）
+        -- ===============================
+        ins_gl_if_reg(
+            id_accounting_date       => xwcv_sumr_gr_rec2.xwcv_transaction_date,        -- 仕訳有効日付
+            iv_segment1              => gt_aff1_company_code,                           -- 会社コード
+            iv_segment2              => xwcv_sumr_gr_rec2.xwcv_dept_code,               -- 部門コード
+            iv_segment3              => xwcv_sumr_gr_rec2.xwcv_account_code,            -- 勘定科目コード
+            iv_segment4              => xwcv_sumr_gr_rec2.xwcv_subacct_code,            -- 補助科目コード
+            in_entered_dr            => lt_entered_dr,                                  -- 借方金額
+            in_entered_cr            => lt_entered_cr,                                  -- 貸方金額
+            iv_reference21           => TO_CHAR( xwcv_sumr_gr_rec2.xwcv_gl_batch_id ),  -- GLバッチID
+            iv_period_name           => xwcv_sumr_gr_rec2.gp_period_name,               -- 会計期間名
+            iv_user_je_category_name => gt_je_category_name_inv_gr,                     -- 仕訳カテゴリ名
+            ov_errbuf                => lv_errbuf    -- エラー・メッセージ
+          , ov_retcode               => lv_retcode   -- リターン・コード
+          , ov_errmsg                => lv_errmsg    -- ユーザー・エラー・メッセージ
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+    END LOOP;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルがオープンしていたらクローズ
+      IF ( xwcv_sum_gr_cur%ISOPEN ) THEN
+        CLOSE xwcv_sum_gr_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_gl_if_gr_comp;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_xwcv_bk
+   * Description      : 在庫受払表（Ｇ会社）テーブルの作成 (A-12)
+   ***********************************************************************************/
+  PROCEDURE ins_xwcv_bk(
+    ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode          OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_xwcv_bk'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 在庫受払表（Ｇ会社）テーブル登録
+    INSERT INTO xxcoi_inv_recept_g_company(
+            company_code                                                   -- 01.会社コード
+          , grcp_adj_dept_code                                             -- 02.計上拠点
+          , transaction_date                                               -- 03.取引日
+          , item_code                                                      -- 04.品目コード
+          , subinventory_code                                              -- 05.保管場所
+          , quantity                                                       -- 06.数量
+          , purchase_unit_price                                            -- 07.購入単価
+          , purchase_amount                                                -- 08.購入金額
+          , transaction_type_name                                          -- 09.取引タイプ名
+          , slip_number                                                    -- 10.伝票番号
+          , transfer_ownership_flg                                         -- 11.所有権移転取引フラグ
+          , transfer_subinventory                                          -- 12.移動元保管場所
+          , sales_base_code                                                -- 13.売上拠点
+          , standard_cost                                                  -- 14.元標準原価
+          , created_by                                                     -- 15.作成者
+          , creation_date                                                  -- 16.作成日
+          , last_updated_by                                                -- 17.最終更新者
+          , last_update_date                                               -- 18.最終更新日
+          , last_update_login                                              -- 19.最終更新ログイン
+          , request_id                                                     -- 20.要求ID
+          , program_application_id                                         -- 21.コンカレント・プログラム・アプリケーションID
+          , program_id                                                     -- 22.コンカレント・プログラムID
+          , program_update_date                                            -- 23.プログラム更新日
+    )
+    SELECT
+            xwcv.company_code                   AS company_code            -- 01.会社コード
+          , xwcv.grcp_adj_dept_code             AS grcp_adj_dept_code      -- 02.計上拠点
+          , mmt.transaction_date                AS transaction_date        -- 03.取引日
+          , msib.segment1                       AS segment1                -- 04.品目コード
+          , mmt.subinventory_code               AS subinventory_code       -- 05.保管場所
+          , xwcv.primary_quantity               AS transaction_quantity    -- 06.数量
+          , ROUND( xwcv.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)
+                                                AS purchase_unit_price     -- 07.購入単価
+          , ROUND( xwcv.primary_quantity *
+            ROUND( xwcv.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2),2)
+                                                AS purchase_amount         -- 08.購入金額
+          , mtt.transaction_type_name           AS transaction_type_name   -- 09.取引タイプ名
+          , mmt.attribute1                      AS attribute1              -- 10.伝票番号
+          , xwcv.transfer_ownership_flg         AS transfer_ownership_flg  -- 11.所有権移転取引フラグ
+          , mmt.transfer_subinventory           AS transfer_subinventory   -- 12.移動元保管場所
+          , NULL                                AS sales_base_code         -- 13.売上拠点
+          , xwcv.standard_cost                  AS standard_cost           -- 14.元標準原価
+          , cn_created_by                       AS created_by              -- 15.作成者
+          , SYSDATE                             AS creation_date           -- 16.作成日
+          , cn_last_updated_by                  AS last_updated_by         -- 17.最終更新者
+          , SYSDATE                             AS last_update_date        -- 18.最終更新日
+          , cn_last_update_login                AS last_update_login       -- 19.最終更新ログイン
+          , cn_request_id                       AS request_id              -- 20.要求ID
+          , cn_program_application_id           AS program_application_id  -- 21.コンカレント・プログラム・アプリケーションID
+          , cn_program_id                       AS program_id              -- 22.コンカレント・プログラムID
+          , SYSDATE                             AS program_update_date     -- 23.プログラム更新日
+    FROM    xxcoi_wk_cost_variance    xwcv     -- 原価差額ワークテーブル
+          , mtl_material_transactions mmt      -- 資材取引
+          , mtl_system_items_b        msib     -- Disc品目マスタ
+          , mtl_transaction_types     mtt      -- 取引タイプマスタ
+          , xxcfr_bd_company_info_v   flv      -- 各社利益率
+    WHERE   xwcv.group_company_flg   = cv_1                                -- 1:グループ会社
+    AND     xwcv.reverse_flg         = cv_0                                -- 0:元データ
+    AND     xwcv.account_code        IN ( gt_aff3_seihin,gt_aff3_shouhin ) -- （12204：製品、12109：商品）
+    AND     xwcv.transaction_id      = mmt.transaction_id                  -- 取引ID
+    AND     msib.inventory_item_id   = mmt.inventory_item_id
+    AND     msib.organization_id     = mmt.organization_id
+    AND     mtt.transaction_type_id  = xwcv.transaction_type_id
+    AND     mmt.organization_id      = xxcoi_common_pkg.get_organization_id ( gt_org_code )
+    AND     flv.lookup_type          = cv_company_profit_rate
+    AND     flv.company_code         = xwcv.company_code
+      AND     TRUNC( xwcv.transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv.transaction_date )
+                                           AND     NVL( flv.end_date_active, xwcv.transaction_date )
+    AND     xwcv.transaction_type_id <> gt_trans_type_std_cost_upd  -- 標準原価更新は除く
+    ;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_xwcv_bk;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_gl_if_round_Journal
+   * Description      : 丸め誤差GL-IF登録 (A-13)
+   ***********************************************************************************/
+  PROCEDURE ins_gl_if_round_Journal(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_gl_if_round_Journal'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_n            CONSTANT VARCHAR2(1) := 'N';           -- フラグ値：N
+    cv_status_new        CONSTANT VARCHAR2(3) := 'NEW';         -- 固定値：NEW
+    cv_code_jpy          CONSTANT VARCHAR2(3) := 'JPY';         -- 固定値：JPY
+    cv_flag_a            CONSTANT VARCHAR2(1) := 'A';           -- 固定値：A
+    cv_yyyymm            CONSTANT VARCHAR2(7) := 'YYYY/MM';     -- 固定値：YYYY/MM
+--
+    -- *** ローカル変数 ***
+    lt_entered_dr        gl_interface.entered_dr%TYPE;    -- 借方金額
+    lt_entered_cr        gl_interface.entered_cr%TYPE;    -- 貸方金額
+    lt_segment2          gl_interface.segment2%TYPE;      -- 部門
+    lt_segment3          gl_interface.segment3%TYPE;      -- 勘定科目
+    lt_segment4          gl_interface.segment4%TYPE;      -- 補助科目
+--
+    -- ===============================
+    -- 丸め誤差情報の抽出
+    -- ===============================
+    -- 丸め誤差情報カーソル
+    CURSOR gl_if_round_cur
+    IS
+      SELECT
+              gi.segment1               AS company_code,          -- 会社
+              gi.user_je_category_name  AS user_je_category_name, -- 仕訳カテゴリ名
+              gi.period_name            AS period_name,           -- 会計期間名
+              gi.reference21            AS gl_batch_id,           -- GLバッチID
+              MAX( gi.accounting_date ) AS max_accounting_date,   -- 仕訳有効日付
+              SUM( gi.entered_dr ) - SUM( gi.entered_cr )
+                                        AS sum_adjustment_amount  -- 合計貸借差額
+      FROM    gl_interface   gi
+      WHERE   gi.user_je_category_name IN (gt_je_category_name_inv_gr,gt_je_category_name_inv_cost)
+      AND     gi.user_je_source_name   = gt_je_category_name_inv_cost
+      GROUP BY gi.segment1,
+               gi.user_je_category_name,
+               gi.period_name,
+               gi.reference21
+      ;
+    -- 丸め誤差情報カーソル レコード型
+    gl_if_round_rec gl_if_round_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ===============================
+    -- GLインターフェース格納
+    -- ===============================
+    OPEN gl_if_round_cur;
+    LOOP
+      FETCH gl_if_round_cur INTO gl_if_round_rec;
+      EXIT WHEN gl_if_round_cur%NOTFOUND;
+--
+      IF ( gl_if_round_rec.sum_adjustment_amount = 0) THEN
+        NULL;
+      ELSE
+        -- 初期化
+        lt_segment2        := NULL;  -- 部門コード
+        lt_entered_dr      := NULL;  -- 借方金額
+        lt_entered_cr      := NULL;  -- 貸方金額
+--
+        -- 部門コード取得
+        SELECT flv.attribute3
+        INTO   lt_segment2
+        FROM   fnd_lookup_values   flv
+        WHERE  flv.lookup_type   = cv_conv_dept_code
+        AND    flv.attribute1    = gl_if_round_rec.company_code
+        AND    flv.attribute2    = gt_aff2_adj_dept_code        -- 調整部門
+        AND    flv.language      = USERENV( 'LANG' );
+--
+        -- 合計貸借差額が－なら借方金額にセット
+        IF ( gl_if_round_rec.sum_adjustment_amount * -1 ) > 0 THEN
+          lt_entered_dr := ABS( gl_if_round_rec.sum_adjustment_amount );
+        -- 合計貸借差額が＋なら貸方金額にセット
+        ELSE
+          lt_entered_cr := ABS( gl_if_round_rec.sum_adjustment_amount );
+        END IF;
+--
+        -- ===============================
+        -- GL-IF登録処理（丸め誤差）
+        -- ===============================
+        ins_gl_if_reg(
+            id_accounting_date       => gl_if_round_rec.max_accounting_date,       -- 仕訳有効日付
+            iv_segment1              => gl_if_round_rec.company_code,              -- 会社コード
+            iv_segment2              => lt_segment2,                               -- 部門コード
+            iv_segment3              => gt_aff3_rounding_error,                    -- 勘定科目コード
+            iv_segment4              => gt_aff4_rounding_error,                    -- 補助科目コード
+            in_entered_dr            => lt_entered_dr,                             -- 借方金額
+            in_entered_cr            => lt_entered_cr,                             -- 貸方金額
+            iv_reference21           => gl_if_round_rec.gl_batch_id,               -- GLバッチID
+            iv_period_name           => gl_if_round_rec.period_name,               -- 会計期間名
+            iv_user_je_category_name => gl_if_round_rec.user_je_category_name,     -- 仕訳カテゴリ名
+            ov_errbuf                => lv_errbuf   -- エラー・メッセージ
+          , ov_retcode               => lv_retcode  -- リターン・コード
+          , ov_errmsg                => lv_errmsg   -- ユーザー・エラー・メッセージ
+        );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+    END LOOP;
+    CLOSE gl_if_round_cur;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルがオープンしていたらクローズ
+      IF ( gl_if_round_cur%ISOPEN ) THEN
+        CLOSE gl_if_round_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_gl_if_round_Journal;
+--
+-- Ver1.10 ADD END
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2020,6 +3204,10 @@ AS
     gn_target_sum_cnt := 0; -- 対象件数  (原価差額集約単位)
     gn_normal_sum_cnt := 0; -- 成功件数  (原価差額集約単位)
     gn_error_sum_cnt  := 0; -- エラー件数(原価差額集約単位)
+-- Ver1.10 ADD START
+    gn_target_sum_cnt_gr := 0; -- 対象件数  (グループ会社集約単位)
+    gn_error_sum_cnt_gr  := 0; -- エラー件数(グループ会社集約単位)
+-- Ver1.10 ADD END
 --
     -- ===============================
     -- 初期処理 (A-1)
@@ -2159,6 +3347,19 @@ AS
       RETURN;
     END IF;
 -- == 2009/09/28 V1.8 Added END   ===============================================================
+-- Ver1.10 ADD START
+    -- ===================================================
+    -- 棚卸資産情報GL-IF登録(グループ会社) (A-10)
+    -- ===================================================
+    ins_gl_if_gr_comp(
+        ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+      , ov_retcode  => lv_retcode  -- リターン・コード
+      , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+-- Ver1.10 ADD END
     -- =======================================
     -- 原価差額情報GL-IF登録 (A-6、A-7、A-8)
     -- =======================================
@@ -2176,6 +3377,31 @@ AS
       -- 終了ステータスに警告セット
       ov_retcode := cv_status_warn;
     END IF;
+-- Ver1.10 ADD START
+    -- ===================================================
+    -- 在庫受払表（Ｇ会社）テーブルの作成 (A-12)
+    -- ===================================================
+    ins_xwcv_bk(
+        ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+      , ov_retcode  => lv_retcode  -- リターン・コード
+      , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ===================================================
+    -- 丸め誤差GL-IF登録 (A-13)
+    -- ===================================================
+    ins_gl_if_round_Journal(
+        ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+      , ov_retcode  => lv_retcode  -- リターン・コード
+      , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+-- Ver1.10 ADD END
 --
   EXCEPTION
 --
@@ -2277,6 +3503,10 @@ AS
       gn_target_sum_cnt := 0;
       gn_normal_sum_cnt := 0;
       gn_error_sum_cnt  := 0;
+-- Ver1.10 ADD START
+      gn_target_sum_cnt_gr := 0;
+      gn_error_sum_cnt_gr  := 0;
+-- Ver1.10 ADD END
       -- エラー出力
       FND_FILE.PUT_LINE(
           which  => FND_FILE.OUTPUT
@@ -2378,6 +3608,50 @@ AS
       , buff   => gv_out_msg
     );
 --
+-- Ver1.10 ADD START
+    -- グループ会社集約単位件数メッセージ
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appl_short_name_xxcoi
+                , iv_name         => cv_msg_code_xxcoi_10751
+              );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --対象件数出力(棚卸資産集約単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_target_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_target_sum_cnt_gr)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --成功件数出力(棚卸資産集約単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_success_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_target_sum_cnt_gr)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --エラー件数出力(棚卸資産集約単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_error_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_error_sum_cnt_gr)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+-- Ver1.10 ADD END
     -- 空行挿入
     FND_FILE.PUT_LINE(
         which  => FND_FILE.OUTPUT
