@@ -7,7 +7,7 @@ AS
  * Description      : イセトー請求書データ作成
  * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
  * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.70
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,6 +15,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   p 初期処理                                (A-1)
  *  get_profile_value      p プロファイル取得処理                    (A-2)
+ *  get_company_info       P 会社別関連情報の取得処理                (A-11)
  *  insert_work_table      p ワークテーブルデータ登録                (A-3)
  *  update_work_table      p ワークテーブルデータ更新                (A-10)
  *  chk_account_data       p 口座情報取得チェック                    (A-4)
@@ -36,6 +37,7 @@ AS
  *  2010-02-02    1.50 SCS 安川 智博     障害「E_本稼動_01503」対応
  *  2019-09-09    1.60 SCSK 石井 裕幸    障害「E_本稼動_15472」対応
  *  2023-07-04    1.70 SCSK Y.Koh        E_本稼動_19168【AR】インボイス対応_イセトー、汎用請求書、請求金額一覧
+ *  2024-03-06    1.8  SCSK 大山 洋介    E_本稼動_19496 グループ会社統合対応
  *
  *****************************************************************************************/
 --
@@ -120,6 +122,10 @@ AS
 -- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
   cv_msg_xxcfr_00017  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00017';            -- テーブル更新エラー
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+  cv_msg_xxcfr_00165  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00165';            -- 会社コード指定不可エラーメッセージ
+  cv_msg_xxcfr_00166  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00166';            -- パラメータ制約エラーメッセージ
+-- Ver1.8 ADD END
 --
 -- トークン
   cv_tkn_func         CONSTANT VARCHAR2(15)  := 'FUNC_NAME';                   -- 共通関数名
@@ -130,6 +136,9 @@ AS
   cv_tkn_lc_name      CONSTANT VARCHAR2(30)  := 'KYOTEN_NAME';                 -- 拠点名
   cv_tkn_rec_limit    CONSTANT VARCHAR2(30)  := 'LINE_LIMIT';                  -- 制限レコード数
   cv_tkn_count        CONSTANT VARCHAR2(30)  := 'COUNT';                       -- カウント数
+-- Ver1.8 ADD START
+  cv_tkn_date         CONSTANT VARCHAR2(15)  := 'DATE';                        -- 日付
+-- Ver1.8 ADD END
 --
   -- 日本語辞書
   cv_dict_date_func   CONSTANT VARCHAR2(100) := 'CFR000A00003';                -- 日付パラメータ変換関数
@@ -153,6 +162,9 @@ AS
 -- Modify 2009-09-29 Ver1.10 End
   cv_set_of_bks_id    CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_ID';            -- 会計帳簿ID
   cv_org_id           CONSTANT VARCHAR2(30)  := 'ORG_ID';                      -- 組織ID
+-- Ver1.8 ADD START
+  cv_hkd_start_date   CONSTANT VARCHAR2(30)  := 'XXCMM1_ITOEN_HKD_START_DATE'; -- XXCMM:伊藤園北海道適用開始日付  (※YYYYMMDD)
+-- Ver1.8 ADD END
 --
   cv_tax_div_excluded CONSTANT VARCHAR2(1)   := '1';                           -- 消費税区分：外税
   cv_tax_div_nontax   CONSTANT VARCHAR2(1)   := '4';                           -- 消費税区分：非課税
@@ -173,6 +185,9 @@ AS
 --
   cv_format_date_ymd      CONSTANT VARCHAR2(8)   := 'YY/MM/DD';                    -- 日付フォーマット（2桁年月日スラッシュ付）
   cv_format_date_yyyymmdd CONSTANT VARCHAR2(8)   := 'YYYYMMDD';                    -- 日付フォーマット（YYYYMMDD）
+-- Ver1.8 ADD START
+  cv_format_date_ymds     CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                  -- 日付フォーマット（年月日スラッシュ付）
+-- Ver1.8 ADD END
 --
   cv_max_date_value   CONSTANT VARCHAR2(10)  := '9999/12/31';                  -- 最大日付値
 --
@@ -237,6 +252,9 @@ AS
   -- ===============================
 --
   gd_target_date        DATE;                                      -- パラメータ．締日（データ型変換用）
+-- Ver1.8 ADD START
+  gv_target_date        VARCHAR2(8);                               -- パラメータ．締日（文字列:YYYYMMDD）
+-- Ver1.8 ADD END
   gn_line_cnt_limit     NUMBER;                                    -- 請求書明細件数制限(店舗別内訳なし)
 -- Modify 2009-09-29 Ver1.10 Start
   gn_line_cnt_limit2    NUMBER;                                    -- 請求書明細件数制限(店舗別内訳あり)
@@ -251,6 +269,11 @@ AS
   -- 顧客紐付け警告存在フラグ
   gv_warning_flag       VARCHAR2(1) := cv_status_no;
 -- Modify 2009-09-29 Ver1.10 End
+-- Ver1.8 ADD START
+  gd_hkd_start_date     DATE;                                      -- 伊藤園北海道適用開始日付
+  gv_comp_spin_off_flag VARCHAR2(1);                               -- 分社化対応フラグ(Y/N)
+  gv_drafting_company   VARCHAR2(3);                               -- 請求書作成会社コード
+-- Ver1.8 ADD END
 --
   -- 日本語辞書用変数
   gv_format_date_jpymd4  VARCHAR2(25); -- 書式整形用：YYYY"年"MM"月"DD"日"
@@ -275,6 +298,9 @@ AS
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code14     IN      VARCHAR2,         -- 売掛管理先顧客
+-- Ver1.8 ADD START
+    iv_company_cd          IN      VARCHAR2,         -- 会社コード
+-- Ver1.8 ADD END
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -325,6 +351,9 @@ AS
                                    ,iv_conc_param3  => iv_customer_code20 -- コンカレントパラメータ３
                                    ,iv_conc_param4  => iv_customer_code21 -- コンカレントパラメータ４
                                    ,iv_conc_param5  => iv_customer_code14 -- コンカレントパラメータ５
+-- Ver1.8 ADD START
+                                   ,iv_conc_param6  => iv_company_cd      -- コンカレントパラメータ６
+-- Ver1.8 ADD END
                                    ,ov_errbuf       => ov_errbuf          -- エラー・メッセージ
                                    ,ov_retcode      => ov_retcode         -- リターン・コード
                                    ,ov_errmsg       => ov_errmsg);        -- ユーザー・エラー・メッセージ 
@@ -344,6 +373,9 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- Ver1.8 ADD START
+    gv_target_date := TO_CHAR(gd_target_date, cv_format_date_yyyymmdd);
+-- Ver1.8 ADD END
 --
 -- Modify 2009-09-29 Ver1.10 Start
     -- パラメータ顧客コードの指定数チェック 顧客コードは１つのみ指定していることをチェック
@@ -499,6 +531,24 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Ver1.8 ADD START
+    -- プロファイルから伊藤園北海道適用開始日付を取得
+    gd_hkd_start_date := TO_DATE(FND_PROFILE.VALUE(cv_hkd_start_date), cv_format_date_yyyymmdd);
+    --
+    -- 取得エラー時
+    IF (gd_hkd_start_date IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr
+                                                    ,cv_msg_xxcfr_00004 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof        -- トークン:プロファイル名
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_hkd_start_date))
+                                                    -- 伊藤園北海道適用開始日付
+                          ,1
+                          ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.8 ADD END
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -520,6 +570,190 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_profile_value;
+--
+-- Ver1.8 ADD START
+  /**********************************************************************************
+   * Procedure Name   : get_company_info
+   * Description      : 会社別関連情報の取得処理(A-11)
+   ***********************************************************************************/
+  PROCEDURE get_company_info(
+    iv_customer_code10  IN  VARCHAR2,   -- 顧客
+    iv_customer_code20  IN  VARCHAR2,   -- 請求書用顧客
+    iv_customer_code21  IN  VARCHAR2,   -- 統括請求書用顧客
+    iv_customer_code14  IN  VARCHAR2,   -- 売掛管理先顧客
+    iv_company_cd       IN  VARCHAR2,   -- 会社コード
+    ov_errbuf           OUT VARCHAR2,   -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,   -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_company_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_err_flag               VARCHAR2(1);        -- エラーフラグ
+    lv_cond_cust_cd           xxcmm_cust_accounts.customer_code%TYPE;  -- 顧客番号
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --============================================
+    -- 分社化対応フラグ（グルーバル変数）を設定
+    --============================================
+    gv_comp_spin_off_flag := 'Y';
+    IF (gd_target_date < gd_hkd_start_date) THEN
+      -- パラメータ「締日」 ＜ プロファイル「伊藤園北海道適用開始日付」の場合
+      gv_comp_spin_off_flag := 'N';
+    END IF;
+    --
+    --============================================
+    -- 会社コード指定不可チェック
+    --============================================
+    IF (gv_comp_spin_off_flag = 'N' AND iv_company_cd IS NOT NULL) THEN
+      -- 分社化対応フラグがN、かつ、パラメータ「会社コード」に入力がある場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     cv_msg_kbn_cfr      -- 'XXCFR'
+                    ,cv_msg_xxcfr_00165  -- 会社コード指定不可エラーメッセージ
+                    ,cv_tkn_date         -- トークン
+                    ,TO_CHAR(gd_hkd_start_date, cv_format_date_ymds)  -- プロファイル「伊藤園北海道適用開始日付」
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    --============================================
+    -- 顧客番号、会社コードの制約チェック
+    --============================================
+    lv_err_flag := 'N';
+    IF (gv_comp_spin_off_flag = 'Y') THEN
+      -- 分社化対応フラグがYの場合
+      IF (iv_customer_code14 IS NULL AND
+          iv_customer_code21 IS NULL AND
+          iv_customer_code20 IS NULL AND
+          iv_customer_code10 IS NULL) THEN
+        -- パラメータ「顧客番号」がすべてNULL
+        IF (iv_company_cd IS NULL) THEN
+          -- パラメータ「会社コード」もNULL
+          lv_err_flag := 'Y';
+        END IF;
+      ELSE
+        -- パラメータ「顧客番号」のいずれかがNOT NULL
+        IF (iv_company_cd IS NOT NULL) THEN
+          -- パラメータ「会社コード」もNOT NULL
+          lv_err_flag := 'Y';
+        END IF;
+      END IF;
+      --
+      IF (lv_err_flag = 'Y') THEN
+        -- 制約エラーありの場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_msg_kbn_cfr       -- 'XXCFR'
+                      ,cv_msg_xxcfr_00166   -- パラメータ制約エラーメッセージ
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+    --
+    --============================================
+    -- 請求書作成会社コードを取得
+    --============================================
+    lv_cond_cust_cd := NULL;
+    IF (gv_comp_spin_off_flag = 'N') THEN
+      -- 分社化対応フラグがNの場合
+      gv_drafting_company := '001';
+    ELSE
+      -- 分社化対応フラグがYの場合
+      --
+      IF (iv_customer_code14 IS NOT NULL) THEN
+        -- パラメータ「売掛管理先顧客」がNOT NULLの場合
+        lv_cond_cust_cd := iv_customer_code14;
+      ELSIF (iv_customer_code21 IS NOT NULL) THEN
+        -- パラメータ「統括請求書用顧客」がNOT NULLの場合
+        lv_cond_cust_cd := iv_customer_code21;
+      ELSIF (iv_customer_code20 IS NOT NULL) THEN
+        -- パラメータ「請求書用顧客」がNOT NULLの場合
+        lv_cond_cust_cd := iv_customer_code20;
+      ELSIF (iv_customer_code10 IS NOT NULL) THEN
+        -- パラメータ「顧客」がNOT NULLの場合
+        lv_cond_cust_cd := iv_customer_code10;
+      END IF;
+      --
+      IF (lv_cond_cust_cd IS NOT NULL) THEN
+        -- 顧客番号がNOT NULLの場合
+        --
+        -- 顧客番号に紐づく請求拠点より請求書作成会社コードを取得
+        SELECT NVL(
+                 -- 会社コード取得（部門経由）関数
+                 xxcfr_common_pkg.get_company_code(
+                   xca.bill_base_code    -- 請求拠点コード
+                  ,gn_set_of_bks_id      -- 会計帳簿ID
+                  ,gd_target_date        -- 締日
+                 )
+                ,'001'
+               )
+        INTO   gv_drafting_company
+        FROM   xxcmm_cust_accounts    xca  -- 顧客追加情報テーブル
+        WHERE  xca.customer_code = lv_cond_cust_cd
+        ;
+      ELSIF (iv_company_cd IS NOT NULL) THEN
+        -- パラメータ「会社コード」がNOT NULLの場合
+        gv_drafting_company :=
+          -- 会社コード変換関数
+          xxcfr_common_pkg.conv_company_code(
+            iv_company_cd   -- 会社コード
+           ,gd_target_date  -- 締日
+          );
+      END IF;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_company_info;
+-- Ver1.8 ADD END
 --
 -- Modify 2009-09-29 Ver1.10 Start
   /**********************************************************************************
@@ -692,14 +926,39 @@ AS
 --
     -- 顧客10取得カーソル文字列
     cv_get_all_account_cur   CONSTANT VARCHAR2(3000) := 
-    'SELECT xxca.customer_id           AS customer_id, '||            -- 顧客ID
+-- Ver1.8 MOD START
+--    'SELECT xxca.customer_id           AS customer_id, '||            -- 顧客ID
+    'SELECT /*+ LEADING(hzca xxca) USE_NL(xxca) */ '||
+    '       xxca.customer_id           AS customer_id, '||            -- 顧客ID
+-- Ver1.8 MOD END
     '       xxca.customer_code         AS customer_code, '||          -- 顧客コード
     '        xxca.invoice_printing_unit AS invoice_printing_unit, '|| -- 請求書印刷単位
     '        xxca.bill_base_code        AS bill_base_code '||         -- 請求拠点コード
     ' FROM xxcmm_cust_accounts xxca, '||                                     -- 顧客追加情報
     '      hz_cust_accounts    hzca '||                                      -- 顧客マスタ
     ' WHERE hzca.customer_class_code = '''||cv_customer_class_code10||''' '||         -- 顧客区分:10
-    ' AND   xxca.customer_id = hzca.cust_account_id ';
+-- Ver1.8 MOD START
+--    ' AND   xxca.customer_id = hzca.cust_account_id ';
+    ' AND   xxca.customer_id = hzca.cust_account_id '                                            ||
+    ' AND   ( '                                                                                  ||
+    '         ''' || gv_comp_spin_off_flag || ''' = ''N'' '                                      ||
+    '         OR '                                                                               ||
+    '         (  '                                                                               ||
+    '           ''' || gv_comp_spin_off_flag || ''' = ''Y'' '                                    ||
+    '           AND '                                                                            ||
+    '           EXISTS ( '                                                                       ||
+    '             SELECT 1 '                                                                     ||
+    '             FROM   xxcfr_bd_dept_comp_info_v  xbdciv '                                     ||
+    '             WHERE  xbdciv.dept_code        = xxca.bill_base_code '                         ||
+    '             AND    xbdciv.set_of_books_id  = ' || gn_set_of_bks_id                         ||
+    '             AND    TO_DATE( :gv_target_date,''YYYYMMDD'') '                                ||
+    '                    BETWEEN xbdciv.comp_start_date '                                        ||
+    '                    AND     NVL(xbdciv.comp_end_date, TO_DATE(''99991231'',''YYYYMMDD'')) ' ||
+    '             AND    xbdciv.company_code_bd  = ''' || gv_drafting_company || ''' '           ||
+    '           ) '                                                                              ||
+    '         ) '                                                                                ||
+    '       ) ';
+-- Ver1.8 MOD END
 --
     -- 顧客10取得カーソル文字列(売掛管理先顧客指定時)
     cv_get_14account_cur   CONSTANT VARCHAR2(3000) := 
@@ -743,7 +1002,28 @@ AS
 -- Add 2010-02-02 Ver1.50 Start
     'AND   hsua10.status = '''||cv_site_use_stat_act||''' '||
 -- Add 2010-02-02 Ver1.50 End
-    'AND   hsua10.bill_to_site_use_id = hsua14.site_use_id ';
+-- Ver1.8 MOD START
+--    'AND   hsua10.bill_to_site_use_id = hsua14.site_use_id ';
+    'AND   hsua10.bill_to_site_use_id = hsua14.site_use_id '                                    ||
+    'AND   ( '                                                                                  ||
+    '        ''' || gv_comp_spin_off_flag || ''' = ''N'' '                                      ||
+    '        OR '                                                                               ||
+    '        (  '                                                                               ||
+    '          ''' || gv_comp_spin_off_flag || ''' = ''Y'' '                                    ||
+    '          AND '                                                                            ||
+    '          EXISTS ( '                                                                       ||
+    '            SELECT 1 '                                                                     ||
+    '            FROM   xxcfr_bd_dept_comp_info_v  xbdciv '                                     ||
+    '            WHERE  xbdciv.dept_code        = xxca10.bill_base_code '                       ||
+    '            AND    xbdciv.set_of_books_id  = ' || gn_set_of_bks_id                         ||
+    '            AND    TO_DATE( :gv_target_date,''YYYYMMDD'') '                                ||
+    '                   BETWEEN xbdciv.comp_start_date '                                        ||
+    '                   AND     NVL(xbdciv.comp_end_date, TO_DATE(''99991231'',''YYYYMMDD'')) ' ||
+    '            AND    xbdciv.company_code_bd  = ''' || gv_drafting_company || ''' '           ||
+    '          ) '                                                                              ||
+    '        ) '                                                                                ||
+    '      ) ';
+-- Ver1.8 MOD END
 --
     -- 顧客10取得カーソル文字列(統括請求書用顧客指定時)
     cv_get_21account_cur   CONSTANT VARCHAR2(3000) := 
@@ -761,7 +1041,28 @@ AS
     'AND   xxca10.customer_id = hzca10.cust_account_id '||
     'AND   xxca10.invoice_code = xxca20.customer_code '||
     'AND   xxca20.enclose_invoice_code = xxca21.customer_code '||
-    'AND   xxca21.customer_code = :iv_customer_code21 ';
+-- Ver1.8 MOD START
+--    'AND   xxca21.customer_code = :iv_customer_code21 ';
+    'AND   xxca21.customer_code = :iv_customer_code21 '                                         ||
+    'AND   ( '                                                                                  ||
+    '        ''' || gv_comp_spin_off_flag || ''' = ''N'' '                                      ||
+    '        OR '                                                                               ||
+    '        (  '                                                                               ||
+    '          ''' || gv_comp_spin_off_flag || ''' = ''Y'' '                                    ||
+    '          AND '                                                                            ||
+    '          EXISTS ( '                                                                       ||
+    '            SELECT 1 '                                                                     ||
+    '            FROM   xxcfr_bd_dept_comp_info_v  xbdciv '                                     ||
+    '            WHERE  xbdciv.dept_code        = xxca10.bill_base_code '                       ||
+    '            AND    xbdciv.set_of_books_id  = ' || gn_set_of_bks_id                         ||
+    '            AND    TO_DATE( :gv_target_date,''YYYYMMDD'') '                                ||
+    '                   BETWEEN xbdciv.comp_start_date '                                        ||
+    '                   AND     NVL(xbdciv.comp_end_date, TO_DATE(''99991231'',''YYYYMMDD'')) ' ||
+    '            AND    xbdciv.company_code_bd  = ''' || gv_drafting_company || ''' '           ||
+    '          ) '                                                                              ||
+    '        ) '                                                                                ||
+    '      ) ';
+-- Ver1.8 MOD END
 --
     -- 顧客10取得カーソル文字列(請求書用顧客指定時)
     cv_get_20account_cur   CONSTANT VARCHAR2(3000) := 
@@ -778,7 +1079,28 @@ AS
     'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||           -- 顧客区分:10
     'AND   xxca10.customer_id = hzca10.cust_account_id '||
     'AND   xxca10.invoice_code = xxca20.customer_code '||
-    'AND   xxca20.customer_code = :iv_customer_code20 ';
+-- Ver1.8 MOD START
+--    'AND   xxca20.customer_code = :iv_customer_code20 ';
+    'AND   xxca20.customer_code = :iv_customer_code20 '                                         ||
+    'AND   ( '                                                                                  ||
+    '        ''' || gv_comp_spin_off_flag || ''' = ''N'' '                                      ||
+    '        OR '                                                                               ||
+    '        (  '                                                                               ||
+    '          ''' || gv_comp_spin_off_flag || ''' = ''Y'' '                                    ||
+    '          AND '                                                                            ||
+    '          EXISTS ( '                                                                       ||
+    '            SELECT 1 '                                                                     ||
+    '            FROM   xxcfr_bd_dept_comp_info_v  xbdciv '                                     ||
+    '            WHERE  xbdciv.dept_code        = xxca10.bill_base_code '                       ||
+    '            AND    xbdciv.set_of_books_id  = ' || gn_set_of_bks_id                         ||
+    '            AND    TO_DATE( :gv_target_date,''YYYYMMDD'') '                                ||
+    '                   BETWEEN xbdciv.comp_start_date '                                        ||
+    '                   AND     NVL(xbdciv.comp_end_date, TO_DATE(''99991231'',''YYYYMMDD'')) ' ||
+    '            AND    xbdciv.company_code_bd  = ''' || gv_drafting_company || ''' '           ||
+    '          ) '                                                                              ||
+    '        ) '                                                                                ||
+    '      ) ';
+-- Ver1.8 MOD END
 --
     -- 顧客10取得カーソル文字列(顧客指定時)
     cv_get_10account_cur   CONSTANT VARCHAR2(3000) := 
@@ -791,7 +1113,28 @@ AS
     'WHERE xxca.invoice_printing_unit = '''||cv_invoice_printing_unit_n4||''' '||       -- 請求書印刷単位
     'AND   hzca.customer_class_code = '''||cv_customer_class_code10||''' '||            -- 顧客区分:10
     'AND   xxca.customer_id = hzca.cust_account_id '||
-    'AND   xxca.customer_code = :iv_customer_code10 ';
+-- Ver1.8 MOD START
+--    'AND   xxca.customer_code = :iv_customer_code10 ';
+    'AND   xxca.customer_code = :iv_customer_code10 '                                           ||
+    'AND   ( '                                                                                  ||
+    '        ''' || gv_comp_spin_off_flag || ''' = ''N'' '                                      ||
+    '        OR '                                                                               ||
+    '        (  '                                                                               ||
+    '          ''' || gv_comp_spin_off_flag || ''' = ''Y'' '                                    ||
+    '          AND '                                                                            ||
+    '          EXISTS ( '                                                                       ||
+    '            SELECT 1 '                                                                     ||
+    '            FROM   xxcfr_bd_dept_comp_info_v  xbdciv '                                     ||
+    '            WHERE  xbdciv.dept_code        = xxca.bill_base_code '                         ||
+    '            AND    xbdciv.set_of_books_id  = ' || gn_set_of_bks_id                         ||
+    '            AND    TO_DATE( :gv_target_date,''YYYYMMDD'') '                                ||
+    '                   BETWEEN xbdciv.comp_start_date '                                        ||
+    '                   AND     NVL(xbdciv.comp_end_date, TO_DATE(''99991231'',''YYYYMMDD'')) ' ||
+    '            AND    xbdciv.company_code_bd  = ''' || gv_drafting_company || ''' '           ||
+    '          ) '                                                                              ||
+    '        ) '                                                                                ||
+    '      ) ';
+-- Ver1.8 MOD END
 --
     -- 顧客14取得カーソル
     CURSOR get_14account_cur(
@@ -1020,19 +1363,34 @@ AS
 -- Modify 2009-09-29 Ver1.10 Start
       -- 売掛管理先顧客指定時
       IF (iv_customer_code14 IS NOT NULL) THEN
-        OPEN get_all_account_cur FOR cv_get_14account_cur USING iv_customer_code14;
+-- Ver1.8 MOD START
+--        OPEN get_all_account_cur FOR cv_get_14account_cur USING iv_customer_code14;
+        OPEN get_all_account_cur FOR cv_get_14account_cur USING iv_customer_code14, gv_target_date;
+-- Ver1.8 MOD END
       -- 統括請求書用顧客指定時
       ELSIF (iv_customer_code21 IS NOT NULL) THEN
-        OPEN get_all_account_cur FOR cv_get_21account_cur USING iv_customer_code21;
+-- Ver1.8 MOD START
+--        OPEN get_all_account_cur FOR cv_get_21account_cur USING iv_customer_code21;
+        OPEN get_all_account_cur FOR cv_get_21account_cur USING iv_customer_code21, gv_target_date;
+-- Ver1.8 MOD END
       -- 請求書用顧客指定時
       ELSIF (iv_customer_code20 IS NOT NULL) THEN
-        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20;
+-- Ver1.8 MOD START
+--        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20;
+        OPEN get_all_account_cur FOR cv_get_20account_cur USING iv_customer_code20, gv_target_date;
+-- Ver1.8 MOD END
       -- 顧客指定時
       ELSIF (iv_customer_code10 IS NOT NULL) THEN
-        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10;
+-- Ver1.8 MOD START
+--        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10;
+        OPEN get_all_account_cur FOR cv_get_10account_cur USING iv_customer_code10, gv_target_date;
+-- Ver1.8 MOD END
       -- パラメータ指定なし時
       ELSE
-        OPEN get_all_account_cur FOR cv_get_all_account_cur;
+-- Ver1.8 MOD START
+--        OPEN get_all_account_cur FOR cv_get_all_account_cur;
+        OPEN get_all_account_cur FOR cv_get_all_account_cur USING gv_target_date;
+-- Ver1.8 MOD END
       END IF;
 --
       <<get_account10_loop>>
@@ -1105,6 +1463,9 @@ AS
              ,col105           -- 請求書印刷単位(非出力項目)
              ,col30            -- 摘要
              ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+             ,col43            -- 会社コード
+-- Ver1.8 ADD END
               )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -1224,6 +1585,9 @@ AS
                   ,flva.attribute1                                                  description       -- 摘要
                   ,flva.attribute2                                                  category          -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                  ,gv_drafting_company                                              drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  hz_cust_accounts               hzca , -- 顧客10顧客マスタ
@@ -1408,6 +1772,9 @@ AS
                ,col105           -- 請求書印刷単位(非出力項目)
                ,col30            -- 摘要
                ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+               ,col43            -- 会社コード
+-- Ver1.8 ADD END
                 )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -1527,6 +1894,9 @@ AS
                     ,flva.attribute1                                                  description       -- 摘要
                     ,flva.attribute2                                                  category          -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                    ,gv_drafting_company                                              drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    hz_cust_accounts               hzca , -- 顧客20顧客マスタ
@@ -1716,6 +2086,9 @@ AS
                ,col105           -- 請求書印刷単位(非出力項目)
                ,col30            -- 摘要
                ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+               ,col43            -- 会社コード
+-- Ver1.8 ADD END
                 )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -1835,6 +2208,9 @@ AS
                     ,flva.attribute1                                                  description       -- 摘要
                     ,flva.attribute2                                                  category          -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                    ,gv_drafting_company                                              drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    hz_cust_accounts               hzca , -- 顧客10顧客マスタ
@@ -2007,6 +2383,9 @@ AS
              ,col105           -- 請求書印刷単位
              ,col30            -- 摘要
              ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+             ,col43            -- 会社コード
+-- Ver1.8 ADD END
               )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -2126,6 +2505,9 @@ AS
                   ,flva.attribute1                                                  description  -- 摘要
                   ,flva.attribute2                                                  category     -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                  ,gv_drafting_company                                              drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  (SELECT all_account_rec.customer_code ship_cust_code
@@ -2289,6 +2671,9 @@ AS
              ,col105           -- 請求書印刷単位(非出力項目)
              ,col30            -- 摘要
              ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+             ,col43            -- 会社コード
+-- Ver1.8 ADD END
               )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -2408,6 +2793,9 @@ AS
                   ,flva.attribute1                                                  description       -- 摘要
                   ,flva.attribute2                                                  category          -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                  ,gv_drafting_company                                              drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  (SELECT all_account_rec.customer_code ship_cust_code
@@ -2585,6 +2973,9 @@ AS
                ,col105           -- 請求書印刷単位
                ,col30            -- 摘要
                ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+               ,col43            -- 会社コード
+-- Ver1.8 ADD END
                 )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -2704,6 +3095,9 @@ AS
                     ,flva.attribute1                                                  description       -- 摘要
                     ,flva.attribute2                                                  category          -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                    ,gv_drafting_company                                              drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    (SELECT all_account_rec.customer_code ship_cust_code
@@ -2898,6 +3292,9 @@ AS
              ,col105           -- 請求書印刷単位(非出力項目)
              ,col30            -- 摘要
              ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+             ,col43            -- 会社コード
+-- Ver1.8 ADD END
               )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
@@ -3027,6 +3424,9 @@ AS
                   ,flva.attribute1                                                   description       -- 摘要
                   ,flva.attribute2                                                   category          -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+                  ,gv_drafting_company                                               drafting_company  -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                   xxcfr_invoice_lines            xil  , -- 請求明細
                   xxcmm_cust_accounts            xxca , -- 顧客10追加情報
@@ -3193,6 +3593,9 @@ AS
         ,col29            -- レイアウト区分
         ,col30            -- 摘要
         ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+        ,col43            -- 会社コード
+-- Ver1.8 ADD END
          )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
       SELECT cn_request_id                                              request_id         -- 要求ID
@@ -3233,6 +3636,9 @@ AS
             ,NULL                                                       description        -- 摘要
             ,NULL                                                       category           -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+            ,gv_drafting_company                                        drafting_company   -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
       FROM xxcfr_csv_outs_temp          xxcot  -- CSV出力ワークテーブル
       WHERE xxcot.request_id = cn_request_id
         AND xxcot.col29 = cv_layout_kbn2       -- レイアウト区分 = '2'(店舗別内訳レイアウト)
@@ -3286,6 +3692,9 @@ AS
         ,col104           -- 入金先顧客名(非出力項目)
         ,col30            -- 摘要
         ,col106           -- 内訳分類(編集用)
+-- Ver1.8 ADD START
+        ,col43            -- 会社コード
+-- Ver1.8 ADD END
          )
 -- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
       SELECT cn_request_id                                              request_id         -- 要求ID
@@ -3340,6 +3749,9 @@ AS
             ,NULL                                                       description        -- 摘要
             ,NULL                                                       category           -- 内訳分類(編集用)
 -- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
+-- Ver1.8 ADD START
+            ,gv_drafting_company                                        drafting_company   -- 会社コード：請求書作成会社コード
+-- Ver1.8 ADD END
       FROM xxcfr_csv_outs_temp          xxcot,  -- CSV出力ワークテーブル
            xxcmm_cust_accounts          xxca,   -- 顧客追加情報
            hz_cust_accounts             hzca,   -- 顧客マスタ
@@ -4373,6 +4785,9 @@ AS
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code14     IN      VARCHAR2,         -- 売掛管理先顧客
+-- Ver1.8 ADD START
+    iv_company_cd          IN      VARCHAR2,         -- 会社コード
+-- Ver1.8 ADD END
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode             OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg              OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4430,6 +4845,9 @@ AS
       ,iv_customer_code20     -- 請求書用顧客
       ,iv_customer_code21     -- 統括請求書用顧客
       ,iv_customer_code14     -- 売掛管理先顧客
+-- Ver1.8 ADD START
+      ,iv_company_cd          -- 会社コード
+-- Ver1.8 ADD END
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
       ,lv_errmsg);            -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4449,6 +4867,25 @@ AS
       --(エラー処理)
       RAISE global_process_expt;
     END IF;
+--
+-- Ver1.8 ADD START
+    -- =====================================================
+    --  会社別関連情報の取得処理 (A-11)
+    -- =====================================================
+    get_company_info(
+       iv_customer_code10    -- 顧客
+      ,iv_customer_code20    -- 請求書用顧客
+      ,iv_customer_code21    -- 統括請求書用顧客
+      ,iv_customer_code14    -- 売掛管理先顧客
+      ,iv_company_cd         -- 会社コード
+      ,lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+-- Ver1.8 ADD END
 --
     -- =====================================================
     --  ワークテーブルデータ登録 (A-3)
@@ -4565,6 +5002,9 @@ AS
     iv_customer_code20     IN      VARCHAR2,         -- 請求書用顧客
     iv_customer_code21     IN      VARCHAR2,         -- 統括請求書用顧客
     iv_customer_code14     IN      VARCHAR2          -- 売掛管理先顧客
+-- Ver1.8 ADD START
+   ,iv_company_cd          IN      VARCHAR2          -- 会社コード
+-- Ver1.8 ADD END
   )
 --
 --
@@ -4627,6 +5067,9 @@ AS
       ,iv_customer_code20 -- 請求書用顧客
       ,iv_customer_code21 -- 統括請求書用顧客
       ,iv_customer_code14 -- 売掛管理先顧客
+-- Ver1.8 ADD START
+      ,iv_company_cd      -- 会社コード
+-- Ver1.8 ADD END
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
