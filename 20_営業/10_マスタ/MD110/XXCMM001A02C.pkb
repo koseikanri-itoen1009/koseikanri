@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A02C (body)
  * Description      : 仕入先マスタIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_001_A02_仕入先マスタIF抽出_EBSコンカレント
- * Version          : 1.13
+ * Version          : 1.14
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -48,6 +48,7 @@ AS
  *  2023-07-03    1.11  Y.Sato           E_本稼動_19314対応
  *  2023-09-21    1.12  S.hosonuma       E_本稼動_19311対応
  *  2024-02-09    1.13  Y.Sato           E_本稼動_19496対応
+ *  2024-03-29    1.14  K.Sudo           E_本稼動_19828【マスタ】仕入先マスタプライマリ変更対応
  *
  *****************************************************************************************/
 --
@@ -2725,7 +2726,7 @@ AS
                         l_sup_site_rec.pvsa_attribute11
                       , l_sup_site_rec.status_code
                       );                                              -- 103 : ATTRIBUTE11 (伝票作成会社)
--- Ver1.13 Mod Start
+-- Ver1.13 Mod End
       lv_file_data := lv_file_data || cv_comma || NULL;               -- 104 : ATTRIBUTE12 (追加情報12)
       lv_file_data := lv_file_data || cv_comma || NULL;               -- 105 : ATTRIBUTE13 (追加情報13)
       lv_file_data := lv_file_data || cv_comma || NULL;               -- 106 : ATTRIBUTE14 (追加情報14)
@@ -4176,7 +4177,10 @@ AS
 --          , abaua.last_update_date           AS last_update_date_abaua
           , pv.creation_date                 AS creation_date_pv
           , pvsa.creation_date               AS creation_date_pvsa
-          , abaua.creation_date              AS creation_date_abaua
+-- Ver1.14 Mod Start
+--          , abaua.creation_date              AS creation_date_abaua
+          , abaua.last_update_date           AS last_update_date_abaua
+-- Ver1.14 Mod End
 -- Ver1.10 Mod End
           , abaa.last_update_date            AS last_update_date_abaa
 -- Ver1.12 Add Start
@@ -4317,8 +4321,12 @@ AS
                           AND af.creation_date_pv    <= gt_cur_process_date)
                       OR (    af.creation_date_pvsa  > gt_pre_process_date
                           AND af.creation_date_pvsa  <= gt_cur_process_date)
-                      OR (    af.creation_date_abaua > gt_pre_process_date
-                          AND af.creation_date_abaua <= gt_cur_process_date)
+-- Ver1.14 Mod Start
+--                      OR (    af.creation_date_abaua > gt_pre_process_date
+--                          AND af.creation_date_abaua <= gt_cur_process_date)
+                      OR (    af.last_update_date_abaua > gt_pre_process_date
+                          AND af.last_update_date_abaua <= gt_cur_process_date)
+-- Ver1.14 Mod End
 -- Ver1.11 Mod End
 -- Ver1.10 Mod End
                      )
@@ -4531,7 +4539,10 @@ AS
 --          , abaua.last_update_date           AS last_update_date_abaua
           , pv.creation_date                 AS creation_date_pv
           , pvsa.creation_date               AS creation_date_pvsa
-          , abaua.creation_date              AS creation_date_abaua
+-- Ver1.14 Mod Start
+--          , abaua.creation_date              AS creation_date_abaua
+          , abaua.last_update_date           AS last_update_date_abaua
+-- Ver1.14 Mod End
 -- Ver1.10 Mod End
           , abaa.last_update_date            AS last_update_date_abaa
 -- Ver1.12 Add Start
@@ -4587,12 +4598,15 @@ AS
         , NVL(abb.country, cv_jp)                        AS country                    -- 国
 -- Ver1.1 Mod End
         , abaa.account_holder_name                       AS account_holder_name        -- 口座名義人
-        , (CASE
-             WHEN xobae.bank_account_id IS NOT NULL THEN
-               xobae.bank_account_num
-             ELSE
-               abaa.bank_account_num
-           END)                                          AS bank_account_num           -- 銀行口座番号
+-- Ver1.14 Mod Start
+--        , (CASE
+--             WHEN xobae.bank_account_id IS NOT NULL THEN
+--               xobae.bank_account_num
+--             ELSE
+--               abaa.bank_account_num
+--           END)                                          AS bank_account_num           -- 銀行口座番号
+        , abaa.bank_account_num                          AS bank_account_num           -- 銀行口座番号
+-- Ver1.14 Mod End
 -- Ver1.4(E126) Mod Start
 --        , abaa.currency_code                             AS currency_code              -- 通貨
         , NVL(abaa.currency_code, cv_yen)                AS currency_code              -- 通貨
@@ -4678,8 +4692,12 @@ AS
                           AND af.creation_date_pv    <= gt_cur_process_date)
                       OR (    af.creation_date_pvsa  > gt_pre_process_date
                           AND af.creation_date_pvsa  <= gt_cur_process_date)
-                      OR (    af.creation_date_abaua > gt_pre_process_date
-                          AND af.creation_date_abaua <= gt_cur_process_date)
+-- Ver1.14 Mod Start
+--                      OR (    af.creation_date_abaua > gt_pre_process_date
+--                          AND af.creation_date_abaua <= gt_cur_process_date)
+                      OR (    af.last_update_date_abaua > gt_pre_process_date
+                          AND af.last_update_date_abaua <= gt_cur_process_date)
+-- Ver1.14 Mod End
 -- Ver1.11 Mod End
 -- Ver1.10 Mod End
                      )
@@ -4913,7 +4931,10 @@ AS
 --          , abaua.last_update_date           AS last_update_date_abaua
           , pv.creation_date                 AS creation_date_pv
           , pvsa.creation_date               AS creation_date_pvsa
-          , abaua.creation_date              AS creation_date_abaua
+-- Ver1.14 Mod Start
+--          , abaua.creation_date              AS creation_date_abaua
+          , abaua.last_update_date           AS last_update_date_abaua
+-- Ver1.14 Mod End
 -- Ver1.10 Mod End
           , abaa.last_update_date            AS last_update_date_abaa
 -- Ver1.12 Add Start
@@ -5042,8 +5063,12 @@ AS
                           AND af.creation_date_pv    <= gt_cur_process_date)
                       OR (    af.creation_date_pvsa  > gt_pre_process_date
                           AND af.creation_date_pvsa  <= gt_cur_process_date)
-                      OR (    af.creation_date_abaua > gt_pre_process_date
-                          AND af.creation_date_abaua <= gt_cur_process_date)
+-- Ver1.14 Mod Start
+--                      OR (    af.creation_date_abaua > gt_pre_process_date
+--                          AND af.creation_date_abaua <= gt_cur_process_date)
+                      OR (    af.last_update_date_abaua > gt_pre_process_date
+                          AND af.last_update_date_abaua <= gt_cur_process_date)
+-- Ver1.14 Mod End
 -- Ver1.11 Mod End
 -- Ver1.10 Mod End
                      )
