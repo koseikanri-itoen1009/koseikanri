@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(spec)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -35,6 +35,10 @@ AS
  *  check_code_combination_id_f  CCIDチェック
  *  get_uom_conversion_qty_f     基準単位換算数取得
  *  get_directory_path_f         ディレクトリパス取得
+ *  recalc_pay_amt_p             支払金額再計算
+ *  recalc_pay_amt_f             支払金額再計算
+ *  calc_bank_trans_fee_p        振込手数料算出
+ *  calc_bank_trans_fee_f        振込手数料算出
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -43,6 +47,7 @@ AS
  *  2008/10/31    1.0   T.OSADA          新規作成
  *  2009/02/06    1.1   K.YAMAGUCHI      [障害COK_022] ディレクトリパス取得追加
  *  2012/03/06    1.2   SCSK K.Nakamura  [E_本稼動_08318] 問屋請求見積照合 OUTに通常NET価格、今回NET価格を追加
+ *  2023/06/14    1.3   Y.Ooyama         [E_本稼動_19179] 支払金額再計算、振込手数料算出を追加
  *  
  *****************************************************************************************/
   -- ===============================
@@ -246,6 +251,64 @@ AS
     iv_directory_name              IN  VARCHAR2         -- ディレクトリ名
   )
   RETURN VARCHAR2;                                      -- ディレクトリパス
+-- Ver1.3 ADD START
+  --共通関数プロシージャ・支払金額再計算
+  PROCEDURE recalc_pay_amt_p(
+    ov_errbuf                   OUT VARCHAR2            -- エラー・バッファ
+  , ov_retcode                  OUT VARCHAR2            -- リターンコード
+  , ov_errmsg                   OUT VARCHAR2            -- エラー・メッセージ
+  , iv_pay_kbn                  IN  VARCHAR2            -- 支払区分（1:本振－WEB・ハガキ／2:本振－案内書なし／その他）
+  , iv_tax_calc_kbn             IN  VARCHAR2            -- 税計算区分（1:案内書単位／2:明細単位）
+  , iv_tax_kbn                  IN  VARCHAR2            -- 税区分（1:税込み／2:税抜き／3:非課税）
+  , iv_tax_rounding_rule        IN  VARCHAR2            -- 端数処理区分（NEAREST:四捨五入／UP:切上げ／DOWN:切捨て）
+  , in_tax_rate                 IN  NUMBER              -- 税率
+  , in_pay_amt_no_tax           IN  NUMBER              -- 支払金額（税抜）
+  , in_pay_amt_tax              IN  NUMBER              -- 支払金額（消費税）
+  , in_pay_amt_with_tax         IN  NUMBER              -- 支払金額（税込）
+  , on_pay_amt_no_tax           OUT NUMBER              -- 算出後支払金額（税抜）
+  , on_pay_amt_tax              OUT NUMBER              -- 算出後支払金額（消費税）
+  , on_pay_amt_with_tax         OUT NUMBER              -- 算出後支払金額（税込）
+  );
+  --共通関数ファンクション・支払金額再計算
+  FUNCTION recalc_pay_amt_f(
+    iv_pay_kbn                  IN  VARCHAR2            -- 支払区分（1:本振－WEB・ハガキ／2:本振－案内書なし／その他）
+  , iv_tax_calc_kbn             IN  VARCHAR2            -- 税計算区分（1:案内書単位／2:明細単位）
+  , iv_tax_kbn                  IN  VARCHAR2            -- 税区分（1:税込み／2:税抜き／3:非課税）
+  , iv_tax_rounding_rule        IN  VARCHAR2            -- 端数処理区分（NEAREST:四捨五入／UP:切上げ／DOWN:切捨て）
+  , in_tax_rate                 IN  NUMBER              -- 税率
+  , in_pay_amt_no_tax           IN  NUMBER              -- 支払金額（税抜）
+  , in_pay_amt_tax              IN  NUMBER              -- 支払金額（消費税）
+  , in_pay_amt_with_tax         IN  NUMBER              -- 支払金額（税込）
+  , iv_get_target_amt           IN  VARCHAR2            -- 取得対象金額（1:支払金額（税抜）／2:支払金額（消費税）／3:支払金額（税込））
+  )
+  RETURN NUMBER;                                        -- 算出後支払金額
+  --共通関数プロシージャ・振込手数料算出
+  PROCEDURE calc_bank_trans_fee_p(
+    ov_errbuf                   OUT VARCHAR2            -- エラー・バッファ
+  , ov_retcode                  OUT VARCHAR2            -- リターンコード
+  , ov_errmsg                   OUT VARCHAR2            -- エラー・メッセージ
+  , in_bank_trans_amt           IN  NUMBER              -- 振込額
+  , in_base_amt                 IN  NUMBER              -- 基準額
+  , in_fee_less_base_amt        IN  NUMBER              -- 基準額未満手数料
+  , in_fee_more_base_amt        IN  NUMBER              -- 基準額以上手数料
+  , in_fee_tax_rate             IN  NUMBER              -- 手数料税率
+  , iv_bank_charge_bearer       IN  VARCHAR2            -- 振込手数料負担者
+  , on_bank_trans_fee_no_tax    OUT NUMBER              -- 振込手数料（税抜）
+  , on_bank_trans_fee_tax       OUT NUMBER              -- 振込手数料（消費税）
+  , on_bank_trans_fee_with_tax  OUT NUMBER              -- 振込手数料（税込）
+  );
+  --共通関数ファンクション・振込手数料算出
+  FUNCTION calc_bank_trans_fee_f(
+    in_bank_trans_amt           IN  NUMBER              -- 振込額
+  , in_base_amt                 IN  NUMBER              -- 基準額
+  , in_fee_less_base_amt        IN  NUMBER              -- 基準額未満手数料
+  , in_fee_more_base_amt        IN  NUMBER              -- 基準額以上手数料
+  , in_fee_tax_rate             IN  NUMBER              -- 手数料税率
+  , iv_bank_charge_bearer       IN  VARCHAR2            -- 振込手数料負担者
+  , iv_get_target_amt           IN  VARCHAR2            -- 取得対象金額（1:振込手数料（税抜）／2:振込手数料（消費税）／3:振込手数料（税込））
+  )
+  RETURN NUMBER;                                        -- 振込手数料
+-- Ver1.3 ADD END
 --
 END xxcok_common_pkg;
 /

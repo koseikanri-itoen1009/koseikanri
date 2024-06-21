@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -35,6 +35,10 @@ AS
  *  get_bill_to_cust_code_f      請求先顧客コード取得
  *  get_uom_conversion_qty_f     基準単位換算数取得
  *  get_directory_path_f         ディレクトリパス取得
+ *  recalc_pay_amt_p             支払金額再計算
+ *  recalc_pay_amt_f             支払金額再計算
+ *  calc_bank_trans_fee_p        振込手数料算出
+ *  calc_bank_trans_fee_f        振込手数料算出
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -63,6 +67,7 @@ AS
  *                                                        問屋請求書見積書突合ステータス取得 問屋請求見積照合呼出修正
  *  2017/06/06    1.16  SCSK S.Niki      [E_本稼動_14226] 問屋請求見積照合PT対応
  *  2019/06/11    1.17  SCSK K.Minoura   [E_本稼動_15472] 問屋請求見積照合 軽減税率対応 共通関数「品目別消費税率取得」から税率取得
+ *  2023/06/14    1.18  Y.Ooyama         [E_本稼動_19179] 支払金額再計算、振込手数料算出を追加
  *
  *****************************************************************************************/
   -- ==============================
@@ -3514,6 +3519,543 @@ AS
         -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
       );
   END get_directory_path_f;
+--
+-- Ver1.18 ADD START
+  /**********************************************************************************
+   * Procedure Name   : recalc_pay_amt_p
+   * Description      : 支払金額再計算
+   ***********************************************************************************/
+  PROCEDURE recalc_pay_amt_p(
+    ov_errbuf                   OUT VARCHAR2            -- エラー・バッファ
+  , ov_retcode                  OUT VARCHAR2            -- リターンコード
+  , ov_errmsg                   OUT VARCHAR2            -- エラー・メッセージ
+  , iv_pay_kbn                  IN  VARCHAR2            -- 支払区分（1:本振－WEB・ハガキ／2:本振－案内書なし／その他）
+  , iv_tax_calc_kbn             IN  VARCHAR2            -- 税計算区分（1:案内書単位／2:明細単位）
+  , iv_tax_kbn                  IN  VARCHAR2            -- 税区分（1:税込み／2:税抜き／3:非課税）
+  , iv_tax_rounding_rule        IN  VARCHAR2            -- 端数処理区分（NEAREST:四捨五入／UP:切上げ／DOWN:切捨て）
+  , in_tax_rate                 IN  NUMBER              -- 税率
+  , in_pay_amt_no_tax           IN  NUMBER              -- 支払金額（税抜）
+  , in_pay_amt_tax              IN  NUMBER              -- 支払金額（消費税）
+  , in_pay_amt_with_tax         IN  NUMBER              -- 支払金額（税込）
+  , on_pay_amt_no_tax           OUT NUMBER              -- 算出後支払金額（税抜）
+  , on_pay_amt_tax              OUT NUMBER              -- 算出後支払金額（消費税）
+  , on_pay_amt_with_tax         OUT NUMBER              -- 算出後支払金額（税込）
+  )
+  IS
+    -- =======================
+    -- ローカル定数
+    -- =======================
+    cv_prg_name               CONSTANT VARCHAR2(30) := 'recalc_pay_amt_p';   -- プログラム名
+    cv_xxcok                  CONSTANT VARCHAR2(10) := 'XXCOK';              -- アプリケーション短縮名
+    cv_required_err_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10606';   -- 必須項目未設定エラー【COLUMN_NAME は設定が必須です。】
+    cv_token_name             CONSTANT VARCHAR2(20) := 'COLUMN_NAME';        -- トークン名【COLUMN_NAME】
+    --
+    cv_pay_kbn_1              CONSTANT VARCHAR2(1)  := '1';           -- 支払区分：本振（WEB・ハガキ）
+    cv_pay_kbn_2              CONSTANT VARCHAR2(1)  := '2';           -- 支払区分：本振（案内書なし）
+    cv_tax_calc_kbn_public    CONSTANT VARCHAR2(1)  := '1';           -- 税計算区分：案内書単位
+    cv_tax_calc_kbn_line      CONSTANT VARCHAR2(1)  := '2';           -- 税計算区分：明細単位
+    cv_tax_kbn_with_tax       CONSTANT VARCHAR2(1)  := '1';           -- 税区分：税込み
+    cv_tax_kbn_no_tax         CONSTANT VARCHAR2(1)  := '2';           -- 税区分：税抜き
+    cv_tax_rnd_rule_near      CONSTANT VARCHAR2(10) := 'NEAREST';     -- 端数処理区分：四捨五入
+    cv_tax_rnd_rule_up        CONSTANT VARCHAR2(10) := 'UP';          -- 端数処理区分：切上げ
+    cv_tax_rnd_rule_down      CONSTANT VARCHAR2(10) := 'DOWN';        -- 端数処理区分：切捨て
+--
+    -- =======================
+    -- ローカル変数
+    -- =======================
+    lv_errmsg                 VARCHAR2(5000);     -- ユーザー・エラー・メッセージ
+    lv_err_param_name         VARCHAR2(30);       -- エラー対象パラメータ名
+    ln_amt_tax                NUMBER;             -- 消費税
+--
+  -- =======================================================
+  -- ローカル例外
+  -- =======================================================
+    param_required_err_expt   EXCEPTION;          -- パラメータ必須エラー例外
+--
+  BEGIN
+--
+    -- OUTパラメータの初期化
+    ov_errbuf           := NULL;
+    ov_retcode          := gv_status_normal;
+    ov_errmsg           := NULL;
+    on_pay_amt_no_tax   := in_pay_amt_no_tax;    -- 算出後支払金額（税抜）
+    on_pay_amt_tax      := in_pay_amt_tax;       -- 算出後支払金額（消費税）
+    on_pay_amt_with_tax := in_pay_amt_with_tax;  -- 算出後支払金額（税込）
+    --
+    -- 入力パラメータの必須チェック
+    lv_err_param_name := NULL;
+    -- 支払区分
+    IF ( iv_pay_kbn IS NULL ) THEN
+      lv_err_param_name := 'iv_pay_kbn';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 税計算区分
+    IF ( iv_tax_calc_kbn IS NULL ) THEN
+      lv_err_param_name := 'iv_tax_calc_kbn';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 税区分
+    IF ( iv_tax_kbn IS NULL ) THEN
+      lv_err_param_name := 'iv_tax_kbn';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 端数処理区分
+    IF ( iv_tax_rounding_rule IS NULL ) THEN
+      lv_err_param_name := 'iv_tax_rounding_rule';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 税率
+    IF ( in_tax_rate IS NULL ) THEN
+      lv_err_param_name := 'in_tax_rate';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 支払金額（税抜）
+    IF ( in_pay_amt_no_tax IS NULL ) THEN
+      lv_err_param_name := 'in_pay_amt_no_tax';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 支払金額（税抜）
+    IF ( in_pay_amt_tax IS NULL ) THEN
+      lv_err_param_name := 'in_pay_amt_tax';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 支払金額（税込）
+    IF ( in_pay_amt_with_tax IS NULL ) THEN
+      lv_err_param_name := 'in_pay_amt_with_tax';
+      RAISE param_required_err_expt;
+    END IF;
+    --
+    --===============
+    -- 再計算判定
+    --===============
+    -- 下記条件をすべて満たす場合、再計算対象する。
+    -- ・支払区分が「1:本振（WEB・ハガキ）」、または、「2:本振（案内書なし）」
+    -- ・税計算区分が「1:案内書単位」
+    -- ・税区分が「1:税込み」、または、「2:税抜き」
+    IF (
+         iv_pay_kbn      IN ( cv_pay_kbn_1, cv_pay_kbn_2 ) AND
+         iv_tax_calc_kbn IN ( cv_tax_calc_kbn_public )     AND
+         iv_tax_kbn      IN ( cv_tax_kbn_with_tax, cv_tax_kbn_no_tax )
+       ) THEN
+      -- 再計算対象の場合
+      --
+      -- 消費税の算出
+      IF ( iv_tax_kbn = cv_tax_kbn_with_tax ) THEN
+        -- 税区分が「1:税込み」の場合
+        -- 消費税 = 入力パラメータ．支払金額（税込） - ((100×入力パラメータ．支払金額（税込）) / (100＋入力パラメータ．税率))
+        ln_amt_tax := in_pay_amt_with_tax - ((100 * in_pay_amt_with_tax) / (100 + in_tax_rate));
+      ELSE
+        -- 税区分が「2:税抜き」の場合
+        -- 消費税 = 入力パラメータ．支払金額（税抜） * 入力パラメータ．税率 / 100
+        ln_amt_tax := in_pay_amt_no_tax * in_tax_rate / 100;
+      END IF;
+      --
+      -- 消費税の端数処理
+      IF ( iv_tax_rounding_rule = cv_tax_rnd_rule_near ) THEN
+        -- 「四捨五入」の場合
+        ln_amt_tax := ROUND(ln_amt_tax);
+      ELSIF ( iv_tax_rounding_rule = cv_tax_rnd_rule_up ) THEN
+        -- 「切上げ」の場合
+        IF ( ln_amt_tax >= 0 ) THEN
+          -- 消費税が0以上の場合
+          ln_amt_tax := CEIL(ln_amt_tax);
+        ELSE
+          -- 上記以外の場合
+          ln_amt_tax := FLOOR(ln_amt_tax);
+        END IF;
+      ELSIF ( iv_tax_rounding_rule = cv_tax_rnd_rule_down ) THEN
+        -- 「切捨て」の場合
+        ln_amt_tax := TRUNC(ln_amt_tax);
+      END IF;
+      --
+      -- 算出後支払金額（税抜）、算出後支払金額（税込）の再計算
+      IF ( iv_tax_kbn = cv_tax_kbn_with_tax ) THEN
+        -- 税区分が「1:税込み」の場合
+        on_pay_amt_no_tax   := in_pay_amt_with_tax - ln_amt_tax;    -- 算出後支払金額（税抜）
+        on_pay_amt_tax      := ln_amt_tax;                          -- 算出後支払金額（消費税）
+        on_pay_amt_with_tax := in_pay_amt_with_tax;                 -- 算出後支払金額（税込）
+      ELSE
+        -- 税区分が「2:税抜き」の場合
+        on_pay_amt_no_tax   := in_pay_amt_no_tax;                   -- 算出後支払金額（税抜）
+        on_pay_amt_tax      := ln_amt_tax;                          -- 算出後支払金額（消費税）
+        on_pay_amt_with_tax := in_pay_amt_no_tax + ln_amt_tax;      -- 算出後支払金額（税込）
+      END IF;
+    END IF;
+--
+  EXCEPTION
+    -- パラメータ必須エラー
+    WHEN param_required_err_expt THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok                                 -- アプリケーション短縮名
+                    , iv_name         => cv_required_err_msg                      -- メッセージコード
+                    , iv_token_name1  => cv_token_name                            -- トークンコード1
+                    , iv_token_value1 => lv_err_param_name                        -- トークン値1
+                    );
+      ov_errbuf   :=  SUBSTRB(cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errmsg, 1, 5000);
+      ov_retcode  :=  gv_status_error;
+      ov_errmsg   :=  lv_errmsg;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM;
+      ov_retcode := gv_status_error;
+--
+  END recalc_pay_amt_p;
+--
+  /******************************************************************************
+   *FUNCTION NAME : recalc_pay_amt_f
+   *Desctiption   : 支払金額再計算
+   ******************************************************************************/
+  FUNCTION recalc_pay_amt_f(
+    iv_pay_kbn                  IN  VARCHAR2            -- 支払区分（1:本振－WEB・ハガキ／2:本振－案内書なし／その他）
+  , iv_tax_calc_kbn             IN  VARCHAR2            -- 税計算区分（1:案内書単位／2:明細単位）
+  , iv_tax_kbn                  IN  VARCHAR2            -- 税区分（1:税込み／2:税抜き／3:非課税）
+  , iv_tax_rounding_rule        IN  VARCHAR2            -- 端数処理区分（NEAREST:四捨五入／UP:切上げ／DOWN:切捨て）
+  , in_tax_rate                 IN  NUMBER              -- 税率
+  , in_pay_amt_no_tax           IN  NUMBER              -- 支払金額（税抜）
+  , in_pay_amt_tax              IN  NUMBER              -- 支払金額（消費税）
+  , in_pay_amt_with_tax         IN  NUMBER              -- 支払金額（税込）
+  , iv_get_target_amt           IN  VARCHAR2            -- 取得対象金額（1:支払金額（税抜）／2:支払金額（消費税）／3:支払金額（税込））
+  )
+  RETURN NUMBER              -- 算出後支払金額
+  IS
+  -- =======================================================
+  -- ローカル定数
+  -- =======================================================
+    cv_prg_name               CONSTANT VARCHAR2(30) := 'recalc_pay_amt_f';   -- プログラム名
+    cv_xxcok                  CONSTANT VARCHAR2(10) := 'XXCOK';              -- アプリケーション短縮名
+    cv_required_err_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10606';   -- 必須項目未設定エラー【COLUMN_NAME は設定が必須です。】
+    cv_token_name             CONSTANT VARCHAR2(20) := 'COLUMN_NAME';        -- トークン名【COLUMN_NAME】
+    --
+    cv_get_amt_no_tax         CONSTANT VARCHAR2(1)  := '1';                  -- 取得対象金額（支払金額（税抜））
+    cv_get_amt_tax            CONSTANT VARCHAR2(1)  := '2';                  -- 取得対象金額（支払金額（消費税））
+    cv_get_amt_with_tax       CONSTANT VARCHAR2(1)  := '3';                  -- 取得対象金額（支払金額（税込））
+--
+  -- =======================================================
+  -- ローカル変数
+  -- =======================================================
+    lv_errbuf                 VARCHAR2(5000);     -- エラー・メッセージエラー
+    lv_retcode                VARCHAR2(1);        -- リターン・コード
+    lv_errmsg                 VARCHAR2(5000);     -- ユーザー・エラー・メッセージ
+    lv_err_param_name         VARCHAR2(30);       -- エラー対象パラメータ名
+    ln_pay_amt_no_tax         NUMBER;             -- 支払金額（税抜）
+    ln_pay_amt_tax            NUMBER;             -- 支払金額（消費税）
+    ln_pay_amt_with_tax       NUMBER;             -- 支払金額（税込）
+    ln_pay_amt                NUMBER;             -- 支払金額
+--
+  -- =======================================================
+  -- ローカル例外
+  -- =======================================================
+    param_required_err_expt   EXCEPTION;          -- パラメータ必須エラー例外
+    recalc_pay_amt_err_expt   EXCEPTION;          -- 支払金額再計算エラー例外
+--
+  BEGIN
+--
+    -- 入力パラメータの必須チェック
+    lv_err_param_name := NULL;
+    -- 取得対象金額
+    IF ( iv_get_target_amt IS NULL ) THEN
+      lv_err_param_name := 'iv_get_target_amt';
+      RAISE param_required_err_expt;
+    END IF;
+    --
+    -- 支払金額再計算
+    xxcok_common_pkg.recalc_pay_amt_p(
+      ov_errbuf               => lv_errbuf                  -- エラー・バッファ
+    , ov_retcode              => lv_retcode                 -- リターンコード
+    , ov_errmsg               => lv_errmsg                  -- エラー・メッセージ
+    , iv_pay_kbn              => iv_pay_kbn                 -- 支払区分
+    , iv_tax_calc_kbn         => iv_tax_calc_kbn            -- 税計算区分（1:積上げ／2:伝票単位）
+    , iv_tax_kbn              => iv_tax_kbn                 -- 税区分
+    , iv_tax_rounding_rule    => iv_tax_rounding_rule       -- 端数処理区分
+    , in_tax_rate             => in_tax_rate                -- 税率
+    , in_pay_amt_no_tax       => in_pay_amt_no_tax          -- 支払金額（税抜）
+    , in_pay_amt_tax          => in_pay_amt_tax             -- 支払金額（消費税）
+    , in_pay_amt_with_tax     => in_pay_amt_with_tax        -- 支払金額（税込）
+    , on_pay_amt_no_tax       => ln_pay_amt_no_tax          -- 算出後支払金額（税抜）
+    , on_pay_amt_tax          => ln_pay_amt_tax             -- 算出後支払金額（消費税）
+    , on_pay_amt_with_tax     => ln_pay_amt_with_tax        -- 算出後支払金額（税込）
+    );
+    --
+    -- リターンコード判定
+    IF ( lv_retcode = gv_status_normal ) THEN
+      -- 「正常」の場合
+      --
+      -- 取得対象金額に該当する算出後支払金額を設定
+      IF ( iv_get_target_amt = cv_get_amt_no_tax ) THEN
+        -- 「1:支払金額（税抜）」の場合
+        ln_pay_amt := ln_pay_amt_no_tax;
+      ELSIF ( iv_get_target_amt = cv_get_amt_tax ) THEN
+        -- 「2:支払金額（消費税）」の場合
+        ln_pay_amt := ln_pay_amt_tax;
+      ELSIF ( iv_get_target_amt = cv_get_amt_with_tax ) THEN
+        -- 「3:支払金額（税込）」の場合
+        ln_pay_amt := ln_pay_amt_with_tax;
+      END IF;
+    ELSE
+      -- 「正常」以外の場合
+      RAISE recalc_pay_amt_err_expt;
+    END IF;
+--
+    RETURN ln_pay_amt;
+--
+  EXCEPTION
+    -- パラメータ必須エラー
+    WHEN param_required_err_expt THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok                                 -- アプリケーション短縮名
+                    , iv_name         => cv_required_err_msg                      -- メッセージコード
+                    , iv_token_name1  => cv_token_name                            -- トークンコード1
+                    , iv_token_value1 => lv_err_param_name                        -- トークン値1
+                    );
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errmsg
+      );
+--
+    -- 支払金額再計算エラー
+    WHEN recalc_pay_amt_err_expt THEN
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errbuf
+      );
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
+      );
+  END recalc_pay_amt_f;
+--
+  /**********************************************************************************
+   * Procedure Name   : calc_bank_trans_fee_p
+   * Description      : 振込手数料算出
+   ***********************************************************************************/
+  PROCEDURE calc_bank_trans_fee_p(
+    ov_errbuf                   OUT VARCHAR2            -- エラー・バッファ
+  , ov_retcode                  OUT VARCHAR2            -- リターンコード
+  , ov_errmsg                   OUT VARCHAR2            -- エラー・メッセージ
+  , in_bank_trans_amt           IN  NUMBER              -- 振込額
+  , in_base_amt                 IN  NUMBER              -- 基準額
+  , in_fee_less_base_amt        IN  NUMBER              -- 基準額未満手数料
+  , in_fee_more_base_amt        IN  NUMBER              -- 基準額以上手数料
+  , in_fee_tax_rate             IN  NUMBER              -- 手数料税率
+  , iv_bank_charge_bearer       IN  VARCHAR2            -- 振込手数料負担者
+  , on_bank_trans_fee_no_tax    OUT NUMBER              -- 振込手数料（税抜）
+  , on_bank_trans_fee_tax       OUT NUMBER              -- 振込手数料（消費税）
+  , on_bank_trans_fee_with_tax  OUT NUMBER              -- 振込手数料（税込）
+  )
+  IS
+  -- =======================================================
+  -- ローカル定数
+  -- =======================================================
+    cv_prg_name               CONSTANT VARCHAR2(30) := 'calc_bank_trans_fee_p'; -- プログラム名
+    cv_xxcok                  CONSTANT VARCHAR2(10) := 'XXCOK';                 -- アプリケーション短縮名
+    cv_required_err_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10606';      -- 必須項目未設定エラー【COLUMN_NAME は設定が必須です。】
+    cv_token_name             CONSTANT VARCHAR2(20) := 'COLUMN_NAME';           -- トークン名【COLUMN_NAME】
+--
+    cv_bank_charge_bearer_i   CONSTANT VARCHAR2(1)  := 'I';                     -- 振込手数料負担者：当方
+  -- =======================================================
+  -- ローカル変数
+  -- =======================================================
+    lv_errmsg                 VARCHAR2(5000);     -- ユーザー・エラー・メッセージ
+    lv_err_param_name         VARCHAR2(30);       -- エラー対象パラメータ名
+--
+  -- =======================================================
+  -- ローカル例外
+  -- =======================================================
+    param_required_err_expt   EXCEPTION;          -- パラメータ必須エラー例外
+--
+  BEGIN
+--
+    -- OUTパラメータの初期化
+    ov_errbuf                  := NULL;
+    ov_retcode                 := gv_status_normal;
+    ov_errmsg                  := NULL;
+    on_bank_trans_fee_no_tax   := 0;       -- 振込手数料（税抜）
+    on_bank_trans_fee_tax      := 0;       -- 振込手数料（消費税）
+    on_bank_trans_fee_with_tax := 0;       -- 振込手数料（税込）
+    --
+    -- 入力パラメータの必須チェック
+    lv_err_param_name := NULL;
+    -- 振込額
+    IF ( in_bank_trans_amt IS NULL ) THEN
+      lv_err_param_name := 'in_bank_trans_amt';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 基準額
+    IF ( in_base_amt IS NULL ) THEN
+      lv_err_param_name := 'in_base_amt';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 基準額未満手数料
+    IF ( in_fee_less_base_amt IS NULL ) THEN
+      lv_err_param_name := 'in_fee_less_base_amt';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 基準額以上手数料
+    IF ( in_fee_more_base_amt IS NULL ) THEN
+      lv_err_param_name := 'in_fee_more_base_amt';
+      RAISE param_required_err_expt;
+    END IF;
+    -- 手数料税率
+    IF ( in_fee_tax_rate IS NULL ) THEN
+      lv_err_param_name := 'in_fee_tax_rate';
+      RAISE param_required_err_expt;
+    END IF;
+    --
+    -- 振込手数料算出
+    -- 振込手数料（税抜）
+    IF ( iv_bank_charge_bearer = cv_bank_charge_bearer_i ) THEN
+      -- 振込手数料負担者が当方の場合
+      on_bank_trans_fee_no_tax := 0;
+    ELSE
+      -- 振込手数料負担者が当方以外の場合
+      IF ( in_bank_trans_amt < in_base_amt ) THEN
+        -- 入力パラメータ．振込額 < 入力パラメータ．基準額の場合
+        on_bank_trans_fee_no_tax := in_fee_less_base_amt;
+      ELSE
+        -- 上記以外の場合
+        on_bank_trans_fee_no_tax := in_fee_more_base_amt;
+      END IF;
+    END IF;
+    --
+    -- 振込手数料（消費税）
+    on_bank_trans_fee_tax := on_bank_trans_fee_no_tax * in_fee_tax_rate / 100;
+    -- 振込手数料（税込）
+    on_bank_trans_fee_with_tax := on_bank_trans_fee_no_tax + on_bank_trans_fee_tax;
+--
+  EXCEPTION
+    -- パラメータ必須エラー
+    WHEN param_required_err_expt THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok                                 -- アプリケーション短縮名
+                    , iv_name         => cv_required_err_msg                      -- メッセージコード
+                    , iv_token_name1  => cv_token_name                            -- トークンコード1
+                    , iv_token_value1 => lv_err_param_name                        -- トークン値1
+                    );
+      ov_errbuf   :=  SUBSTRB(cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errmsg, 1, 5000);
+      ov_retcode  :=  gv_status_error;
+      ov_errmsg   :=  lv_errmsg;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM;
+      ov_retcode := gv_status_error;
+--
+  END calc_bank_trans_fee_p;
+--
+  /******************************************************************************
+   *FUNCTION NAME : calc_bank_trans_fee_f
+   *Desctiption   : 振込手数料算出
+   ******************************************************************************/
+  FUNCTION calc_bank_trans_fee_f(
+    in_bank_trans_amt           IN  NUMBER              -- 振込額
+  , in_base_amt                 IN  NUMBER              -- 基準額
+  , in_fee_less_base_amt        IN  NUMBER              -- 基準額未満手数料
+  , in_fee_more_base_amt        IN  NUMBER              -- 基準額以上手数料
+  , in_fee_tax_rate             IN  NUMBER              -- 手数料税率
+  , iv_bank_charge_bearer       IN  VARCHAR2            -- 振込手数料負担者
+  , iv_get_target_amt           IN  VARCHAR2            -- 取得対象金額（1:振込手数料（税抜）／2:振込手数料（消費税）／3:振込手数料（税込））
+  )
+  RETURN NUMBER              -- 振込手数料
+  IS
+  -- =======================================================
+  -- ローカル定数
+  -- =======================================================
+    cv_prg_name               CONSTANT VARCHAR2(30) := 'calc_bank_trans_fee_f'; -- プログラム名
+    cv_xxcok                  CONSTANT VARCHAR2(10) := 'XXCOK';                 -- アプリケーション短縮名
+    cv_required_err_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10606';      -- 必須項目未設定エラー【COLUMN_NAME は設定が必須です。】
+    cv_token_name             CONSTANT VARCHAR2(20) := 'COLUMN_NAME';           -- トークン名【COLUMN_NAME】
+    --
+    cv_get_amt_no_tax         CONSTANT VARCHAR2(1)  := '1';                     -- 取得対象金額（振込手数料（税抜））
+    cv_get_amt_tax            CONSTANT VARCHAR2(1)  := '2';                     -- 取得対象金額（振込手数料（消費税））
+    cv_get_amt_with_tax       CONSTANT VARCHAR2(1)  := '3';                     -- 取得対象金額（振込手数料（税込））
+  -- =======================================================
+  -- ローカル変数
+  -- =======================================================
+    lv_errbuf                     VARCHAR2(5000);     -- エラー・メッセージエラー
+    lv_retcode                    VARCHAR2(1);        -- リターン・コード
+    lv_errmsg                     VARCHAR2(5000);     -- ユーザー・エラー・メッセージ
+    lv_err_param_name             VARCHAR2(30);       -- エラー対象パラメータ名
+    ln_bank_trans_fee_no_tax      NUMBER;             -- 振込手数料（税抜）
+    ln_bank_trans_fee_tax         NUMBER;             -- 振込手数料（消費税）
+    ln_bank_trans_fee_with_tax    NUMBER;             -- 振込手数料（税込）
+    ln_bank_trans_fee             NUMBER;             -- 振込手数料
+  -- =======================================================
+  -- ローカル例外
+  -- =======================================================
+    param_required_err_expt        EXCEPTION;          -- パラメータ必須エラー例外
+    calc_bank_trans_fee_err_expt   EXCEPTION;          -- 振込手数料算出エラー例外
+--
+  BEGIN
+--
+    -- 入力パラメータの必須チェック
+    lv_err_param_name := NULL;
+    -- 取得対象金額
+    IF ( iv_get_target_amt IS NULL ) THEN
+      lv_err_param_name := 'iv_get_target_amt';
+      RAISE param_required_err_expt;
+    END IF;
+    --
+    -- 振込手数料算出
+    xxcok_common_pkg.calc_bank_trans_fee_p(
+      ov_errbuf                   => lv_errbuf                   -- エラー・バッファ
+    , ov_retcode                  => lv_retcode                  -- リターンコード
+    , ov_errmsg                   => lv_errmsg                   -- エラー・メッセージ
+    , in_bank_trans_amt           => in_bank_trans_amt           -- 振込額
+    , in_base_amt                 => in_base_amt                 -- 基準額
+    , in_fee_less_base_amt        => in_fee_less_base_amt        -- 基準額未満手数料
+    , in_fee_more_base_amt        => in_fee_more_base_amt        -- 基準額以上手数料
+    , in_fee_tax_rate             => in_fee_tax_rate             -- 手数料税率
+    , iv_bank_charge_bearer       => iv_bank_charge_bearer       -- 振込手数料負担者
+    , on_bank_trans_fee_no_tax    => ln_bank_trans_fee_no_tax    -- 振込手数料（税抜）
+    , on_bank_trans_fee_tax       => ln_bank_trans_fee_tax       -- 振込手数料（消費税）
+    , on_bank_trans_fee_with_tax  => ln_bank_trans_fee_with_tax  -- 振込手数料（税込）
+    );
+    --
+    -- リターンコード判定
+    IF ( lv_retcode = gv_status_normal ) THEN
+      -- 「正常」の場合
+      --
+      -- 取得対象金額に該当する振込手数料を設定
+      IF ( iv_get_target_amt = cv_get_amt_no_tax ) THEN
+        -- 「1:振込手数料（税抜）」の場合
+        ln_bank_trans_fee := ln_bank_trans_fee_no_tax;
+      ELSIF ( iv_get_target_amt = cv_get_amt_tax ) THEN
+        -- 「2:振込手数料（消費税）」の場合
+        ln_bank_trans_fee := ln_bank_trans_fee_tax;
+      ELSIF ( iv_get_target_amt = cv_get_amt_with_tax ) THEN
+        -- 「3:振込手数料（税込）」の場合
+        ln_bank_trans_fee := ln_bank_trans_fee_with_tax;
+      END IF;
+    ELSE
+      -- 「正常」以外の場合
+      RAISE calc_bank_trans_fee_err_expt;
+    END IF;
+--
+    RETURN ln_bank_trans_fee;
+--
+  EXCEPTION
+    -- パラメータ必須エラー
+    WHEN param_required_err_expt THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok                                 -- アプリケーション短縮名
+                    , iv_name         => cv_required_err_msg                      -- メッセージコード
+                    , iv_token_name1  => cv_token_name                            -- トークンコード1
+                    , iv_token_value1 => lv_err_param_name                        -- トークン値1
+                    );
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errmsg
+      );
+--
+    -- 振込手数料算出エラー
+    WHEN calc_bank_trans_fee_err_expt THEN
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errbuf
+      );
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR(
+        -20000, cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || SQLERRM
+      );
+  END calc_bank_trans_fee_f;
+-- Ver1.18 ADD END
 --
 END xxcok_common_pkg;
 /
