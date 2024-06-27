@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,7 +60,8 @@ AS
  *                                       ・口銭の消費税を標準税率にて処理
  *  2019-11-14    1.8   S.Kuwako         E_本稼動_16049対応
  *  2020-03-17    1.9   S.Kuwako         E_本稼動_16232対応
- *  2024-05-21    1.10  R.Oikawa         E_本稼動_19497対応
+ *  2024-05-21    1.10  R.Oikawa         E_本稼動_19497対応 要件齟齬の為、本番へは未リリース（差額を仕入先/税率単位で算出）
+ *  2024-06-20    1.11  R.Oikawa         E_本稼動_19497対応 差額を仕入先/部門/税率単位で算出
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2483,11 +2484,17 @@ AS
     IS
       SELECT MAX(ai.invoice_id)               AS invoice_id,    -- 請求書ID
              ai.vendor_num                    AS vendor_num,    -- 仕入先
+-- Ver1.11 Add Start
+             ai.attribute3                    AS dept_code,     -- 部門
+-- Ver1.11 Add End
              SUM(vendor_adjust.adjust_amount) AS adjust_amount  -- 差額
       FROM   ap_invoices_interface ai,
              (
               SELECT  MAX(ai2.invoice_id)              AS invoice_id,
                       ai2.vendor_num                   AS vendor_num,
+-- Ver1.11 Add Start
+                      ai2.attribute3                   AS dept_code,
+-- Ver1.11 Add End
                       ail.tax_code                     AS tax_code,
                       SUM(ail.amount) + ROUND(SUM(ail.amount) * atc.tax_rate / 100)
                        + SUM(NVL(kousen_hukakin.amount,0))
@@ -2514,14 +2521,23 @@ AS
               AND     atc.org_id     =  gn_org_id_sales                  -- 営業単位
               AND     ail.line_type_lookup_code = gv_detail_type_item    -- 明細(ITEM)
               GROUP BY ai2.vendor_num,
+-- Ver1.11 Add Start
+                       ai2.attribute3,
+-- Ver1.11 Add End
                        ail.tax_code,
                        atc.tax_rate
              ) vendor_adjust
       WHERE  vendor_adjust.adjust_amount <> 0   -- 差額あり
       AND    vendor_adjust.invoice_id    =  ai.invoice_id
       AND    vendor_adjust.vendor_num    =  ai.vendor_num
+-- Ver1.11 Add Start
+      AND    vendor_adjust.dept_code     =  ai.attribute3
+-- Ver1.11 Add End
       AND    ai.request_id               =  cn_request_id
       GROUP BY ai.vendor_num
+-- Ver1.11 Add Start
+              ,ai.attribute3
+-- Ver1.11 Add End
       ;
 --
     -- *** ローカル・レコード ***

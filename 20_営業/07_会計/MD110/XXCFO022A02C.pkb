@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A02C(body)
  * Description      : AP仕入請求情報生成（有償支給）
  * MD.050           : AP仕入請求情報生成（有償支給）<MD050_CFO_022_A02>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,9 @@ AS
  *                                         ・前月繰越対象のロジック削除
  *  2024-05-27    1.6   R.Oikawa         E_本稼動_19497 生産インボイス対応
  *                                         ・仕入先/税率ごとに税計算を行い明細積上げと差額がある場合は調整額をいれる
+ *                                           ⇒要件齟齬の為、本番へは未リリース
+ *  2024-06-20    1.7   R.Oikawa         E_本稼動_19497 生産インボイス対応
+ *                                         ・差額を仕入先/部門/税率単位で算出
  * 
  *****************************************************************************************/
 --
@@ -2406,11 +2409,17 @@ AS
     IS
       SELECT MAX(ai.invoice_id)               AS invoice_id,    -- 請求書ID
              ai.vendor_num                    AS vendor_num,    -- 仕入先
+-- Ver1.7 Add Start
+             ai.attribute3                    AS dept_code,     -- 部門
+-- Ver1.7 Add End
              SUM(vendor_adjust.adjust_amount) AS adjust_amount  -- 差額
       FROM   ap_invoices_interface ai,
              (
               SELECT  MAX(ai2.invoice_id)               AS invoice_id,
                       ai2.vendor_num                    AS vendor_num,
+-- Ver1.7 Add Start
+                      ai2.attribute3                    AS dept_code,
+-- Ver1.7 Add End
                       TO_NUMBER(NVL(ai2.attribute6,0))  AS tax_rate1,
                       TO_NUMBER(NVL(ai2.attribute8,0))  AS tax_rate2,
                       TO_NUMBER(NVL(ai2.attribute10,0)) AS tax_rate3,
@@ -2422,6 +2431,9 @@ AS
               WHERE   ai2.request_id  = cn_request_id
               AND     ai2.attribute11 = cv_flag_n
               GROUP BY ai2.vendor_num,
+-- Ver1.7 Add Start
+                       ai2.attribute3,
+-- Ver1.7 Add End
                        TO_NUMBER(NVL(ai2.attribute6,0)),
                        TO_NUMBER(NVL(ai2.attribute8,0)),
                        TO_NUMBER(NVL(ai2.attribute10,0))
@@ -2429,8 +2441,14 @@ AS
       WHERE  vendor_adjust.adjust_amount <> 0   -- 差額あり
       AND    vendor_adjust.invoice_id    =  ai.invoice_id
       AND    vendor_adjust.vendor_num    =  ai.vendor_num
+-- Ver1.7 Add Start
+      AND    vendor_adjust.dept_code     =  ai.attribute3
+-- Ver1.7 Add End
       AND    ai.request_id               =  cn_request_id
       GROUP BY ai.vendor_num
+-- Ver1.7 Add Start
+              ,ai.attribute3
+-- Ver1.7 Add End
       ;
 --
     -- *** ローカル・レコード ***
