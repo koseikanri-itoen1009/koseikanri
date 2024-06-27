@@ -10,6 +10,7 @@
                        SCSK   吉岡           2022/10/31 Draft1B  仕様変更対応
                        SCSK   久保田         2023/02/22 Issue1.0 Issue化
                        SCSK   細沼           2024/04/02 Issue1.1 障害対応：E_本稼動_19878 502bad gatewayエラー対応
+                       SCSK   細沼           2024/06/06 Issue1.2 E_本稼動_19390 従業員連携のESSジョブ実行回数削減対応
 
      [戻り値]
         0 : 正常
@@ -145,6 +146,9 @@ def main():
     args = sys.argv
     com = Xxccdcomn("XXCCD021", os.path.dirname(args[0]))
 
+    ## HDL実行フラグ
+    execHdl = True
+    
     try:
         ## パラメータチェック、コマンドライン引数型変換
         filePath = com.paramChkAndConv("ファイルパス", args[1], True, "str", 0)
@@ -153,70 +157,86 @@ def main():
 
         ##### 0バイトファイル削除処理 #####
         if com.delZeroByteFileExec(filePath):
-            raise PyComnException("CCDI0005", [])
-
-        ##### データ変換処理 #####
-        ## 入力パラメータ生成
-        execPayload = json.dumps({
-            "filePath" : filePath
-        })
-        ## RESTAPI実行、エラー判定
-        apiResponse = execApi(com, execPayload, ["データ変換処理API"], convDataApi)
-
-        ## 正常ログ出力
-        com.writeMsg("CCDI0002", ["データ変換処理API"])
-
-        ##### HDL実行 #####
-        hdlFullpathFile = apiResponse["hdlFullpathFile"]
+            
+            ## ESSジョブ実行だけは必ず実行するため、例外発生ではなくフラグで分岐させる
+            execHdl = False
+            
+            ## HDL不実行メッセージ
+            com.writeMsg("CCDI0005", [])
         
-        ## ファイル存在チェック
-        if not os.path.isfile(hdlFullpathFile):
-            raise PyComnException("CCDI0004", [])
+        ## HDL実行判定
+        if execHdl :
+        
 
-        ## 入力パラメータ生成
-        execPayload = json.dumps({
-            "filePath" : os.path.dirname(hdlFullpathFile),
-            "fileName" : os.path.basename(hdlFullpathFile)
-        })
-
-        ## RESTAPI実行、エラー判定
-        apiResponse = execApi(com, execPayload, ["HDL実行API"]
-            , "/ic/api/integration/v1/flows/rest/XXCCD008/1.0/RestHDL")
-
-        ## 正常ログ出力
-        com.writeMsg("CCDI0002", ["HDL実行API"])
-
-        ##### 共通 #####
-        ## 入力パラメータ生成
-        execPayload = json.dumps({
-            "processId" : apiResponse["processId"]
-        })
-
-        ##### HDLステータスチェック #####
-        loopCnt = 0
-        while True:
+            ##### データ変換処理 #####
+            ## 入力パラメータ生成
+            execPayload = json.dumps({
+                "filePath" : filePath
+            })
             ## RESTAPI実行、エラー判定
-            apiResponse = execApi(com, execPayload, ["HDLステータスチェックAPI"]
-                , "/ic/api/integration/v1/flows/rest/XXCCD017/1.0/RestHDLStatusCheck")
-            loopCnt += 1
+            apiResponse = execApi(com, execPayload, ["データ変換処理API"], convDataApi)
 
-            if apiResponse["HDLStatus"] == com.getEnvConstValue("HDLST_SUCC_CD"):
-                break
-            elif (apiResponse["HDLStatus"] == com.getEnvConstValue("HDLST_WARN_CD")
-              or apiResponse["HDLStatus"] == com.getEnvConstValue("HDLST_ERR_CD")):
-                com.endCd = com.getEnvConstValue("JP1_ERR_CD")
-                raise PyComnException("CCDE0007", [])
-            else:
-                ## 実行回数判定
-                if loopCnt >= int(com.getEnvConstValue("MAX_LOOP_CNT")):
-                    com.endCd = com.getEnvConstValue("JP1_ERR_CD")
-                    raise PyComnException("CCDE0005", ["HDLステータスチェック処理API"])
-                ## 待機
-                time.sleep(int(com.getEnvConstValue("SLEEP_TIME")))
-                continue
+            ## 正常ログ出力
+            com.writeMsg("CCDI0002", ["データ変換処理API"])
 
-        ## 正常ログ出力
-        com.writeMsg("CCDI0002", ["HDLステータスチェックAPI"])
+            ##### HDL実行 #####
+            hdlFullpathFile = apiResponse["hdlFullpathFile"]
+            
+            ## ファイル存在チェック
+            if not os.path.isfile(hdlFullpathFile):
+                
+                ## 後続のESSジョブ実行を必ず実行するため、例外の代わりにフラグを反転させる
+                execHdl = False
+
+                ## HDL不実行メッセージ
+                com.writeMsg("CCDI0004", [])
+                
+            else :
+
+                ## 入力パラメータ生成
+                execPayload = json.dumps({
+                    "filePath" : os.path.dirname(hdlFullpathFile),
+                    "fileName" : os.path.basename(hdlFullpathFile)
+                })
+
+                ## RESTAPI実行、エラー判定
+                apiResponse = execApi(com, execPayload, ["HDL実行API"]
+                    , "/ic/api/integration/v1/flows/rest/XXCCD008/1.0/RestHDL")
+
+                ## 正常ログ出力
+                com.writeMsg("CCDI0002", ["HDL実行API"])
+
+                ##### 共通 #####
+                ## 入力パラメータ生成
+                execPayload = json.dumps({
+                    "processId" : apiResponse["processId"]
+                })
+
+                ##### HDLステータスチェック #####
+                loopCnt = 0
+                while True:
+                    ## RESTAPI実行、エラー判定
+                    apiResponse = execApi(com, execPayload, ["HDLステータスチェックAPI"]
+                        , "/ic/api/integration/v1/flows/rest/XXCCD017/1.0/RestHDLStatusCheck")
+                    loopCnt += 1
+
+                    if apiResponse["HDLStatus"] == com.getEnvConstValue("HDLST_SUCC_CD"):
+                        break
+                    elif (apiResponse["HDLStatus"] == com.getEnvConstValue("HDLST_WARN_CD")
+                      or apiResponse["HDLStatus"] == com.getEnvConstValue("HDLST_ERR_CD")):
+                        com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+                        raise PyComnException("CCDE0007", [])
+                    else:
+                        ## 実行回数判定
+                        if loopCnt >= int(com.getEnvConstValue("MAX_LOOP_CNT")):
+                            com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+                            raise PyComnException("CCDE0005", ["HDLステータスチェック処理API"])
+                        ## 待機
+                        time.sleep(int(com.getEnvConstValue("SLEEP_TIME")))
+                        continue
+
+                ## 正常ログ出力
+                com.writeMsg("CCDI0002", ["HDLステータスチェックAPI"])
 
         ## ESSジョブ実行判定
         if essJobParamJsonFileName: 
@@ -230,52 +250,55 @@ def main():
                 ##### ESSジョブ実行 #####
                 execEssJob(com, essJobJsonList)
 
-        ##### コールバックチェック #####
-        loopCnt = 0
-        while True:
+        ## HDL実行判定
+        if execHdl :
+
+            ##### コールバックチェック #####
+            loopCnt = 0
+            while True:
+                ## RESTAPI実行、エラー判定
+                apiResponse = execApi(com, execPayload, ["コールバックチェック処理API"]
+                    , "/ic/api/integration/v1/flows/rest/XXCCD011/1.0/RestCallBackCheck")
+                loopCnt += 1
+
+                if apiResponse["JobStatusCount"] > 0:
+                    ## 実行回数判定
+                    if loopCnt >= int(com.getEnvConstValue("MAX_LOOP_CNT")):
+                        com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+                        raise PyComnException("CCDE0005", ["コールバックチェック処理API"])
+                    ## 待機
+                    time.sleep(int(com.getEnvConstValue("SLEEP_TIME")))
+                    continue
+                else:
+                    break
+
+            ## 正常ログ出力
+            com.writeMsg("CCDI0002", ["コールバックチェック処理API"])
+
+            ##### 実行結果出力 #####
             ## RESTAPI実行、エラー判定
-            apiResponse = execApi(com, execPayload, ["コールバックチェック処理API"]
-                , "/ic/api/integration/v1/flows/rest/XXCCD011/1.0/RestCallBackCheck")
-            loopCnt += 1
+            apiResponse = execApi(com, execPayload, ["実行結果出力API"]
+                , "/ic/api/integration/v1/flows/rest/XXCCD012/1.0/RestOutputFile")
 
-            if apiResponse["JobStatusCount"] > 0:
-                ## 実行回数判定
-                if loopCnt >= int(com.getEnvConstValue("MAX_LOOP_CNT")):
-                    com.endCd = com.getEnvConstValue("JP1_ERR_CD")
-                    raise PyComnException("CCDE0005", ["コールバックチェック処理API"])
-                ## 待機
-                time.sleep(int(com.getEnvConstValue("SLEEP_TIME")))
-                continue
-            else:
-                break
+            ## 正常ログ出力
+            com.writeMsg("CCDI0002", ["実行結果出力API"])
 
-        ## 正常ログ出力
-        com.writeMsg("CCDI0002", ["コールバックチェック処理API"])
+            ##### ジョブステータスチェック #####
+            ## RESTAPI実行、エラー判定
+            apiResponse = execApi(com, execPayload, ["ジョブステータスチェックAPI"]
+                , "/ic/api/integration/v1/flows/rest/XXCCD013/1.0/RestJobStatusCheck")
 
-        ##### 実行結果出力 #####
-        ## RESTAPI実行、エラー判定
-        apiResponse = execApi(com, execPayload, ["実行結果出力API"]
-            , "/ic/api/integration/v1/flows/rest/XXCCD012/1.0/RestOutputFile")
+            ## ジョブステータスコード判定
+            jobStCd = apiResponse["JobStatusCode"]
+            if jobStCd == com.getEnvConstValue("JOBST_WARN_CD"):
+                com.endCd = com.getEnvConstValue("JP1_WARN_CD")
+                com.writeMsg("CCPW0001", [])
+            elif jobStCd == com.getEnvConstValue("JOBST_ERR_CD"):
+                com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+                raise PyComnException("CCDE0004", [])
 
-        ## 正常ログ出力
-        com.writeMsg("CCDI0002", ["実行結果出力API"])
-
-        ##### ジョブステータスチェック #####
-        ## RESTAPI実行、エラー判定
-        apiResponse = execApi(com, execPayload, ["ジョブステータスチェックAPI"]
-            , "/ic/api/integration/v1/flows/rest/XXCCD013/1.0/RestJobStatusCheck")
-
-        ## ジョブステータスコード判定
-        jobStCd = apiResponse["JobStatusCode"]
-        if jobStCd == com.getEnvConstValue("JOBST_WARN_CD"):
-            com.endCd = com.getEnvConstValue("JP1_WARN_CD")
-            com.writeMsg("CCPW0001", [])
-        elif jobStCd == com.getEnvConstValue("JOBST_ERR_CD"):
-            com.endCd = com.getEnvConstValue("JP1_ERR_CD")
-            raise PyComnException("CCDE0004", [])
-
-        ## 正常ログ出力
-        com.writeMsg("CCDI0002", ["ジョブステータスチェックAPI"])
+            ## 正常ログ出力
+            com.writeMsg("CCDI0002", ["ジョブステータスチェックAPI"])
 
     ## 例外判定
     except PyComnException as e1:
