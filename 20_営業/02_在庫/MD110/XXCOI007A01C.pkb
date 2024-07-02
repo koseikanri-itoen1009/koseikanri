@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/09/28    1.8   H.Sasaki        [E_T3_00605]リカバリ処理を実装
  *  2010/01/29    1.9   H.Sasaki        [E_本稼動_01335]GLバッチID取得エラー時のエラーハンドリングを修正
  *  2024/03/18    1.10  R.Oikawa        [E_本稼動_19496] グループ会社対応
+ *  2024/06/24    1.11  R.Oikawa        [E_本稼動_20008] 北海道分社化在庫仕訳対応
  *
  *****************************************************************************************/
 --
@@ -2356,6 +2357,11 @@ AS
     lt_segment2          gl_interface.segment2%TYPE;      -- 部門
     lt_segment3          gl_interface.segment3%TYPE;      -- 勘定科目
     lt_segment4          gl_interface.segment4%TYPE;      -- 補助科目
+-- Ver1.11 ADD START
+    lt_entered_dr_adj    gl_interface.entered_dr%TYPE;    -- 借方金額（調整）
+    lt_entered_cr_adj    gl_interface.entered_cr%TYPE;    -- 貸方金額（調整）
+    lv_adj_target_flg    VARCHAR2(1);                     -- 調整仕訳作成対象
+-- Ver1.11 ADD END
 --
     -- ===============================
     -- 棚卸資産情報の抽出
@@ -2380,6 +2386,10 @@ AS
             , ROUND( SUM( xwcv2.primary_quantity *
                 ROUND( xwcv2.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)),0)
                                                  AS sum_purchase_amount         -- 購入金額
+-- Ver1.11 ADD START
+            , ROUND( SUM( xwcv2.primary_quantity * ( operation_cost - standard_cost ) ),0)
+                                                 AS sum_adj_amount              -- 売上原価調整金額(営業原価-標準原価)
+-- Ver1.11 ADD END
       FROM    xxcoi_wk_cost_variance    xwcv2                              -- 原価差額ワークテーブル
             , xxcfr_bd_company_info_v   flv                                -- 各社利益率
       WHERE   xwcv2.group_company_flg = cv_1                               -- 1:グループ会社
@@ -2614,6 +2624,11 @@ AS
           lt_segment2        := NULL;  -- 部門
           lt_segment3        := NULL;  -- 勘定科目
           lt_segment4        := NULL;  -- 補助科目
+-- Ver1.11 ADD START
+          lt_entered_dr_adj  := NULL;  -- 借方金額（調整）
+          lt_entered_cr_adj  := NULL;  -- 貸方金額（調整）
+          lv_adj_target_flg  := NULL;  -- 調整仕訳作成対象
+-- Ver1.11 ADD END
 --
           -- 計上部門取得
           BEGIN
@@ -2655,25 +2670,66 @@ AS
             AND     TRUNC( xwcv_sumr_gr_rec.xwcv_transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv_sumr_gr_rec.xwcv_transaction_date )
                                               AND     NVL( flv.end_date_active, xwcv_sumr_gr_rec.xwcv_transaction_date )
             ;
+-- Ver1.11 ADD START
+            lv_adj_target_flg := cv_1;
+-- Ver1.11 ADD END
           EXCEPTION
           WHEN OTHERS THEN
             -- 変換対象外の勘定科目
             gt_aff3_cost_account  := xwcv_sumr_gr_rec.xwcv_account_code;
             gt_aff4_cost_sub_acct := xwcv_sumr_gr_rec.xwcv_subacct_code;
+-- Ver1.11 ADD START
+            lv_adj_target_flg := NULL;
+-- Ver1.11 ADD END
           END;
 --
-          -- 金額が＋なら借方金額にセット
-          IF xwcv_sumr_gr_rec.sum_cost_amount > 0 THEN
-            lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+          -- 勘定科目変換を基準に部門を設定
+-- Ver1.11 MOD START
+--          IF xwcv_sumr_gr_rec.sum_cost_amount > 0 THEN
+--            lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+          -- 売上原価仕訳（製品・商品勘定）
+          IF lv_adj_target_flg IS NOT NULL THEN
+            IF xwcv_sumr_gr_rec.sum_cost_amount > 0 THEN
+              lt_entered_dr     := ABS( xwcv_sumr_gr_rec.sum_amount );
+              -- 営業原価 > 標準原価の場合
+              IF ABS(xwcv_sumr_gr_rec.sum_amount) > ABS(xwcv_sumr_gr_rec.sum_cost_amount) THEN
+                lt_entered_cr_adj := ABS( xwcv_sumr_gr_rec.sum_adj_amount );
+              ELSE
+              -- 営業原価 < 標準原価の場合
+                lt_entered_dr_adj := ABS( xwcv_sumr_gr_rec.sum_adj_amount );
+              END IF;
+            ELSE
+              -- 貸借反転仕訳の場合は貸方に設定
+              lt_entered_cr     := ABS( xwcv_sumr_gr_rec.sum_amount );
+              -- 営業原価 > 標準原価の場合
+              IF ABS(xwcv_sumr_gr_rec.sum_amount) > ABS(xwcv_sumr_gr_rec.sum_cost_amount) THEN
+                lt_entered_dr_adj := ABS( xwcv_sumr_gr_rec.sum_adj_amount );
+              ELSE
+              -- 営業原価 < 標準原価の場合
+                lt_entered_cr_adj := ABS( xwcv_sumr_gr_rec.sum_adj_amount );
+              END IF;
+            END IF;
+-- Ver1.11 MOD END
             lt_segment2   := gt_aff2_cost_dept_dr;
             lt_segment3   := gt_aff3_cost_account;
             lt_segment4   := gt_aff4_cost_sub_acct;
-          -- 金額が－なら貸方金額にセット
           ELSE
-            lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+-- Ver1.11 MOD START
+--            lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+            -- 貸借反転仕訳の場合は借方に設定
+            IF xwcv_sumr_gr_rec.sum_cost_amount > 0 THEN
+              lt_entered_dr     := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+            ELSE
+              lt_entered_cr     := ABS( xwcv_sumr_gr_rec.sum_cost_amount );
+            END IF;
+-- Ver1.11 MOD END
             lt_segment2   := gt_aff2_cost_dept_cr;
-            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
-            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+-- Ver1.11 MOD START
+--            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
+--            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+            lt_segment3   := gt_aff3_cost_account;
+            lt_segment4   := gt_aff4_cost_sub_acct;
+-- Ver1.11 MOD END
           END IF;
 --
           -- ===============================
@@ -2697,6 +2753,33 @@ AS
           IF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
+-- Ver1.11 ADD START
+          -- 差額がある場合
+          IF ( lv_adj_target_flg IS NOT NULL
+            AND xwcv_sumr_gr_rec.sum_adj_amount <> 0 ) THEN
+              -- ===============================
+              -- GL-IF登録処理（売上原価調整）
+              -- ===============================
+              ins_gl_if_reg(
+                  id_accounting_date       => xwcv_sumr_gr_rec.xwcv_transaction_date,        -- 仕訳有効日付
+                  iv_segment1              => gt_aff1_company_code,                          -- 会社コード
+                  iv_segment2              => gt_aff2_adj_dept_code,                         -- 部門コード
+                  iv_segment3              => gt_aff3_cost_account,                          -- 勘定科目コード
+                  iv_segment4              => gt_aff4_cost_sub_acct,                         -- 補助科目コード
+                  in_entered_dr            => lt_entered_dr_adj,                             -- 借方金額
+                  in_entered_cr            => lt_entered_cr_adj,                             -- 貸方金額
+                  iv_reference21           => TO_CHAR( xwcv_sumr_gr_rec.xwcv_gl_batch_id ),  -- GLバッチID
+                  iv_period_name           => xwcv_sumr_gr_rec.gp_period_name,               -- 会計期間名
+                  iv_user_je_category_name => gt_je_category_name_inv_gr,                    -- 仕訳カテゴリ名
+                  ov_errbuf                => lv_errbuf   -- エラー・メッセージ
+                , ov_retcode               => lv_retcode  -- リターン・コード
+                , ov_errmsg                => lv_errmsg   -- ユーザー・エラー・メッセージ
+              );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE global_process_expt;
+              END IF;
+          END IF;
+-- Ver1.11 ADD END
 --
           -- 初期化
           lt_entered_dr      := NULL;  -- 借方金額
@@ -2707,16 +2790,31 @@ AS
           -- 金額が＋なら借方金額にセット
           IF xwcv_sumr_gr_rec.sum_purchase_amount > 0 THEN
             lt_entered_dr := ABS( xwcv_sumr_gr_rec.sum_purchase_amount );
-            lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
-            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
-            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+-- Ver1.11 DEL START
+--            lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
+--            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
+--            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+-- Ver1.11 DEL END
           -- 金額が－なら貸方金額にセット
           ELSE
             lt_entered_cr := ABS( xwcv_sumr_gr_rec.sum_purchase_amount );
+-- Ver1.11 DEL START
+--            lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
+--            lt_segment3   := gt_aff3_payable;    -- 買掛金
+--            lt_segment4   := gt_aff4_payable;    -- 買掛金(補助)
+-- Ver1.11 DEL END
+          END IF;
+-- Ver1.11 ADD START
+          IF lv_adj_target_flg IS NOT NULL THEN
+            lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
+            lt_segment3   := xwcv_sumr_gr_rec.xwcv_account_code;
+            lt_segment4   := xwcv_sumr_gr_rec.xwcv_subacct_code;
+          ELSE
             lt_segment2   := xwcv_sumr_gr_rec.xwcv_grcp_adj_dept_code;
             lt_segment3   := gt_aff3_payable;    -- 買掛金
             lt_segment4   := gt_aff4_payable;    -- 買掛金(補助)
           END IF;
+-- Ver1.11 ADD END
           -- ===============================
           -- GL-IF登録処理（棚卸資産仕訳）
           -- ===============================
