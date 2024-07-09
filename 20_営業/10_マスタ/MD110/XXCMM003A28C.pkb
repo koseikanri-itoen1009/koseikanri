@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,7 +36,7 @@ AS
  *  2017/06/14    1.10  仁木 重人        障害E_本稼動_14271対応
  *  2019/01/31    1.11  阿部 直樹        障害E_本稼動_15490対応
  *  2021/05/24    1.12  二村 悠香        障害E_本稼働_16026対応 コメント変更のみ（紹介者チェーンコード2→控除用チェーンコード）
- *
+ *  2024/06/26    1.13  奥山 徹          障害E_本稼動_19877対応 インボイス対応（請求書消費税積上げ計算方式）項目追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -502,6 +502,9 @@ AS
                xca.business_low_type                  business_low_type     --業態（小分類）
 -- 2009/10/20 Ver1.3 add start by Y.Kuboshima
               ,xca.invoice_code                       invoice_code          --請求書用コード
+-- Ver1.13 add start
+              ,xca.invoice_tax_div                    invoice_tax_div       --請求書消費税積上げ計算方式
+-- Ver1.13 add end
               ,xca.industry_div                       industry_div          --業種
               ,xca.bill_base_code                     bill_base_code        --請求拠点
               ,xca.receiv_base_code                   receiv_base_code      --入金拠点
@@ -1043,6 +1046,9 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code2            ,1 ,9  );  --控除用チェーンコード
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_class                ,1 ,1  );  --請求書印刷区分
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_code                 ,1 ,9  );  --請求書用コード
+-- Ver1.13 add start
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_tax_div              ,1 ,1  );  --請求書消費税積上げ計算方式
+-- Ver1.13 add end
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_order               ,1 ,14 );  --配送順（EDI）
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_code            ,1 ,8  );  --EDI地区コード（EDI)
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_name            ,1 ,40 );  --EDI地区名（EDI）

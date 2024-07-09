@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,7 +54,7 @@ AS
  *  2021/07/21    1.24  二村 悠香        障害E_本稼動_16026再対応 収益認識 控除用チェーンコード対応
  *  2021/10/14    1.25  冨江 広大        障害E_本稼動_17545対応 収益認識 顧客マスタの控除用チェーン変更チェック対応
  *  2022/08/24    1.26  赤地 学          障害E_本稼動_18569対応 事務センター所属チェック（価格表指定）
- *
+ *  2024/06/26    1.27  奥山 徹          障害E_本稼動_19877対応 インボイス対応（請求書消費税積上げ計算方式）項目追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -239,6 +239,9 @@ AS
   cv_msg_base_business_err    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10505';                -- 事務センター所属チェックエラーメッセージ
   cv_base_code_business       CONSTANT VARCHAR2(25)  := 'XXCMM_BASE_CODE_BUSINESS';        -- 参照タイプ・拠点コード（事務センター）
 -- Ver1.26 add end
+-- Ver1.27 add start
+  cv_msg_invoice_tax_div_err  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10507';                -- 請求書消費税積上げ計算方式チェックエラーメッセージ
+-- Ver1.27 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -332,6 +335,10 @@ AS
 --
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
   cv_invoice_code             CONSTANT VARCHAR2(14)  := '請求書用コード';                  --請求書用コード
+-- Ver1.27 add start
+  cv_invoice_tax_div          CONSTANT VARCHAR2(30)  := '請求書消費税積上げ計算方式';      --請求書消費税積上げ計算方式
+  cv_invoice_tax_div_tk       CONSTANT VARCHAR2(15)  := 'INVOICE_TAX_DIV';                 --請求書消費税積上げ計算方式トークン
+-- Ver1.27 add end
   cv_cond_col_name            CONSTANT VARCHAR2(15)  := 'COND_COL_NAME';                   --相関列名トークン
   cv_cond_col_val             CONSTANT VARCHAR2(15)  := 'COND_COL_VALUE';                  --相関値トークン
   cv_kokyaku_kbn              CONSTANT VARCHAR2(2)   := '10';                              --顧客区分(顧客)
@@ -647,6 +654,9 @@ AS
     lv_cust_customer_class      VARCHAR2(100)   := NULL;                  --ローカル変数・顧客区分(顧客マスタ)
     lv_invoice_required_flag    VARCHAR2(1)     := NULL;                  --ローカル変数・請求書用コード必須フラグ
     lv_invoice_code             VARCHAR2(100)   := NULL;                  --ローカル変数・請求書用コード
+-- Ver1.27 add start
+    lv_invoice_tax_div          VARCHAR2(100)   := NULL;                  --ローカル変数・請求書消費税積上げ計算方式
+-- Ver1.27 add end
     ln_invoice_code_mst         hz_cust_accounts.cust_account_id%TYPE;    --請求書用コード確認用変数
     lv_industry_div             VARCHAR2(100)   := NULL;                  --ローカル変数・業種
     lv_industry_div_mst         VARCHAR2(100)   := NULL;                  --業種確認用変数
@@ -4615,7 +4625,11 @@ AS
 --                                                                    ,78);
 -- Ver1.16 mod start
 --                                                                    ,79);
-                                                                    ,81);
+
+-- Ver1.27 mod start
+--                                                                    ,81);
+                                                                    ,82);
+-- Ver1.27 mod end
 -- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
@@ -4703,7 +4717,10 @@ AS
 --                                                                  ,80);
 -- Ver1.21 mod start
 --                                                                  ,82);
-                                                                  ,83);
+-- Ver1.27 mod start
+--                                                                  ,83);
+                                                                  ,84);
+-- Ver1.27 mod end
 -- Ver1.21 mod end
 -- Ver1.16 mod end
 -- Ver1.14 mod end
@@ -4935,6 +4952,66 @@ AS
             END IF;
           END IF;
         END IF;
+-- Ver1.27 add start
+        -- 請求書消費税積上げ計算方式取得
+        lv_invoice_tax_div := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                     ,cv_comma
+                                                                     ,53);
+        --請求書消費税積上げ計算方式 型・桁数チェック
+        xxccp_common_pkg2.upload_item_check( cv_invoice_tax_div  --請求書消費税積上げ計算方式
+                                            ,lv_invoice_tax_div  --請求書消費税積上げ計算方式
+                                            ,1                   --項目長
+                                            ,NULL                --項目長（小数点以下）
+                                            ,cv_null_ok          --必須フラグ
+                                            ,cv_element_vc2      --属性（0・検証なし）
+                                            ,lv_item_errbuf      --エラーバッファ
+                                            ,lv_item_retcode     --エラーコード
+                                            ,lv_item_errmsg);    --エラーメッセージ
+        --請求書消費税積上げ計算方式 型・桁数チェックエラー時
+        IF (lv_item_retcode <> cv_status_normal) THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --請求書消費税積上げ計算方式エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_val_form_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_invoice_tax_div
+                          ,iv_token_name3  => cv_input_val
+                          ,iv_token_value3 => lv_invoice_tax_div
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_item_errmsg
+          );
+        ELSE
+          lv_invoice_tax_div := UPPER(lv_invoice_tax_div);
+          --請求書消費税積上げ計算方式 Yes/No（Y/N）のコードチェックエラー時
+          IF (NVL(lv_invoice_tax_div,cv_no) <> cv_no AND NVL(lv_invoice_tax_div,cv_no) <> cv_yes) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --請求書消費税積上げ計算方式エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_msg_invoice_tax_div_err
+                            ,iv_token_name1  => cv_invoice_tax_div_tk
+                            ,iv_token_value1 => lv_invoice_tax_div
+                            ,iv_token_name2  => cv_cust_code
+                            ,iv_token_value2 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+           END IF;
+        END IF;
+-- Ver1.27 add end
         --
         -- 業種取得
         lv_industry_div := xxccp_common_pkg.char_delim_partition(  lv_temp
@@ -5417,7 +5494,10 @@ AS
                                                                       ,cv_comma
 -- Ver1.10 mod start
 --                                                                      ,45);
-                                                                      ,64);
+-- Ver1.27 mod start
+--                                                                      ,64);
+                                                                      ,65);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 --
           -- 獲得営業員 取得
@@ -5425,7 +5505,10 @@ AS
                                                                             ,cv_comma
 -- Ver1.10 mod start
 --                                                                            ,46);
-                                                                            ,65);
+-- Ver1.27 mod start
+--                                                                            ,65);
+                                                                            ,66);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 --
           -- 獲得拠点コード、獲得営業員のチェック
@@ -5946,7 +6029,10 @@ AS
                                                                        ,cv_comma
 -- Ver1.10 mod start
 --                                                                       ,47);
-                                                                       ,66);
+-- Ver1.27 mod start
+--                                                                       ,66);
+                                                                       ,67);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
           --CSVに設定された新規ポイント区分が任意の値の場合
           IF (lv_new_point_div <> cv_null_bar) THEN
@@ -5988,7 +6074,10 @@ AS
                                                                        ,cv_comma
 -- Ver1.10 mod start
 --                                                                       ,48);
-                                                                       ,67);
+-- Ver1.27 mod start
+--                                                                       ,67);
+                                                                       ,68);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
           --CSVに設定された新規ポイントが任意の値の場合
           IF ( lv_new_point <> cv_null_bar ) THEN
@@ -6062,7 +6151,10 @@ AS
                                                                        ,cv_comma
 -- Ver1.10 mod start
 --                                                                       ,49);
-                                                                       ,68);
+-- Ver1.27 mod start
+--                                                                       ,68);
+                                                                       ,69);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
           --CSVに設定された紹介拠点が任意の値の場合
           IF (lv_intro_base_code <> cv_null_bar) THEN
@@ -6104,7 +6196,10 @@ AS
                                                                              ,cv_comma
 -- Ver1.10 mod start
 --                                                                             ,50);
-                                                                             ,69);
+-- Ver1.27 mod start
+--                                                                             ,69);
+                                                                             ,70);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
           --CSVに設定された紹介営業員がNULLの場合
           IF ( lv_intro_business_person IS NULL ) THEN
@@ -6306,7 +6401,10 @@ AS
 --                                                                ,76);
 -- Ver1.16 mod start
 --                                                                ,77);
-                                                                ,79);
+-- Ver1.27 mod start
+--                                                                ,79);
+                                                                ,80);
+-- Ver1.27 mod end
 -- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
@@ -6363,7 +6461,10 @@ AS
 --                                                                     ,81);
 -- Ver1.21 mod start
 --                                                                     ,83);
-                                                                     ,84);
+-- Ver1.27 mod start
+--                                                                     ,84);
+                                                                     ,85);
+-- Ver1.27 mod end
 -- Ver1.21 mod end
 -- Ver1.16 mod end
 -- Ver1.14 mod end
@@ -6420,7 +6521,10 @@ AS
 --                                                                 ,77);
 -- Ver1.16 mod start
 --                                                                 ,78);
-                                                                 ,80);
+-- Ver1.27 mod start
+--                                                                 ,80);
+                                                                 ,81);
+-- Ver1.27 mod end
 -- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
@@ -6597,7 +6701,10 @@ AS
 --                                                                  ,43);
 -- Ver1.10 mod start
 --                                                                  ,55);
-                                                                  ,62);
+-- Ver1.27 mod start
+--                                                                  ,62);
+                                                                  ,63);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --カード会社型・桁数チェック
@@ -7019,7 +7126,10 @@ AS
 --                                                                    ,47);
 -- Ver1.10 mod start
 --                                                                    ,59);
-                                                                    ,53);
+-- Ver1.27 mod start
+--                                                                    ,53);
+                                                                    ,54);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -7070,7 +7180,10 @@ AS
 --                                                                       ,48);
 -- Ver1.10 mod start
 --                                                                       ,60);
-                                                                       ,54);
+-- Ver1.27 mod start
+--                                                                       ,54);
+                                                                       ,55);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -7141,7 +7254,10 @@ AS
 --                                                                       ,49);
 -- Ver1.10 mod start
 --                                                                       ,61);
-                                                                       ,55);
+-- Ver1.27 mod start
+--                                                                       ,55);
+                                                                       ,56);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -7214,7 +7330,10 @@ AS
 --                                                                       ,50);
 -- Ver1.10 mod start
 --                                                                       ,62);
-                                                                       ,56);
+-- Ver1.27 mod start
+--                                                                       ,56);
+                                                                       ,57);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -7285,7 +7404,10 @@ AS
 --                                                                        ,51);
 -- Ver1.10 mod start
 --                                                                        ,63);
-                                                                        ,57);
+-- Ver1.27 mod start
+--                                                                        ,57);
+                                                                        ,58);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -7648,7 +7770,10 @@ AS
 --                                                                      ,52);
 -- Ver1.10 mod start
 --                                                                      ,64);
-                                                                      ,58);
+-- Ver1.27 mod start
+--                                                                      ,58);
+                                                                      ,59);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -7699,7 +7824,10 @@ AS
 --                                                                      ,53);
 -- Ver1.10 mod start
 --                                                                      ,65);
-                                                                      ,59);
+-- Ver1.27 mod start
+--                                                                      ,59);
+                                                                      ,61);
+-- Ver1.27 mod end
 -- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
@@ -8331,7 +8459,10 @@ AS
             --ピークカット開始時刻取得
             lv_longitude := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,61);
+-- Ver1.27 mod start
+--                                                                   ,61);
+                                                                   ,62);
+-- Ver1.27 mod end
             --業態(小分類)が'24'、'25'、'27'の場合、入力必須
             IF     (lt_business_low_type_aft IN ( cv_gyotai_full_syoka_vd
                                                 , cv_gyotai_full_vd
@@ -8400,7 +8531,10 @@ AS
               --稼働日カレンダ取得
               lv_calendar_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                          ,cv_comma
-                                                                         ,63);
+-- Ver1.27 mod start
+--                                                                         ,63);
+                                                                         ,64);
+-- Ver1.27 mod end
               --NULL以外かつ、'-'でない場合
               IF (NVL(lv_calendar_code ,cv_null_bar) <> cv_null_bar)
               THEN
@@ -8442,7 +8576,10 @@ AS
             --消化計算用掛率取得
             lv_rate := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                               ,cv_comma
-                                                              ,70);
+-- Ver1.27 mod start
+--                                                              ,70);
+                                                              ,71);
+-- Ver1.27 mod end
             --業態(小分類)が'21'、'22'、'27'の場合、入力必須
             IF    (lt_business_low_type_aft IN ( cv_gyotai_inshop
                                                , cv_gyotai_tosya_tyokuei
@@ -8542,7 +8679,10 @@ AS
           --入金値引率取得
           lv_rcv_dsct_rate := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,71);
+-- Ver1.27 mod start
+--                                                                     ,71);
+                                                                     ,72);
+-- Ver1.27 mod end
           --NULL以外かつ、'-'でない場合
           IF (NVL(lv_rcv_dsct_rate ,cv_null_bar) <> cv_null_bar)
           THEN
@@ -8616,7 +8756,10 @@ AS
           --消化計算締め日1取得
           lv_conclusion_day1 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,72);
+-- Ver1.27 mod start
+--                                                                       ,72);
+                                                                       ,73);
+-- Ver1.27 mod end
           --NULL以外かつ、'-'でない場合
           IF (NVL(lv_conclusion_day1 ,cv_null_bar) <> cv_null_bar)
           THEN
@@ -8694,7 +8837,10 @@ AS
           --消化計算締め日2取得
           lv_conclusion_day2 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,73);
+-- Ver1.27 mod start
+--                                                                       ,73);
+                                                                       ,74);
+-- Ver1.27 mod end
           --NULL以外かつ、'-'でない場合
           IF (NVL(lv_conclusion_day2 ,cv_null_bar) <> cv_null_bar)
           THEN
@@ -8772,7 +8918,10 @@ AS
           --消化計算締め日3取得
           lv_conclusion_day3 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,74);
+-- Ver1.27 mod start
+--                                                                       ,74);
+                                                                       ,75);
+-- Ver1.27 mod end
           --NULL以外かつ、'-'でない場合
           IF (NVL(lv_conclusion_day3 ,cv_null_bar) <> cv_null_bar)
           THEN
@@ -9040,7 +9189,10 @@ AS
           --店舗営業用顧客コード取得
           lv_store_cust_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,75);
+-- Ver1.27 mod start
+--                                                                       ,75);
+                                                                       ,76);
+-- Ver1.27 mod end
           --店舗営業用顧客コードが'-'でない場合
           IF (NVL(lv_store_cust_code ,cv_null_bar) <> cv_null_bar)
           THEN
@@ -9078,8 +9230,11 @@ AS
           --相殺用顧客コード取得
           lv_offset_cust_code := xxccp_common_pkg.char_delim_partition( lv_temp
                                                                       , cv_comma
-                                                                      , 77
-                                                                      );
+-- Ver1.27 mod start
+--                                                                      , 77
+--                                                                      );
+                                                                      ,78);
+-- Ver1.27 mod end
 --
           --CSV値が任意の値の場合
           IF ( NVL( lv_offset_cust_code ,cv_null_bar ) <> cv_null_bar ) THEN
@@ -9116,8 +9271,11 @@ AS
           --取引先顧客コード取得
           lv_bp_customer_code := xxccp_common_pkg.char_delim_partition( lv_temp
                                                                       , cv_comma
-                                                                      , 78
-                                                                      );
+-- Ver1.27 mod start
+--                                                                      , 78
+--                                                                      );
+                                                                      ,79);
+-- Ver1.27 mod end
 --
           --CSV値が任意の値の場合
           IF ( NVL( lv_bp_customer_code ,cv_null_bar ) <> cv_null_bar ) THEN
@@ -9256,8 +9414,11 @@ AS
         --ストレポ＆商談くん連携対象フラグ取得
         lv_esm_target_div := xxccp_common_pkg.char_delim_partition( lv_temp
                                                                   , cv_comma
-                                                                  , 76
-                                                                  );
+-- Ver1.27 mod start
+--                                                                 , 76
+--                                                                  );
+                                                                  ,77);
+-- Ver1.27 mod end
 --
         --CSV値が任意の値の場合
         IF ( NVL( lv_esm_target_div ,cv_null_bar ) <> cv_null_bar ) THEN
@@ -9295,8 +9456,11 @@ AS
         --カテゴリー商品計上区分取得
         lv_latitude := xxccp_common_pkg.char_delim_partition( lv_temp
                                                             , cv_comma
-                                                            , 82
-                                                            );
+-- Ver1.27 mod start
+--                                                            , 82
+--                                                            );
+                                                            ,83);
+-- Ver1.27 mod end
 --
         -- カテゴリー商品計上区分必須チェック
 -- Ver1.20 add start
@@ -9425,6 +9589,9 @@ AS
               ,address3
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
               ,invoice_code
+-- Ver1.27 add start
+              ,invoice_tax_div
+-- Ver1.27 add end
               ,industry_div
               ,bill_base_code
               ,receiv_base_code
@@ -9536,6 +9703,9 @@ AS
               ,lv_address3
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
               ,lv_invoice_code
+-- Ver1.27 add start
+              ,lv_invoice_tax_div
+-- Ver1.27 add end
               ,lv_industry_div
               ,lv_bill_base_code
               ,lv_receiv_base_code
@@ -9817,6 +9987,9 @@ AS
       lt_latitude_mst             := NULL;  --LOOKUP確認用・カテゴリー商品計上区分
       ln_cnt                      := NULL;  --カテゴリー商品計上区分不要対象件数
 -- Ver1.19 add end
+-- Ver1.27 add start
+      lv_invoice_tax_div          := NULL;  --ローカル変数・請求書消費税積上げ計算方式
+-- Ver1.27 add end
 -- Ver1.23 add start
       lv_dedu_chain_code_mst      := NULL;  --控除用チェーンコード存在確認用変数
 -- Ver1.23 add end
@@ -10070,6 +10243,10 @@ AS
               xwcbr.decide_div            decide_div,                 --判定区分
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
               xwcbr.invoice_code          invoice_code,               --請求書用コード
+-- Ver1.27 add start
+              xwcbr.invoice_tax_div       invoice_tax_div,            --請求書消費税積上げ計算方式
+              xca.invoice_tax_div         addon_invoice_tax_div,      --顧客追加情報・請求書消費税積上げ計算方式
+-- Ver1.27 add end
               xwcbr.industry_div          industry_div,               --業種
               xwcbr.bill_base_code        bill_base_code,             --請求拠点
               xwcbr.receiv_base_code      receiv_base_code,           --入金拠点
@@ -10900,6 +11077,21 @@ AS
       -- CSVの項目値をセット
       l_xxcmm_cust_accounts.invoice_code := cust_data_rec.invoice_code;
     END IF;
+    --
+-- Ver1.27 add start
+    -- ===============================
+    -- 請求書消費税積上げ計算方式
+    -- ===============================
+    -- 顧客区分が'10'(顧客)、'14'(売掛管理先)の場合、更新が可能
+    IF cust_data_rec.customer_class_code IN (cv_kokyaku_kbn, cv_urikake_kbn)
+    THEN
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.invoice_tax_div := cust_data_rec.invoice_tax_div;
+    ELSE
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.invoice_tax_div := cust_data_rec.addon_invoice_tax_div;
+    END IF;
+-- Ver1.27 add end
     --
     -- ===============================
     -- 業種
@@ -11912,6 +12104,9 @@ AS
           ,xca.business_low_type      = l_xxcmm_cust_accounts.business_low_type          --業態（小分類）
           ,xca.invoice_printing_unit  = l_xxcmm_cust_accounts.invoice_printing_unit      --請求書印刷単位
           ,xca.invoice_code           = l_xxcmm_cust_accounts.invoice_code               --請求書用コード
+-- Ver1.27 add start
+          ,xca.invoice_tax_div        = l_xxcmm_cust_accounts.invoice_tax_div            --請求書消費税積上げ計算方式
+-- Ver1.27 add end
           ,xca.industry_div           = l_xxcmm_cust_accounts.industry_div               --業種
           ,xca.bill_base_code         = l_xxcmm_cust_accounts.bill_base_code             --請求拠点
           ,xca.receiv_base_code       = l_xxcmm_cust_accounts.receiv_base_code           --入金拠点
