@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : 顧客一括更新用ワーク
  * MD.070          : 
- * Version         : 1.10
+ * Version         : 1.11
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -21,7 +21,7 @@
  *  2017/06/14    1.8  S.Niki        障害E_本稼動_14271
  *  2018/12/28    1.9  N.Abe         障害E_本稼動_15490
  *  2021/05/31    1.10 H.Futamura    障害E_本稼動_16026
- *
+ *  2024/06/26    1.11 T.Okuyama     障害E_本稼動_19877対応
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 (
@@ -67,6 +67,9 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 -- Ver1.6 add end
 -- 2009/10/21 add start by Y.Kuboshima
   INVOICE_CODE            VARCHAR2(9),
+-- Ver1.11 add start
+  INVOICE_TAX_DIV         VARCHAR2(1),
+-- Ver1.11 add end
   INDUSTRY_DIV            VARCHAR2(2),
 -- Ver1.6 add start
   SALE_BASE_CODE          VARCHAR2(4),
@@ -227,6 +230,9 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address4               IS 'FA
 -- 2009/10/19 add start by Y.Kuboshima
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.invoice_code IS '請求書用コード'
 /
+-- Ver1.11 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.invoice_tax_div IS '請求書消費税積上げ計算方式'
+-- Ver1.11 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.industry_div IS '業種'
 /
 -- Ver1.6 add start
