@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_所有権移転取引_基本_V FOR APPS.XXSKY_所有権移転取引_基本_V
+/
