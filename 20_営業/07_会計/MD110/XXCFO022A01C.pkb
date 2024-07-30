@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2020-03-17    1.9   S.Kuwako         E_本稼動_16232対応
  *  2024-05-21    1.10  R.Oikawa         E_本稼動_19497対応 要件齟齬の為、本番へは未リリース（差額を仕入先/税率単位で算出）
  *  2024-06-20    1.11  R.Oikawa         E_本稼動_19497対応 差額を仕入先/部門/税率単位で算出
+ *  2024-07-24    1.12  R.Oikawa         E_本稼動_19497対応 差額算出ロジック不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2479,69 +2480,95 @@ AS
     cv_tax_code_0000    CONSTANT VARCHAR2(4) := '0000'; -- 税コード：0000（対象外）
     -- *** ローカル変数 ***
 --
+-- Ver1.12 Add Start
+    ln_adjust_amount    NUMBER := 0;                            -- 差額
+    ln_max_invoice_id   ap_invoices_interface.invoice_id%TYPE;  -- 差額調整するINVOICE_ID
+-- Ver1.12 Add End
     -- *** ローカル・カーソル ***
-    CURSOR get_ap_invoice_oif_cur
+-- Ver1.12 Del Start
+--    CURSOR get_ap_invoice_oif_cur
+--    IS
+--      SELECT MAX(ai.invoice_id)               AS invoice_id,    -- 請求書ID
+--             ai.vendor_num                    AS vendor_num,    -- 仕入先
+---- Ver1.11 Add Start
+--             ai.attribute3                    AS dept_code,     -- 部門
+---- Ver1.11 Add End
+--             SUM(vendor_adjust.adjust_amount) AS adjust_amount  -- 差額
+--      FROM   ap_invoices_interface ai,
+--             (
+--              SELECT  MAX(ai2.invoice_id)              AS invoice_id,
+--                      ai2.vendor_num                   AS vendor_num,
+---- Ver1.11 Add Start
+--                      ai2.attribute3                   AS dept_code,
+---- Ver1.11 Add End
+--                      ail.tax_code                     AS tax_code,
+--                      SUM(ail.amount) + ROUND(SUM(ail.amount) * atc.tax_rate / 100)
+--                       + SUM(NVL(kousen_hukakin.amount,0))
+--                       - SUM(ai2.invoice_amount)
+--                                                       AS adjust_amount
+--              FROM    ap_invoices_interface ai2,
+--                      ap_invoice_lines_interface ail,
+--                      ap_tax_codes_all atc,
+--                      ( SELECT ai3.invoice_id         invoice_id,
+--                               SUM(NVL(ail3.amount,0)) amount
+--                        FROM   ap_invoices_interface ai3,
+--                               ap_invoice_lines_interface ail3
+--                        WHERE  ai3.invoice_id =  ail3.invoice_id
+--                        AND    ai3.request_id =  cn_request_id
+--                        AND    ail3.tax_code  =  cv_tax_code_0000                 -- 口銭/賦課金
+--                        AND    ail3.line_type_lookup_code = gv_detail_type_item   -- 明細(ITEM)
+--                        GROUP BY ai3.invoice_id
+--                      )  kousen_hukakin
+--              WHERE   ai2.invoice_id =  ail.invoice_id
+--              AND     ai2.invoice_id =  kousen_hukakin.invoice_id(+)
+--              AND     ai2.request_id =  cn_request_id
+--              AND     ail.tax_code   <> cv_tax_code_0000                 -- 口銭/賦課金以外
+--              AND     ail.tax_code   =  atc.name                         -- 税コード
+--              AND     atc.org_id     =  gn_org_id_sales                  -- 営業単位
+--              AND     ail.line_type_lookup_code = gv_detail_type_item    -- 明細(ITEM)
+--              GROUP BY ai2.vendor_num,
+---- Ver1.11 Add Start
+--                       ai2.attribute3,
+---- Ver1.11 Add End
+--                       ail.tax_code,
+--                       atc.tax_rate
+--             ) vendor_adjust
+--      WHERE  vendor_adjust.adjust_amount <> 0   -- 差額あり
+--      AND    vendor_adjust.invoice_id    =  ai.invoice_id
+--      AND    vendor_adjust.vendor_num    =  ai.vendor_num
+---- Ver1.11 Add Start
+--      AND    vendor_adjust.dept_code     =  ai.attribute3
+---- Ver1.11 Add End
+--      AND    ai.request_id               =  cn_request_id
+--      GROUP BY ai.vendor_num
+---- Ver1.11 Add Start
+--              ,ai.attribute3
+---- Ver1.11 Add End
+--      ;
+----
+-- Ver1.12 Del End
+-- Ver1.12 Add Start
+    -- 仕入先・部門・税率のパターンを導出
+    CURSOR get_ap_invoice_oif_cur2
     IS
-      SELECT MAX(ai.invoice_id)               AS invoice_id,    -- 請求書ID
-             ai.vendor_num                    AS vendor_num,    -- 仕入先
--- Ver1.11 Add Start
-             ai.attribute3                    AS dept_code,     -- 部門
--- Ver1.11 Add End
-             SUM(vendor_adjust.adjust_amount) AS adjust_amount  -- 差額
+      SELECT DISTINCT
+             ai.vendor_num         vendor_num,
+             ai.attribute3         dept_code,
+             ail.tax_code          tax_code
       FROM   ap_invoices_interface ai,
-             (
-              SELECT  MAX(ai2.invoice_id)              AS invoice_id,
-                      ai2.vendor_num                   AS vendor_num,
--- Ver1.11 Add Start
-                      ai2.attribute3                   AS dept_code,
--- Ver1.11 Add End
-                      ail.tax_code                     AS tax_code,
-                      SUM(ail.amount) + ROUND(SUM(ail.amount) * atc.tax_rate / 100)
-                       + SUM(NVL(kousen_hukakin.amount,0))
-                       - SUM(ai2.invoice_amount)
-                                                       AS adjust_amount
-              FROM    ap_invoices_interface ai2,
-                      ap_invoice_lines_interface ail,
-                      ap_tax_codes_all atc,
-                      ( SELECT ai3.invoice_id         invoice_id,
-                               SUM(NVL(ail3.amount,0)) amount
-                        FROM   ap_invoices_interface ai3,
-                               ap_invoice_lines_interface ail3
-                        WHERE  ai3.invoice_id =  ail3.invoice_id
-                        AND    ai3.request_id =  cn_request_id
-                        AND    ail3.tax_code  =  cv_tax_code_0000                 -- 口銭/賦課金
-                        AND    ail3.line_type_lookup_code = gv_detail_type_item   -- 明細(ITEM)
-                        GROUP BY ai3.invoice_id
-                      )  kousen_hukakin
-              WHERE   ai2.invoice_id =  ail.invoice_id
-              AND     ai2.invoice_id =  kousen_hukakin.invoice_id(+)
-              AND     ai2.request_id =  cn_request_id
-              AND     ail.tax_code   <> cv_tax_code_0000                 -- 口銭/賦課金以外
-              AND     ail.tax_code   =  atc.name                         -- 税コード
-              AND     atc.org_id     =  gn_org_id_sales                  -- 営業単位
-              AND     ail.line_type_lookup_code = gv_detail_type_item    -- 明細(ITEM)
-              GROUP BY ai2.vendor_num,
--- Ver1.11 Add Start
-                       ai2.attribute3,
--- Ver1.11 Add End
-                       ail.tax_code,
-                       atc.tax_rate
-             ) vendor_adjust
-      WHERE  vendor_adjust.adjust_amount <> 0   -- 差額あり
-      AND    vendor_adjust.invoice_id    =  ai.invoice_id
-      AND    vendor_adjust.vendor_num    =  ai.vendor_num
--- Ver1.11 Add Start
-      AND    vendor_adjust.dept_code     =  ai.attribute3
--- Ver1.11 Add End
-      AND    ai.request_id               =  cn_request_id
-      GROUP BY ai.vendor_num
--- Ver1.11 Add Start
-              ,ai.attribute3
--- Ver1.11 Add End
+             ap_invoice_lines_interface ail
+      WHERE  ai.invoice_id   =  ail.invoice_id
+      AND    ai.request_id   =  cn_request_id
+      AND    ail.tax_code    <> cv_tax_code_0000      -- 口銭/賦課金以外
       ;
---
+-- Ver1.12 Add End
     -- *** ローカル・レコード ***
-    ap_invoice_oif_rec get_ap_invoice_oif_cur%ROWTYPE;
+-- Ver1.12 Del Start
+--    ap_invoice_oif_rec get_ap_invoice_oif_cur%ROWTYPE;
+-- Ver1.12 Del End
+-- Ver1.12 Add Start
+    ap_invoice_oif_rec2 get_ap_invoice_oif_cur2%ROWTYPE;
+-- Ver1.12 Add End
 --
   BEGIN
 --
@@ -2559,31 +2586,105 @@ AS
     -- =========================================================
     -- 差額が発生している請求仕訳を調整
     -- =========================================================
-    <<ap_oif_loop>>
-    FOR ap_invoice_oif_rec IN get_ap_invoice_oif_cur LOOP
+-- Ver1.12 Del Start
+--    <<ap_oif_loop>>
+--    FOR ap_invoice_oif_rec IN get_ap_invoice_oif_cur LOOP
+----
+--      BEGIN
+--        -- AP請求書OIF更新
+--        UPDATE ap_invoices_interface aii
+--        SET    aii.invoice_amount  = ( aii.invoice_amount + ap_invoice_oif_rec.adjust_amount)  -- 差額調整
+--        WHERE  aii.invoice_id      = ap_invoice_oif_rec.invoice_id
+--        ;
+----
+--        -- AP請求書明細OIF更新
+--        UPDATE ap_invoice_lines_interface ail
+--        SET    ail.amount          = ( ail.amount + ap_invoice_oif_rec.adjust_amount)          -- 差額調整
+--        WHERE  ail.invoice_id      = ap_invoice_oif_rec.invoice_id
+--        AND    ail.invoice_line_id = (
+--                                      SELECT MAX(ail2.invoice_line_id) AS invoice_line_id
+--                                      FROM   ap_invoice_lines_interface ail2
+--                                      WHERE  ail2.invoice_id = ap_invoice_oif_rec.invoice_id
+--                                      AND    ail2.line_type_lookup_code = gv_detail_type_tax    -- 税金(TAX)
+--                                     )
+--        ;
+--      END;
+----
+--    END LOOP ap_oif_loop;
 --
-      BEGIN
-        -- AP請求書OIF更新
-        UPDATE ap_invoices_interface aii
-        SET    aii.invoice_amount  = ( aii.invoice_amount + ap_invoice_oif_rec.adjust_amount)  -- 差額調整
-        WHERE  aii.invoice_id      = ap_invoice_oif_rec.invoice_id
-        ;
+-- Ver1.12 Del End
+-- Ver1.12 Add Start
+    <<ap_oif_loop2>>
+    FOR ap_invoice_oif_rec2 IN get_ap_invoice_oif_cur2 LOOP
 --
-        -- AP請求書明細OIF更新
-        UPDATE ap_invoice_lines_interface ail
-        SET    ail.amount          = ( ail.amount + ap_invoice_oif_rec.adjust_amount)          -- 差額調整
-        WHERE  ail.invoice_id      = ap_invoice_oif_rec.invoice_id
-        AND    ail.invoice_line_id = (
-                                      SELECT MAX(ail2.invoice_line_id) AS invoice_line_id
-                                      FROM   ap_invoice_lines_interface ail2
-                                      WHERE  ail2.invoice_id = ap_invoice_oif_rec.invoice_id
-                                      AND    ail2.line_type_lookup_code = gv_detail_type_tax    -- 税金(TAX)
-                                     )
-        ;
-      END;
+      -- 変数クリア
+      ln_adjust_amount   := 0;
+      ln_max_invoice_id  := NULL;
 --
-    END LOOP ap_oif_loop;
+      -- 取引先・部門・税率単位で差額算出
+      SELECT ( calc_line.calc_amt - zei_line.zei_amt ) adjust_amount
+      INTO   ln_adjust_amount
+      FROM   (
+              -- 明細（税抜き）×税率
+              SELECT SUM(ail.amount) + ROUND(SUM(ail.amount) * atc.tax_rate / 100) calc_amt
+              FROM   ap_invoices_interface ai,             -- 税抜
+                     ap_invoice_lines_interface ail,       -- 税抜
+                     ap_tax_codes_all atc
+              WHERE  ai.invoice_id   =  ail.invoice_id
+              AND    ai.request_id   =  cn_request_id
+              AND    ai.vendor_num   =  ap_invoice_oif_rec2.vendor_num
+              AND    ai.attribute3   =  ap_invoice_oif_rec2.dept_code
+              AND    ail.tax_code    =  ap_invoice_oif_rec2.tax_code
+              AND    ail.line_type_lookup_code     = gv_detail_type_item
+              AND    ail.tax_code    =  atc.name                -- 税コード
+              AND    atc.org_id      =  gn_org_id_sales         -- 営業単位
+              GROUP BY atc.tax_rate
+             ) calc_line,
+             (
+              -- 明細（税込み）
+              SELECT SUM(ail_zei.amount) zei_amt
+              FROM   ap_invoices_interface ai_zei,         -- 税込み
+                     ap_invoice_lines_interface ail_zei    -- 税込み
+              WHERE  ai_zei.invoice_id   =  ail_zei.invoice_id
+              AND    ai_zei.request_id   =  cn_request_id
+              AND    ai_zei.vendor_num   =  ap_invoice_oif_rec2.vendor_num
+              AND    ai_zei.attribute3   =  ap_invoice_oif_rec2.dept_code
+              AND    ail_zei.tax_code    =  ap_invoice_oif_rec2.tax_code
+             ) zei_line;
 --
+      IF ( ln_adjust_amount <> 0 ) THEN
+        -- 差額調整
+        BEGIN
+          -- 調整するinvoice_idを取得
+          SELECT MAX(ai.invoice_id)
+          INTO   ln_max_invoice_id
+          FROM   ap_invoices_interface ai,            -- 税抜
+                 ap_invoice_lines_interface ail       -- 税抜
+          WHERE  ai.invoice_id   =  ail.invoice_id
+          AND    ai.request_id   =  cn_request_id
+          AND    ai.vendor_num   =  ap_invoice_oif_rec2.vendor_num
+          AND    ai.attribute3   =  ap_invoice_oif_rec2.dept_code
+          AND    ail.tax_code    =  ap_invoice_oif_rec2.tax_code
+          ;
+--
+          -- AP請求書OIF更新
+          UPDATE ap_invoices_interface aii
+          SET    aii.invoice_amount  = ( aii.invoice_amount + ln_adjust_amount)  -- 差額調整
+          WHERE  aii.invoice_id      = ln_max_invoice_id
+          ;
+--
+          -- AP請求書明細OIF更新
+          UPDATE ap_invoice_lines_interface ail
+          SET    ail.amount       = ( ail.amount + ln_adjust_amount)             -- 差額調整
+          WHERE  ail.invoice_id   = ln_max_invoice_id
+          AND    ail.tax_code     =  ap_invoice_oif_rec2.tax_code
+          AND    ail.line_type_lookup_code = gv_detail_type_tax                  -- 税金(TAX)
+          ;
+        END;
+      END IF;
+--
+    END LOOP ap_oif_loop2;
+-- Ver1.12 Add End
     -- AP請求書OIFの要求IDクリア
     UPDATE ap_invoices_interface aii
     SET    aii.request_id  = NULL
