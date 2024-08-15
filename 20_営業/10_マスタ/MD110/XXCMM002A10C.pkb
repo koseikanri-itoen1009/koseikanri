@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A10C (body)
  * Description      : 社員データIF抽出_EBSコンカレント
  * MD.050           : T_MD050_CMM_002_A10_社員データIF抽出_EBSコンカレント
- * Version          : 1.21
+ * Version          : 1.22
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -48,6 +48,7 @@ AS
  *  2023-09-21    1.19  Y.Koh            E_本稼動_19311【マスタ】ERP銀行口座 対応
  *  2023-12-22    1.20  K.Sudo           E_本稼働_19379【マスタ】新規従業員判別フラグの初期化対応
  *  2024-01-30    1.21  K.Sudo           E_本稼動_19791【マスタ】経費口座紐づけ（ERP)
+ *  2024-06-25    1.22  K.Sudo           E_本稼動_20083【マスタ】従業員仕入先マスタ口座連携障害対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4391,6 +4392,9 @@ AS
               , abaa.last_update_date         AS abaa_last_update_date    -- 17.銀行口座マスタの最終更新日
               , abb.last_update_date          AS abb_last_update_date     -- 18.銀行支店マスタの最終更新日
               , abaa.inactive_date            AS abaa_inactive_date       -- 19.銀行口座マスタの無効日
+-- Ver1.22 Add Start
+              , abaua.last_update_date        AS abaua_last_update_date   -- 20.銀行口座使用マスタの最終更新日
+-- Ver1.22 Add End
             FROM
                 per_all_people_f           papf  -- 従業員マスタ
               , po_vendors                 pv    -- 仕入先マスタ
@@ -4427,6 +4431,13 @@ AS
                (      abset.abaua_creation_date   >= gt_pre_process_date
                   AND abset.abaua_creation_date   <  gt_cur_process_date
                )
+-- Ver1.22 Add Start
+           OR  (
+                      abset.abaua_last_update_date >= gt_pre_process_date
+                  AND abset.abaua_last_update_date <  gt_cur_process_date
+                  AND abset.abaua_creation_date    <  gt_pre_process_date
+               )
+-- Ver1.22 Add End
            OR  (
                       abset.abaa_last_update_date >= gt_pre_process_date
                   AND abset.abaa_last_update_date <  gt_cur_process_date
