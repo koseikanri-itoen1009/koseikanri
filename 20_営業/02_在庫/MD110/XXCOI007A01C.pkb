@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2010/01/29    1.9   H.Sasaki        [E_本稼動_01335]GLバッチID取得エラー時のエラーハンドリングを修正
  *  2024/03/18    1.10  R.Oikawa        [E_本稼動_19496] グループ会社対応
  *  2024/06/24    1.11  R.Oikawa        [E_本稼動_20008] 北海道分社化在庫仕訳対応
+ *  2024/08/06    1.12  R.Oikawa        [E_本稼動_20143] 原価小数点対応
  *
  *****************************************************************************************/
 --
@@ -1410,9 +1411,12 @@ AS
         -- 原価差額 = 基準単位金額 * (-1)
         ln_cost_variance  :=  ROUND(ir_txn_acct_rec.mta_base_transaction_value * (-1));
       ELSE
-        -- 原価差額 = 取引数量 * ( 標準原価 － 営業原価 ) （小数点以下四捨五入）
+        -- 原価差額 = 取引数量 * ( 標準原価 － 営業原価 ) （小数点以下第3位で四捨五入）
         ln_cost_variance := ROUND(ir_txn_acct_rec.mta_primary_quantity 
-                                    * ( ln_standard_cost - ln_operation_cost ), 0);
+-- Ver1.12 MOD START
+--                                    * ( ln_standard_cost - ln_operation_cost ), 0);
+                                    * ( ln_standard_cost - ln_operation_cost ), 2);
+-- Ver1.12 MOD END
       END IF;
     ELSE
       ln_cost_variance := 0;
@@ -1918,7 +1922,10 @@ AS
              , xwcv.subacct_code            AS xwcv_subacct_code           -- 補助科目コード
              , xwcv.transaction_date        AS xwcv_transaction_date       -- 取引日
              , xwcv.gl_batch_id             AS xwcv_gl_batch_id            -- GLバッチID
-             , SUM( xwcv.cost_variance )    AS xwcv_cost_variance_sum      -- 原価差額(集約値)
+-- Ver1.12 MOD START
+--             , SUM( xwcv.cost_variance )    AS xwcv_cost_variance_sum      -- 原価差額(集約値)
+             , ROUND( SUM( xwcv.cost_variance ), 0)    AS xwcv_cost_variance_sum      -- 原価差額(集約値)
+-- Ver1.12 MOD END
              , NULL                         AS gp_period_name              -- 会計期間名
       FROM     xxcoi_wk_cost_variance       xwcv                           -- 原価差額ワークテーブル
 -- == 2009/09/28 V1.8 Deleted START ===============================================================
