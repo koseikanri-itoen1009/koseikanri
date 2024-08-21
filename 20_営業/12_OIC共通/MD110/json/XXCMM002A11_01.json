@@ -3,5 +3,10 @@
   'jobPackage' : '/oracle/apps/ess/hcm/person/search/',
   'jobName' : 'PersonSynchronization',
   'singleJobParam' : '${sysdate},${sysdate+1},Y'
+},
+{
+  'jobPackage' : '/oracle/apps/ess/cdm/foundation/parties/',
+  'jobName' : 'CurrentDateRecordSync',
+  'singleJobParam' : 'ORA_PERSON_SYNC,EMP,${sysdate},${sysdate+1},'
 }
 ]
