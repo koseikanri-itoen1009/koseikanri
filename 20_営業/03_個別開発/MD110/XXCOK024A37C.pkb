@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A37C(body)
  * Description      : 控除データIF出力（情報系）
  * MD.050           : 控除データIF出力（情報系） MD050_COK_024_A37
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2022/07/21    1.4   K.Yoshikawa      [E_本稼動_N1424] IaaSリフト障害No.21
  *  2022/09/06    1.5   SCSK Y.Koh        E_本稼動_18172  控除支払伝票取消時の差額
  *  2023/06/22    1.6   SCSK R.Oikawa     E_本稼動_19294  入金相殺伝票取消時の差額控除の連携不良
+ *  2024/08/19    1.7   SCSK Y.Sato       E_本稼動_20158  控除データ明細への勘定科目・補助科目連携
  *
  *****************************************************************************************/
 --
@@ -603,6 +604,12 @@ AS
     lv_attribute12            VARCHAR2(150);                                  -- 控除データ種類DFF12 変動対価区分(差額調整分)
     lv_fluctuation_value_class   VARCHAR2(150);                               -- 変動対価区分
     lv_data_type_name         VARCHAR2(80);                                   -- 控除データ種類名称
+-- Ver1.7 Add Start
+    lv_account                VARCHAR2(150);                                  -- 勘定科目
+    lv_sub_account            VARCHAR2(150);                                  -- 補助科目
+    lv_account_debt           VARCHAR2(150);                                  -- 勘定科目（負債）
+    lv_sub_account_debt       VARCHAR2(150);                                  -- 補助科目（負債）
+-- Ver1.7 Add End
 -- 2021/08/04 Ver1.3 Add Start
     ld_gl_date                DATE;                                           -- GL記帳日
 -- 2021/08/04 Ver1.3 End Start
@@ -1184,9 +1191,21 @@ AS
         BEGIN
           SELECT attribute11,
                  attribute12,
+-- Ver1.7 Add Start
+                 attribute4,            -- 勘定科目
+                 attribute5,            -- 補助科目
+                 attribute6,            -- 勘定科目（負債）
+                 attribute7,            -- 補助科目（負債）
+-- Ver1.7 Add End
                  meaning
           INTO   lv_attribute11,
                  lv_attribute12,
+-- Ver1.7 Add Start
+                 lv_account,
+                 lv_sub_account,
+                 lv_account_debt,
+                 lv_sub_account_debt,
+-- Ver1.7 Add End                 
                  lv_data_type_name
           FROM   fnd_lookup_values_vl flv
           WHERE  flv.lookup_code = lt_csv_deduction_tab( i ).data_type
@@ -1195,6 +1214,12 @@ AS
             WHEN  NO_DATA_FOUND THEN
                  lv_attribute11    := null;
                  lv_attribute12    := null;
+-- Ver1.7 Add Start
+                 lv_account        := null;
+                 lv_sub_account    := null;
+                 lv_account_debt   := null;
+                 lv_sub_account_debt := null;
+-- Ver1.7 Add End                 
                  lv_data_type_name := null;
         END;
 --
@@ -1346,6 +1371,32 @@ AS
                            cv_dqu ||
                            lt_csv_deduction_tab( i ).data_type ||
                            cv_dqu;
+-- Ver1.7 Add Start
+        --勘定科目
+        lv_step := 'A-4.account';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lv_account ||
+                           cv_dqu;
+        --補助科目
+        lv_step := 'A-4.sub_account';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lv_sub_account ||
+                           cv_dqu;
+        --勘定科目（負債）
+        lv_step := 'A-4.account_debt';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lv_account_debt ||
+                           cv_dqu;
+        --補助科目（負債）
+        lv_step := 'A-4.sub_account_debt';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lv_sub_account_debt ||
+                           cv_dqu;
+-- Ver1.7 Add End     
         --売上区分
         lv_step := 'A-4.sales_class';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
