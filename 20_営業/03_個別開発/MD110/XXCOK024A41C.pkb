@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A41C (body)
  * Description      : 支払未連携控除データ出力
  * MD.050           : 支払未連携控除データ出力 MD050_COK_024_A41
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2022/09/07    1.0   M.Akachi         新規作成
+ *  2024/08/23    1.1   SCSK Y.Koh       E_本稼動_20159【収益認識】支払未連携控除出力機能のパフォーマンス向上
  *
  *****************************************************************************************/
 --
@@ -140,7 +141,11 @@ AS
           ,iv_sale_base_code             VARCHAR2              -- 売上拠点
           )
   IS
-    SELECT  xsd.base_code_to          AS  base_code_to        , -- 拠点コード
+-- 2024/08/23 Ver1.1 MOD Start
+    SELECT  /*+ LEADING ( xch xsd ) */
+            xsd.base_code_to          AS  base_code_to        , -- 拠点コード
+--    SELECT  xsd.base_code_to          AS  base_code_to        , -- 拠点コード
+-- 2024/08/23 Ver1.1 MOD End
             ffvt.description          AS  base_code_name      , -- 拠点名
             papf.employee_number      AS  employee_number     , -- ヘッダ最終更新者従業員番号
             papf.per_information18    AS  employee_first_name , -- ヘッダ最終更新者姓
@@ -215,6 +220,12 @@ AS
           AND  ( iv_base_code IS NULL )
          )
         )
+-- 2024/08/23 Ver1.1 ADD Start
+    AND     xch.data_type               IN      ( SELECT REGEXP_SUBSTR(iv_data_type, '[^,]+', 1, LEVEL) FROM DUAL
+                                                  CONNECT BY REGEXP_SUBSTR(iv_data_type, '[^,]+', 1, LEVEL) IS NOT NULL )    -- データ種類
+    AND     xch.START_DATE_ACTIVE       <=      to_date(iv_record_date_to,cv_date_format)
+    AND     xch.END_DATE_ACTIVE         >=      to_date(iv_record_date_from,cv_date_format)
+-- 2024/08/23 Ver1.1 ADD End
     GROUP BY
             ffv.attribute9            , -- 拠点本部コード
             xsd.base_code_to          , -- 拠点コード
