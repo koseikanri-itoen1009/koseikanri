@@ -10,6 +10,8 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ------------      -------------------------------------
  *  2024/07/04    1.0   ITOEN M.Shiraishi 初回作成
+ *  2024/08/29    1.1   ITOEN M.Shiraishi E_本稼働_20168 製品以外も取得可能に修正対応
+ * 
  ******************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_所有権移転取引_基本_V
 (
@@ -75,8 +77,18 @@ from
      XXCOI.xxcoi_inv_recept_g_company XIRC --グループ会社受払
     ,XXCMM_ITEM_TAX_RATE_V XITR --品目別消費税VIEW
 where 1 = 1
+/*
+-- 2024/08/29 Del Start 本稼動#20168
     and XIRC.item_code = XITR.item_no
     and XIRC.transaction_date BETWEEN XITR.start_date_active and  XITR.end_date_active
+-- 2024/08/29 Del End 本稼動#20168
+*/
+-- 2024/08/29 Mod Start 本稼動#20168
+    and XIRC.item_code = XITR.item_no(+)
+    and XIRC.transaction_date 
+        BETWEEN XITR.start_date_active(+) 
+        and     DECODE(XITR.end_date_active(+),null,to_date('99991231','YYYYMMDD'),XITR.end_date_active(+))
+-- 2024/08/29 Mod End 本稼動#20168
     and XIRC.transfer_ownership_flg = '1' -- 所有権移転取引フラグ
 /
 COMMENT ON TABLE APPS.XXSKZ_所有権移転取引_基本_V IS 'SKYLINK用所有権移転取引（基本）VIEW'
