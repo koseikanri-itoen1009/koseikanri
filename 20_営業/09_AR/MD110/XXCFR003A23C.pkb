@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFR003A23C_pkb(body)
  * Description      : 消費税差額作成処理
  * MD.050           : MD050_CFR_003_A23_消費税差額作成処理.doc
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2023/07/25    1.0   R.Oikawa         新規作成(E_本稼動_18983)
  *  2023/11/14    1.1   M.Akachi         E_本稼動_19546 サイクル跨ぎ対応
  *  2024/02/01    1.2   R.Oikawa         [E_本稼動_19496] 対応
+ *  2024/06/26    1.3   R.Oikawa         [E_本稼動_19962] 対応
  *
  *****************************************************************************************/
 --
@@ -575,6 +576,9 @@ AS
   , iv_base_dept                IN  VARCHAR2  -- 起票部門（本体差額）
   , iv_ra_trx_type_tax_name     IN  VARCHAR2  -- 消費税差額作成
 -- Ver.1.2 Add End
+-- Ver.1.3 Add Start
+  , iv_ra_trx_type_inv_name     IN  VARCHAR2  -- 本体差額作成
+-- Ver.1.3 Add End
   )
   IS
 --
@@ -1018,7 +1022,10 @@ AS
         in_inv_gap_amount                         , -- 明細金額
 -- Ver.1.2 Mod Start
 --        gv_ra_trx_type_tax                        , -- 取引タイプ
-        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+-- Ver.1.3 Mod Start
+--        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+        iv_ra_trx_type_inv_name                   , -- 取引タイプ
+-- Ver.1.3 Mod End
 -- Ver.1.2 Mod End
         iv_term_name                              , -- 支払条件
         in_bill_cust_account_id                   , -- 請求先顧客ID
@@ -1164,7 +1171,10 @@ AS
         cn_0                                      , -- 明細金額
 -- Ver.1.2 Mod Start
 --        gv_ra_trx_type_tax                        , -- 取引タイプ
-        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+-- Ver.1.3 Mod Start
+--        iv_ra_trx_type_tax_name                   , -- 取引タイプ
+        iv_ra_trx_type_inv_name                   , -- 取引タイプ
+-- Ver.1.3 Mod End
 -- Ver.1.2 Mod End
         iv_term_name                              , -- 支払条件
         in_bill_cust_account_id                   , -- 請求先顧客ID
@@ -1396,6 +1406,9 @@ AS
              ,flv_comp.attribute5            AS base_dept                     -- 起票部門（本体差額）
              ,flv_trx.attribute6             AS ra_trx_type_tax_name          -- 消費税差額作成
 -- Ver.1.2 Add End
+-- Ver.1.3 Add Start
+             ,flv_trx.attribute7             AS ra_trx_type_inv_name          -- 本体差額作成
+-- Ver.1.3 Add End
       FROM    xxcfr_invoice_headers xih
 -- Ver.1.2 Add Start
              ,xxcmm_cust_accounts xca                                         -- 顧客追加情報
@@ -1457,6 +1470,9 @@ AS
       , iv_base_dept                =>  l_target_inv_rec.base_dept                  -- 起票部門（本体差額）
       , iv_ra_trx_type_tax_name     =>  l_target_inv_rec.ra_trx_type_tax_name       -- 消費税差額作成
 -- Ver.1.2 Add End
+-- Ver.1.3 Add Start
+      , iv_ra_trx_type_inv_name     =>  l_target_inv_rec.ra_trx_type_inv_name       -- 本体差額作成
+-- Ver.1.3 Add End
       );
 --
       IF ( lv_retcode  = cv_status_error ) THEN
