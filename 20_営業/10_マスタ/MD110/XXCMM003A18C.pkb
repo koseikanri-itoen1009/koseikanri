@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,7 +45,7 @@ AS
  *  2017/04/05    1.20  Shigeto.Niki     障害E_本稼動_13976の対応
  *  2019/01/25    1.21  Yasuhiro.Shoji   障害E_本稼動_15490の対応 「緯度」と「経度」のコメント変更のみ
  *  2021/05/25    1.22  Keisuke.YoshikawaE_本稼働_16026対応  コメント変更のみ（紹介者チェーンコード2→控除用チェーンコード）
- *
+ *  2024/08/06    1.23  Toru.Okuyama     E_本稼動_20030対応 顧客マスタ項目追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -641,6 +641,16 @@ AS
              ,hp.attribute8                                  business_low_type_kari       --業態小分類(仮)
 -- 2010/01/08 Ver1.12 E_本稼動_00934 add end by Yutaka.Kuboshima
 --
+-- Ver1.23 add start
+             ,xca.calendar_code                              calendar_code                --稼働日カレンダコード
+             ,xca.cust_fresh_con_code                        cust_fresh_con_code          --顧客別鮮度条件コード
+             ,xca.bp_customer_code                           bp_customer_code             --取引先顧客コード
+             ,xca.offset_cust_code                           offset_cust_code             --相殺用顧客コード
+             ,xca.offset_cust_div                            offset_cust_div              --相殺用顧客区分
+             ,xca.invoice_tax_div                            invoice_tax_div              --請求書消費税積上げ計算方式
+             ,xca.pos_enterprise_code                        pos_enterprise_code          --POS企業コード
+             ,xca.pos_store_code                             pos_store_code               --POS店舗コード
+-- Ver1.23 add end
       FROM    hz_cust_accounts              hca,                      --顧客マスタ
               hz_locations                  hl,                       --顧客事業所マスタ
               hz_cust_site_uses             hcsu,                     --顧客使用目的マスタ
@@ -1508,6 +1518,16 @@ AS
 -- Ver1.20 add start
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.esm_target_div, 1, 1);                                   --ストレポ＆商談くん連携対象フラグ
 -- Ver1.20 add end
+-- Ver1.23 add start
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.calendar_code, 1, 10);                                   --稼働日カレンダコード
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cust_fresh_con_code, 1, 2);                              --顧客別鮮度条件コード
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bp_customer_code, 1, 15);                                --取引先顧客コード
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.offset_cust_code, 1, 9);                                 --相殺用顧客コード
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.offset_cust_div, 1, 1);                                  --相殺用顧客区分
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_tax_div, 1, 1);                                  --請求書消費税積上げ計算方式
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.pos_enterprise_code, 1, 9);                              --POS企業コード
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.pos_store_code, 1, 9);                                   --POS店舗コード
+-- Ver1.23 add end
       lv_output_str := lv_output_str || cv_comma || lv_coordinated_date;                                                           --連携日時
 --
       --文字列出力
