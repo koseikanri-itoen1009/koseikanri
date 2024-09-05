@@ -15,6 +15,7 @@ AS
 -- 2014/11/21 [E_本稼動_12237]倉庫管理システム対応 mod end   by Yasunari.Nagasue
 -- 2010/09/22 障害E_本稼動_02021 mod end by Shigeto.Niki
 -- 2011/09/29 販売予測情報更新対応 mod end by Kenichi.Nakamura
+-- 2024/07/09 [E_本稼動_20030] add
 SELECT xca.customer_id customer_id,
        hp.party_id party_id,
        xca.customer_code customer_code,
@@ -122,6 +123,10 @@ SELECT xca.customer_id customer_id,
 -- 2023/03/01 [E_本稼動_19080]add start
        xca.invoice_tax_div,
 -- 2023/03/01 [E_本稼動_19080]add end
+-- 2024/07/09 [E_本稼動_20030] add start
+       xca.pos_enterprise_code,
+       xca.pos_store_code,
+-- 2024/07/09 [E_本稼動_20030] add end
        xca.created_by created_by,
        xca.creation_date creation_date,
        xca.last_updated_by last_updated_by,
@@ -345,6 +350,12 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.bp_customer_code IS '取引先顧客コー
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.invoice_tax_div IS '請求書消費税積上げ計算方式'
 /
 -- 2023/03/01 [E_本稼動_19080]add end
+-- 2024/07/09 [E_本稼動_20030] add start
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.pos_enterprise_code IS 'POS企業コード'
+/
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.pos_store_code IS 'POS店舗コード'
+/
+-- 2024/07/09 [E_本稼動_20030] add end
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.created_by IS '作成者'
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.creation_date IS '作成日'
