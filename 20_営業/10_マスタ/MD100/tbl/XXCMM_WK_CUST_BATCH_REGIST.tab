@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : 顧客一括更新用ワーク
  * MD.070          : 
- * Version         : 1.11
+ * Version         : 1.12
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -22,6 +22,7 @@
  *  2018/12/28    1.9  N.Abe         障害E_本稼動_15490
  *  2021/05/31    1.10 H.Futamura    障害E_本稼動_16026
  *  2024/06/26    1.11 T.Okuyama     障害E_本稼動_19877対応
+ *  2024/07/09    1.12 T.Okuyama     障害E_本稼動_20030対応
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 (
@@ -133,6 +134,10 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 -- Ver1.9 add start
   LATITUDE                VARCHAR2(20),
 -- Ver1.9 add end
+-- Ver1.12 add start
+  POS_ENTERPRISE_CODE     VARCHAR2(9),
+  POS_STORE_CODE          VARCHAR2(9),
+-- Ver1.12 add end
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -340,6 +345,12 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.bp_customer_code IS '取引先顧
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.latitude IS 'カテゴリー商品計上区分'
 /
 -- Ver1.9 add end
+-- Ver1.12 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.pos_enterprise_code IS 'POS企業コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.pos_store_code IS 'POS店舗コード'
+/
+-- Ver1.12 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS '作成日'

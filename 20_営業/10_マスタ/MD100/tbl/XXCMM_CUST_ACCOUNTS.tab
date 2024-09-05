@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.13
+ * Version         : 1.14
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -26,7 +26,7 @@
  *  2019/01/28    1.11 Y.Shoji       【E_本稼動_15490】緯度 -> カテゴリー商品計上区分
  *  2021/05/31    1.12 H.Futamura    【E_本稼動_16026】紹介者チェーンコード２ -> 控除用チェーンコード
  *  2023/03/01    1.13 R.Oikawa       [E_本稼動_19080]請求差額の自動連携
- *
+ *  2024/08/06    1.14 T.Okuyama      [E_本稼動_20030] 顧客マスタ項目追加
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
 (
@@ -138,6 +138,10 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
 -- Ver1.13 add start
     invoice_tax_div             VARCHAR2(1),
 -- Ver1.13 add end
+-- Ver1.14 add start
+    pos_enterprise_code         VARCHAR2(9),
+    pos_store_code              VARCHAR2(9),
+-- Ver1.14 add end
     created_by                  NUMBER(15,0)    NOT NULL,
     creation_date               DATE            NOT NULL,
     last_updated_by             NUMBER(15,0)    NOT NULL,
@@ -356,9 +360,15 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.esm_target_div              IS 'スト
 /
 -- Ver1.10 add end
 -- Ver1.13 add start
-COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.invoice_tax_div              IS '請求書消費税積上げ計算方式'
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.invoice_tax_div             IS '請求書消費税積上げ計算方式'
 /
 -- Ver1.13 add end
+-- Ver1.14 add start
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.pos_enterprise_code         IS 'POS企業コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.pos_store_code              IS 'POS店舗コード'
+/
+-- Ver1.14 add end
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'
