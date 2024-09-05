@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2021/10/14    1.25  冨江 広大        障害E_本稼動_17545対応 収益認識 顧客マスタの控除用チェーン変更チェック対応
  *  2022/08/24    1.26  赤地 学          障害E_本稼動_18569対応 事務センター所属チェック（価格表指定）
  *  2024/07/23    1.27  奥山 徹          障害E_本稼動_19877対応 インボイス対応（請求書消費税積上げ計算方式）項目追加
+ *  2024/08/06    1.28  奥山 徹          障害E_本稼動_20030対応 顧客マスタ項目追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -242,6 +243,9 @@ AS
 -- Ver1.27 add start
   cv_msg_invoice_tax_div_err  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10507';                -- 請求書消費税積上げ計算方式チェックエラーメッセージ
 -- Ver1.27 add end
+-- Ver1.28 add start
+  cv_an_attr_msg              CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10370';                -- 英数字型チェックエラーメッセージ
+-- Ver1.28 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -339,6 +343,11 @@ AS
   cv_invoice_tax_div          CONSTANT VARCHAR2(30)  := '請求書消費税積上げ計算方式';      --請求書消費税積上げ計算方式
   cv_invoice_tax_div_tk       CONSTANT VARCHAR2(15)  := 'INVOICE_TAX_DIV';                 --請求書消費税積上げ計算方式トークン
 -- Ver1.27 add end
+-- Ver1.28 add start
+  cv_pos_enterprise_code      CONSTANT VARCHAR2(30)  := 'POS企業コード';                   --POS企業コード
+  cv_pos_store_code           CONSTANT VARCHAR2(30)  := 'POS店舗コード';                   --POS店舗コード
+  gv_cnst_err_msg_space12     CONSTANT VARCHAR2(12)  := '            ';                    -- スペース
+-- Ver1.28 add end
   cv_cond_col_name            CONSTANT VARCHAR2(15)  := 'COND_COL_NAME';                   --相関列名トークン
   cv_cond_col_val             CONSTANT VARCHAR2(15)  := 'COND_COL_VALUE';                  --相関値トークン
   cv_kokyaku_kbn              CONSTANT VARCHAR2(2)   := '10';                              --顧客区分(顧客)
@@ -839,6 +848,12 @@ AS
 -- Ver1.26 add start
     ln_base_code_business_cnt   NUMBER          := 0;                           --所属拠点（事務センター）のカウント
 -- Ver1.26 add end
+-- Ver1.28 add start
+    lv_pos_enterprise_code      VARCHAR2(100)   := NULL;                        --ローカル変数・POS企業コード
+    lv_pos_store_code           VARCHAR2(100)   := NULL;                        --ローカル変数・POS店舗コード
+    lt_pos_enterprise_code      xxcmm_cust_accounts.pos_enterprise_code%TYPE;   --現在値・POS企業コード
+    lt_pos_store_code           xxcmm_cust_accounts.pos_store_code%TYPE;        --現在値・POS店舗コード
+-- Ver1.28 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -9550,6 +9565,188 @@ AS
           END IF;
         END IF;
 -- Ver1.20 add end
+-- Ver1.28 add start
+        --POS企業コード取得
+        lv_pos_enterprise_code := xxccp_common_pkg.char_delim_partition( lv_temp
+                                                                        ,cv_comma
+                                                                        ,86);
+        --POS企業コードがNULL以外かつ、'-'でない場合
+        IF (NVL(lv_pos_enterprise_code ,cv_null_bar) <> cv_null_bar)
+        THEN
+          --桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_pos_enterprise_code    --POS企業コード
+                                              ,lv_pos_enterprise_code    --POS企業コード
+                                              ,9                         --項目長
+                                              ,NULL                      --項目長（小数点以下）
+                                              ,cv_null_ok                --必須フラグ
+                                              ,cv_element_vc2            --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf            --エラーバッファ
+                                              ,lv_item_retcode           --エラーコード
+                                              ,lv_item_errmsg);          --エラーメッセージ
+          --POS企業コード9桁超えチェックエラー時
+          IF (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --POS企業コードエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_pos_enterprise_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_pos_enterprise_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          --POS企業コード9桁未満チェックエラー時
+          ELSIF (LENGTHB(lv_pos_enterprise_code) <> 9) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --POS企業コードエラーメッセージ取得
+            xxccp_common_pkg2.upload_item_check( cv_pos_enterprise_code    --POS企業コード
+                                                ,lv_pos_enterprise_code    --POS企業コード
+                                                ,0                         --項目長
+                                                ,NULL                      --項目長（小数点以下）
+                                                ,cv_null_ok                --必須フラグ
+                                                ,cv_element_vc2            --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf            --エラーバッファ
+                                                ,lv_item_retcode           --エラーコード
+                                                ,lv_item_errmsg);          --エラーメッセージ
+            --POS企業コードエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_pos_enterprise_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_pos_enterprise_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          --POS企業コード半角英数字チェック
+          ELSIF (xxccp_common_pkg.chk_alphabet_number_only(lv_pos_enterprise_code) = FALSE) 
+          THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --POS企業コードエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_pos_enterprise_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_pos_enterprise_code
+                           );
+            --半角英数字エラーメッセージ取得
+            lv_item_errmsg := gv_cnst_err_msg_space12
+                              || xxccp_common_pkg.get_msg(
+                                    iv_application  => gv_xxcmm_msg_kbn
+                                   ,iv_name         => cv_an_attr_msg
+                                   ,iv_token_name1  => cv_item
+                                   ,iv_token_value1 => cv_pos_enterprise_code
+                                 );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+        END IF;
+        --
+        --POS店舗コード取得
+        lv_pos_store_code := xxccp_common_pkg.char_delim_partition( lv_temp
+                                                                   ,cv_comma
+                                                                   ,87);
+        --POS店舗コードがNULL以外かつ、'-'でない場合
+        IF (NVL(lv_pos_store_code ,cv_null_bar) <> cv_null_bar)
+        THEN
+          --桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_pos_store_code    --POS店舗コード
+                                              ,lv_pos_store_code    --POS店舗コード
+                                              ,9                    --項目長
+                                              ,NULL                 --項目長（小数点以下）
+                                              ,cv_null_ok           --必須フラグ
+                                              ,cv_element_vc2       --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf       --エラーバッファ
+                                              ,lv_item_retcode      --エラーコード
+                                              ,lv_item_errmsg);     --エラーメッセージ
+          --POS店舗コード型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --POS店舗コードエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_pos_store_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_pos_store_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          --POS店舗コード半角英数字チェック
+          ELSIF (xxccp_common_pkg.chk_alphabet_number_only(lv_pos_store_code) = FALSE)
+          THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --POS店舗コードエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_pos_store_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_pos_store_code
+                           );
+            --半角英数字エラーメッセージ取得
+            lv_item_errmsg := gv_cnst_err_msg_space12
+                              || xxccp_common_pkg.get_msg(
+                                    iv_application  => gv_xxcmm_msg_kbn
+                                   ,iv_name         => cv_an_attr_msg
+                                   ,iv_token_name1  => cv_item
+                                   ,iv_token_value1 => cv_pos_store_code
+                                 );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+        END IF;
+-- Ver1.28 add end
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -9658,6 +9855,10 @@ AS
 -- Ver1.19 add start
               ,latitude                  --カテゴリー商品計上区分
 -- Ver1.19 add end
+-- Ver1.28 add start
+              ,pos_enterprise_code
+              ,pos_store_code
+-- Ver1.28 add end
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -9772,6 +9973,10 @@ AS
 -- Ver1.19 add start
               ,lv_latitude                    --カテゴリー商品計上区分
 -- Ver1.19 add end
+-- Ver1.28 add start
+              ,lv_pos_enterprise_code         --POS企業コード
+              ,lv_pos_store_code              --POS店舗コード
+-- Ver1.28 add end
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -9996,6 +10201,12 @@ AS
 -- Ver1.23 add start
       lv_dedu_chain_code_mst      := NULL;  --控除用チェーンコード存在確認用変数
 -- Ver1.23 add end
+-- Ver1.28 add start
+      lv_pos_enterprise_code      := NULL;  --ローカル変数・POS企業コード
+      lv_pos_store_code           := NULL;  --ローカル変数・POS店舗コード
+      lt_pos_enterprise_code      := NULL;  --現在値・POS企業コード
+      lt_pos_store_code           := NULL;  --現在値・POS店舗コード
+-- Ver1.28 add end
       --妥当性チェックフラグ
       lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
       lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
@@ -10364,6 +10575,12 @@ AS
              ,xwcbr.latitude               latitude                  --カテゴリー商品計上区分
              ,xca.latitude                 addon_latitude            --顧客追加情報.カテゴリー商品計上区分
 -- Ver1.19 add end
+-- Ver1.28 add start
+             ,xwcbr.pos_enterprise_code    pos_enterprise_code       --POS企業コード
+             ,xca.pos_enterprise_code      addon_pos_enterprise_code --顧客追加情報.POS企業コード
+             ,xwcbr.pos_store_code         pos_store_code            --POS企業コード
+             ,xca.pos_store_code           addon_pos_store_code      --顧客追加情報.POS企業コード
+-- Ver1.28 add end
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -12092,6 +12309,40 @@ AS
     --
     END IF;
 -- Ver1.19 add end
+-- Ver1.28 add start
+    -- ===============================
+    -- POS企業コード
+    -- ===============================
+    -- POS企業コードが'-'の場合
+    IF (cust_data_rec.pos_enterprise_code = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.pos_enterprise_code := NULL;
+    --  POS企業コードがNULL、または顧客区分が、10(顧客)、15(店舗営業)以外の場合
+    ELSIF (cust_data_rec.pos_enterprise_code IS NULL) OR (cust_data_rec.customer_class_code NOT IN (cv_kokyaku_kbn, cv_tenpo_kbn)) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.pos_enterprise_code := cust_data_rec.addon_pos_enterprise_code;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.pos_enterprise_code := cust_data_rec.pos_enterprise_code;
+    END IF;
+    --
+    -- ===============================
+    -- POS店舗コード
+    -- ===============================
+    -- POS店舗コードが'-'の場合
+    IF (cust_data_rec.pos_store_code = cv_null_bar) THEN
+      -- NULLをセット
+      l_xxcmm_cust_accounts.pos_store_code := NULL;
+    --  POS店舗コードがNULL、または顧客区分が、10(顧客)、15(店舗営業)以外の場合
+    ELSIF (cust_data_rec.pos_store_code IS NULL) OR (cust_data_rec.customer_class_code NOT IN (cv_kokyaku_kbn, cv_tenpo_kbn)) THEN
+      -- 更新前の値をセット
+      l_xxcmm_cust_accounts.pos_store_code := cust_data_rec.addon_pos_store_code;
+    ELSE
+      -- CSVの項目値をセット
+      l_xxcmm_cust_accounts.pos_store_code := cust_data_rec.pos_store_code;
+    END IF;
+    --
+-- Ver1.28 add end
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -12171,6 +12422,10 @@ AS
 -- Ver1.19 add start
           ,xca.latitude               = l_xxcmm_cust_accounts.latitude                   --カテゴリー商品計上区分
 -- Ver1.19 add end
+-- Ver1.28 add start
+          ,xca.pos_enterprise_code    = l_xxcmm_cust_accounts.pos_enterprise_code        --POS企業コード
+          ,xca.pos_store_code         = l_xxcmm_cust_accounts.pos_store_code             --POS店舗コード
+-- Ver1.28 add end
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID

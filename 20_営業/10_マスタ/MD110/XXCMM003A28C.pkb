@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2019/01/31    1.11  阿部 直樹        障害E_本稼動_15490対応
  *  2021/05/24    1.12  二村 悠香        障害E_本稼働_16026対応 コメント変更のみ（紹介者チェーンコード2→控除用チェーンコード）
  *  2024/06/26    1.13  奥山 徹          障害E_本稼動_19877対応 インボイス対応（請求書消費税積上げ計算方式）項目追加
+ *  2024/07/25    1.14  奥山 徹          障害E_本稼動_20030対応 顧客マスタ項目追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -562,6 +563,10 @@ AS
 -- Ver1.11 add start
               ,xca.latitude                           latitude              --カテゴリー商品計上区分
 -- Ver1.11 add end
+-- Ver1.14 add start
+              ,xca.pos_enterprise_code                pos_enterprise_code   --POS企業コード
+              ,xca.pos_store_code                     pos_store_code        --POS店舗コード
+-- Ver1.14 add end
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -872,6 +877,15 @@ AS
         --
 -- 2009/10/20 Ver1.3 add end by Y.Kuboshima
 --
+-- Ver1.14 add start
+        -- 顧客区分'10','15'以外の場合
+        IF (cust_data_rec.customer_class_code NOT IN (cv_customer, cv_tenpo_kbn)) THEN
+          -- POS企業コード,POS店舗コードにNULLをセット
+          cust_data_rec.pos_enterprise_code  := NULL;
+          cust_data_rec.pos_store_code       := NULL;
+        END IF;
+-- Ver1.14 add end
+--
         --売上拠点名称取得
         << seles_base_name_loop >>
         FOR get_sales_base_name_rec IN get_sales_base_name_cur( cust_data_rec.sale_base_code )
@@ -1087,6 +1101,10 @@ AS
 -- Ver1.11 add end
         lv_output_str := lv_output_str || cv_comma || lv_decide_div;                                                --判定区分
         lv_output_str := lv_output_str || cv_comma || TO_CHAR(lt_approval_date ,cv_date_fmt_std);                   --決済日付
+-- Ver1.14 add start
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.pos_enterprise_code          ,1 ,9 );   --POS企業コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.pos_store_code               ,1 ,9 );   --POS店舗コード
+-- Ver1.14 add end
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information                             ,1 ,100);  --情報欄
 -- Ver1.8 mod end
 --
