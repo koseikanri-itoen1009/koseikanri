@@ -10,6 +10,7 @@
                        SCSK   吉岡           2022/10/31 Draft1B  仕様変更対応
                                              2023/02/27 Issue1.1 BIP出力のタイアウトエラー対応
                                              2023/04/19 Issue1.2 データ変換非同期対応
+                       SCSK   細沼           2024/09/09 Issue1.3 障害対応：E_本稼動_20182
 
      [戻り値]
         0 : 正常
@@ -40,11 +41,23 @@ from com.PyComnException import PyComnException
 
 def execApi(com, execPayload, exeName, apiUrl, isExecFunk=True):
 
+    ## サーバーエラーを考慮したREST API呼出し
+    for cnt in range(int(com.getEnvConstValue("MAX_LOOP_CNT_REST_RETRY"))):
+        
+        if cnt > 0 :
+            #初回以外は規定の秒数待機後、RESTAPIを実行
+            time.sleep(int(com.getEnvConstValue("SLEEP_TIME_REST_RETRY")))
+
         ## RESTAPI実行
         apiResponse = requests.request("POST"
             , com.getEnvValue("OIC_HOST") + apiUrl
             , headers=com.headers
             , data=execPayload)
+
+        ## RESTAPI サーバーエラー判定
+        if com.oicErrChkSrv(apiResponse) :
+            ## サーバーエラーが発生した場合、RESTAPI呼出しを再試行
+            continue
 
         ## RESTAPIエラー判定
         com.oicErrChk(apiResponse, exeName)
@@ -55,6 +68,11 @@ def execApi(com, execPayload, exeName, apiUrl, isExecFunk=True):
             rtnRes = com.oicRtnCdChk(apiResponse, exeName)
 
         return rtnRes
+
+    else:
+        ## REST API呼出しのリトライ回数が上限に達した場合のエラー処理
+        com.endCd = com.getEnvConstValue("JP1_ERR_CD")
+        raise PyComnException("CCDE0011", exeName)
 
 ### Main処理 ###
 def main():
