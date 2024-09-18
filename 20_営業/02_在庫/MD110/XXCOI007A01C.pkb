@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2024/03/18    1.10  R.Oikawa        [E_本稼動_19496] グループ会社対応
  *  2024/06/24    1.11  R.Oikawa        [E_本稼動_20008] 北海道分社化在庫仕訳対応
  *  2024/08/06    1.12  R.Oikawa        [E_本稼動_20143] 原価小数点対応
+ *  2024/09/05    1.13  R.Oikawa        [E_本稼動_20185] E_本稼動_20143 在庫調整仕訳対応の修正
  *
  *****************************************************************************************/
 --
@@ -187,8 +188,13 @@ AS
   cn_transaction_type_119    CONSTANT NUMBER        :=  119;                           -- 工場直送入庫振戻
   cn_transaction_type_120    CONSTANT NUMBER        :=  120;                           -- 工場直送出庫
   cn_transaction_type_121    CONSTANT NUMBER        :=  121;                           -- 工場直送出庫振戻
-  cv_pkg_name_gr_comp        CONSTANT VARCHAR2(2)   :=  '_2';                          -- 仕訳名(グループ会社用)
+-- Ver1.13 DEL START
+--  cv_pkg_name_gr_comp        CONSTANT VARCHAR2(2)   :=  '_2';                          -- 仕訳名(グループ会社用)
+-- Ver1.13 DEL END
 -- Ver1.10 ADD END
+-- Ver1.13 ADD START
+  cv_create_user_name        CONSTANT VARCHAR2(100) :=  fnd_global.user_name;          -- FND_USER_NAME
+-- Ver1.13 ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2152,7 +2158,10 @@ AS
           , gt_group_id                               -- 24.グループID
           , TO_CHAR( cn_request_id )                  -- 25.要求ID
           , xwcv_sumr_rec.xwcv_adj_dept_code          -- 26.調整部門コード
-          , TO_CHAR( cn_created_by )                  -- 27.ユーザーID
+-- Ver1.13 MOD START
+--          , TO_CHAR( cn_created_by )                  -- 27.ユーザーID
+          , cv_create_user_name                       -- 27.ユーザー名
+-- Ver1.13 MOD END
           , gt_gl_set_of_bks_name                     -- 28.プロファイル値：会計帳簿名
         );
         -- 成功件数(原価差額集約単位)カウント
@@ -2295,13 +2304,19 @@ AS
       , in_entered_dr                        -- 18.借方金額
       , in_entered_cr                        -- 19.貸方金額
       , gt_je_batch_name                     -- 20.仕訳バッチ名
-      , cv_pkg_name || cv_pkg_name_gr_comp   -- 21.固定値：XCOI007A01C(プログラム短縮名)
+-- Ver1.13 MOD START
+--      , cv_pkg_name || cv_pkg_name_gr_comp   -- 21.固定値：XCOI007A01C(プログラム短縮名)
+      , cv_pkg_name                          -- 21.固定値：XCOI007A01C(プログラム短縮名)
+-- Ver1.13 MOD END
       , iv_reference21                       -- 22.GLバッチID
       , iv_period_name                       -- 23.会計期間名
       , gt_group_id                          -- 24.グループID
       , TO_CHAR( cn_request_id )             -- 25.要求ID
       , gt_aff2_adj_dept_code                -- 26.調整部門コード
-      , TO_CHAR( cn_created_by )             -- 27.ユーザーID
+-- Ver1.13 MOD START
+--      , TO_CHAR( cn_created_by )             -- 27.ユーザーID
+      , cv_create_user_name                  -- 27.ユーザー名
+-- Ver1.13 MOD END
       , gt_gl_set_of_bks_name                -- 28.プロファイル値：会計帳簿名
     );
 --
