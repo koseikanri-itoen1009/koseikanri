@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       E_本稼動_17939【収益認識】定額協賛金(既存メッセージ不具合修正)
  *  2022/05/02    1.9   SCSK Y.Koh       E_本稼動_18148  定額協賛金の控除マスタアップロード
  *  2022/06/16    1.10  SCSK Y.Koh       E_本稼動_18343 定額協賛金（額固定）の控除マスタアップロードで、計上顧客チェック
+ *  2024/09/13    1.11  SCSK Y.Koh       E_本稼動_20176【個別開発】控除マスタCSVアップロードの開始日設定制限
  *
  *****************************************************************************************/
 --
@@ -355,6 +356,9 @@ AS
   cv_col_name_tok                   CONSTANT VARCHAR2(20) := 'COLUMN_NAME';       -- 項目名
   cv_col_value_tok                  CONSTANT VARCHAR2(20) := 'COLUMN_VALUE';      -- 項目値
   cv_start_date_tok                 CONSTANT VARCHAR2(20) := 'START_DATE';        -- 開始日
+-- 2024/09/13 Ver1.11 MOD Start
+  cv_base_date_tok                  CONSTANT VARCHAR2(20) := 'BASE_DATE';         -- 開始日チェック基準日
+-- 2024/09/13 Ver1.11 MOD End
   cv_end_date_tok                   CONSTANT VARCHAR2(20) := 'END_DATE';          -- 終了日
   cv_if_value_tok                   CONSTANT VARCHAR2(20) := 'IF_VALUE';          -- 条件
   cv_line_num_tok                   CONSTANT VARCHAR2(20) := 'LINE_NUM';          -- CSVの行番号
@@ -502,6 +506,9 @@ AS
                                            -- ログインユーザのID
   gn_org_id2            NUMBER;            -- 組織ID
   g_chk_item_tab        g_chk_item_ttype;  -- 項目チェック
+-- 2024/09/13 Ver1.11 MOD Start
+  gd_base_date          DATE;              -- 開始日チェック基準日
+-- 2024/09/13 Ver1.11 MOD End
 --
   -- ===============================
   -- ユーザ定義グローバルカーソル
@@ -1000,6 +1007,22 @@ AS
                               AND     NVL(flv.end_date_active,gd_process_date)
       ;
     END;
+-- 2024/09/13 Ver1.11 ADD Start
+--
+    --==============================================================
+    -- 開始日チェックの基準日取得
+    --==============================================================
+    SELECT
+      CASE
+        WHEN  gp.period_num <=  5 THEN  ADD_MONTHS(gp.year_start_date,-36)
+        WHEN  gp.period_num >=  6 THEN  ADD_MONTHS(gp.year_start_date,-24)
+      END base_date
+    INTO  gd_base_date
+    FROM  gl_periods  gp
+    WHERE gp.period_set_name = 'SALES_CALENDAR'
+    AND   gp.adjustment_period_flag = 'N'
+    AND   gd_process_date BETWEEN gp.start_date AND gp.end_date;
+-- 2024/09/13 Ver1.11 ADD End
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2756,12 +2779,20 @@ AS
             ld_end_date   :=  TO_DATE( g_cond_tmp_chk_rec.end_date_active ,cv_date_format);
 --
 -- 2021/05/01 Ver1.3 MOD Start
-        IF ( ld_start_date < to_date('2021/05/01','YYYY/MM/DD') )  THEN
+-- 2024/09/13 Ver1.11 MOD Start
+        IF  g_cond_tmp_chk_rec.csv_process_type !=  cv_csv_delete AND
+            ld_start_date < gd_base_date                          THEN
+--        IF ( ld_start_date < to_date('2021/05/01','YYYY/MM/DD') )  THEN
+-- 2024/09/13 Ver1.11 MOD End
           lv_errmsg := xxccp_common_pkg.get_msg(
                iv_application  => cv_msg_kbn_cok
              , iv_name         => cv_msg_cok_10796
              , iv_token_name1  => cv_start_date_tok
              , iv_token_value1 => g_cond_tmp_chk_rec.start_date_active
+-- 2024/09/13 Ver1.11 ADD Start
+             , iv_token_name2  => cv_base_date_tok
+             , iv_token_value2 => TO_CHAR(gd_base_date,cv_date_format)
+-- 2024/09/13 Ver1.11 ADD End
              );
             ln_cnt  :=  ln_cnt + 1;
             g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
