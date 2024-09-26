@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_SALES_BUS_PARTNERS
  * Description : 取引先販売実績テーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2016/10/14    1.0   S.Niki           新規作成
+ *  2024/09/17    1.1   M.Akachi         E_本稼動_20181対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_SALES_BUS_PARTNERS
@@ -26,7 +27,10 @@ CREATE TABLE XXCOS.XXCOS_SALES_BUS_PARTNERS
   LINE_NUMBER                    NUMBER                  ,                     --  明細番号
   ITEM_CODE                      VARCHAR2(7)             ,                     --  伊藤園品名コード
   BP_ITEM_CODE                   VARCHAR2(15)            ,                     --  取引先品名コード
-  DLV_QTY                        NUMBER(5,2)             ,                     --  数量
+-- Ver.1.1 Mod Start
+--  DLV_QTY                        NUMBER(5,2)             ,                     --  数量
+  DLV_QTY                        NUMBER(6,2)             ,                     --  数量
+-- Ver.1.1 Mod End
   UNIT_PRICE                     NUMBER(7)               ,                     --  売単価
   CASH_AND_CARD                  NUMBER(11)              ,                     --  現金・カード併用額
   DATA_CREATED                   DATE          NOT NULL  ,                     --  データ作成日時
