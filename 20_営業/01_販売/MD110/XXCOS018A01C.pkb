@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS018A01C(body)
  * Description      : CSVデータアップロード（販売実績）
  * MD.050           : MD050_COS_018_A01_CSVデータアップロード（販売実績）
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2019/07/25    1.3   N.Koyama         E_本稼動_15472軽減税率対応(障害対応)
  *  2019/11/06    1.4   Y.Ohishi         E_本稼動_15850VD委託販売実績アップロードの桁数について
  *  2021/10/27    1.5   Y.Shoji          E_本稼動_17406VD委託販売実績アップロードの納品伝票番号のチェックについて
+ *  2024/09/17    1.6   M.Akachi         E_本稼動_20181対応
  *
  *****************************************************************************************/
 --
@@ -274,10 +275,14 @@ AS
   cn_line_number_length             CONSTANT NUMBER        := 2;           --明細番号
   cn_item_code_length               CONSTANT NUMBER        := 7;           --伊藤園品名コード
   cn_bp_item_code_length            CONSTANT NUMBER        := 15;          --取引先品名コード
-  cn_dlv_qty_length                 CONSTANT NUMBER        := 5;           --数量
--- Ver.1.4 ADD START
-  cn_dlv_qty_length_minus           CONSTANT NUMBER        := 6;           --数量（マイナス）
--- Ver.1.4 ADD END
+-- Ver.1.6 Mod Start
+--  cn_dlv_qty_length                 CONSTANT NUMBER        := 5;           --数量
+---- Ver.1.4 ADD START
+--  cn_dlv_qty_length_minus           CONSTANT NUMBER        := 6;           --数量（マイナス）
+---- Ver.1.4 ADD END
+  cn_dlv_qty_length                 CONSTANT NUMBER        := 6;           --数量
+  cn_dlv_qty_length_minus           CONSTANT NUMBER        := 7;           --数量（マイナス）
+-- Ver.1.6 Mod End
   cn_dlv_qty_point                  CONSTANT NUMBER        := 2;           --数量（小数点以下）
   cn_unit_price_length              CONSTANT NUMBER        := 7;           --売単価
   cn_cash_and_card_length           CONSTANT NUMBER        := 11;          --現金・カード併用額
