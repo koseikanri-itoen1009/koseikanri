@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM001A01C(spec)
  * Description      : 仕入先マスタIF出力（情報系）
  * MD.050           : 仕入先マスタIF出力（情報系）MD050_CMM_001_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2010/03/08    1.4   SCS 久保島 豊    E_本稼動_01820対応
  *                                       ・預金種別名称に「貯蓄預金,別段預金」を追加
  *  2024/05/15    1.5   SCSK 赤地 学     E_本稼動_19529対応
+ *  2024/10/02    1.6   SCSK 赤地 学     E_本稼動_19529再対応
  *
  *****************************************************************************************/
 --
@@ -689,7 +690,10 @@ AS
              SUBSTRB(aba.account_holder_name_alt,1,50)
                                                 account_holder_nm_alt --口座名義人名カナ
 -- Ver1.5 Add Start
-            ,pv.vendor_name_alt                 vendor_name_alt             --仕入先名ｶﾅ
+-- Ver1.6 Mod Start
+--            ,pv.vendor_name_alt                 vendor_name_alt             --仕入先名ｶﾅ
+            ,REPLACE(pv.vendor_name_alt,'"','ﾞ')  vendor_name_alt           --仕入先名ｶﾅ
+-- Ver1.6 Mod End
             ,pv.vendor_type_lookup_code         vendor_type_lookup_code     --仕入先ﾀｲﾌﾟ
             ,(SELECT flvv.meaning
               FROM   fnd_lookup_values_vl flvv
@@ -809,7 +813,10 @@ AS
              NULL                               bank_account_num,   --銀行口座番号
              NULL                               account_holder_nm_alt --口座名義人名カナ
 -- Ver1.5 Add Start
-            ,pv.vendor_name_alt                 vendor_name_alt             --仕入先名ｶﾅ
+-- Ver1.6 Mod Start
+--            ,pv.vendor_name_alt                 vendor_name_alt             --仕入先名ｶﾅ
+            ,REPLACE(pv.vendor_name_alt,'"','ﾞ')  vendor_name_alt           --仕入先名ｶﾅ
+-- Ver1.6 Mod End
             ,pv.vendor_type_lookup_code         vendor_type_lookup_code     --仕入先ﾀｲﾌﾟ
             ,(SELECT flvv.meaning
               FROM   fnd_lookup_values_vl flvv
