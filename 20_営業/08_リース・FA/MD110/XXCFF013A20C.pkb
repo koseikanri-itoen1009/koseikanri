@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2018/09/07    1.12  SCSK小路         [E_本稼動_14830]IFRSリース追加対応
  *  2019/05/24    1.13  SCSK小路         [E_本稼動_15727]自販機の減価償却費の拠点振替対応
  *  2019/05/30    1.14  SCSK小路         [E_本稼動_15727]追加対応
+ *  2024/10/24    1.15  SCSK赤地         [E_本稼動_20229]自販機リースの10年償却対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3412,7 +3413,10 @@ AS
                      AND    ( obj_hist.lease_type       =  cv_original                            -- 原契約
                        OR     ( obj_hist.lease_type     =  cv_re_lease                            -- 再リース
                          AND    obj_hist.lease_class    =  cv_lease_class_vd                      -- 自販機
-                         AND    obj_hist.re_lease_times <= 3 )                                    -- 再リース回数
+-- Ver1.15 Mod Start
+--                         AND    obj_hist.re_lease_times <= 3 )                                    -- 再リース回数
+                         AND    obj_hist.re_lease_times <= 5 )                                    -- 再リース回数
+-- Ver1.15 Mod End
                        OR     ( obj_hist.lease_type     =  cv_re_lease                            -- 再リース
                          AND    flv.attribute7          =  cv_lease_cls_chk2))                    -- リース判定結果：2
                      AND    obj_hist.lease_class         =  flv.lookup_code
@@ -3460,7 +3464,10 @@ AS
                        AND (   ctrct_head.lease_type       =  cv_original                           -- 原契約
                          OR   (ctrct_head.lease_type       =  cv_re_lease                           -- 再リース
                            AND ctrct_head.lease_class      =  cv_lease_class_vd                     -- 自販機
-                           AND ctrct_head.re_lease_times   <= 3 )                                   -- 再リース回数
+-- Ver1.15 Mod Start
+--                           AND ctrct_head.re_lease_times   <= 3 )                                   -- 再リース回数
+                           AND ctrct_head.re_lease_times   <= 5 )                                   -- 再リース回数
+-- Ver1.15 Mod End
                          OR   (ctrct_head.lease_type       =  cv_re_lease                           -- 再リース
                            AND flv.attribute7              =  cv_lease_cls_chk2))                   -- リース判定結果：2
                        AND   ctrct_head.lease_class        =  flv.lookup_code
