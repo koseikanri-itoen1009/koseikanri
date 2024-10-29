@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2024/06/24    1.11  R.Oikawa        [E_本稼動_20008] 北海道分社化在庫仕訳対応
  *  2024/08/06    1.12  R.Oikawa        [E_本稼動_20143] 原価小数点対応
  *  2024/09/05    1.13  R.Oikawa        [E_本稼動_20185] E_本稼動_20143 在庫調整仕訳対応の修正
+ *  2024/10/04    1.14  Y.Sato          [E_本稼動_20220] グループ会社間取引のマージン率変更
  *
  *****************************************************************************************/
 --
@@ -2406,20 +2407,33 @@ AS
             , ROUND( SUM( xwcv2.primary_quantity * standard_cost ),0)
                                                  AS sum_cost_amount             -- 標準原価金額
             , ROUND( SUM( xwcv2.primary_quantity *
-                ROUND( xwcv2.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)),0)
+-- Ver1.14 MOD START
+--                ROUND( xwcv2.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)),0)
+                  ROUND( xwcv2.standard_cost * ( 1 + ( flvv.attribute1 / 100 )),2)),0)
+-- Ver1.14 MOD END
                                                  AS sum_purchase_amount         -- 購入金額
 -- Ver1.11 ADD START
             , ROUND( SUM( xwcv2.primary_quantity * ( operation_cost - standard_cost ) ),0)
                                                  AS sum_adj_amount              -- 売上原価調整金額(営業原価-標準原価)
 -- Ver1.11 ADD END
       FROM    xxcoi_wk_cost_variance    xwcv2                              -- 原価差額ワークテーブル
-            , xxcfr_bd_company_info_v   flv                                -- 各社利益率
+-- Ver1.14 MOD START
+--            , xxcfr_bd_company_info_v   flv                                -- 各社利益率
+            , fnd_lookup_values_vl 		  flvv                               -- 各社利益率
+-- Ver1.14 MOD END
       WHERE   xwcv2.group_company_flg = cv_1                               -- 1:グループ会社
       AND     xwcv2.reverse_flg       = cv_0                               -- 0:元データ
-      AND     flv.lookup_type         = cv_company_profit_rate
-      AND     flv.company_code        = xwcv2.company_code
-      AND     TRUNC( xwcv2.transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv2.transaction_date )
-                                           AND     NVL( flv.end_date_active, xwcv2.transaction_date )
+-- Ver1.14 MOD START
+--      AND     flv.company_code        = xwcv2.company_code
+--      AND     flv.lookup_type         = cv_company_profit_rate
+--      AND     TRUNC( xwcv2.transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv2.transaction_date )
+--                                           AND     NVL( flv.end_date_active, xwcv2.transaction_date )
+      AND     flvv.lookup_type        = cv_company_profit_rate
+      AND     flvv.enabled_flag       = 'Y'
+      AND     xwcv2.company_code      = flvv.attribute2
+      AND     TRUNC( xwcv2.transaction_date )  BETWEEN NVL( flvv.start_date_active, xwcv2.transaction_date )
+                                               AND     NVL( flvv.end_date_active, xwcv2.transaction_date )
+-- Ver1.14 MOD END
       AND     xwcv2.transaction_type_id <> gt_trans_type_std_cost_upd      -- 標準原価更新は除く
       GROUP BY xwcv2.dept_code
              , xwcv2.grcp_adj_dept_code
@@ -3048,11 +3062,15 @@ AS
           , msib.segment1                       AS segment1                -- 04.品目コード
           , mmt.subinventory_code               AS subinventory_code       -- 05.保管場所
           , xwcv.primary_quantity               AS transaction_quantity    -- 06.数量
-          , ROUND( xwcv.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)
+-- Ver1.14 MOD START
+--          , ROUND( xwcv.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2)
+          , ROUND( xwcv.standard_cost * ( 1 + ( flvv.attribute1 / 100 )),2)
                                                 AS purchase_unit_price     -- 07.購入単価
           , ROUND( xwcv.primary_quantity *
-            ROUND( xwcv.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2),2)
+--            ROUND( xwcv.standard_cost * ( 1 + ( flv.attribute1 / 100 )),2),2)
+            ROUND( xwcv.standard_cost * ( 1 + ( flvv.attribute1 / 100 )),2),2)
                                                 AS purchase_amount         -- 08.購入金額
+-- Ver1.14 MOD END
           , mtt.transaction_type_name           AS transaction_type_name   -- 09.取引タイプ名
           , mmt.attribute1                      AS attribute1              -- 10.伝票番号
           , xwcv.transfer_ownership_flg         AS transfer_ownership_flg  -- 11.所有権移転取引フラグ
@@ -3072,7 +3090,10 @@ AS
           , mtl_material_transactions mmt      -- 資材取引
           , mtl_system_items_b        msib     -- Disc品目マスタ
           , mtl_transaction_types     mtt      -- 取引タイプマスタ
-          , xxcfr_bd_company_info_v   flv      -- 各社利益率
+-- Ver1.14 MOD START
+--          , xxcfr_bd_company_info_v   flv      -- 各社利益率
+          , fnd_lookup_values_vl 		  flvv       -- 各社利益率
+-- Ver1.14 MOD END
     WHERE   xwcv.group_company_flg   = cv_1                                -- 1:グループ会社
     AND     xwcv.reverse_flg         = cv_0                                -- 0:元データ
     AND     xwcv.account_code        IN ( gt_aff3_seihin,gt_aff3_shouhin ) -- （12204：製品、12109：商品）
@@ -3081,10 +3102,17 @@ AS
     AND     msib.organization_id     = mmt.organization_id
     AND     mtt.transaction_type_id  = xwcv.transaction_type_id
     AND     mmt.organization_id      = xxcoi_common_pkg.get_organization_id ( gt_org_code )
-    AND     flv.lookup_type          = cv_company_profit_rate
-    AND     flv.company_code         = xwcv.company_code
-      AND     TRUNC( xwcv.transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv.transaction_date )
-                                           AND     NVL( flv.end_date_active, xwcv.transaction_date )
+-- Ver1.14 MOD START
+--    AND     flv.lookup_type          = cv_company_profit_rate
+--    AND     flv.company_code         = xwcv.company_code
+--      AND     TRUNC( xwcv.transaction_date )  BETWEEN NVL( flv.start_date_active, xwcv.transaction_date )
+--                                           AND     NVL( flv.end_date_active, xwcv.transaction_date )
+      AND     flvv.lookup_type       = cv_company_profit_rate
+      AND     flvv.enabled_flag      = 'Y'
+      AND     xwcv.company_code      = flvv.attribute2
+      AND     TRUNC( xwcv.transaction_date )  BETWEEN NVL( flvv.start_date_active, xwcv.transaction_date )
+                                              AND     NVL( flvv.end_date_active, xwcv.transaction_date )
+-- Ver1.14 MOD END
     AND     xwcv.transaction_type_id <> gt_trans_type_std_cost_upd  -- 標準原価更新は除く
     ;
 --
