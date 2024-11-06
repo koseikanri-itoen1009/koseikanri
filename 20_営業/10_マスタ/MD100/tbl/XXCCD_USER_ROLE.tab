@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCCD_USER_ROLE
  * Description : ユーザロール
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2022/10/21    1.0   SCSK H.Shimizu    新規作成
  *  2023/02/28    1.1   SCSK A.Hamamoto   割当ロールをVARCHAR2(4000)に修正
+ *  2024/10/10    1.2   SCSK S.Hosonuma   E_本稼働_19992【共通】 OICアップグレード対応
  *
  ****************************************************************************************/
 CREATE TABLE xxccd_user_role (
@@ -24,7 +25,10 @@ CREATE TABLE xxccd_user_role (
     ,ledger                         VARCHAR2(150)
     ,data_access                    VARCHAR2(150)
     ,bu                             VARCHAR2(150)
-    ,update_id                      NUMBER(18)
+-- Ver1.2 Mod Start
+--    ,update_id                      NUMBER(18)
+    ,update_id                      VARCHAR2(22)
+-- Ver1.2 Mod End
   ,CONSTRAINT xxccd_user_role_pk PRIMARY KEY (id)
 )
 /
