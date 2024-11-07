@@ -9,6 +9,8 @@
           更新履歴：   SCSK   吉岡           2023/02/15 Draft1A  初版
                                              2023/02/28 Issue1.0 Issue化
                        SCSK   細沼           2023/11/08 Issue1.1 E_本稼動_19588
+                       SCSK   飯塚           2024/06/21 Issue1.2 E_本稼動_19764
+                                             OIC3対応
      [戻り値]
         0 : 正常
         8 : 異常
@@ -39,17 +41,34 @@ def execApi(com, execPayload, exeName, apiUrl):
 
     try:
         ## RESTAPI実行
-        apiResponse = requests.request("GET"
+# 2024/06/21 Ver1.2 Hirokazu.Iitsuka Add Start
+#        apiResponse = requests.request("GET"
+#            , com.getEnvValue("OIC_HOST") + apiUrl
+#            , headers=com.headers
+#            , params=execPayload
+#            , timeout=(float(com.getEnvConstValue("REST_CONN_TIMEOUT_SEC")), None))
+#
+#        ## RESTAPIエラー判定
+#        com.oicErrChk(apiResponse, exeName)
+#
+#        return apiResponse
+        
+        apiResponse = requests.request("POST"
             , com.getEnvValue("OIC_HOST") + apiUrl
             , headers=com.headers
-            , params=execPayload
+            , data=execPayload
             , timeout=(float(com.getEnvConstValue("REST_CONN_TIMEOUT_SEC")), None))
+            
 
         ## RESTAPIエラー判定
         com.oicErrChk(apiResponse, exeName)
+        
+        ## リターンコードエラー判定
+        rtnRes = com.oicRtnCdChk(apiResponse, exeName)
+        
+        return rtnRes
 
-        return apiResponse
-
+# 2024/06/21 Ver1.2 Hirokazu.Iitsuka Add End
     ## 例外判定
     except ConnectTimeout as eCT:
         com.endCd = com.getEnvConstValue("JP1_ERR_CD")
@@ -91,21 +110,31 @@ def main():
         if prmGetTimeT:
             prmTimeT = prmGetTimeT
 
-        execPayload = {
-            "q" : "{startdate : '" + prmDate + " "+ prmTimeF + "' , enddate : '" + prmDate + " " + prmTimeT + "'}"
-        }
-
+# 2024/06/21 Ver1.2 Hirokazu.Iitsuka Add Start
+#        execPayload = {
+#            "q" : "{startdate : '" + prmDate + " "+ prmTimeF + "' , enddate : '" + prmDate + " " + prmTimeT + "'}"
+#        }
+#
+#        ## RESTAPI実行、エラー判定
+#        apiResponse = execApi(com, execPayload, ["OIC実行ログ定期ダウンロードAPI"]
+#            , "/ic/api/integration/v1/monitoring/logs/icsflowlog/")
+#
+#        ## 実行結果をzipファイル保存
+#        zipFileName = com.getEnvConstValue("ICSFLOWLOG_ZIP_FILENAME") + "_" + prmDate.replace("-", "") + \
+#                        prmTimeF.replace(":", "") + ".zip"
+#        
+#        with open(com.getEnvValue("ICSFLOWLOG_ZIP_FILEPATH") + zipFileName, "wb") as f:
+#            f.write(apiResponse.content)
+# )
+        execPayload = json.dumps({
+            "startDate" : prmDate + " " + prmTimeF,
+            "endDate" : prmDate + " " + prmTimeT 
+            })
         ## RESTAPI実行、エラー判定
         apiResponse = execApi(com, execPayload, ["OIC実行ログ定期ダウンロードAPI"]
-            , "/ic/api/integration/v1/monitoring/logs/icsflowlog/")
-
-        ## 実行結果をzipファイル保存
-        zipFileName = com.getEnvConstValue("ICSFLOWLOG_ZIP_FILENAME") + "_" + prmDate.replace("-", "") + \
-                        prmTimeF.replace(":", "") + ".zip"
+            , com.getEnvValue("XXCCD039_API_PATH"))
         
-        with open(com.getEnvValue("ICSFLOWLOG_ZIP_FILEPATH") + zipFileName, "wb") as f:
-            f.write(apiResponse.content)
-
+# 2024/06/21 Ver1.2 Hirokazu.Iitsuka Add End
         ## 正常ログ出力
         com.writeMsg("CCDI0002", ["OIC実行ログ定期ダウンロードAPI"])
 
