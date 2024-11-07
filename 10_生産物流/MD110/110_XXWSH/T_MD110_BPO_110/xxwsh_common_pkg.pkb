@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.50
+ * Version                : 1.51
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -105,6 +105,7 @@ AS
  *  2009/06/25   1.48  SCS    伊藤ひとみ[稼働日算出関数]本番#1463対応 日付＋LTも算出できるよう変更
  *  2009/08/18   1.49  SCS    伊藤ひとみ[配車解除関数]本番#1581対応(営業システム:特別横持マスタ対応)
  *  2012/07/18   1.50  SCSK   菅原大輔  E_本稼動_09810対応
+ *  2024/10/31   1.51  SCSK   赤地学    E_本稼動_20230対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2615,6 +2616,11 @@ AS
 -- Ver1.46 M.Hokkanji Start
     cv_spot_sale_ship_name  CONSTANT VARCHAR2(8)   := '庭先出荷';
 -- Ver1.46 M.Hokkanji End
+-- Ver.1.51 Add Start
+  -- 商品区分
+    cv_prod_class_l         CONSTANT VARCHAR2(1)  := '1' ;    -- リーフ
+    cv_prod_class_d         CONSTANT VARCHAR2(1)  := '2' ;    -- ドリンク
+-- Ver.1.51 Add End
 --
     -- *** ローカル変数 ***
     ln_pallet_waight                NUMBER;                     -- パレット重量
@@ -2632,6 +2638,11 @@ AS
     ln_counter                      NUMBER;                     -- カウント変数
     lv_tkn_biz_type                 VARCHAR2(100);              -- トークン_業務種別
     lv_tkn_request_no               VARCHAR2(100);              -- トークン_依頼No/移動番号
+-- Ver.1.51 Add Start
+    ln_pallet_capacity              NUMBER;                     -- パレット容積
+    ln_leaf_pallet_capacity         mtl_item_locations.attribute2%TYPE;      -- リーフパレット容積
+    ln_pallet_sum_quantity          xxwsh_order_headers_all.pallet_sum_quantity%TYPE; -- パレット合計枚数
+-- Ver.1.51 Add End
     -- 受注ヘッダアドオン
     lv_req_status                   VARCHAR2(2);                -- ステータス
     lv_result_shipping_method_code  VARCHAR2(2);                -- 配送区分_実績
@@ -2773,6 +2784,9 @@ AS
     -- ***********************************************
     -- プロファイル取得
     ln_pallet_waight := TO_NUMBER(FND_PROFILE.VALUE('XXWSH_PALLET_WEIGHT')); -- パレット重量
+-- Ver.1.51 Add Start
+    ln_pallet_capacity := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_PALLET_CAPACITY')); -- パレット容積
+-- Ver.1.51 Add End
 --
     -- 入力パラメータチェック
     IF (( iv_biz_type IS NULL ) OR ( iv_request_no IS NULL )) THEN
@@ -2855,6 +2869,9 @@ AS
 -- Ver1.46 M.Hokkanji Start
                  ,order_type_id
 -- Ver1.46 M.Hokkanji End
+-- Ver.1.51 Add Start
+                 ,NVL(xoha.pallet_sum_quantity, 0)      -- パレット合計枚数
+-- Ver.1.51 Add End
           INTO    lv_req_status,
                   lv_result_shipping_method_code,
                   lv_result_deliver_to,
@@ -2870,6 +2887,9 @@ AS
 -- Ver1.46 M.Hokkanji Start
                  ,ln_order_type_id
 -- Ver1.46 M.Hokkanji End
+-- Ver.1.51 Add Start
+                 ,ln_pallet_sum_quantity
+-- Ver.1.51 Add End
           FROM    xxwsh_order_headers_all       xoha,       -- 受注ヘッダアドオン
                   xxwsh_oe_transaction_types2_v ott2        -- 受注タイプ情報VIEW
           WHERE   xoha.request_no                             =  iv_request_no
@@ -2962,6 +2982,21 @@ AS
         END IF;
 --add end 1.14
 --
+-- Ver.1.51 Add Start
+        -- 出荷元保管場所の倉庫がLD混載対応か確認
+        -- リーフパレット容積がNULLでない場合、LD混載対応倉庫と判断します。
+        BEGIN
+          SELECT iwm.attribute2 AS leaf_pallet_capacity  -- リーフパレット容積
+          INTO   ln_leaf_pallet_capacity
+          FROM   mtl_item_locations mil,
+                 ic_whse_mst iwm
+          WHERE  mil.segment1        = lv_deliver_from      -- 出荷元保管場所
+          AND    mil.organization_id = iwm.mtl_organization_id;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_leaf_pallet_capacity := NULL;
+        END;
+-- Ver.1.51 Add End
         BEGIN
         -- カウント変数の初期化
         ln_counter := 0;
@@ -3015,6 +3050,18 @@ AS
               ln_sum_capacity      := NVL(ln_sum_capacity, 0);     -- 合計容積
               ln_sum_pallet_weight := NVL(ln_sum_pallet_weight, 0);-- 合計パレット数
 -- 2008/08/07 H.Itou Add End
+-- Ver.1.51 Add Start
+              IF (ln_leaf_pallet_capacity IS NULL) THEN
+                -- LD外倉庫でリーフは重量を設定しない
+                IF ( lv_prod_class = cv_prod_class_l ) THEN
+                  ln_sum_weight        := 0;
+                  ln_sum_pallet_weight := 0;
+                -- LD外倉庫でドリンクは容積を設定しない
+                ELSIF ( lv_prod_class = cv_prod_class_d ) THEN
+                  ln_sum_capacity      := 0;
+                END IF;
+              END IF;
+-- Ver.1.51 Add End
               -- 【明細更新項目】
               lt_update_tbl(ln_counter).update_weight            :=  ln_sum_weight;
               lt_update_tbl(ln_counter).update_capacity          :=  ln_sum_capacity;
@@ -3105,6 +3152,13 @@ AS
             RETURN gn_status_error;
 --
         END;
+--
+-- Ver.1.51 Add Start
+        -- 出庫元の倉庫がLD混載対応倉庫の場合、合計パレット容積を積載容積合計に加算します。
+        IF (ln_leaf_pallet_capacity IS NOT NULL) THEN
+          ln_update_sum_capacity := ln_update_sum_capacity + (NVL(ln_pallet_capacity,0) * ln_pallet_sum_quantity);
+        END IF;
+-- Ver.1.51 Add End
 --
         -- 変数初期化
         lv_retcode      :=NULL;   -- リターンコード
@@ -4734,7 +4788,10 @@ AS
 -- Ver1.46 M.Hokkanji End
           -- ①重量積載効率算出
           xxwsh_common910_pkg.calc_load_efficiency(
-            ln_sum_weight,                         -- 1.合計重量
+-- Ver.1.51 Mod Start
+--            ln_sum_weight,                         -- 1.合計重量
+            ln_update_weight,                      -- 1.合計重量
+-- Ver.1.51 Mod End
             NULL,                                  -- 2.合計容積
             cv_whse,                               -- 3.コード区分１
             (CASE
