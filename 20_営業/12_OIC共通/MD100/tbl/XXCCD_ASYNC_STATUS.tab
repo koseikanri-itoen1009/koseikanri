@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCCD_ASYNC_STATUS
  * Description : 非同期処理ステータス
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2023/04/19    1.0   SCSK H.Shimizu   新規作成
  *  2023/07/21    1.1   SCSK Y.Ryu       E_本稼動_19390【マスタ】従業員IF性能検証
+ *  2024/10/10    1.2   SCSK S.Hosonuma  E_本稼働_19992【共通】 OICアップグレード対応
  *
  ****************************************************************************************/
 CREATE TABLE xxccd_async_status (
@@ -19,9 +20,15 @@ CREATE TABLE xxccd_async_status (
     ,id_type            VARCHAR2(11)    DEFAULT 'P' NOT NULL
 -- Ver1.1 Add End
     ,status             VARCHAR2(11)                NOT NULL
-    ,instance_id        NUMBER                      NOT NULL
+-- Ver1.2 Mod Start
+--    ,instance_id        NUMBER                      NOT NULL
+    ,instance_id        VARCHAR2(22)                NOT NULL
+-- Ver1.2 Mod End
     ,instance_name      VARCHAR2(50)                NOT NULL
-    ,error_detail       VARCHAR2(250)
+-- Ver1.2 Mod Start
+--    ,error_detail       VARCHAR2(250)
+    ,error_detail       VARCHAR2(4000)
+-- Ver1.2 Mod End
     ,created_by         VARCHAR2(65)                NOT NULL
     ,creation_date      TIMESTAMP WITH TIME ZONE    NOT NULL
     ,last_updated_by    VARCHAR2(65)                NOT NULL

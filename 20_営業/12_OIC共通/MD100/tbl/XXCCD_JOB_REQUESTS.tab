@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCCD_JOB_REQUESTS
  * Description : ジョブ結果
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2022/11/28    1.0   SCSK Y.Kubota   新規作成
+ *  2024/10/10    1.1   SCSK S.Hosonuma E_本稼働_19992【共通】 OICアップグレード対応
  *
  ****************************************************************************************/
 CREATE TABLE xxccd_job_requests (
@@ -18,12 +19,24 @@ CREATE TABLE xxccd_job_requests (
     ,job_name           VARCHAR2(250)
     ,status             VARCHAR2(11)                NOT NULL
     ,document_id        NUMBER(18)
-    ,instance_id        NUMBER                      NOT NULL
+-- Ver1.1 Mod Start
+--    ,instance_id        NUMBER                      NOT NULL
+    ,instance_id        VARCHAR2(22)                NOT NULL
+-- Ver1.1 Mod End
     ,instance_name      VARCHAR2(50)                NOT NULL
-    ,error_detail       VARCHAR2(250)
-    ,created_by         VARCHAR2(65)                NOT NULL
+-- Ver1.1 Mod Start
+--    ,error_detail       VARCHAR2(250)
+    ,error_detail       VARCHAR2(4000)
+-- Ver1.1 Mod End
+-- Ver1.1 Mod Start
+--    ,created_by         VARCHAR2(65)                NOT NULL
+    ,created_by         VARCHAR2(113)                NOT NULL
+-- Ver1.1 Mod End
     ,creation_date      TIMESTAMP WITH TIME ZONE    NOT NULL
-    ,last_updated_by    VARCHAR2(65)                NOT NULL
+-- Ver1.1 Mod Start
+--    ,last_updated_by    VARCHAR2(65)                NOT NULL
+    ,last_updated_by    VARCHAR2(113)                NOT NULL
+-- Ver1.1 Mod End
     ,last_update_date   TIMESTAMP WITH TIME ZONE    NOT NULL
     ,CONSTRAINT xxccd_job_requests_pk PRIMARY KEY (process_id))
 /
