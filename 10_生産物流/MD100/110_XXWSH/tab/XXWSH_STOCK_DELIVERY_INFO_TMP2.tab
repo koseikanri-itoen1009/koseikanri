@@ -50,6 +50,9 @@ CREATE TABLE xxwsh.xxwsh_stock_delivery_info_tmp2
   lot_class                 VARCHAR2(1),
   notif_date                DATE,
   target_request_id         NUMBER(15,0)
+-- 24/11/01 E_本稼動_20230 ADD START
+ ,capacity                  NUMBER
+-- 24/11/01 E_本稼動_20230 ADD END
 );
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.line_number                IS '明細番号';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.line_id                    IS '明細ID';
@@ -99,3 +102,6 @@ COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.case_quantity            
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.lot_class                  IS 'ロット管理区分';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.notif_date                 IS '確定通知実施日時';
 COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.request_id                 IS '要求ID';
+-- 24/11/01 E_本稼動_20230 ADD START
+COMMENT ON COLUMN xxwsh.xxwsh_stock_delivery_info_tmp2.capacity                   IS '容積';
+-- 24/11/01 E_本稼動_20230 ADD END
