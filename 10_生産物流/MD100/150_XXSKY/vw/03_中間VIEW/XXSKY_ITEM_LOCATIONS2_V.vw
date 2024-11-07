@@ -6,6 +6,9 @@ CREATE OR REPLACE VIEW APPS.XXSKY_ITEM_LOCATIONS2_V
 ,WHSE_NAME
 ,ORGN_CODE
 ,CUSTOMER_STOCK_WHSE
+-- [E_ñ{â“ìÆ_20230] SCSK Y.Sato Add Start
+,WHSE_SPARE1
+-- [E_ñ{â“ìÆ_20230] SCSK Y.Sato Add End
 ,SEGMENT1
 ,DESCRIPTION
 ,SHORT_NAME
@@ -22,6 +25,9 @@ SELECT  IWM.mtl_organization_id
        ,IWM.whse_name
        ,IWM.orgn_code
        ,IWM.attribute1
+-- [E_ñ{â“ìÆ_20230] SCSK Y.Sato Add Start
+       ,IWM.attribute2
+-- [E_ñ{â“ìÆ_20230] SCSK Y.Sato Add End
        ,MIL.segment1
        ,MIL.description
        ,MIL.attribute12
@@ -53,6 +59,10 @@ COMMENT ON COLUMN APPS.XXSKY_ITEM_LOCATIONS2_V.ORGN_CODE             IS 'ÉvÉâÉìÉ
 /
 COMMENT ON COLUMN APPS.XXSKY_ITEM_LOCATIONS2_V.CUSTOMER_STOCK_WHSE   IS 'ëäéËêÊç›å…ä«óùëŒè€'
 /
+-- [E_ñ{â“ìÆ_20230] SCSK Y.Sato Add Start
+COMMENT ON COLUMN APPS.XXSKY_ITEM_LOCATIONS2_V.WHSE_SPARE1           IS 'ÉäÅ[ÉtÉpÉåÉbÉgóeêœ'
+/
+-- [E_ñ{â“ìÆ_20230] SCSK Y.Sato Add End
 COMMENT ON COLUMN APPS.XXSKY_ITEM_LOCATIONS2_V.SEGMENT1              IS 'ï€ä«ëqå…ÉRÅ[Éh'
 /
 COMMENT ON COLUMN APPS.XXSKY_ITEM_LOCATIONS2_V.DESCRIPTION           IS 'ï€ä«ëqå…ñº'

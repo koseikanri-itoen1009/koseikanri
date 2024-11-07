@@ -3,13 +3,14 @@
  * View  Name      : XXSKZ_ITEM_LOCATIONS2_V
  * Description     : XXSKZ_ITEM_LOCATIONS2_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------  -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------  -------------------------------------
  *  2012/11/27    1.0   SCSK M.Nagai èââÒçÏê¨
+ *  2024/11/01    1.1   SCSK Y.Sato  [E_ñ{â“ìÆ_20230] LDç¨ç⁄í«â¡ëŒâû
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_ITEM_LOCATIONS2_V
 (
@@ -19,6 +20,9 @@ CREATE OR REPLACE VIEW APPS.XXSKZ_ITEM_LOCATIONS2_V
 ,WHSE_NAME
 ,ORGN_CODE
 ,CUSTOMER_STOCK_WHSE
+-- Ver1.1 Add Start
+,WHSE_SPARE1
+-- Ver1.1 Add End
 ,SEGMENT1
 ,DESCRIPTION
 ,SHORT_NAME
@@ -35,6 +39,9 @@ SELECT  IWM.mtl_organization_id
        ,IWM.whse_name
        ,IWM.orgn_code
        ,IWM.attribute1
+-- Ver1.1 Add Start
+       ,IWM.attribute2
+-- Ver1.1 Add End
        ,MIL.segment1
        ,MIL.description
        ,MIL.attribute12
@@ -64,6 +71,10 @@ COMMENT ON COLUMN APPS.XXSKZ_ITEM_LOCATIONS2_V.ORGN_CODE             IS 'ÉvÉâÉìÉ
 /
 COMMENT ON COLUMN APPS.XXSKZ_ITEM_LOCATIONS2_V.CUSTOMER_STOCK_WHSE   IS 'ëäéËêÊç›å…ä«óùëŒè€'
 /
+-- Ver1.1 Add Start
+COMMENT ON COLUMN APPS.XXSKZ_ITEM_LOCATIONS2_V.WHSE_SPARE1           IS 'ÉäÅ[ÉtÉpÉåÉbÉgóeêœ'
+/
+-- Ver1.1 Add End
 COMMENT ON COLUMN APPS.XXSKZ_ITEM_LOCATIONS2_V.SEGMENT1              IS 'ï€ä«ëqå…ÉRÅ[Éh'
 /
 COMMENT ON COLUMN APPS.XXSKZ_ITEM_LOCATIONS2_V.DESCRIPTION           IS 'ï€ä«ëqå…ñº'
