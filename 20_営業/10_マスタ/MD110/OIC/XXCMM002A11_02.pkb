@@ -7,7 +7,7 @@ AS
  * Description     : 社員データIF(ユーザーデータ作成)
  * MD.050          : T_MD050_CMM_002_A11_02_社員データIF_OIC統合
  * MD.070          : T_MD050_CMM_002_A11_02_社員データIF_OIC統合
- * Version         : 1.4
+ * Version         : 1.6
  * 
  * Program List
  * --------------------------------  ----- ----- -----------------------------------
@@ -31,6 +31,7 @@ AS
  *  2023-02-09    1.3  SCSK浜本 彩    不具合No.0019対応(insert_user_role_tmpから削除処理を除去)
  *  2023-03-08    1.4  SCSK細沼 翔太  システムテスト障害No.ST0059(create_user_roleのxxccd_user_role更新条件にNULL考慮を追加)
  *  2023-04-18    1.5  SCSK細沼 翔太  パフォーマンステスト障害No.PT0008(create_user_roleのカーソルで取得するレコードが一意になるように修正)
+ *  2024-06-25    1.6  SCSK細沼 翔太  E_本稼動_19992【共通】OIC3アップグレード対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -136,7 +137,10 @@ AS
   PROCEDURE insert_user_role_tmp(
        retcode            OUT VARCHAR2
       ,retmsg             OUT VARCHAR2
-      ,pn_instance_id     IN  NUMBER
+-- Ver1.6 Mod Start
+--      ,pn_instance_id     IN  NUMBER
+      ,pn_instance_id     IN  VARCHAR2
+-- Ver1.6 Mod End
   )
   IS
     -- ===============================
@@ -292,7 +296,10 @@ AS
   PROCEDURE create_user_role(
        retcode              OUT VARCHAR2
       ,retmsg               OUT VARCHAR2
-      ,pn_instance_id       IN  NUMBER
+-- Ver1.6 Mod Start
+--      ,pn_instance_id       IN  NUMBER
+      ,pn_instance_id       IN  VARCHAR2
+-- Ver1.6 Mod End
       ,pd_business_date     IN  DATE
       ,pn_user_role_tmp_cnt OUT NUMBER
   )
@@ -577,7 +584,10 @@ AS
    PROCEDURE update_erp_ext_bank_account_id(
      retcode            OUT VARCHAR2
     ,retmsg             OUT VARCHAR2
-    ,pn_instance_id     IN  NUMBER
+-- Ver1.6 Mod Start
+--    ,pn_instance_id     IN  NUMBER
+    ,pn_instance_id     IN  VARCHAR2
+-- Ver1.6 Mod End
    )
   IS
     -- ===============================
@@ -625,7 +635,10 @@ AS
   PROCEDURE main(
      retcode              OUT VARCHAR2
     ,retmsg               OUT VARCHAR2
-    ,pn_instance_id       IN  NUMBER
+-- Ver1.6 Mod Start
+--    ,pn_instance_id       IN  NUMBER
+    ,pn_instance_id       IN  VARCHAR2
+-- Ver1.6 Mod End
     ,pd_business_date     IN  DATE
     ,pn_user_role_tmp_cnt OUT NUMBER
   )IS
