@@ -125,6 +125,9 @@ CREATE OR REPLACE VIEW APPS.XXSKY_出荷ヘッダ_基本_V
 ,最終更新者
 ,最終更新日
 ,最終更新ログイン
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Add Start
+,合計パレット容積
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Add End
 )
 AS
 SELECT
@@ -204,7 +207,17 @@ SELECT
        ,CEIL(TRUNC(NVL(XOHA.sum_weight,0),1))     --小数点第2位以下を切り捨て後、小数点第1位を切り上げ
 -- 2010/1/7 #627 Y.Fukami Mod End
         sum_weight                       --積載重量合計
-       ,CEIL( XOHA.sum_capacity )
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Mod Start
+--       ,CEIL( XOHA.sum_capacity )
+       ,CASE
+          WHEN XIL2V.whse_spare1 IS NOT NULL AND NVL( XOHA.sum_capacity, 0 ) > 0 THEN -- LD混載倉庫
+            CEIL( XOHA.sum_capacity -
+                  ( TO_NUMBER( FND_PROFILE.VALUE('XXCMN_PALLET_CAPACITY') ) * NVL( XOHA.pallet_sum_quantity, 0 ) )
+                )                        --LD混載倉庫の場合、積載容積合計から合計パレット容積を減算
+          ELSE
+            CEIL( XOHA.sum_capacity )
+        END
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Mod End
         sum_capacity                     --積載容積合計
        ,CEIL( XOHA.mixed_ratio * 100 ) / 100  --少数点弟３以下切り上げ
         mixed_ratio                      --混載率
@@ -306,6 +319,9 @@ SELECT
        ,TO_CHAR( XOHA.last_update_date, 'YYYY/MM/DD HH24:MI:SS' )
                                          --最終更新日
        ,FU_LL.user_name                  --最終更新ログイン
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Add Start
+       ,CEIL( TO_NUMBER( FND_PROFILE.VALUE('XXCMN_PALLET_CAPACITY') ) * NVL( XOHA.pallet_sum_quantity, 0 ) ) -- 合計パレット容積
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Add End
   FROM  xxwsh_order_headers_all      XOHA    --受注ヘッダアドオン
        ,oe_transaction_types_all     OTTA    --受注タイプマスタ
        ,xxwsh_carriers_schedule      XCS     --配車配送アドオンテーブル
@@ -785,3 +801,7 @@ COMMENT ON COLUMN APPS.XXSKY_出荷ヘッダ_基本_V.最終更新日 IS '最終更新日'
 /
 COMMENT ON COLUMN APPS.XXSKY_出荷ヘッダ_基本_V.最終更新ログイン IS '最終更新ログイン'
 /
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Add Start
+COMMENT ON COLUMN APPS.XXSKY_出荷ヘッダ_基本_V.合計パレット容積 IS '合計パレット容積'
+/
+-- 2024/11/01 [E_本稼動_20230] SCSK Y.Sato Add End
