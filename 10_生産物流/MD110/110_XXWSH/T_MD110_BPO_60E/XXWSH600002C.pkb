@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2009/04/23    1.32  H.Itou           本番1398対応
  *  <<営業C/O後>>
  *  2009/12/03    1.33  Marushita        本番276対応
+ *  2024/10/21    1.34  R.Oikawa         E_本稼動_20230 LD混載追加対応
  *
  *****************************************************************************************/
 --
@@ -339,6 +340,9 @@ AS
   gv_fix_from          VARCHAR2(10);  -- 確定通知実施時間From
   gv_fix_to            VARCHAR2(10);  -- 確定通知実施時間To
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+  gv_prof_pallet_capacity  VARCHAR2(50);
+-- Ver1.34 ADD END
 --
   --------------------------------------------------
   -- デバッグ用
@@ -433,6 +437,9 @@ AS
      ,notif_date                xxwsh_stock_delivery_info_tmp2.notif_date%TYPE
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
      ,mov_lot_dtl_id            xxinv_mov_lot_details.mov_lot_dtl_id%TYPE
+-- Ver1.34 ADD START
+     ,capacity                  xxwsh_stock_delivery_info_tmp2.capacity%TYPE
+-- Ver1.34 ADD END
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -908,6 +915,9 @@ AS
     lc_tok_val2     CONSTANT VARCHAR2(50) := '商品区分（セキュリティ）' ;
     lv_tok_val      VARCHAR2(50);
 -- ##### 20080612 Ver.1.7 商品セキュリティ対応 END   #####
+-- Ver1.34 ADD START
+    lc_prof_pallet_capacity    CONSTANT VARCHAR2(30) := 'XXCMN_PALLET_CAPACITY' ;
+-- Ver1.34 ADD END
 --
     -- ==================================================
     -- 変数宣言
@@ -965,6 +975,14 @@ AS
     -- MAX日付
     gd_max_date := TRUNC(SYSDATE) + 2 - 1/24/60/60; -- 翌日の23:59:59
 -- ##### 20090113 Ver.1.29 本番#971対応 END   #####
+-- Ver1.34 ADD START
+    -- 1パレット容積取得
+    gv_prof_pallet_capacity := FND_PROFILE.VALUE(lc_prof_pallet_capacity);
+    IF (gv_prof_pallet_capacity IS NULL) THEN
+      lv_tok_val := lc_prof_pallet_capacity;
+      RAISE ex_prof_error ;
+    END IF;
+-- Ver1.34 ADD END
 --
   EXCEPTION
     -- ============================================================================================
@@ -1507,7 +1525,21 @@ AS
             ,xoha.schedule_ship_date                  -- 22:発日
             ,xoha.schedule_arrival_date               -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
+-- Ver1.34 ADD START
             ,CASE
+               WHEN xil.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xoha.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+-- Ver1.34 ADD END
+-- Ver1.34 MOD START
+--            ,CASE
+             CASE
+-- Ver1.34 MOD END
                WHEN xoha.weight_capacity_class  = gc_wc_class_j
                --AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight      --2008/08/12 Del 課題#48(変更#164)
                AND  xlv.attribute6              = gc_small_method_y THEN NVL(xoha.sum_weight,0) --2008/08/12 Add 課題#48(変更#164)
@@ -1520,7 +1552,11 @@ AS
 -- M.HOKKANJI Ver1.2 END
                --WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity      --2008/08/12 Del 課題#48(変更#164)
                WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN NVL(xoha.sum_capacity,0) --2008/08/12 Add 課題#48(変更#164)
-             END                                      -- 25:重量／容積
+-- Ver1.34 MOD START
+--             END                                      -- 25:重量／容積
+             END
+             END                                      -- 25:LD混載:重量 LD混載以外:重量／容積
+-- Ver1.34 MOD END
             ,xoha.mixed_no                            -- 26:混載元依頼No
             ,xoha.collected_pallet_qty                -- 27:ﾊﾟﾚｯﾄ回収枚数
             ,CASE
@@ -1556,6 +1592,24 @@ AS
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
             ,gn_request_id                            --   :要求ID
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+            ,CASE
+               WHEN xil.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                   WHEN NVL(xoha.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                                NVL(xoha.sum_capacity,0) - (NVL(xoha.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xoha.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xoha.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END  capacity                            -- 46:容積
+-- Ver1.34 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1758,6 +1812,9 @@ AS
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
             ,gn_request_id                            --   :要求ID
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+            ,NULL
+-- Ver1.34 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1891,7 +1948,21 @@ AS
             ,xmrih.schedule_ship_date                 -- 22:発日
             ,xmrih.schedule_arrival_date              -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
+-- Ver1.34 ADD START
             ,CASE
+               WHEN xil1.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xmrih.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+-- Ver1.34 ADD END
+-- Ver1.34 MOD START
+--            ,CASE
+             CASE
+-- Ver1.34 MOD END
 -- M.HOKKANJI Ver1.2 START
                WHEN xmrih.weight_capacity_class  = gc_wc_class_j
                --AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight      --2008/08/12 Del 課題#48(変更#164)
@@ -1911,7 +1982,11 @@ AS
                WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity
 */
 -- M.HOKKANJI Ver1.2 END
-             END                                      -- 25:重量／容積
+-- Ver1.34 MOD START
+--             END                                      -- 25:重量／容積
+             END
+             END                                      -- 25:LD混載:重量 LD混載以外:重量／容積
+-- Ver1.34 MOD END
             ,NULL                                     -- 26:混載元依頼No
             ,xmrih.collected_pallet_qty               -- 27:ﾊﾟﾚｯﾄ回収枚数
             ,CASE
@@ -1948,6 +2023,24 @@ AS
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
             ,gn_request_id                            --   :要求ID
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+            ,CASE
+               WHEN xil1.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                   WHEN NVL(xmrih.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6               = gc_small_method_y THEN            -- 小口
+                                NVL(xmrih.sum_capacity,0) - (NVL(xmrih.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xmrih.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xmrih.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END  capacity                            -- 46:容積
+-- Ver1.34 ADD END
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -2092,7 +2185,21 @@ AS
             ,xoha.schedule_ship_date                  -- 22:発日
             ,xoha.schedule_arrival_date               -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
+-- Ver1.34 ADD START
             ,CASE
+               WHEN xil.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xoha.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+-- Ver1.34 ADD END
+-- Ver1.34 MOD START
+--            ,CASE
+             CASE
+-- Ver1.34 MOD END
                WHEN xoha.weight_capacity_class  = gc_wc_class_j
                --AND  xlv.attribute6              = gc_small_method_y THEN xoha.sum_weight      --2008/08/12 Del 課題#48(変更#164)
                AND  xlv.attribute6              = gc_small_method_y THEN NVL(xoha.sum_weight,0) --2008/08/12 Add 課題#48(変更#164)
@@ -2105,7 +2212,11 @@ AS
 -- M.HOKKANJI Ver1.2 END
                --WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN xoha.sum_capacity      --2008/08/12 Del 課題#48(変更#164)
                WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN NVL(xoha.sum_capacity,0) --2008/08/12 Add 課題#48(変更#164)
-             END                                      -- 25:重量／容積
+-- Ver1.34 MOD START
+--             END                                      -- 25:重量／容積
+             END
+             END                                      -- 25:LD混載:重量 LD混載以外:重量／容積
+-- Ver1.34 MOD END
             ,xoha.mixed_no                            -- 26:混載元依頼No
             ,xoha.collected_pallet_qty                -- 27:ﾊﾟﾚｯﾄ回収枚数
             ,CASE
@@ -2140,6 +2251,24 @@ AS
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
             ,gn_request_id                            --   :要求ID
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+            ,CASE
+               WHEN xil.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                   WHEN NVL(xoha.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                                NVL(xoha.sum_capacity,0) - (NVL(xoha.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xoha.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xoha.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END  capacity                            -- 46:容積
+-- Ver1.34 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -2335,6 +2464,9 @@ AS
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
             ,gn_request_id                            --   :要求ID
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+            ,NULL
+-- Ver1.34 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -2463,7 +2595,21 @@ AS
             ,xmrih.schedule_ship_date                 -- 22:発日
             ,xmrih.schedule_arrival_date              -- 23:着日
             ,xlv.lookup_code                          -- 24:配送区分
+-- Ver1.34 ADD START
             ,CASE
+               WHEN xil1.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xmrih.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+-- Ver1.34 ADD END
+-- Ver1.34 MOD START
+--            ,CASE
+             CASE
+-- Ver1.34 MOD END
 -- M.HOKKANJI Ver1.2 START
                WHEN xmrih.weight_capacity_class  = gc_wc_class_j
                --AND  xlv.attribute6               = gc_small_method_y THEN xmrih.sum_weight      --2008/08/12 Del 課題#48(変更#164)
@@ -2483,7 +2629,11 @@ AS
                WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN xmrih.sum_capacity
 */
 -- M.HOKKANJI Ver1.2 END
-             END                                      -- 25:重量／容積
+-- Ver1.34 MOD START
+--             END                                      -- 25:重量／容積
+             END
+             END                                      -- 25:LD混載:重量 LD混載以外:重量／容積
+-- Ver1.34 MOD END
             ,NULL                                     -- 26:混載元依頼No
             ,xmrih.collected_pallet_qty               -- 27:ﾊﾟﾚｯﾄ回収枚数
             ,CASE
@@ -2520,6 +2670,24 @@ AS
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 START #####
             ,gn_request_id                            --   :要求ID
 -- ##### 20081014 Ver.1.23 PT2-2_17指摘71対応 END   #####
+-- Ver1.34 ADD START
+            ,CASE
+               WHEN xil1.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                   WHEN NVL(xmrih.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                                NVL(xmrih.sum_capacity,0) - (NVL(xmrih.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xmrih.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xmrih.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END  capacity                            -- 46:容積
+-- Ver1.34 ADD END
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -2746,6 +2914,9 @@ AS
               ||    ',wsdit2.notif_date'                -- 確定通知実施日時
 -- ##### 20080925 Ver.1.20 統合#26対応 END   #####
               ||    ',imld.mov_lot_dtl_id'              -- ロット詳細ID
+-- Ver1.34 ADD START
+              ||    ',wsdit2.capacity'                  -- 容積
+-- Ver1.34 ADD END
               ;
     -- ====================================================
     -- ＦＲＯＭ句
@@ -3561,7 +3732,10 @@ AS
     gt_freight_charge_class(gn_cre_idx)   := ir_main_data.freight_charge_class ;-- 運賃区分
     gt_pallet_sum_quantity(gn_cre_idx)    := iv_pallet_sum_quantity ;           -- ﾊﾟﾚｯﾄ使用枚数
     gt_reserve1(gn_cre_idx)               := NULL ;                             -- 予備１
-    gt_reserve2(gn_cre_idx)               := NULL ;                             -- 予備２
+-- Ver1.34 MOD START
+--    gt_reserve2(gn_cre_idx)               := NULL ;                             -- 予備２
+    gt_reserve2(gn_cre_idx)               := ir_main_data.capacity ;            -- 容積
+-- Ver1.34 MOD END
     gt_reserve3(gn_cre_idx)               := NULL ;                             -- 予備３
     gt_reserve4(gn_cre_idx)               := NULL ;                             -- 予備４
     gt_report_dept(gn_cre_idx)            := ir_main_data.report_dept ;         -- 報告部署
@@ -5297,7 +5471,10 @@ AS
                     || re_out_data.freight_charge_class     || ','    -- 運賃区分
                     || re_out_data.pallet_sum_quantity      || ','    -- パレット使用枚数
                     || re_out_data.reserve1                 || ','    -- 予備１
-                    || re_out_data.reserve2                 || ','    -- 予備２
+-- Ver1.34 MOD START
+--                    || re_out_data.reserve2                 || ','    -- 予備２
+                    || TRUNC(re_out_data.reserve2 + 0.9)    || ','    -- 容積
+-- Ver1.34 MOD END
                     || re_out_data.reserve3                 || ','    -- 予備３
                     || re_out_data.reserve4                 || ','    -- 予備４
                     || re_out_data.report_dept              || ','    -- 報告部署
