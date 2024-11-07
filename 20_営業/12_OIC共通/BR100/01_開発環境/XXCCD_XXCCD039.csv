@@ -1,0 +1,6 @@
+﻿DVM,XXCCD_XXCCD039,OIC実行ログダウンロードAPI用（環境依存値）
+Key,Value
+LIMIT,500
+IntegrationInstance,devoic1-nro6v6bxyc5e-nt
+FtpOutputDir,/paasif/output/oiclog
+ICSFLOWLOG_ZIP_FILENAME,icsflowlog
