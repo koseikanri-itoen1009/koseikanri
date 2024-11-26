@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A04C(body)
  * Description      : 有償支給仕訳IF作成
  * MD.050           : 有償支給仕訳IF作成<MD050_CFO_020_A04>
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  ins_gl_interface       仕訳OIF登録(未収入金・有償支給・仮受金・仮受消費税(A-5,6))
  *  upd_inv_trn_data       生産取引データ更新(A-7)
  *  ins_mfg_if_control     連携管理テーブル登録(A-8)
+ *  upd_gl_interface       仕訳OIF更新(A-10)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -40,6 +41,7 @@ AS
  *  2019-08-01    1.6   N.Miyamoto       E_本稼動_15601 生産_軽減税率対応
  *                                         ・税率を品目ごとに消費税率ビューから取得するよう仕様変更
  *  2020-05-27    1.7   S.Kuwako         E_本稼動_16386【会計】有償支給(返品訂正)
+ *  2024-11-19    1.8   R.Oikawa         E_本稼動_19497【会計】生産インボイス対応
  *
  *****************************************************************************************/
 --
@@ -2782,6 +2784,230 @@ AS
 --
   END get_gl_interface_data;
 --
+-- ver1.8 ADD START
+  /**********************************************************************************
+   * Procedure Name   : upd_gl_interface
+   * Description      : 仕訳OIF更新(A-10)
+   ***********************************************************************************/
+  PROCEDURE upd_gl_interface(
+    ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name          CONSTANT VARCHAR2(100) := 'upd_gl_interface'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    cv_sum_flag_0         CONSTANT  VARCHAR2(1) := '0';      -- 借方をサマリー
+    cv_sum_flag_1         CONSTANT  VARCHAR2(1) := '1';      -- 貸方をサマリー
+    -- *** ローカル変数 ***
+    lv_sum_flag                     VARCHAR2(1) := NULL;
+    lv_max_ref_key                  gl_interface.reference4%TYPE;
+    ln_adjust_amount                NUMBER      := 0;        -- 差額ワーク
+--
+    -- *** ローカル・カーソル ***
+    CURSOR get_gl_interface_cur
+    IS
+      -- 仕入先・部門・税率単位で金額を取得
+      SELECT SUBSTRB(gi.reference10,1,4) AS vendor_code,    -- 仕入先
+             gi.attribute4               AS dept_code,      -- 部門
+             gi.attribute1               AS tax_code,       -- 税コード
+             (SELECT atc.tax_rate tax_rate
+              FROM   ap_tax_codes atc
+              WHERE  atc.name    = gi.attribute1
+              AND    atc.org_id  = gn_org_id_sales
+             )                           AS tax_rate,       -- 税率
+             SUM(NVL(gi.entered_dr,0))   AS sum_entered_dr, -- 借方
+             SUM(NVL(gi.entered_cr,0))   AS sum_entered_cr  -- 貸方
+      FROM   gl_interface gi
+      WHERE  gi.user_je_source_name = gv_je_invoice_source_mfg
+      AND    gi.request_id          = cn_request_id
+      AND    gi.attribute1 IS NOT NULL                      -- 未収入金以外
+      AND    NOT EXISTS (
+                         SELECT 1
+                         FROM   ap_tax_codes atc2
+                         WHERE  atc2.org_id  = gn_org_id_sales
+                         AND    atc2.tax_code_combination_id = gi.code_combination_id
+                        )                                   -- 税金行は対象外
+      GROUP BY SUBSTRB(gi.reference10,1,4),
+               gi.attribute4,
+               gi.attribute1
+      ;
+    get_gl_interface_rec get_gl_interface_cur%ROWTYPE;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<gl_oif_loop>>
+    FOR get_gl_interface_rec IN get_gl_interface_cur LOOP
+      -- 集計するカラム判定
+      SELECT DISTINCT
+             CASE gi.entered_cr
+               WHEN 0 THEN cv_sum_flag_1   -- 貸方をサマリー
+               ELSE cv_sum_flag_0          -- 借方をサマリー
+             END sum_flag
+      INTO   lv_sum_flag
+      FROM   gl_interface gi
+      WHERE  gi.user_je_source_name      = gv_je_invoice_source_mfg
+      AND    gi.request_id               = cn_request_id
+      AND    substrb(gi.reference10,1,4) = get_gl_interface_rec.vendor_code  -- 仕入先
+      AND    gi.attribute4               = get_gl_interface_rec.dept_code    -- 部門コード
+      AND    gi.attribute1 IS NULL                                           -- 未収入金
+      ;
+--
+      -- MAX仕訳キーを取得
+      SELECT MAX(reference4)    max_ref_key    --仕訳名
+      INTO   lv_max_ref_key
+      FROM   gl_interface gi
+      WHERE  gi.user_je_source_name      = gv_je_invoice_source_mfg
+      AND    gi.request_id               = cn_request_id
+      AND    substrb(gi.reference10,1,4) = get_gl_interface_rec.vendor_code  -- 仕入先
+      AND    gi.attribute4               = get_gl_interface_rec.dept_code    -- 部門コード
+      AND    gi.attribute1               = get_gl_interface_rec.tax_code     -- 税コード
+      ;
+--
+      -- 差額確認
+      IF ( lv_sum_flag = cv_sum_flag_0 ) THEN
+        -- 集約金額から税額算出 - 積上げた税額 で差額があるか確認
+        SELECT ( ROUND( ( get_gl_interface_rec.sum_entered_dr - get_gl_interface_rec.sum_entered_cr )
+                 * (get_gl_interface_rec.tax_rate / 100))
+               ) 
+               - SUM(gi.entered_dr)  AS  adjust_amount
+        INTO   ln_adjust_amount
+        FROM   gl_interface     gi
+        WHERE  gi.user_je_source_name      = gv_je_invoice_source_mfg
+        AND    gi.request_id               = cn_request_id
+        AND    substrb(gi.reference10,1,4) = get_gl_interface_rec.vendor_code  -- 仕入先
+        AND    gi.attribute4               = get_gl_interface_rec.dept_code    -- 部門コード
+        AND    gi.attribute1               = get_gl_interface_rec.tax_code     -- 税コード
+        AND    EXISTS (
+                       SELECT 1
+                       FROM   ap_tax_codes atc
+                       WHERE  atc.org_id  = gn_org_id_sales
+                       AND    atc.tax_code_combination_id = gi.code_combination_id
+                      )                                                        -- CCID
+        ;
+--
+        -- 差額がある場合、税額を調整
+        IF ( ln_adjust_amount <> 0 ) THEN
+          UPDATE gl_interface gi
+          SET    gi.entered_dr = gi.entered_dr + ln_adjust_amount
+          WHERE  gi.user_je_source_name  = gv_je_invoice_source_mfg
+          AND    gi.request_id           = cn_request_id
+          AND    gi.reference4           = lv_max_ref_key
+          AND    EXISTS (
+                         SELECT 1
+                         FROM   ap_tax_codes atc
+                         WHERE  atc.org_id  = gn_org_id_sales
+                         AND    atc.tax_code_combination_id = gi.code_combination_id
+                        )
+          ;
+--
+          -- 未収入金を調整
+          UPDATE gl_interface gi
+          SET    gi.entered_cr = gi.entered_cr + ln_adjust_amount
+          WHERE  gi.user_je_source_name  = gv_je_invoice_source_mfg
+          AND    gi.request_id           = cn_request_id
+          AND    gi.reference4           = lv_max_ref_key
+          AND    gi.attribute1 IS NULL
+          ;
+        END IF;
+      ELSE
+        -- 集約金額から税額算出 - 積上げた税額 で差額があるか確認
+        SELECT ( ROUND( ( get_gl_interface_rec.sum_entered_cr - get_gl_interface_rec.sum_entered_dr )
+                 * (get_gl_interface_rec.tax_rate / 100))
+               ) 
+               - SUM(gi.entered_cr)  AS  adjust_amount
+        INTO   ln_adjust_amount
+        FROM   gl_interface     gi
+        WHERE  gi.user_je_source_name      = gv_je_invoice_source_mfg
+        AND    gi.request_id               = cn_request_id
+        AND    substrb(gi.reference10,1,4) = get_gl_interface_rec.vendor_code  -- 仕入先
+        AND    gi.attribute4               = get_gl_interface_rec.dept_code    -- 部門コード
+        AND    gi.attribute1               = get_gl_interface_rec.tax_code     -- 税コード
+        AND    EXISTS (
+                       SELECT 1
+                       FROM   ap_tax_codes atc
+                       WHERE  atc.org_id  = gn_org_id_sales
+                       AND    atc.tax_code_combination_id = gi.code_combination_id
+                      )                                                        -- CCID
+        ;
+        -- 差額がある場合は金額を更新
+        IF ( ln_adjust_amount <> 0 ) THEN
+          -- 税額を調整
+          UPDATE gl_interface gi
+          SET    gi.entered_cr = gi.entered_cr + ln_adjust_amount
+          WHERE  gi.user_je_source_name  = gv_je_invoice_source_mfg
+          AND    gi.request_id           = cn_request_id
+          AND    gi.reference4           = lv_max_ref_key           -- 仕訳キー
+          AND    EXISTS (
+                         SELECT 1
+                         FROM   ap_tax_codes atc
+                         WHERE  atc.org_id  = gn_org_id_sales
+                         AND    atc.tax_code_combination_id = gi.code_combination_id
+                        )
+          ;
+--
+          -- 未収入金を調整
+          UPDATE gl_interface gi
+          SET    gi.entered_dr = gi.entered_dr + ln_adjust_amount
+          WHERE  gi.user_je_source_name  = gv_je_invoice_source_mfg
+          AND    gi.request_id           = cn_request_id
+          AND    gi.reference4           = lv_max_ref_key           -- 仕訳キー
+          AND    gi.attribute1 IS NULL
+          ;
+        END IF;
+      END IF;
+    END LOOP gl_oif_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_gl_interface;
+-- ver1.8 ADD END
   /**********************************************************************************
    * Procedure Name   : ins_mfg_if_control
    * Description      : 連携管理テーブル登録(A-8)
@@ -2989,6 +3215,19 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- ver1.8 ADD START
+    -- ===============================
+    -- 仕訳OIF更新(A-10)
+    -- ===============================
+    upd_gl_interface(
+      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
+      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+-- ver1.8 ADD END
     -- ===============================
     -- 連携管理テーブル登録(A-8)
     -- ===============================
