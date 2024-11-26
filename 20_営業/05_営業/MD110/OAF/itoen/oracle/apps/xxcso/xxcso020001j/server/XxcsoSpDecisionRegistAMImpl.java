@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.24
+* バージョン : 1.25
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -31,6 +31,7 @@
 * 2022-04-21 1.22 SCSK二村悠香  [E_本稼動_18060]自販機顧客別利益管理
 * 2022-08-03 1.23 SCSK赤地学    [E_本稼動_18060]確認ボタン不具合対応
 * 2023-05-18 1.24 SCSK赤地学    [E_本稼動_19238]SP承認チェック不具合対応
+* 2024-09-04 1.25 SCSK赤地学    [E_本稼動_20174]自販機顧客支払管理情報の改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -5027,6 +5028,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     String token2  = null;
     String token3  = null;
     String token4  = null;
+    // Ver.1.25 Add Start
+    String token5  = null;
+    // Ver.1.25 Add End
 
     //インスタンス取得
     XxcsoSpDecisionHeaderFullVOImpl headerVo
@@ -5099,7 +5103,23 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         stmt.setDATE(2, installPayStartDate);
         stmt.setDATE(3, installPayEndDate);
         stmt.setString(4,headerRow.getInstallSuppPaymentType());
-        stmt.setString(5,headerRow.getInstallSuppAmt().replaceAll(",", ""));
+        // Ver.1.25 Mod Start
+        //stmt.setString(5,headerRow.getInstallSuppAmt().replaceAll(",", ""));
+        // 支払条件（設置協賛金）
+        String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
+        // 入力パラメータ「総額」
+        String in_amt = "";
+        //支払条件（設置協賛金）が2：総額払いの場合、総額（設置協賛金）を設定
+        if(XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType)){
+          in_amt = headerRow.getInstallSuppAmt().replaceAll(",", "");
+        }
+        // 総額払い以外の場合、今回支払（設置協賛金）を設定
+        else
+        {
+          in_amt = headerRow.getInstallSuppThisTime().replaceAll(",", "");
+        }    
+        stmt.setString(5,in_amt);
+        // Ver.1.25 Mod End
         stmt.setString(6, XxcsoSpDecisionConstants.INSTALL_SUPP_KBN);
         stmt.setString(7, headerRow.getTaxType());
         stmt.registerOutParameter(8, OracleTypes.VARCHAR);
@@ -5126,10 +5146,17 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           token3 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                  + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
-
+          // Ver.1.25 Mod Start
+//          token4 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+//                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//                 + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
           token4 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_THIS_TIME;
+          token5 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                  + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
+          // Ver.1.25 Mod End
 
           confirmMsg
             = XxcsoMessage.createWarningMessage(
@@ -5142,6 +5169,10 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
                ,token3
                ,XxcsoConstants.TOKEN_ITEM4
                ,token4
+               // Ver.1.25 Add Start
+               ,XxcsoConstants.TOKEN_ITEM5
+               ,token5
+               // Ver.1.25 Add End
                ,XxcsoConstants.TOKEN_SP_NUMBER
                ,spNumber
                ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
@@ -5213,6 +5244,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     String token2  = null;
     String token3  = null;  
     String token4  = null; 
+    // Ver.1.25 Add Start
+    String token5  = null;
+    // Ver.1.25 Add End
 
     //インスタンス取得
     XxcsoSpDecisionHeaderFullVOImpl headerVo
@@ -5285,7 +5319,23 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         stmt.setDATE(2, adAssetsPayStartDate);
         stmt.setDATE(3, adAssetsPayEndDate);       
         stmt.setString(4, headerRow.getAdAssetsPaymentType());
-        stmt.setString(5, headerRow.getAdAssetsAmt().replaceAll(",", ""));
+        // Ver.1.25 Mod Start
+        //stmt.setString(5, headerRow.getAdAssetsAmt().replaceAll(",", ""));
+        // 支払条件（行政財産使用料）
+        String adAssetsPaymentType = headerRow.getAdAssetsPaymentType();
+        // 入力パラメータ「総額」
+        String in_amt = "";
+        //支払条件（行政財産使用料）が2：総額払いの場合、総額（行政財産使用料）を設定
+        if(XxcsoSpDecisionConstants.TOTAL_PAY.equals(adAssetsPaymentType)){
+          in_amt = headerRow.getAdAssetsAmt().replaceAll(",", "");
+        }
+        // 総額払い以外の場合、今回支払（行政財産使用料）を設定
+        else
+        {
+          in_amt = headerRow.getAdAssetsThisTime().replaceAll(",", "");
+        }    
+        stmt.setString(5, in_amt);
+        // Ver.1.25 Mod End
         stmt.setString(6, XxcsoSpDecisionConstants.AD_ASSETS_KBN);
         stmt.setString(7, headerRow.getTaxType());
         stmt.registerOutParameter(8, OracleTypes.VARCHAR);
@@ -5311,11 +5361,18 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           token3 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                  + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
-
+          // Ver.1.25 Mod Start
+//          token4 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+//                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//                 + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
           token4 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                 + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_THIS_TIME;
+          token5 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                 + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                  + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
-
+          // Ver.1.25 Mod End
+          
           confirmMsg
             = XxcsoMessage.createWarningMessage(
                 XxcsoConstants.APP_XXCSO1_00917
@@ -5327,6 +5384,10 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
                ,token3
                ,XxcsoConstants.TOKEN_ITEM4
                ,token4
+               // Ver.1.25 Add Start
+               ,XxcsoConstants.TOKEN_ITEM5
+               ,token5
+               // Ver.1.25 Add End
                ,XxcsoConstants.TOKEN_SP_NUMBER
                ,spNumber
                ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
