@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2022/04/06    1.22  H.Futamura       E_本稼動_18060対応
  *  2022/07/27    1.23  M.Akachi         E_本稼動_18060対応（実績の月別按分）
  *  2023/07/12    1.24  M.Akachi         E_本稼動_19179対応
+ *  2024/09/04    1.25  M.Akachi         E_本稼動_20174対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -3036,6 +3037,9 @@ AS
     cv_yes                        CONSTANT VARCHAR2(1)     := '1';
     cv_prf_elec_fee_item_code     CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE'; --XXCOS:変動電気代品目コード
     cv_tax_type_1                 CONSTANT xxcso_sp_decision_headers.tax_type%TYPE      := '1'; -- 税込み
+    -- Ver.1.25 Add Start
+    cv_payment_type_2             CONSTANT VARCHAR2(1)     := '2'; -- 総額払いの場合
+    -- Ver.1.25 Add End
 --
     -- ===============================
     -- ローカル変数
@@ -3071,6 +3075,12 @@ AS
 -- Ver.1.23 Add Start
     ln_actual_cnt                    NUMBER;                                               -- 実績件数カウント用
 -- Ver.1.23 Add End
+-- Ver.1.25 Add Start
+    lt_install_supp_this_time        xxcso_sp_decision_headers.install_supp_this_time%TYPE; -- 今回支払（設置協賛金）入力中のSP専決番号に紐づく情報
+    lt_ad_assets_this_time           xxcso_sp_decision_headers.ad_assets_this_time%TYPE;    -- 今回支払（行政財産使用料）入力中のSP専決番号に紐づく情報
+    lt_install_supp_this_time_pre    xxcso_sp_decision_headers.install_supp_this_time%TYPE; -- 今回支払（設置協賛金）契約書番号に紐づくSP専決書情報
+    lt_ad_assets_this_time_pre       xxcso_sp_decision_headers.ad_assets_this_time%TYPE;    -- 今回支払（行政財産使用料）契約書番号に紐づくSP専決書情報
+-- Ver.1.25 Add End
 --
   BEGIN
 --
@@ -3104,6 +3114,12 @@ AS
 -- Ver.1.23 Add Start
     ln_actual_cnt                 := 0;
 -- Ver.1.23 Add End
+-- Ver.1.25 Add Start
+    lt_install_supp_this_time     := NULL;
+    lt_ad_assets_this_time        := NULL;
+    lt_install_supp_this_time_pre := NULL;
+    lt_ad_assets_this_time_pre    := NULL;
+-- Ver.1.25 Add End
 --
     BEGIN
       SELECT xsdh.install_supp_type         AS install_supp_type
@@ -3117,6 +3133,10 @@ AS
             ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
             ,xsdh.ad_assets_amt             AS ad_assets_amt
             ,xsdh.tax_type                  AS tax_type
+            -- Ver.1.25 Add Start
+            ,xsdh.install_supp_this_time    AS install_supp_this_time  --今回支払（設置協賛金）
+            ,xsdh.ad_assets_this_time       AS ad_assets_this_time     --今回支払（行政財産使用料）
+            -- Ver.1.25 Add End
       INTO   lt_install_supp_type
             ,lt_install_pay_start_date
             ,lt_install_pay_end_date
@@ -3128,6 +3148,10 @@ AS
             ,lt_ad_assets_payment_type
             ,lt_ad_assets_amt
             ,lt_tax_type
+            -- Ver.1.25 Add Start
+            ,lt_install_supp_this_time
+            ,lt_ad_assets_this_time
+            -- Ver.1.25 Add End
       FROM  xxcso_sp_decision_headers  xsdh
       WHERE xsdh.sp_decision_number = iv_sp_decision_number;
     EXCEPTION
@@ -3143,6 +3167,10 @@ AS
         lt_ad_assets_payment_type     := NULL;
         lt_ad_assets_amt              := NULL;
         lt_tax_type                   := NULL;
+        -- Ver.1.25 Add Start
+        lt_install_supp_this_time     := NULL;
+        lt_ad_assets_this_time        := NULL;
+        -- Ver.1.25 Add End
     END;
 --
     IF ( NVL(lt_install_supp_type,'Z') = cv_yes ) THEN
@@ -3206,12 +3234,18 @@ AS
                 ,xsdh.install_supp_payment_type AS install_supp_payment_type
                 ,xsdh.install_supp_amt          AS install_supp_amt
                 ,xsdh.tax_type                  AS tax_type
+                -- Ver.1.25 Add Start
+                ,xsdh.install_supp_this_time    AS install_supp_this_time  --今回支払（設置協賛金）
+                -- Ver.1.25 Add End
           INTO   lt_ins_sp_decision_number_pre
                 ,lt_install_pay_start_date_pre
                 ,lt_install_pay_end_date_pre
                 ,lt_install_payment_type_pre
                 ,lt_install_amt_pre
                 ,lt_tax_type_pre
+                -- Ver.1.25 Add Start
+                ,lt_install_supp_this_time_pre
+                -- Ver.1.25 Add End
           FROM  xxcso_sp_decision_headers  xsdh
                ,xxcso_contract_managements xcm
           WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
@@ -3226,6 +3260,9 @@ AS
             lt_install_payment_type_pre   := NULL;
             lt_install_amt_pre            := NULL;
             lt_tax_type_pre               := NULL;
+            -- Ver.1.25 Add Start
+            lt_install_supp_this_time_pre := NULL;
+            -- Ver.1.25 Add End
         END;
 --
         -- プロファイルの取得(XXCOS:変動電気代品目コード)
@@ -3248,18 +3285,40 @@ AS
         END;
 --
         IF ( ov_retcode = xxcso_common_pkg.gv_status_normal ) THEN
+          -- Ver.1.25 Add Start
+          -- 支払条件（設置協賛金）＝「総額払いの場合」
+          IF ( lt_install_supp_payment_type = cv_payment_type_2 ) THEN
+          -- Ver.1.25 Add End
           -- 税込みで金額<>0の場合、税抜き金額を算出
-          IF ( lt_tax_type = cv_tax_type_1
-            AND lt_install_supp_amt <> 0 ) THEN
-              ln_amt_without_tax := ROUND(lt_install_supp_amt / ln_tax_rate);
+            IF ( lt_tax_type = cv_tax_type_1
+              AND lt_install_supp_amt <> 0 ) THEN
+                ln_amt_without_tax := ROUND(lt_install_supp_amt / ln_tax_rate);
+            ELSE
+                ln_amt_without_tax := lt_install_supp_amt;
+            END IF;
+          -- Ver.1.25 Add Start
+          -- 支払条件（設置協賛金）≠「総額払いの場合」
           ELSE
-              ln_amt_without_tax := lt_install_supp_amt;
+            -- 税込みで今回支払（設置協賛金）<>0の場合、税抜き金額を算出
+            IF ( lt_tax_type = cv_tax_type_1
+              AND lt_install_supp_this_time <> 0 ) THEN
+                ln_amt_without_tax := ROUND(lt_install_supp_this_time / ln_tax_rate);
+            ELSE
+                ln_amt_without_tax := lt_install_supp_this_time;
+            END IF;
           END IF;
+          -- Ver.1.25 Add End
         END IF;
 --
         IF ( iv_sp_decision_number <> lt_ins_sp_decision_number_pre ) THEN
           IF (( lt_install_supp_payment_type <> NVL(lt_install_payment_type_pre,cv_ZZZ) ) OR
-              ( lt_tax_type = lt_tax_type_pre AND lt_install_supp_amt <> NVL(lt_install_amt_pre,cv_99999999) ) OR
+              -- Ver.1.25 Mod Start
+--              ( lt_tax_type = lt_tax_type_pre AND lt_install_supp_amt <> NVL(lt_install_amt_pre,cv_99999999) ) OR
+              ( lt_install_supp_payment_type =  cv_payment_type_2 AND lt_tax_type = lt_tax_type_pre 
+                                                                 AND lt_install_supp_amt <> NVL(lt_install_amt_pre,cv_99999999) ) OR
+              ( lt_install_supp_payment_type <> cv_payment_type_2 AND lt_tax_type = lt_tax_type_pre 
+                                                                 AND lt_install_supp_this_time <> NVL(lt_install_supp_this_time_pre,cv_99999999) ) OR
+              -- Ver.1.25 Mod End
               ( lt_install_pay_end_date <> NVL(lt_install_pay_end_date_pre,cv_yyyymmdd) ) OR
               ( lt_tax_type <> lt_tax_type_pre AND ln_amt_without_tax <> NVL(lt_total_amt, 0))
              ) THEN
@@ -3296,7 +3355,10 @@ AS
           SELECT COUNT(1) AS cnt
           INTO ln_actual_cnt
           FROM xxcso_cust_pay_mng      xcpm
-          WHERE xcpm.contract_number   = lt_ins_contract_number  -- 契約書番号
+          -- Ver.1.25 Mod Start
+--          WHERE xcpm.contract_number   = lt_ins_contract_number  -- 契約書番号
+          WHERE xcpm.contract_number   = lt_ad_contract_number   -- 契約書番号
+          -- Ver.1.25 Mod End
             AND xcpm.plan_actual_kbn   = cv_actual               -- 予実区分（2：実績）
             AND xcpm.send_flag         = cv_target               -- 送信フラグ（0：送信対象）
             AND xcpm.data_kbn          = cv_ad_assets            -- データ区分
@@ -3315,11 +3377,17 @@ AS
                 ,xsdh.ad_assets_pay_end_date    AS ad_assets_pay_end_date
                 ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
                 ,xsdh.ad_assets_amt             AS ad_assets_amt
+                -- Ver.1.25 Add Start
+                ,xsdh.ad_assets_this_time       AS ad_assets_this_time  --今回支払（行政財産使用料）
+                -- Ver.1.25 Add End
           INTO   lt_ad_sp_decision_number_pre
                 ,lt_ad_pay_start_date_pre
                 ,lt_ad_pay_end_date_pre
                 ,lt_ad_payment_type_pre
                 ,lt_ad_amt_pre
+                -- Ver.1.25 Add Start
+                ,lt_ad_assets_this_time_pre
+                -- Ver.1.25 Add End
           FROM  xxcso_sp_decision_headers  xsdh
                ,xxcso_contract_managements xcm
           WHERE xsdh.sp_decision_header_id = xcm.sp_decision_header_id
@@ -3332,11 +3400,18 @@ AS
             lt_ad_pay_end_date_pre       := NULL;
             lt_ad_payment_type_pre       := NULL;
             lt_ad_amt_pre                := NULL;
+            -- Ver.1.25 Add Start
+            lt_ad_assets_this_time_pre   := NULL;
+            -- Ver.1.25 Add End
         END;
 --
         IF ( iv_sp_decision_number <> lt_ad_sp_decision_number_pre ) THEN
           IF (( lt_ad_assets_payment_type <> NVL(lt_ad_payment_type_pre,cv_ZZZ) ) OR
-              ( lt_ad_assets_amt <> NVL(lt_ad_amt_pre,cv_99999999) ) OR
+              -- Ver.1.25 Mod Start
+              --( lt_ad_assets_amt <> NVL(lt_ad_amt_pre,cv_99999999) ) OR
+              ( lt_ad_assets_payment_type =  cv_payment_type_2 AND lt_ad_assets_amt <> NVL(lt_ad_amt_pre,cv_99999999) ) OR
+              ( lt_ad_assets_payment_type <> cv_payment_type_2 AND lt_ad_assets_this_time <> NVL(lt_ad_assets_this_time_pre,cv_99999999) ) OR
+              -- Ver.1.25 Mod End
               ( lt_ad_assets_pay_end_date <> NVL(lt_ad_pay_end_date_pre,cv_yyyymmdd) )) THEN
             ov_ad_contract_number    := lt_ad_contract_number;
             ov_ad_sp_decision_number := lt_ad_sp_decision_number_pre;
