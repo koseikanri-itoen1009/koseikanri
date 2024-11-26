@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -98,6 +98,7 @@ AS
  *  2022-08-18    1.29  M.Akachi         E_本稼動_18060（実績の月別按分）対応
  *  2023-05-25    1.30  R.Oikawa         E_本稼動_19179対応
  *  2024-02-05    1.31  M.Akachi         E_本稼動_19496対応
+ *  2024-09-04    1.32  M.Akachi         E_本稼動_20174対応
  *
  *****************************************************************************************/
   --
@@ -4973,6 +4974,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    -- Ver.1.32 Add Start
+    cv_payment_type_2        CONSTANT VARCHAR2(1)   := '2';  -- 総額払い
+    -- Ver.1.32 Add End
     --
     -- トークン用定数
     cv_tkn_value_table       CONSTANT VARCHAR2(50)  := '自販機顧客支払管理情報テーブル';
@@ -4996,6 +5000,12 @@ AS
              NVL(xsdh.ad_assets_amt, 0)               ad_assets_amt,             -- 総額（行政財産使用料）
              xcm1.contract_effect_date                contract_effect_date,      -- 契約書発効日
              xcm1.contract_number                     contract_number            -- 契約書番号
+             -- Ver.1.32 Add Start
+            ,xsdh.install_supp_payment_type           install_supp_payment_type  -- 支払条件（設置協賛金）
+            ,xsdh.install_supp_this_time              install_supp_this_time     -- 今回支払（設置協賛金）
+            ,xsdh.ad_assets_payment_type              ad_assets_payment_type     -- 支払条件（行政財産使用料）
+            ,xsdh.ad_assets_this_time                 ad_assets_this_time        -- 今回支払（行政財産使用料）
+             -- Ver.1.32 Add End
       FROM   xxcso_sp_decision_headers   xsdh                                    -- SP専決ヘッダ
            , xxcso_contract_managements  xcm1                                    -- 契約管理テーブル
       WHERE  xsdh.sp_decision_header_id  = xcm1.sp_decision_header_id
@@ -5083,14 +5093,29 @@ AS
       -- 設置協賛金情報あり
       IF ( lt_sp_decision_headers_rec.install_supp_type = cv_flag_on ) THEN
         --
-        -- 税込みで金額<>0の場合、税抜き金額を算出
-        IF ( lt_sp_decision_headers_rec.tax_type = cv_tax_type_1
-          AND lt_sp_decision_headers_rec.install_supp_amt <> 0 ) THEN
-            ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.install_supp_amt / ln_tax_rate);
+        -- Ver.1.32 Add Start
+        -- 支払条件（設置協賛金）＝「総額払いの場合」
+        IF ( lt_sp_decision_headers_rec.install_supp_payment_type = cv_payment_type_2 ) THEN
+        -- Ver.1.32 Add End
+          -- 税込みで総額（設置協賛金）<>0の場合、税抜き金額を算出
+          IF ( lt_sp_decision_headers_rec.tax_type = cv_tax_type_1
+            AND lt_sp_decision_headers_rec.install_supp_amt <> 0 ) THEN
+              ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.install_supp_amt / ln_tax_rate);
+          ELSE
+              ln_amt_without_tax := lt_sp_decision_headers_rec.install_supp_amt;
+          END IF;
+        -- Ver.1.32 Add Start
+        -- 支払条件（設置協賛金）≠「総額払いの場合」
         ELSE
-            ln_amt_without_tax := lt_sp_decision_headers_rec.install_supp_amt;
+          -- 税込みで今回支払（設置協賛金）<>0の場合、税抜き金額を算出
+          IF ( lt_sp_decision_headers_rec.tax_type = cv_tax_type_1
+            AND lt_sp_decision_headers_rec.install_supp_this_time <> 0 ) THEN
+              ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.install_supp_this_time / ln_tax_rate);
+          ELSE
+              ln_amt_without_tax := lt_sp_decision_headers_rec.install_supp_this_time;
+          END IF;
         END IF;
-        --
+        -- Ver.1.32 Add End
         -- 最新の送信対象を自販機顧客支払管理情報から取得
         BEGIN
           SELECT xcpm.account_number   account_number,   -- 顧客コード
@@ -5328,12 +5353,27 @@ AS
         ln_actual_total_amt := NULL;
         lv_contract_number  := NULL;
         --
-        -- 税込みで金額<>0の場合、税抜き金額を算出
-        IF ( lt_sp_decision_headers_rec.ad_assets_amt <> 0 ) THEN
-            ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.ad_assets_amt / ln_tax_rate);
+        -- Ver.1.32 Add Start
+        -- 支払条件（行政財産使用料）＝「総額払いの場合」
+        IF ( lt_sp_decision_headers_rec.ad_assets_payment_type = cv_payment_type_2 ) THEN
+        -- Ver.1.32 Add End
+          -- 総額（行政財産使用料）<>0の場合、税抜き金額を算出
+          IF ( lt_sp_decision_headers_rec.ad_assets_amt <> 0 ) THEN
+              ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.ad_assets_amt / ln_tax_rate);
+          ELSE
+              ln_amt_without_tax := lt_sp_decision_headers_rec.ad_assets_amt;
+          END IF;
+        -- Ver.1.32 Add Start
+        -- 支払条件（行政財産使用料）≠「総額払いの場合」
         ELSE
-            ln_amt_without_tax := lt_sp_decision_headers_rec.ad_assets_amt;
+          -- 今回支払（行政財産使用料）<>0の場合、税抜き金額を算出
+          IF ( lt_sp_decision_headers_rec.ad_assets_this_time <> 0 ) THEN
+              ln_amt_without_tax := ROUND(lt_sp_decision_headers_rec.ad_assets_this_time / ln_tax_rate);
+          ELSE
+              ln_amt_without_tax := lt_sp_decision_headers_rec.ad_assets_this_time;
+          END IF;
         END IF;
+        -- Ver.1.32 Add End
         --
         -- 最新の送信対象を自販機顧客支払管理情報から取得
         BEGIN
