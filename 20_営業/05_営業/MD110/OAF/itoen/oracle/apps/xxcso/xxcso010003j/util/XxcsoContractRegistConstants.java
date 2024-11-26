@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 2.6
+* バージョン : 2.7
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -25,6 +25,7 @@
 * 2020-12-14 2.4  SCSK佐々木大和 [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
 * 2022-03-31 2.5  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
 * 2023-06-08 2.6  SCSK赤地学     [E_本稼動_19179]インボイス対応（BM関連）
+* 2024-09-04 2.7  SCSK赤地学     [E_本稼動_20174]自販機顧客支払管理情報の改修
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -570,6 +571,12 @@ public class XxcsoContractRegistConstants
     TOKEN_VALUE_AD_ASSETS_AMT               = "総額（行政財産使用料）";
   public static final String TAX_TYPE    = "税区分";
 // Ver.2.5 Add End
+// Ver.2.7 Add Start
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_THIS_TIME      = "今回支払（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_THIS_TIME         = "今回支払（行政財産使用料）";
+// Ver.2.7 Add End
   // PDF出力時付加文言
   public static final String
     TOKEN_VALUE_PDF_OUT                 = "PDF出力";
