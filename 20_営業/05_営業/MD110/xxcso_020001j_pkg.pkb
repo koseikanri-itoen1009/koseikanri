@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2021/04/16    1.19  T.Nishikawa      [E_本稼動_17052]定価換算率算出方法見直し
  *  2022/04/06    1.20  H.Futamura       [E_本稼動_18060]自販機顧客別利益管理
  *  2022/08/18    1.21  M.Akachi         [E_本稼動_18060]自販機顧客別利益管理（実績の月別按分）
+ *  2024/09/04    1.22  M.Akachi         [E_本稼動_20174]自販機顧客支払管理情報の改修
 *****************************************************************************************/
 --
   -- ===============================
@@ -3899,7 +3900,7 @@ AS
    ,id_pay_start_date             IN  DATE      -- 支払期間開始日
    ,id_pay_end_date               IN  DATE      -- 支払期間終了日
    ,iv_payment_type               IN  VARCHAR2  -- 支払条件
-   ,in_amt                        IN  NUMBER    -- 総額
+   ,in_amt                        IN  NUMBER    -- 総額 ※呼び元で総額または今回支払を設定する
    ,iv_data_kbn                   IN  VARCHAR2  -- データ区分
    ,iv_tax_type                   IN  VARCHAR2  -- 税区分
    ,ov_contract_number            OUT VARCHAR2  -- 契約書番号
@@ -3923,6 +3924,9 @@ AS
     cv_yyyymmdd                   CONSTANT DATE            := TO_DATE('29991231','YYYYMMDD');
     cv_prf_elec_fee_item_code     CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE'; --XXCOS:変動電気代品目コード
     cv_tax_type_1                 CONSTANT xxcso_sp_decision_headers.tax_type%TYPE      := '1'; -- 税込み
+    -- Ver.1.22 Add Start
+    cv_payment_type_2             CONSTANT VARCHAR2(1)     := '2'; -- 総額払いの場合
+    -- Ver.1.22 Add End
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -3942,6 +3946,10 @@ AS
 -- Ver.1.21 Add Start
     ln_actual_cnt                 NUMBER;                                               -- 実績件数カウント用
 -- Ver.1.21 Add End
+-- Ver.1.22 Add Start
+    lt_install_supp_this_time     xxcso_sp_decision_headers.install_supp_this_time%TYPE; -- 今回支払（設置協賛金）
+    lt_ad_assets_this_time        xxcso_sp_decision_headers.ad_assets_this_time%TYPE;    -- 今回支払（行政財産使用料）
+-- Ver.1.22 Add End
 --
   BEGIN
 --
@@ -3961,6 +3969,10 @@ AS
 -- Ver.1.21 Add Start    
     ln_actual_cnt                := 0;
 -- Ver.1.21 Add End
+-- Ver.1.22 Add Start
+    lt_install_supp_this_time    := NULL;
+    lt_ad_assets_this_time       := NULL;
+-- Ver.1.22 Add End
 --
     BEGIN
 --
@@ -4022,11 +4034,17 @@ AS
               ,xsdh.install_supp_amt          AS install_supp_amt
               ,xsdh.install_pay_end_date      AS install_pay_end_date
               ,xsdh.tax_type                  AS tax_type
+              -- Ver.1.22 Add Start
+              ,xsdh.install_supp_this_time    AS install_supp_this_time
+              -- Ver.1.22 Add End
         INTO  lt_sp_decision_number
              ,lt_install_supp_payment_type
              ,lt_install_supp_amt
              ,lt_install_pay_end_date
              ,lt_tax_type
+             -- Ver.1.22 Add Start
+             ,lt_install_supp_this_time
+             -- Ver.1.22 Add End
         FROM  xxcso_sp_decision_headers xsdh
              ,xxcso_contract_managements xcm
         WHERE xcm.contract_number = lt_contract_number
@@ -4040,6 +4058,9 @@ AS
           lt_install_supp_amt          := NULL;
           lt_install_pay_end_date      := NULL;
           lt_tax_type                  := NULL;
+          -- Ver.1.22 Add Start
+          lt_install_supp_this_time    := NULL;
+          -- Ver.1.22 Add End
       END;
 --
       -- プロファイルの取得(XXCOS:変動電気代品目コード)
@@ -4072,7 +4093,11 @@ AS
       END IF;
 --
       IF (( iv_payment_type <> NVL(lt_install_supp_payment_type,cv_ZZZ) ) OR
-          ( iv_tax_type = lt_tax_type AND in_amt <> NVL(lt_install_supp_amt,cv_99999999) ) OR
+          -- Ver.1.22 Mod Start
+          -- ( iv_tax_type = lt_tax_type AND in_amt <> NVL(lt_install_supp_amt,cv_99999999) ) OR
+          ( iv_payment_type =  cv_payment_type_2 AND iv_tax_type = lt_tax_type AND in_amt <> NVL(lt_install_supp_amt,cv_99999999) ) OR
+          ( iv_payment_type <> cv_payment_type_2 AND iv_tax_type = lt_tax_type AND in_amt <> NVL(lt_install_supp_this_time,cv_99999999) ) OR
+          -- Ver.1.22 Mod End
           ( id_pay_end_date <> NVL(lt_install_pay_end_date,cv_yyyymmdd) ) OR
           ( iv_tax_type <> lt_tax_type AND ln_amt_without_tax <> NVL(lt_total_amt, 0))
           ) THEN
@@ -4091,10 +4116,16 @@ AS
               ,xsdh.ad_assets_payment_type    AS ad_assets_payment_type
               ,xsdh.ad_assets_amt             AS ad_assets_amt
               ,xsdh.ad_assets_pay_end_date    AS ad_assets_pay_end_date
+              -- Ver.1.22 Add Start
+              ,xsdh.ad_assets_this_time       AS ad_assets_this_time
+              -- Ver.1.22 Add End
         INTO  lt_sp_decision_number
              ,lt_ad_assets_payment_type
              ,lt_ad_assets_amt
              ,lt_ad_assets_pay_end_date
+             -- Ver.1.22 Add Start
+             ,lt_ad_assets_this_time
+             -- Ver.1.22 Add End
         FROM  xxcso_sp_decision_headers xsdh
              ,xxcso_contract_managements xcm
         WHERE xcm.contract_number = lt_contract_number
@@ -4107,10 +4138,17 @@ AS
           lt_ad_assets_payment_type    := NULL;
           lt_ad_assets_amt             := NULL;
           lt_ad_assets_pay_end_date    := NULL;
+          -- Ver.1.22 Add Start
+          lt_ad_assets_this_time       := NULL;
+          -- Ver.1.22 Add End
       END;
 --
       IF (( iv_payment_type <> NVL(lt_ad_assets_payment_type,cv_ZZZ) ) OR
-          ( in_amt <> NVL(lt_ad_assets_amt,cv_99999999) ) OR
+          -- Ver.1.22 Mod Start
+          -- ( in_amt <> NVL(lt_ad_assets_amt,cv_99999999) ) OR
+          ( iv_payment_type =  cv_payment_type_2 AND in_amt <> NVL(lt_ad_assets_amt,cv_99999999) ) OR
+          ( iv_payment_type <> cv_payment_type_2 AND in_amt <> NVL(lt_ad_assets_this_time,cv_99999999) ) OR
+          -- Ver.1.22 Mod End
           ( id_pay_end_date <> NVL(lt_ad_assets_pay_end_date,cv_yyyymmdd) )
          ) THEN
         ov_contract_number    := lt_contract_number;
