@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoMessage
 * 概要説明   : メッセージ作成クラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2008-12-10 1.0  SCS小川浩    最大登録件数エラーメッセージ作成処理を追加
 * 2008-12-11 1.0  SCS小川浩    正常終了メッセージ作成処理を追加
 * 2022-04-05 1.1  SCSK二村悠香 [E_本稼動_18060]自販機顧客別利益管理
+* 2024-09-04 1.2  SCSK赤地学   [E_本稼動_20174]自販機顧客支払管理情報の改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -307,7 +308,67 @@ public class XxcsoMessage
       );
   }
 // Ver.1.1 Add End
-
+// Ver.1.2 Add Start
+  /*****************************************************************************
+   * 警告終了時のメッセージを作成します（トークン７）。
+   * @param messageName メッセージ名
+   * @param tokenName1  トークン１名
+   * @param tokenValue1 トークン１値
+   * @param tokenName2  トークン２名
+   * @param tokenValue2 トークン２値
+   * @param tokenName3  トークン３名
+   * @param tokenValue3 トークン３値
+   * @param tokenName4  トークン４名
+   * @param tokenValue4 トークン４値
+   * @param tokenName5  トークン５名
+   * @param tokenValue5 トークン５値
+   * @param tokenName6  トークン６名
+   * @param tokenValue6 トークン６値
+   * @param tokenName7  トークン７名
+   * @param tokenValue7 トークン７値
+   * @return OAException 警告メッセージ
+   *****************************************************************************
+   */
+  public static OAException createWarningMessage(
+    String messageName,
+    String tokenName1,
+    String tokenValue1,
+    String tokenName2,
+    String tokenValue2,
+    String tokenName3,
+    String tokenValue3,
+    String tokenName4,
+    String tokenValue4,
+    String tokenName5,
+    String tokenValue5,
+    String tokenName6,
+    String tokenValue6,
+    String tokenName7,
+    String tokenValue7
+  )
+  {
+    return
+      createMessage(
+        "XXCSO",
+        OAException.WARNING,
+        messageName,
+        tokenName1,
+        tokenValue1,
+        tokenName2,
+        tokenValue2,
+        tokenName3,
+        tokenValue3,
+        tokenName4,
+        tokenValue4,
+        tokenName5,
+        tokenValue5,
+        tokenName6,
+        tokenValue6,
+        tokenName7,
+        tokenValue7
+      );
+  }
+// Ver.1.2 Add End
   /*****************************************************************************
    * エラー終了時のメッセージを作成します（トークン無）。
    * @param messageName メッセージ名
@@ -840,4 +901,72 @@ public class XxcsoMessage
     return msg;
   }
 // Ver.1.1 Add End
+// Ver.1.2 Add Start
+  /*****************************************************************************
+   * メッセージを作成します。
+   * @param applicationShortName アプリケーション短縮名
+   * @param messageType メッセージタイプ
+   * @param messageName メッセージ名
+   * @param tokenName1  トークン１名
+   * @param tokenValue1 トークン１値
+   * @param tokenName2  トークン２名
+   * @param tokenValue2 トークン２値
+   * @param tokenName3  トークン３名
+   * @param tokenValue3 トークン３値
+   * @param tokenName4  トークン４名
+   * @param tokenValue4 トークン４値
+   * @param tokenName5  トークン５名
+   * @param tokenValue5 トークン５値
+   * @param tokenName6  トークン６名
+   * @param tokenValue6 トークン６値
+   * @param tokenName7  トークン７名
+   * @param tokenValue7 トークン７値
+   * @return OAException エラーメッセージ
+   *****************************************************************************
+   */
+  public static OAException createMessage(
+    String applicationShortName,
+    byte messageType,
+    String messageName,
+    String tokenName1,
+    String tokenValue1,
+    String tokenName2,
+    String tokenValue2,
+    String tokenName3,
+    String tokenValue3,
+    String tokenName4,
+    String tokenValue4,
+    String tokenName5,
+    String tokenValue5,
+    String tokenName6,
+    String tokenValue6,
+    String tokenName7,
+    String tokenValue7
+  )
+  {
+    OAException msg = null;
+    
+    if ( tokenName1 != null && tokenName2 != null && tokenName3 != null && tokenName4 != null && tokenName5 != null && tokenName6 != null && tokenName7 != null )
+    {
+      MessageToken[] token =
+      {
+        new MessageToken(tokenName1, tokenValue1),
+        new MessageToken(tokenName2, tokenValue2),
+        new MessageToken(tokenName3, tokenValue3),
+        new MessageToken(tokenName4, tokenValue4),
+        new MessageToken(tokenName5, tokenValue5),
+        new MessageToken(tokenName6, tokenValue6),
+        new MessageToken(tokenName7, tokenValue7)
+      };
+      msg = new OAException(
+        applicationShortName,
+        messageName,
+        token,
+        messageType,
+        null
+      );
+    }
+    return msg;
+  }
+// Ver.1.2 Add End
 }
