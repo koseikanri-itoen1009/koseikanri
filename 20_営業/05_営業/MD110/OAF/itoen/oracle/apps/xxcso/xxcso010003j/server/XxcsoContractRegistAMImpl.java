@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.7
+* バージョン : 2.8
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -27,6 +27,7 @@
 * 2020-12-29 2.5  SCSK小路恭弘   [E_本稼動_16895]送付先コード税区分修正
 * 2022-03-31 2.6  SCSK二村悠香   [E_本稼動_18060]自販機顧客別利益管理
 * 2023-06-08 2.7  SCSK赤地学     [E_本稼動_19179]インボイス対応（BM関連）
+* 2024-09-04 2.8  SCSK赤地学     [E_本稼動_20174]自販機顧客支払管理情報の改修 
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -4420,6 +4421,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     String token2  = null;
     String token3  = null;
     String token4  = null;
+    // Ver.2.8 Add Start
+    String token5  = null;
+    // Ver.2.8 Add End
     String insSpNumber          = null;
     String adSpNumber           = null;
     String insContractNumber    = null;
@@ -4500,9 +4504,17 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
                    + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                    + XxcsoContractRegistConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
 
+            // Ver.2.8 Mod Start
+//            token4 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+//                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//                   + XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
             token4 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                    + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_SUPP_THIS_TIME;
+            token5 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                    + XxcsoContractRegistConstants.TOKEN_VALUE_INSTALL_SUPP_PAY_END_DATE;
+            // Ver.2.8 Mod End
 
             confirmMsg
               = XxcsoMessage.createWarningMessage(
@@ -4515,6 +4527,10 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
                  ,token3
                  ,XxcsoConstants.TOKEN_ITEM4
                  ,token4
+                 // Ver.2.8 Add Start
+                 ,XxcsoConstants.TOKEN_ITEM5
+                 ,token5
+                 // Ver.2.8 Add End
                  ,XxcsoConstants.TOKEN_SP_NUMBER
                  ,insSpNumber
                  ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
@@ -4585,6 +4601,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     String token2  = null;
     String token3  = null;
     String token4  = null;
+    // Ver.2.8 Add Start
+    String token5  = null;
+    // Ver.2.8 Add End
     String insSpNumber          = null;
     String adSpNumber           = null;
     String insContractNumber    = null;
@@ -4664,9 +4683,17 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
                    + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                    + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_AMT;
 
+            // Ver.2.8 Mod Start
+//            token4 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+//                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
             token4 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
                    + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                   + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_THIS_TIME;
+            token5 = XxcsoContractRegistConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                   + XxcsoConstants.TOKEN_VALUE_DELIMITER1
                    + XxcsoContractRegistConstants.TOKEN_VALUE_AD_ASSETS_PAY_END_DATE;
+            // Ver.2.8 Mod End
 
             confirmMsg
               = XxcsoMessage.createWarningMessage(
@@ -4679,6 +4706,10 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
                  ,token3
                  ,XxcsoConstants.TOKEN_ITEM4
                  ,token4
+                 // Ver.2.8 Add Start
+                 ,XxcsoConstants.TOKEN_ITEM5
+                 ,token5
+                 // Ver.2.8 Add End
                  ,XxcsoConstants.TOKEN_SP_NUMBER
                  ,adSpNumber
                  ,XxcsoConstants.TOKEN_CONTRACT_NUMBER
