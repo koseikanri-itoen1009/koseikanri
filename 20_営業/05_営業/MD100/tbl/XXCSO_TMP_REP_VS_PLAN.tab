@@ -3,13 +3,14 @@
  * TABLE Name      : xxcso_tmp_rep_vs_plan
  * Description     : 売上訪問計画管理表顧客集計ワークテーブル
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/05/19    1.0  H.Ogawa       初回作成
+ *  2024-10-22    1.1  T.Okuyama     E_本稼動_20170対応
  ************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE xxcso.xxcso_tmp_rep_vs_plan
 (
@@ -28,6 +29,10 @@ CREATE GLOBAL TEMPORARY TABLE xxcso.xxcso_tmp_rep_vs_plan
  ,last_mon_rslt_sales_amt          NUMBER(12)
  ,new_customer_num                 NUMBER(4)
  ,new_vendor_num                   NUMBER(4)
+-- Ver 1.1 Add Start
+ ,rslt_vis_i_num_total             NUMBER(12)
+ ,rslt_vis_v_num_total             NUMBER(12)
+-- Ver 1.1 Add End
  ,plan_sales_amt                   NUMBER(9)
  ,plan_vs_amt_1                    NUMBER(9)
  ,plan_vs_amt_2                    NUMBER(9)
