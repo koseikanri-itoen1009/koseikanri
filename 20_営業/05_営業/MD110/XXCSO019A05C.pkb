@@ -8,7 +8,7 @@ AS
  *                           –K–â”„ãŒv‰æŠÇ—•\‚ğ’ •[‚Éo—Í‚µ‚Ü‚·B
  * MD.050                  : ‰c‹ÆƒVƒXƒeƒ€\’zƒvƒƒWƒFƒNƒgƒAƒhƒIƒ“F
  *                           –K–â”„ãŒv‰æŠÇ—•\
- * Version                 : 1.9
+ * Version                 : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,9 @@ AS
  *  get_business_high_type_name  ‹Æ‘Ô‘å•ª—Ş–¼æ“¾
  *  get_route_number       ƒ‹[ƒgNoæ“¾
  *  get_rslt_amt_in_month  ”„ãÀÑ(”NŒw’è)æ“¾
+ *  sum_resources          o—Í‘ÎÛƒŠƒ\[ƒXWŒvi‹’“_‰c‹Æˆõæ“¾j (A-12)
+ *  sum_visit_sales        ”„ã–K–âŒv‰æWŒv(ŒÚ‹q•Ê“ú•Ê)  F’ •[í•Ê1-5 (A-3-2)
+ *  sum_visit_sales6       ”„ã–K–âŒv‰æWŒv(ŒÚ‹qî•ñæ“¾)F’ •[í•Ê6   (A-13)
  *  init                   ‰Šúˆ— (A-1)
  *  chek_param             ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN (A-2)
  *  get_ticket1            ’ •[í•Ê1-‰c‹Æˆõ•Ê (A-3-1,A-3-2)
@@ -41,6 +44,7 @@ AS
  *  up_plsql_tab4          ’n‹æ‰c‹Æ•”/•”•Ê-PLSQL•\‚ÌXV (A-6-3)
  *  get_ticket5            ’ •[í•Ê5-’n‹æ‰c‹Æ–{•”•Ê (A-7-1,A-7-2)
  *  up_plsql_tab5          ’nˆæ‰c‹Æ–{•”•Ê•Ê-PLSQL•\‚ÌXV (A-7-3)
+ *  get_ticket6            ’ •[í•Ê6-‰c‹Æˆõ•Ê (A-14)
  *  insert_wrk_table       ƒ[ƒNƒe[ƒuƒ‹‚Ö‚Ìo—Í (A-3-4,A-4-4,A-5-4,A-6-4,A-7-4)
  *  act_svf                SVF‹N“® (A-8)
  *  del_wrk_tbl_data       ƒ[ƒNƒe[ƒuƒ‹ƒf[ƒ^íœ (A-9)
@@ -70,6 +74,7 @@ AS
  *  2009-08-03    1.8   Satomura.Kazuo    “‡ƒeƒXƒgáŠQ”Ô†0001271‘Î‰
  *                                        “‡ƒeƒXƒgáŠQ”Ô†0001317‘Î‰
  *  2018-02-28    1.9   Kazuhiro.Nara     E_–{‰Ò“®_14884‘Î‰
+ *  2024-10-22    1.10  Toru.Okuyama      E_–{‰Ò“®_20170‘Î‰ á–K–â”„ãŒv‰æŠÇ—•\â’ •[V‹K’Ç‰Á
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -170,6 +175,18 @@ AS
   cv_report_3               CONSTANT VARCHAR2(1)   := '3';                 -- ’ •[í•Ê3-‹’“_/‰Û•Ê
   cv_report_4               CONSTANT VARCHAR2(1)   := '4';                 -- ’ •[í•Ê4-’n‹æ‰c‹Æ•”•Ê/•”•Ê
   cv_report_5               CONSTANT VARCHAR2(1)   := '5';                 -- ’ •[í•Ê5-’nˆæ‰c‹Æ–{•”
+-- Ver 1.10 Add Start
+  cv_vist_div1              CONSTANT VARCHAR2(1)   := '1';                 -- –K–â‘ÎÛi¤’k‰Âj
+  cv_vist_div2              CONSTANT VARCHAR2(1)   := '2';                 -- –K–â‘ÎÛi¤’k•s‰Âj
+  cv_vist_div5              CONSTANT VARCHAR2(1)   := '5';                 -- –K–â‘ÎÛiVDj
+  cv_report_6               CONSTANT VARCHAR2(1)   := '6';                 -- ’ •[í•Ê6-‰c‹Æˆõ•Ê–K–â”„ãŒv‰æ
+  cv_report_id1             CONSTANT VARCHAR2(20)  := 'XXCSO019A05R01';    -- ’ •[IDF’ •[í•Ê1
+  cv_report_id2             CONSTANT VARCHAR2(20)  := 'XXCSO019A05R02';    -- ’ •[IDF’ •[í•Ê2
+  cv_report_id3             CONSTANT VARCHAR2(20)  := 'XXCSO019A05R03';    -- ’ •[IDF’ •[í•Ê3
+  cv_report_id4             CONSTANT VARCHAR2(20)  := 'XXCSO019A05R04';    -- ’ •[IDF’ •[í•Ê4
+  cv_report_id5             CONSTANT VARCHAR2(20)  := 'XXCSO019A05R05';    -- ’ •[IDF’ •[í•Ê5
+  cv_report_id6             CONSTANT VARCHAR2(20)  := 'XXCSO019A05R06';    -- ’ •[IDF’ •[í•Ê6
+-- Ver 1.10 Add End
   cn_line_kind1             CONSTANT NUMBER(5)     := 1;                   -- ’ •[o—ÍˆÊ’uƒwƒbƒ_•”
   cn_line_kind2             CONSTANT NUMBER(5)     := 2;                   -- ’ •[o—ÍˆÊ’u”„‚èã‚°–¾×•”
   cn_line_kind3             CONSTANT NUMBER(5)     := 3;                   -- ’ •[o—ÍˆÊ’u”„‚èã‚°’†Œv•”
@@ -270,6 +287,9 @@ AS
   gn_rsrc_attr_group_id     NUMBER;                                                 -- ‘®«ƒOƒ‹[ƒvIDi’S“–‰c‹Æˆõj
   gn_rtn_attr_group_id      NUMBER;                                                 -- ‘®«ƒOƒ‹[ƒvIDiƒ‹[ƒgNoj
 /* 20090702_Ogawa_0000312 END*/
+-- Ver 1.10 Add Start
+  gv_report_id              xxcso_rep_visit_sale_plan.report_id%TYPE;               -- ’ •[ID
+-- Ver 1.10 Add End
   -- 1“ú•ª”„ãŒv‰æA”„ãÀÑ‚È‚Ç‚Ì€–Ú‚ğ•Û‚·‚éƒŒƒR[ƒhŒ^’è‹`
   TYPE g_get_one_day_date_rtype IS RECORD(
     plan_vs_amt             xxcso_rep_visit_sale_plan.plan_vs_amt_1%TYPE,           -- ”„ãŒv‰æ,–K–âŒv‰æ
@@ -1895,7 +1915,7 @@ AS
 /* 20090702_Ogawa_0000312 END*/
   /**********************************************************************************
    * Procedure Name   : sum_resources
-   * Description      : o—Í‘ÎÛƒŠƒ\[ƒXWŒv
+   * Description      : o—Í‘ÎÛƒŠƒ\[ƒXWŒvi‹’“_‰c‹Æˆõæ“¾j (A-12)
   ***********************************************************************************/
   PROCEDURE sum_resources(
     iv_base_code          IN  VARCHAR2     -- ‹’“_ƒR[ƒh
@@ -7753,6 +7773,9 @@ DO_ERROR('A-1');
     lv_manage_base_code fnd_profile_option_values.profile_option_value%TYPE;
     ln_work_count       NUMBER;
     /* 2009.06.26 K.Satomura “‡ƒeƒXƒgáŠQ”Ô†0000016‘Î‰ END */
+-- Ver 1.10 Add Start
+    lv_report_type            VARCHAR2(9);                  -- ’ •[í•Ê
+-- Ver 1.10 Add End
   --
   BEGIN
 --##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
@@ -7798,11 +7821,22 @@ DO_ERROR('A-1');
     IF (lv_manage_base_code IS NULL) THEN
     /* 2009.06.26 K.Satomura “‡ƒeƒXƒgáŠQ”Ô†0000016‘Î‰ END */
       -- “ü—Í‚³‚ê‚½‹’“_ƒR[ƒhA’ •[í•Ê‚ÉÀsŒ ŒÀ‚ªA‚ ‚é‚©‚ğƒ`ƒFƒbƒN‚µ‚Ü‚·B
+-- Ver 1.10 Add Start
+     -- ’ •[í•Ê_6‚ÌƒZƒLƒ…ƒŠƒeƒB”»’è‚Í ’ •[í•Ê_1‚Å”»’è‚·‚é
+     IF gv_report_type = cv_report_6 THEN
+       lv_report_type := cv_report_1;
+     ELSE
+       lv_report_type := gv_report_type;
+     END IF;
+-- Ver 1.10 Add End
       xxcso_util_common_pkg.chk_exe_report_visite_sales(
          in_user_id     => fnd_global.user_id
         ,in_resp_id     => gn_resp_id
         ,iv_base_code   => gv_base_code
-        ,iv_report_type => gv_report_type
+-- Ver 1.10 Mod Start
+--        ,iv_report_type => gv_report_type
+        ,iv_report_type => lv_report_type
+-- Ver 1.10 Mod End
         ,ov_ret_code    => lv_boolean
         ,ov_err_msg     => lv_errmsg
       );
@@ -10545,6 +10579,9 @@ DO_ERROR('A-X-4-3');
 --
     lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
     SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‰c‹Æˆõ•Êj' || 'â';
+-- Ver 1.10 Add End
+    gv_report_id := cv_report_id1;                    -- ’ •[IDF’ •[í•Ê2
+-- Ver 1.10 Mod Start
 --
     debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ ŠJn');
 --
@@ -10591,7 +10628,10 @@ DO_ERROR('A-X-4-3');
            ,ROWNUM                               -- ’ •[o—ÍƒZƒbƒg”Ô†
            ,cn_line_kind1                        -- ’ •[o—ÍˆÊ’u
            ,1                                    -- s”Ô
-           ,cv_pkg_name                          -- ’ •[‚h‚c
+-- Ver 1.10 Mod Start
+--           ,cv_pkg_name                          -- ’ •[‚h‚c
+           ,gv_report_id                         -- ’ •[‚h‚c
+-- Ver 1.10 Mod End
            ,lv_report_name                       -- ’ •[ƒ^ƒCƒgƒ‹
            ,SYSDATE                              -- o—Í“ú
            ,gd_year_month                        -- Šî€”NŒ
@@ -13301,6 +13341,9 @@ DO_ERROR('A-X-4-3');
 --
     lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
     SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‰c‹ÆˆõƒOƒ‹[ƒv•Êj' || 'â';
+-- Ver 1.10 Add End
+    gv_report_id := cv_report_id2;                    -- ’ •[IDF’ •[í•Ê2
+-- Ver 1.10 Mod Start
 --
     debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ ŠJn');
 --
@@ -13345,7 +13388,10 @@ DO_ERROR('A-X-4-3');
            ,ROWNUM                               -- ’ •[o—ÍƒZƒbƒg”Ô†
            ,cn_line_kind1                        -- ’ •[o—ÍˆÊ’u
            ,1                                    -- s”Ô
-           ,cv_pkg_name                          -- ’ •[‚h‚c
+-- Ver 1.10 Mod Start
+--           ,cv_pkg_name                          -- ’ •[‚h‚c
+           ,gv_report_id                         -- ’ •[‚h‚c
+-- Ver 1.10 Mod End
            ,lv_report_name                       -- ’ •[ƒ^ƒCƒgƒ‹
            ,SYSDATE                              -- o—Í“ú
            ,gd_year_month                        -- Šî€”NŒ
@@ -16001,6 +16047,9 @@ DO_ERROR('A-X-4-3');
 --
     lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
     SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‹’“_/‰Û•Êj' || 'â';
+-- Ver 1.10 Add End
+    gv_report_id := cv_report_id3;                    -- ’ •[IDF’ •[í•Ê3
+-- Ver 1.10 Mod Start
 --
     debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ ŠJn');
 --
@@ -16042,7 +16091,10 @@ DO_ERROR('A-X-4-3');
            ,ROWNUM                               -- ’ •[o—ÍƒZƒbƒg”Ô†
            ,cn_line_kind1                        -- ’ •[o—ÍˆÊ’u
            ,1                                    -- s”Ô
-           ,cv_pkg_name                          -- ’ •[‚h‚c
+-- Ver 1.10 Mod Start
+--           ,cv_pkg_name                          -- ’ •[‚h‚c
+           ,gv_report_id                         -- ’ •[‚h‚c
+-- Ver 1.10 Mod End
            ,lv_report_name                       -- ’ •[ƒ^ƒCƒgƒ‹
            ,SYSDATE                              -- o—Í“ú
            ,gd_year_month                        -- Šî€”NŒ
@@ -18588,6 +18640,9 @@ DO_ERROR('A-X-4-3');
 --
     lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
     SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i’n‹æ/•”•Êj' || 'â';
+-- Ver 1.10 Add End
+    gv_report_id := cv_report_id4;                    -- ’ •[IDF’ •[í•Ê4
+-- Ver 1.10 Mod Start
 --
     debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ ŠJn');
 --
@@ -18629,7 +18684,10 @@ DO_ERROR('A-X-4-3');
            ,ROWNUM                               -- ’ •[o—ÍƒZƒbƒg”Ô†
            ,cn_line_kind1                        -- ’ •[o—ÍˆÊ’u
            ,1                                    -- s”Ô
-           ,cv_pkg_name                          -- ’ •[‚h‚c
+-- Ver 1.10 Mod Start
+--           ,cv_pkg_name                          -- ’ •[‚h‚c
+           ,gv_report_id                         -- ’ •[‚h‚c
+-- Ver 1.10 Mod End
            ,lv_report_name                       -- ’ •[ƒ^ƒCƒgƒ‹
            ,SYSDATE                              -- o—Í“ú
            ,gd_year_month                        -- Šî€”NŒ
@@ -21446,6 +21504,9 @@ DO_ERROR('A-X-4-3');
 --
     lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
     SUBSTR(gv_year_month,5,2) || 'Œ' || '”„ã–K–âŒv‰æŠÇ—•\i‰c‹Æ–{•”•Êj' || 'â';
+-- Ver 1.10 Add End
+    gv_report_id := cv_report_id5;                    -- ’ •[IDF’ •[í•Ê5
+-- Ver 1.10 Mod Start
 --
     debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ ŠJn');
 --
@@ -21487,7 +21548,10 @@ DO_ERROR('A-X-4-3');
            ,ROWNUM                               -- ’ •[o—ÍƒZƒbƒg”Ô†
            ,cn_line_kind1                        -- ’ •[o—ÍˆÊ’u
            ,1                                    -- s”Ô
-           ,cv_pkg_name                          -- ’ •[‚h‚c
+-- Ver 1.10 Mod Start
+--           ,cv_pkg_name                          -- ’ •[‚h‚c
+           ,gv_report_id                         -- ’ •[‚h‚c
+-- Ver 1.10 Mod End
            ,lv_report_name                       -- ’ •[ƒ^ƒCƒgƒ‹
            ,SYSDATE                              -- o—Í“ú
            ,gd_year_month                        -- Šî€”NŒ
@@ -23435,6 +23499,2740 @@ DO_ERROR('A-X-4-3');
 --
   END get_ticket5;
 --
+-- Ver 1.10 Add Start
+--
+  /**********************************************************************************
+   * Procedure Name   : sum_visit_sales6
+   * Description      : ”„ã–K–âŒv‰æWŒv(ŒÚ‹qî•ñæ“¾)F’ •[í•Ê6 (A-13)
+  ***********************************************************************************/
+  PROCEDURE sum_visit_sales6
+  IS
+    -- ===============================
+    -- ŒÅ’èƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'sum_visit_sales6';    -- ƒvƒƒOƒ‰ƒ€–¼
+    -- ===============================
+    -- ƒ†[ƒU[éŒ¾•”
+    -- ===============================
+    -- *** ƒ[ƒJƒ‹’è” ***
+    ct_prof_op_vd_dai  CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCSO1_VD_GYOUTAI_CD_DAI';
+    ct_lookup_type_dai CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_DAI';
+    ct_lookup_type_chu CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_CHU';
+    ct_lookup_type_syo CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_SHO';
+    --
+    -- *** ƒ[ƒJƒ‹•Ï” ***
+    lv_date      VARCHAR2(8);
+    lt_profile_option_value fnd_profile_option_values.profile_option_value%TYPE;
+    --
+    -- *** ƒ[ƒJƒ‹ƒJ[ƒ\ƒ‹ ***
+    -- Šî–{€–Ú‚ğæ“¾‚·‚éƒJ[ƒ\ƒ‹
+    CURSOR tmp_rep_vs_plan_cur
+    IS
+      SELECT  xcav.base_code       base_code       -- ‹Î–±’n‹’“_ƒR[ƒh
+             ,xcav.group_number    group_number    -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+             ,xcav.employee_number employee_number -- ]‹ÆˆõƒR[ƒh
+             ,xcav.employee_name   employee_name   -- ]‹Æˆõ–¼
+             ,(CASE
+                 WHEN xcav.is_customer_vendor = cv_true THEN
+                   cv_gvm_v
+                 ELSE
+                   cv_gvm_g
+               END
+              )                    gvm_type       -- ˆê”Ê^©”Ì‹@
+             ,xcav.account_number  account_number -- ŒÚ‹qƒR[ƒh
+             ,xcav.party_name      customer_name  -- ŒÚ‹q–¼
+             ,xcav.route_number    route_number
+             ,xcav.business_low_type business_low_type -- ‹Æ‘Ôi¬•ª—Şj
+             ,xcav.customer_status   customer_status   -- ŒÚ‹qƒXƒe[ƒ^ƒX
+             ,xcav.cnvs_date         cnvs_date         -- ŒÚ‹qŠl“¾“ú
+             ,xcav.vist_target_div   vist_target_div   -- –K–â‘ÎÛ‹æ•ª
+             ,xcav.sale_base_code    sale_base_code    -- ”„ã‹’“_ƒR[ƒh
+             ,xcav.is_customer_vendor is_customer_vendor -- ‚u‚c‹æ•ª
+      FROM (
+        SELECT /*+ ORDERED USE_NL(hor,hop,hpa,hca,xca) */
+               xtr.base_code         base_code
+              ,xtr.group_number      group_number
+              ,xtr.employee_number   employee_number
+              ,xtr.employee_name     employee_name
+              ,xca.sale_base_code    sale_base_code
+              ,xca.business_low_type business_low_type
+              ,hpa.duns_number_c     customer_status
+              ,hca.account_number    account_number
+              ,hpa.party_name        party_name
+              ,xca.new_point_div     new_point_div
+              ,xca.cnvs_date         cnvs_date
+              ,xca.vist_target_div   vist_target_div
+              ,xxcso019a05c.get_route_number(
+                 hop.organization_profile_id
+              )                      route_number
+              ,NVL(
+                 (
+                   SELECT (
+                            CASE dai.lookup_code
+                              WHEN lt_profile_option_value THEN
+                                cv_true
+                              ELSE
+                                cv_false
+                            END
+                          ) is_customer_vendor
+                   FROM   fnd_lookup_values_vl dai
+                         ,fnd_lookup_values_vl chu
+                         ,fnd_lookup_values_vl syo
+                   WHERE  syo.lookup_type                                     = ct_lookup_type_syo
+                   AND    chu.lookup_type                                     = ct_lookup_type_chu
+                   AND    dai.lookup_type                                     = ct_lookup_type_dai
+                   AND    syo.lookup_code                                     = xca.business_low_type
+                   AND    chu.lookup_code                                     = syo.attribute1
+                   AND    dai.lookup_code                                     = chu.attribute1
+                   AND    syo.enabled_flag                                    = cv_flg_y
+                   AND    chu.enabled_flag                                    = cv_flg_y
+                   AND    dai.enabled_flag                                    = cv_flg_y
+                   AND    NVL(dai.start_date_active, TRUNC(cd_process_date)) <= TRUNC(cd_process_date)
+                   AND    NVL(dai.end_date_active,   TRUNC(cd_process_date)) >= TRUNC(cd_process_date)
+                   AND    NVL(chu.start_date_active, TRUNC(cd_process_date)) <= TRUNC(cd_process_date)
+                   AND    NVL(chu.end_date_active,   TRUNC(cd_process_date)) >= TRUNC(cd_process_date)
+                   AND    NVL(syo.start_date_active, TRUNC(cd_process_date)) <= TRUNC(cd_process_date)
+                   AND    NVL(syo.end_date_active,   TRUNC(cd_process_date)) >= TRUNC(cd_process_date)
+                 ), cv_false)        is_customer_vendor
+        FROM   xxcso_tmp_rep_vsp_rsrcs    xtr
+              ,hz_org_profiles_ext_b      hor
+              ,hz_organization_profiles   hop
+              ,hz_parties                 hpa
+              ,hz_cust_accounts           hca
+              ,xxcmm_cust_accounts        xca
+        WHERE  hor.attr_group_id                       = gn_rsrc_attr_group_id
+        AND    hor.c_ext_attr1                         = xtr.employee_number
+        AND    hor.d_ext_attr1                        <= gd_online_sysdate
+        AND    NVL(hor.d_ext_attr2,gd_online_sysdate) >= gd_online_sysdate
+        AND    hop.organization_profile_id             = hor.organization_profile_id
+        AND    hop.effective_end_date                  IS NULL
+        AND    hpa.party_id                            = hop.party_id
+        AND    hca.party_id                            = hpa.party_id
+        AND    xca.customer_id(+)                      = hca.cust_account_id
+        AND    NVL(hca.customer_class_code, '00') IN (cv_cust_class_cd3, cv_cust_class_cd5)                -- ŒÚ‹q‹æ•ªi10:ŒÚ‹q/15:„‰ñj
+        AND    NVL(hpa.duns_number_c, '00')       IN (cv_cust_status8, cv_cust_status9, cv_cust_status3)   -- ŒÚ‹qƒXƒe[ƒ^ƒXi40:ŒÚ‹q/50:‹x~/99:‘ÎÛŠOj
+        AND    NVL(xca.vist_target_div, '0')      IN (cv_vist_div1, cv_vist_div2, cv_vist_div5)            -- –K–â‘ÎÛ‹æ•ªi1:¤’k‰Â/2:¤’k•s‰Â/5:VDj
+      ) xcav
+    ;
+    --
+    -- Šî–{î•ñ‚ÌƒŒƒR[ƒhƒ^ƒCƒvE”z—ñ
+    TYPE l_tmp_rep_vs_plan_ttype IS TABLE OF tmp_rep_vs_plan_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    lt_tmp_rep_vs_plan_tab l_tmp_rep_vs_plan_ttype; -- Šî–{î•ñ‚Ì”z—ñ
+    --
+    -- ƒNƒCƒbƒNƒR[ƒh‚ÌƒŒƒR[ƒhƒ^ƒCƒvE”z—ñ
+    TYPE l_lookup_rtype IS RECORD(
+       lookup_code fnd_lookup_values_vl.lookup_code%TYPE
+      ,meaning     fnd_lookup_values_vl.meaning%TYPE
+    );
+    --
+    TYPE l_lookup_ttype IS TABLE OF l_lookup_rtype INDEX BY BINARY_INTEGER;
+    lt_lookup_tab l_lookup_ttype;
+    --
+    -- ÀÑ‚ÌƒŒƒR[ƒhƒ^ƒCƒvE”z—ñ
+    TYPE l_result_amt_rtype IS RECORD(
+       last_year_rslt_sales_amt NUMBER -- ‘O”NÀÑ
+      ,last_mon_rslt_sales_amt  NUMBER -- æŒÀÑ
+    );
+    --
+    TYPE l_result_amt_ttype IS TABLE OF l_result_amt_rtype INDEX BY BINARY_INTEGER;
+    lt_result_amt_tab l_result_amt_ttype;
+    --
+    -- ”„ãŒn€–Ú‚Ì”z—ñ
+    TYPE l_sales_rtype IS RECORD(
+       plan_vs_amt          xxcso_tmp_rep_vs_plan.plan_vs_amt_1%TYPE          -- ”„ãŒv‰æ
+      ,rslt_vs_amt          xxcso_tmp_rep_vs_plan.rslt_vs_amt_1%TYPE          -- ”„ãÀÑ
+      ,rslt_other_sales_amt xxcso_tmp_rep_vs_plan.rslt_other_sales_amt_1%TYPE -- ”„ãÀÑi‘¼‹’“_”[•i•ªj
+    );
+    --
+    TYPE l_sales_ttype IS TABLE OF l_sales_rtype INDEX BY BINARY_INTEGER;
+    lt_sales_tab l_sales_ttype;
+    --
+    -- –K–âŒn€–Ú‚Ì”z—ñ
+    TYPE l_visit_rtype IS RECORD(
+       visit_sign    xxcso_tmp_rep_vs_plan.visit_sign_1%TYPE      -- –K–â‹L†
+      ,rslt_vis_i_num xxcso_tmp_rep_vs_plan.rslt_vis_i_num_1%TYPE -- –K–âÀÑ(ˆê”Ê)
+      ,rslt_vis_v_num xxcso_tmp_rep_vs_plan.rslt_vis_v_num_1%TYPE -- –K–âÀÑ(©”Ì)
+      ,rslt_vis_e_num xxcso_tmp_rep_vs_plan.rslt_vis_e_num_1%TYPE -- –K–âÀÑ(—LŒø–K–â)
+    );
+    --
+    TYPE l_visit_ttype IS TABLE OF l_visit_rtype INDEX BY BINARY_INTEGER;
+    lt_visit_tab l_visit_ttype;
+    --
+--
+  BEGIN
+--
+    lt_profile_option_value := fnd_profile.value(ct_prof_op_vd_dai);
+    --
+    lt_tmp_rep_vs_plan_tab.DELETE;
+    lt_lookup_tab.DELETE;
+    lt_result_amt_tab.DELETE;
+    --
+    -- Šî–{€–Úæ“¾
+    OPEN tmp_rep_vs_plan_cur;
+    FETCH tmp_rep_vs_plan_cur BULK COLLECT INTO lt_tmp_rep_vs_plan_tab;
+    CLOSE tmp_rep_vs_plan_cur;
+    --
+    -- Šî–{€–ÚˆÈŠOæ“¾
+    <<get_loop>>
+    FOR i IN 1..lt_tmp_rep_vs_plan_tab.COUNT LOOP
+      BEGIN
+        SELECT dai.lookup_code business_high_type -- ‹Æ‘Ôi‘å•ª—Şj
+              ,dai.meaning     business_high_name -- ‹Æ‘Ôi‘å•ª—Şj–¼
+        INTO   lt_lookup_tab(i).lookup_code
+              ,lt_lookup_tab(i).meaning
+        FROM   fnd_lookup_values_vl sho
+              ,fnd_lookup_values_vl chu
+              ,fnd_lookup_values_vl dai
+        WHERE  sho.lookup_type                                = cv_lookup_type_syo
+        AND    chu.lookup_type                                = cv_lookup_type_chu
+        AND    dai.lookup_type                                = cv_lookup_type_dai
+        AND    chu.lookup_code                                = sho.attribute1
+        AND    dai.lookup_code                                = chu.attribute1
+        AND    sho.enabled_flag                               = cv_flg_y
+        AND    chu.enabled_flag                               = cv_flg_y
+        AND    dai.enabled_flag                               = cv_flg_y
+        AND    NVL(sho.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+        AND    NVL(sho.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+        AND    NVL(chu.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+        AND    NVL(chu.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+        AND    NVL(dai.start_date_active, gd_online_sysdate) <= gd_online_sysdate
+        AND    NVL(dai.end_date_active, gd_online_sysdate)   >= gd_online_sysdate
+        AND    sho.lookup_code                                = lt_tmp_rep_vs_plan_tab(i).business_low_type
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lt_lookup_tab(i).lookup_code := NULL;
+          lt_lookup_tab(i).meaning     := cv_mc;
+          --
+      END;
+      --
+      -- ‘O”NÀÑæ“¾
+      BEGIN
+        SELECT SUM(xsvsr.rslt_amt)
+        INTO   lt_result_amt_tab(i).last_year_rslt_sales_amt
+        FROM   xxcso_sum_visit_sale_rep   xsvsr
+        WHERE  xsvsr.sum_org_type   = cv_sum_org_type1
+        AND    xsvsr.sum_org_code   = lt_tmp_rep_vs_plan_tab(i).account_number
+        AND    xsvsr.month_date_div = cv_month_date_div1
+        AND    xsvsr.sales_date     = gv_year_prev
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lt_result_amt_tab(i).last_year_rslt_sales_amt := 0;
+          --
+      END;
+      --
+      -- æŒÀÑæ“¾
+      BEGIN
+        SELECT SUM(xsvsr.rslt_amt)
+        INTO   lt_result_amt_tab(i).last_mon_rslt_sales_amt
+        FROM   xxcso_sum_visit_sale_rep   xsvsr
+        WHERE  xsvsr.sum_org_type   = cv_sum_org_type1
+        AND    xsvsr.sum_org_code   = lt_tmp_rep_vs_plan_tab(i).account_number
+        AND    xsvsr.month_date_div = cv_month_date_div1
+        AND    xsvsr.sales_date     = gv_year_month_prev
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lt_result_amt_tab(i).last_mon_rslt_sales_amt := 0;
+          --
+      END;
+      --
+      -- ”„ãŒnŠe€–ÚE–K–âŒnŠe€–Úæ“¾
+      lt_sales_tab.DELETE;
+      lt_visit_tab.DELETE;
+      --
+      <<get_sales_visit_loop>>
+      FOR n IN 1..31 LOOP
+        lv_date := gv_year_month || LPAD(n, 2, '0');
+        --
+        BEGIN
+          SELECT NVL(xsvsr.tgt_amt, 0)         tgt_amt         -- ”„ãŒv‰æ
+                ,NVL(xsvsr.rslt_amt, 0)        rslt_amt        -- ”„ãÀÑ
+                ,NVL(xsvsr.rslt_center_amt, 0) rslt_center_amt -- ”„ãÀÑi‘¼‹’“_”[•i•ªj
+                ,SUBSTRB(
+                   (
+                     CASE
+                       WHEN (xsvsr.vis_num > 0) THEN
+                         '*' || (CASE WHEN (xsvsr.vis_a_num > 0) THEN 'A' END)
+                             || (CASE WHEN (xsvsr.vis_b_num > 0) THEN 'B' END)
+                             || (CASE WHEN (xsvsr.vis_c_num > 0) THEN 'C' END)
+                             || (CASE WHEN (xsvsr.vis_d_num > 0) THEN 'D' END)
+                             || (CASE WHEN (xsvsr.vis_e_num > 0) THEN 'E' END)
+                             || (CASE WHEN (xsvsr.vis_f_num > 0) THEN 'F' END)
+                             || (CASE WHEN (xsvsr.vis_g_num > 0) THEN 'G' END)
+                             || (CASE WHEN (xsvsr.vis_h_num > 0) THEN 'H' END)
+                             || (CASE WHEN (xsvsr.vis_i_num > 0) THEN 'I' END)
+                             || (CASE WHEN (xsvsr.vis_j_num > 0) THEN 'J' END)
+                             || (CASE WHEN (xsvsr.vis_k_num > 0) THEN 'K' END)
+                             || (CASE WHEN (xsvsr.vis_l_num > 0) THEN 'L' END)
+                             || (CASE WHEN (xsvsr.vis_m_num > 0) THEN 'M' END)
+                             || (CASE WHEN (xsvsr.vis_n_num > 0) THEN 'N' END)
+                             || (CASE WHEN (xsvsr.vis_o_num > 0) THEN 'O' END)
+                             || (CASE WHEN (xsvsr.vis_p_num > 0) THEN 'P' END)
+                             || (CASE WHEN (xsvsr.vis_q_num > 0) THEN 'Q' END)
+                             || (CASE WHEN (xsvsr.vis_r_num > 0) THEN 'R' END)
+                             || (CASE WHEN (xsvsr.vis_s_num > 0) THEN 'S' END)
+                             || (CASE WHEN (xsvsr.vis_t_num > 0) THEN 'T' END)
+                             || (CASE WHEN (xsvsr.vis_u_num > 0) THEN 'U' END)
+                             || (CASE WHEN (xsvsr.vis_v_num > 0) THEN 'V' END)
+                             || (CASE WHEN (xsvsr.vis_w_num > 0) THEN 'W' END)
+                             || (CASE WHEN (xsvsr.vis_x_num > 0) THEN 'X' END)
+                             || (CASE WHEN (xsvsr.vis_y_num > 0) THEN 'Y' END)
+                             || (CASE WHEN (xsvsr.vis_z_num > 0) THEN 'Z' END)
+                       WHEN (xsvsr.rslt_amt = 0) THEN
+                         '*'
+                       ELSE
+                         NULL
+                     END
+                   ), 1, 20
+                 ) visit_sign -- –K–â‹L†
+                ,(CASE
+                    WHEN (xsvsr.vis_num > 0)
+                      AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor <> cv_true)
+                    THEN
+                      xsvsr.vis_num
+                    WHEN (xsvsr.vis_num > 0)
+                      AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
+                      AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor <> cv_true)
+                    THEN
+                      xsvsr.vis_num
+                    ELSE
+                      0
+                  END
+                 ) rslt_vis_i_num -- –K–âÀÑ(ˆê”Ê)
+                ,(CASE
+                    WHEN (xsvsr.vis_num > 0)
+                      AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor = cv_true)
+                    THEN
+                      xsvsr.vis_num
+                    WHEN (xsvsr.vis_num > 0)
+                      AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
+                      AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
+                      AND (lt_tmp_rep_vs_plan_tab(i).is_customer_vendor = cv_true)
+                    THEN
+                      xsvsr.vis_num
+                    ELSE
+                      0
+                  END
+                 ) rslt_vis_v_num -- –K–âÀÑ(©”Ì)
+                ,(CASE
+                    WHEN (xsvsr.vis_sales_num > 0)
+                    THEN
+                      xsvsr.vis_sales_num
+                    ELSE
+                      0
+                  END
+                 ) rslt_vis_e_num -- –K–âÀÑ(—LŒø–K–â)
+          INTO   lt_sales_tab(n).plan_vs_amt          -- ”„ãŒv‰æ
+                ,lt_sales_tab(n).rslt_vs_amt          -- ”„ãÀÑ
+                ,lt_sales_tab(n).rslt_other_sales_amt -- ”„ãÀÑi‘¼‹’“_”[•i•ªj
+                ,lt_visit_tab(n).visit_sign           -- –K–â‹L†
+                ,lt_visit_tab(n).rslt_vis_i_num       -- –K–âÀÑ(ˆê”Ê)
+                ,lt_visit_tab(n).rslt_vis_v_num       -- –K–âÀÑ(©”Ì)
+                ,lt_visit_tab(n).rslt_vis_e_num       -- –K–âÀÑ(—LŒø–K–â)
+          FROM   xxcso_sum_visit_sale_rep xsvsr
+          WHERE  xsvsr.sum_org_type    = cv_sum_org_type1
+          AND    xsvsr.sum_org_code    = lt_tmp_rep_vs_plan_tab(i).account_number
+          AND    xsvsr.group_base_code = lt_tmp_rep_vs_plan_tab(i).sale_base_code
+          AND    xsvsr.month_date_div  = cv_month_date_div2
+          AND    xsvsr.sales_date      = lv_date
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lt_sales_tab(n).plan_vs_amt          := 0;
+            lt_sales_tab(n).rslt_vs_amt          := 0;
+            lt_sales_tab(n).rslt_other_sales_amt := 0;
+            lt_visit_tab(n).visit_sign           := NULL;
+            lt_visit_tab(n).rslt_vis_i_num       := 0;
+            lt_visit_tab(n).rslt_vis_v_num       := 0;
+            lt_visit_tab(n).rslt_vis_e_num       := 0;
+            --
+        END;
+        --
+      END LOOP get_sales_visit_loop;
+      --
+      -- ”„ã–K–âŒv‰æŠÇ—•\ŒÚ‹qWŒvƒ[ƒNƒe[ƒuƒ‹ì¬
+      INSERT INTO xxcso_tmp_rep_vs_plan(
+         base_code                -- ‹’“_ƒR[ƒh
+        ,group_number             -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+        ,employee_number          -- ‰c‹ÆˆõƒR[ƒh
+        ,employee_name            -- ‰c‹Æˆõ–¼
+        ,business_high_type       -- ‹Æ‘Ôi‘å•ª—Şj
+        ,business_high_name       -- ‹Æ‘Ôi‘å•ª—Şj–¼
+        ,gvm_type                 -- ˆê”Ê^©”Ì‹@
+        ,account_number           -- ŒÚ‹qƒR[ƒh
+        ,customer_name            -- ŒÚ‹q–¼
+        ,route_no                 -- ƒ‹[ƒgNo
+        ,last_year_rslt_sales_amt -- ‘O”NÀÑ
+        ,last_mon_rslt_sales_amt  -- æŒÀÑ
+        ,rslt_vis_i_num_total     -- –K–âÀÑ(ˆê”Ê)‡Œv
+        ,rslt_vis_v_num_total     -- –K–âÀÑ(©”Ì)‡Œv
+        ,plan_vs_amt_1            -- ‚P“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_2            -- ‚Q“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_3            -- ‚R“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_4            -- ‚S“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_5            -- ‚T“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_6            -- ‚U“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_7            -- ‚V“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_8            -- ‚W“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_9            -- ‚X“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_10           -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_11           -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_12           -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_13           -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_14           -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_15           -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_16           -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_17           -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_18           -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_19           -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_20           -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_21           -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_22           -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_23           -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_24           -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_25           -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_26           -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_27           -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_28           -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_29           -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_30           -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+        ,plan_vs_amt_31           -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+        ,rslt_vs_amt_1            -- ‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_2            -- ‚Q“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_3            -- ‚R“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_4            -- ‚S“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_5            -- ‚T“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_6            -- ‚U“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_7            -- ‚V“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_8            -- ‚W“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_9            -- ‚X“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_10           -- ‚P‚O“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_11           -- ‚P‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_12           -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_13           -- ‚P‚R“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_14           -- ‚P‚S“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_15           -- ‚P‚T“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_16           -- ‚P‚U“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_17           -- ‚P‚V“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_18           -- ‚P‚W“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_19           -- ‚P‚X“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_20           -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_21           -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_22           -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_23           -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_24           -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_25           -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_26           -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_27           -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_28           -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_29           -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_30           -- ‚R‚O“ú|”„ã^–K–âÀÑ
+        ,rslt_vs_amt_31           -- ‚R‚P“ú|”„ã^–K–âÀÑ
+        ,rslt_other_sales_amt_1   -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_2   -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_3   -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_4   -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_5   -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_6   -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_7   -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_8   -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_9   -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_10  -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_11  -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_12  -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_13  -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_14  -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_15  -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_16  -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_17  -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_18  -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_19  -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_20  -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_21  -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_22  -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_23  -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_24  -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_25  -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_26  -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_27  -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_28  -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_29  -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_30  -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,rslt_other_sales_amt_31  -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,visit_sign_1             -- ‚P“ú|–K–â‹L†
+        ,visit_sign_2             -- ‚Q“ú|–K–â‹L†
+        ,visit_sign_3             -- ‚R“ú|–K–â‹L†
+        ,visit_sign_4             -- ‚S“ú|–K–â‹L†
+        ,visit_sign_5             -- ‚T“ú|–K–â‹L†
+        ,visit_sign_6             -- ‚U“ú|–K–â‹L†
+        ,visit_sign_7             -- ‚V“ú|–K–â‹L†
+        ,visit_sign_8             -- ‚W“ú|–K–â‹L†
+        ,visit_sign_9             -- ‚X“ú|–K–â‹L†
+        ,visit_sign_10            -- ‚P‚O“ú|–K–â‹L†
+        ,visit_sign_11            -- ‚P‚P“ú|–K–â‹L†
+        ,visit_sign_12            -- ‚P‚Q“ú|–K–â‹L†
+        ,visit_sign_13            -- ‚P‚R“ú|–K–â‹L†
+        ,visit_sign_14            -- ‚P‚S“ú|–K–â‹L†
+        ,visit_sign_15            -- ‚P‚T“ú|–K–â‹L†
+        ,visit_sign_16            -- ‚P‚U“ú|–K–â‹L†
+        ,visit_sign_17            -- ‚P‚V“ú|–K–â‹L†
+        ,visit_sign_18            -- ‚P‚W“ú|–K–â‹L†
+        ,visit_sign_19            -- ‚P‚X“ú|–K–â‹L†
+        ,visit_sign_20            -- ‚Q‚O“ú|–K–â‹L†
+        ,visit_sign_21            -- ‚Q‚P“ú|–K–â‹L†
+        ,visit_sign_22            -- ‚Q‚Q“ú|–K–â‹L†
+        ,visit_sign_23            -- ‚Q‚R“ú|–K–â‹L†
+        ,visit_sign_24            -- ‚Q‚S“ú|–K–â‹L†
+        ,visit_sign_25            -- ‚Q‚T“ú|–K–â‹L†
+        ,visit_sign_26            -- ‚Q‚U“ú|–K–â‹L†
+        ,visit_sign_27            -- ‚Q‚V“ú|–K–â‹L†
+        ,visit_sign_28            -- ‚Q‚W“ú|–K–â‹L†
+        ,visit_sign_29            -- ‚Q‚X“ú|–K–â‹L†
+        ,visit_sign_30            -- ‚R‚O“ú|–K–â‹L†
+        ,visit_sign_31            -- ‚R‚P“ú|–K–â‹L†
+        ,rslt_vis_i_num_1         -- ‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_2         -- ‚Q“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_3         -- ‚R“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_4         -- ‚S“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_5         -- ‚T“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_6         -- ‚U“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_7         -- ‚V“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_8         -- ‚W“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_9         -- ‚X“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_10        -- ‚P‚O“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_11        -- ‚P‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_12        -- ‚P‚Q“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_13        -- ‚P‚R“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_14        -- ‚P‚S“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_15        -- ‚P‚T“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_16        -- ‚P‚U“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_17        -- ‚P‚V“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_18        -- ‚P‚W“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_19        -- ‚P‚X“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_20        -- ‚Q‚O“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_21        -- ‚Q‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_22        -- ‚Q‚Q“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_23        -- ‚Q‚R“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_24        -- ‚Q‚S“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_25        -- ‚Q‚T“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_26        -- ‚Q‚U“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_27        -- ‚Q‚V“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_28        -- ‚Q‚W“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_29        -- ‚Q‚X“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_30        -- ‚R‚O“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_i_num_31        -- ‚R‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,rslt_vis_v_num_1         -- ‚P“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_2         -- ‚Q“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_3         -- ‚R“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_4         -- ‚S“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_5         -- ‚T“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_6         -- ‚U“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_7         -- ‚V“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_8         -- ‚W“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_9         -- ‚X“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_10        -- ‚P‚O“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_11        -- ‚P‚P“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_12        -- ‚P‚Q“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_13        -- ‚P‚R“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_14        -- ‚P‚S“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_15        -- ‚P‚T“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_16        -- ‚P‚U“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_17        -- ‚P‚V“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_18        -- ‚P‚W“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_19        -- ‚P‚X“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_20        -- ‚Q‚O“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_21        -- ‚Q‚P“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_22        -- ‚Q‚Q“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_23        -- ‚Q‚R“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_24        -- ‚Q‚S“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_25        -- ‚Q‚T“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_26        -- ‚Q‚U“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_27        -- ‚Q‚V“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_28        -- ‚Q‚W“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_29        -- ‚Q‚X“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_30        -- ‚R‚O“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_v_num_31        -- ‚R‚P“ú|–K–âÀÑ(©”Ì)
+        ,rslt_vis_e_num_1         -- ‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_2         -- ‚Q“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_3         -- ‚R“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_4         -- ‚S“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_5         -- ‚T“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_6         -- ‚U“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_7         -- ‚V“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_8         -- ‚W“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_9         -- ‚X“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_10        -- ‚P‚O“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_11        -- ‚P‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_12        -- ‚P‚Q“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_13        -- ‚P‚R“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_14        -- ‚P‚S“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_15        -- ‚P‚T“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_16        -- ‚P‚U“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_17        -- ‚P‚V“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_18        -- ‚P‚W“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_19        -- ‚P‚X“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_20        -- ‚Q‚O“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_21        -- ‚Q‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_22        -- ‚Q‚Q“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_23        -- ‚Q‚R“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_24        -- ‚Q‚S“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_25        -- ‚Q‚T“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_26        -- ‚Q‚U“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_27        -- ‚Q‚V“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_28        -- ‚Q‚W“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_29        -- ‚Q‚X“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_30        -- ‚R‚O“ú|–K–âÀÑ(—LŒø–K–â)
+        ,rslt_vis_e_num_31        -- ‚R‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,created_by               -- ì¬Ò
+        ,creation_date            -- ì¬“ú
+        ,last_updated_by          -- ÅIXVÒ
+        ,last_update_date         -- ÅIXV“ú
+        ,last_update_login        -- ÅIXVƒƒOƒCƒ“
+        ,request_id               -- —v‹ID
+        ,program_application_id   -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+        ,program_id               -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+        ,program_update_date      -- ƒvƒƒOƒ‰ƒ€XV“ú
+      )
+      VALUES (
+         lt_tmp_rep_vs_plan_tab(i).base_code           -- ‹’“_ƒR[ƒh
+        ,lt_tmp_rep_vs_plan_tab(i).group_number        -- ‰c‹ÆƒOƒ‹[ƒv”Ô†
+        ,lt_tmp_rep_vs_plan_tab(i).employee_number     -- ‰c‹ÆˆõƒR[ƒh
+        ,lt_tmp_rep_vs_plan_tab(i).employee_name       -- ‰c‹Æˆõ–¼
+        ,lt_lookup_tab(i).lookup_code                  -- ‹Æ‘Ôi‘å•ª—Şj
+        ,lt_lookup_tab(i).meaning                      -- ‹Æ‘Ôi‘å•ª—Şj–¼
+        ,lt_tmp_rep_vs_plan_tab(i).gvm_type            -- ˆê”Ê^©”Ì‹@
+        ,lt_tmp_rep_vs_plan_tab(i).account_number      -- ŒÚ‹qƒR[ƒh
+        ,lt_tmp_rep_vs_plan_tab(i).customer_name       -- ŒÚ‹q–¼
+        ,lt_tmp_rep_vs_plan_tab(i).route_number        -- ƒ‹[ƒgNo
+        ,lt_result_amt_tab(i).last_year_rslt_sales_amt -- ‘O”NÀÑ
+        ,lt_result_amt_tab(i).last_mon_rslt_sales_amt  -- æŒÀÑ
+        ,(                                                -- –K–âÀÑ(ˆê”Ê)‡Œv
+            lt_visit_tab(1).rslt_vis_i_num                -- ‚P“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(2).rslt_vis_i_num                -- ‚Q“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(3).rslt_vis_i_num                -- ‚R“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(4).rslt_vis_i_num                -- ‚S“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(5).rslt_vis_i_num                -- ‚T“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(6).rslt_vis_i_num                -- ‚U“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(7).rslt_vis_i_num                -- ‚V“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(8).rslt_vis_i_num                -- ‚W“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(9).rslt_vis_i_num                -- ‚X“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(10).rslt_vis_i_num               -- ‚P‚O“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(11).rslt_vis_i_num               -- ‚P‚P“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(12).rslt_vis_i_num               -- ‚P‚Q“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(13).rslt_vis_i_num               -- ‚P‚R“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(14).rslt_vis_i_num               -- ‚P‚S“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(15).rslt_vis_i_num               -- ‚P‚T“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(16).rslt_vis_i_num               -- ‚P‚U“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(17).rslt_vis_i_num               -- ‚P‚V“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(18).rslt_vis_i_num               -- ‚P‚W“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(19).rslt_vis_i_num               -- ‚P‚X“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(20).rslt_vis_i_num               -- ‚Q‚O“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(21).rslt_vis_i_num               -- ‚Q‚P“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(22).rslt_vis_i_num               -- ‚Q‚Q“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(23).rslt_vis_i_num               -- ‚Q‚R“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(24).rslt_vis_i_num               -- ‚Q‚S“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(25).rslt_vis_i_num               -- ‚Q‚T“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(26).rslt_vis_i_num               -- ‚Q‚U“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(27).rslt_vis_i_num               -- ‚Q‚V“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(28).rslt_vis_i_num               -- ‚Q‚W“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(29).rslt_vis_i_num               -- ‚Q‚X“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(30).rslt_vis_i_num               -- ‚R‚O“ú|–K–âÀÑ(ˆê”Ê)
+          + lt_visit_tab(31).rslt_vis_i_num               -- ‚R‚P“ú|–K–âÀÑ(ˆê”Ê)
+        )
+        ,(                                                -- –K–âÀÑ(©”Ì)‡Œv
+            lt_visit_tab(1).rslt_vis_v_num                -- ‚P“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(2).rslt_vis_v_num                -- ‚Q“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(3).rslt_vis_v_num                -- ‚R“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(4).rslt_vis_v_num                -- ‚S“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(5).rslt_vis_v_num                -- ‚T“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(6).rslt_vis_v_num                -- ‚U“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(7).rslt_vis_v_num                -- ‚V“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(8).rslt_vis_v_num                -- ‚W“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(9).rslt_vis_v_num                -- ‚X“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(10).rslt_vis_v_num               -- ‚P‚O“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(11).rslt_vis_v_num               -- ‚P‚P“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(12).rslt_vis_v_num               -- ‚P‚Q“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(13).rslt_vis_v_num               -- ‚P‚R“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(14).rslt_vis_v_num               -- ‚P‚S“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(15).rslt_vis_v_num               -- ‚P‚T“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(16).rslt_vis_v_num               -- ‚P‚U“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(17).rslt_vis_v_num               -- ‚P‚V“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(18).rslt_vis_v_num               -- ‚P‚W“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(19).rslt_vis_v_num               -- ‚P‚X“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(20).rslt_vis_v_num               -- ‚Q‚O“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(21).rslt_vis_v_num               -- ‚Q‚P“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(22).rslt_vis_v_num               -- ‚Q‚Q“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(23).rslt_vis_v_num               -- ‚Q‚R“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(24).rslt_vis_v_num               -- ‚Q‚S“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(25).rslt_vis_v_num               -- ‚Q‚T“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(26).rslt_vis_v_num               -- ‚Q‚U“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(27).rslt_vis_v_num               -- ‚Q‚V“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(28).rslt_vis_v_num               -- ‚Q‚W“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(29).rslt_vis_v_num               -- ‚Q‚X“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(30).rslt_vis_v_num               -- ‚R‚O“ú|–K–âÀÑ(©”Ì)
+          + lt_visit_tab(31).rslt_vis_v_num               -- ‚R‚P“ú|–K–âÀÑ(©”Ì)
+        )
+        ,lt_sales_tab(1).plan_vs_amt                   -- ‚P“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(2).plan_vs_amt                   -- ‚Q“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(3).plan_vs_amt                   -- ‚R“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(4).plan_vs_amt                   -- ‚S“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(5).plan_vs_amt                   -- ‚T“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(6).plan_vs_amt                   -- ‚U“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(7).plan_vs_amt                   -- ‚V“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(8).plan_vs_amt                   -- ‚W“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(9).plan_vs_amt                   -- ‚X“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(10).plan_vs_amt                  -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(11).plan_vs_amt                  -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(12).plan_vs_amt                  -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(13).plan_vs_amt                  -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(14).plan_vs_amt                  -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(15).plan_vs_amt                  -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(16).plan_vs_amt                  -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(17).plan_vs_amt                  -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(18).plan_vs_amt                  -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(19).plan_vs_amt                  -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(20).plan_vs_amt                  -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(21).plan_vs_amt                  -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(22).plan_vs_amt                  -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(23).plan_vs_amt                  -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(24).plan_vs_amt                  -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(25).plan_vs_amt                  -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(26).plan_vs_amt                  -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(27).plan_vs_amt                  -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(28).plan_vs_amt                  -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(29).plan_vs_amt                  -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(30).plan_vs_amt                  -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(31).plan_vs_amt                  -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+        ,lt_sales_tab(1).rslt_vs_amt                   -- ‚P“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(2).rslt_vs_amt                   -- ‚Q“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(3).rslt_vs_amt                   -- ‚R“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(4).rslt_vs_amt                   -- ‚S“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(5).rslt_vs_amt                   -- ‚T“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(6).rslt_vs_amt                   -- ‚U“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(7).rslt_vs_amt                   -- ‚V“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(8).rslt_vs_amt                   -- ‚W“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(9).rslt_vs_amt                   -- ‚X“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(10).rslt_vs_amt                  -- ‚P‚O“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(11).rslt_vs_amt                  -- ‚P‚P“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(12).rslt_vs_amt                  -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(13).rslt_vs_amt                  -- ‚P‚R“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(14).rslt_vs_amt                  -- ‚P‚S“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(15).rslt_vs_amt                  -- ‚P‚T“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(16).rslt_vs_amt                  -- ‚P‚U“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(17).rslt_vs_amt                  -- ‚P‚V“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(18).rslt_vs_amt                  -- ‚P‚W“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(19).rslt_vs_amt                  -- ‚P‚X“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(20).rslt_vs_amt                  -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(21).rslt_vs_amt                  -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(22).rslt_vs_amt                  -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(23).rslt_vs_amt                  -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(24).rslt_vs_amt                  -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(25).rslt_vs_amt                  -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(26).rslt_vs_amt                  -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(27).rslt_vs_amt                  -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(28).rslt_vs_amt                  -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(29).rslt_vs_amt                  -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(30).rslt_vs_amt                  -- ‚R‚O“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(31).rslt_vs_amt                  -- ‚R‚P“ú|”„ã^–K–âÀÑ
+        ,lt_sales_tab(1).rslt_other_sales_amt          -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(2).rslt_other_sales_amt          -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(3).rslt_other_sales_amt          -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(4).rslt_other_sales_amt          -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(5).rslt_other_sales_amt          -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(6).rslt_other_sales_amt          -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(7).rslt_other_sales_amt          -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(8).rslt_other_sales_amt          -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(9).rslt_other_sales_amt          -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(10).rslt_other_sales_amt         -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(11).rslt_other_sales_amt         -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(12).rslt_other_sales_amt         -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(13).rslt_other_sales_amt         -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(14).rslt_other_sales_amt         -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(15).rslt_other_sales_amt         -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(16).rslt_other_sales_amt         -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(17).rslt_other_sales_amt         -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(18).rslt_other_sales_amt         -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(19).rslt_other_sales_amt         -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(20).rslt_other_sales_amt         -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(21).rslt_other_sales_amt         -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(22).rslt_other_sales_amt         -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(23).rslt_other_sales_amt         -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(24).rslt_other_sales_amt         -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(25).rslt_other_sales_amt         -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(26).rslt_other_sales_amt         -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(27).rslt_other_sales_amt         -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(28).rslt_other_sales_amt         -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(29).rslt_other_sales_amt         -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(30).rslt_other_sales_amt         -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_sales_tab(31).rslt_other_sales_amt         -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+        ,lt_visit_tab(1).visit_sign                    -- ‚P“ú|–K–â‹L†
+        ,lt_visit_tab(2).visit_sign                    -- ‚Q“ú|–K–â‹L†
+        ,lt_visit_tab(3).visit_sign                    -- ‚R“ú|–K–â‹L†
+        ,lt_visit_tab(4).visit_sign                    -- ‚S“ú|–K–â‹L†
+        ,lt_visit_tab(5).visit_sign                    -- ‚T“ú|–K–â‹L†
+        ,lt_visit_tab(6).visit_sign                    -- ‚U“ú|–K–â‹L†
+        ,lt_visit_tab(7).visit_sign                    -- ‚V“ú|–K–â‹L†
+        ,lt_visit_tab(8).visit_sign                    -- ‚W“ú|–K–â‹L†
+        ,lt_visit_tab(9).visit_sign                    -- ‚X“ú|–K–â‹L†
+        ,lt_visit_tab(10).visit_sign                   -- ‚P‚O“ú|–K–â‹L†
+        ,lt_visit_tab(11).visit_sign                   -- ‚P‚P“ú|–K–â‹L†
+        ,lt_visit_tab(12).visit_sign                   -- ‚P‚Q“ú|–K–â‹L†
+        ,lt_visit_tab(13).visit_sign                   -- ‚P‚R“ú|–K–â‹L†
+        ,lt_visit_tab(14).visit_sign                   -- ‚P‚S“ú|–K–â‹L†
+        ,lt_visit_tab(15).visit_sign                   -- ‚P‚T“ú|–K–â‹L†
+        ,lt_visit_tab(16).visit_sign                   -- ‚P‚U“ú|–K–â‹L†
+        ,lt_visit_tab(17).visit_sign                   -- ‚P‚V“ú|–K–â‹L†
+        ,lt_visit_tab(18).visit_sign                   -- ‚P‚W“ú|–K–â‹L†
+        ,lt_visit_tab(19).visit_sign                   -- ‚P‚X“ú|–K–â‹L†
+        ,lt_visit_tab(20).visit_sign                   -- ‚Q‚O“ú|–K–â‹L†
+        ,lt_visit_tab(21).visit_sign                   -- ‚Q‚P“ú|–K–â‹L†
+        ,lt_visit_tab(22).visit_sign                   -- ‚Q‚Q“ú|–K–â‹L†
+        ,lt_visit_tab(23).visit_sign                   -- ‚Q‚R“ú|–K–â‹L†
+        ,lt_visit_tab(24).visit_sign                   -- ‚Q‚S“ú|–K–â‹L†
+        ,lt_visit_tab(25).visit_sign                   -- ‚Q‚T“ú|–K–â‹L†
+        ,lt_visit_tab(26).visit_sign                   -- ‚Q‚U“ú|–K–â‹L†
+        ,lt_visit_tab(27).visit_sign                   -- ‚Q‚V“ú|–K–â‹L†
+        ,lt_visit_tab(28).visit_sign                   -- ‚Q‚W“ú|–K–â‹L†
+        ,lt_visit_tab(29).visit_sign                   -- ‚Q‚X“ú|–K–â‹L†
+        ,lt_visit_tab(30).visit_sign                   -- ‚R‚O“ú|–K–â‹L†
+        ,lt_visit_tab(31).visit_sign                   -- ‚R‚P“ú|–K–â‹L†
+        ,lt_visit_tab(1).rslt_vis_i_num                -- ‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(2).rslt_vis_i_num                -- ‚Q“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(3).rslt_vis_i_num                -- ‚R“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(4).rslt_vis_i_num                -- ‚S“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(5).rslt_vis_i_num                -- ‚T“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(6).rslt_vis_i_num                -- ‚U“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(7).rslt_vis_i_num                -- ‚V“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(8).rslt_vis_i_num                -- ‚W“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(9).rslt_vis_i_num                -- ‚X“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(10).rslt_vis_i_num               -- ‚P‚O“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(11).rslt_vis_i_num               -- ‚P‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(12).rslt_vis_i_num               -- ‚P‚Q“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(13).rslt_vis_i_num               -- ‚P‚R“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(14).rslt_vis_i_num               -- ‚P‚S“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(15).rslt_vis_i_num               -- ‚P‚T“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(16).rslt_vis_i_num               -- ‚P‚U“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(17).rslt_vis_i_num               -- ‚P‚V“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(18).rslt_vis_i_num               -- ‚P‚W“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(19).rslt_vis_i_num               -- ‚P‚X“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(20).rslt_vis_i_num               -- ‚Q‚O“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(21).rslt_vis_i_num               -- ‚Q‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(22).rslt_vis_i_num               -- ‚Q‚Q“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(23).rslt_vis_i_num               -- ‚Q‚R“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(24).rslt_vis_i_num               -- ‚Q‚S“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(25).rslt_vis_i_num               -- ‚Q‚T“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(26).rslt_vis_i_num               -- ‚Q‚U“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(27).rslt_vis_i_num               -- ‚Q‚V“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(28).rslt_vis_i_num               -- ‚Q‚W“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(29).rslt_vis_i_num               -- ‚Q‚X“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(30).rslt_vis_i_num               -- ‚R‚O“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(31).rslt_vis_i_num               -- ‚R‚P“ú|–K–âÀÑ(ˆê”Ê)
+        ,lt_visit_tab(1).rslt_vis_v_num                -- ‚P“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(2).rslt_vis_v_num                -- ‚Q“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(3).rslt_vis_v_num                -- ‚R“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(4).rslt_vis_v_num                -- ‚S“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(5).rslt_vis_v_num                -- ‚T“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(6).rslt_vis_v_num                -- ‚U“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(7).rslt_vis_v_num                -- ‚V“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(8).rslt_vis_v_num                -- ‚W“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(9).rslt_vis_v_num                -- ‚X“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(10).rslt_vis_v_num               -- ‚P‚O“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(11).rslt_vis_v_num               -- ‚P‚P“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(12).rslt_vis_v_num               -- ‚P‚Q“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(13).rslt_vis_v_num               -- ‚P‚R“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(14).rslt_vis_v_num               -- ‚P‚S“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(15).rslt_vis_v_num               -- ‚P‚T“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(16).rslt_vis_v_num               -- ‚P‚U“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(17).rslt_vis_v_num               -- ‚P‚V“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(18).rslt_vis_v_num               -- ‚P‚W“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(19).rslt_vis_v_num               -- ‚P‚X“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(20).rslt_vis_v_num               -- ‚Q‚O“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(21).rslt_vis_v_num               -- ‚Q‚P“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(22).rslt_vis_v_num               -- ‚Q‚Q“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(23).rslt_vis_v_num               -- ‚Q‚R“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(24).rslt_vis_v_num               -- ‚Q‚S“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(25).rslt_vis_v_num               -- ‚Q‚T“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(26).rslt_vis_v_num               -- ‚Q‚U“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(27).rslt_vis_v_num               -- ‚Q‚V“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(28).rslt_vis_v_num               -- ‚Q‚W“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(29).rslt_vis_v_num               -- ‚Q‚X“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(30).rslt_vis_v_num               -- ‚R‚O“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(31).rslt_vis_v_num               -- ‚R‚P“ú|–K–âÀÑ(©”Ì)
+        ,lt_visit_tab(1).rslt_vis_e_num                -- ‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(2).rslt_vis_e_num                -- ‚Q“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(3).rslt_vis_e_num                -- ‚R“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(4).rslt_vis_e_num                -- ‚S“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(5).rslt_vis_e_num                -- ‚T“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(6).rslt_vis_e_num                -- ‚U“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(7).rslt_vis_e_num                -- ‚V“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(8).rslt_vis_e_num                -- ‚W“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(9).rslt_vis_e_num                -- ‚X“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(10).rslt_vis_e_num               -- ‚P‚O“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(11).rslt_vis_e_num               -- ‚P‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(12).rslt_vis_e_num               -- ‚P‚Q“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(13).rslt_vis_e_num               -- ‚P‚R“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(14).rslt_vis_e_num               -- ‚P‚S“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(15).rslt_vis_e_num               -- ‚P‚T“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(16).rslt_vis_e_num               -- ‚P‚U“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(17).rslt_vis_e_num               -- ‚P‚V“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(18).rslt_vis_e_num               -- ‚P‚W“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(19).rslt_vis_e_num               -- ‚P‚X“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(20).rslt_vis_e_num               -- ‚Q‚O“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(21).rslt_vis_e_num               -- ‚Q‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(22).rslt_vis_e_num               -- ‚Q‚Q“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(23).rslt_vis_e_num               -- ‚Q‚R“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(24).rslt_vis_e_num               -- ‚Q‚S“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(25).rslt_vis_e_num               -- ‚Q‚T“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(26).rslt_vis_e_num               -- ‚Q‚U“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(27).rslt_vis_e_num               -- ‚Q‚V“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(28).rslt_vis_e_num               -- ‚Q‚W“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(29).rslt_vis_e_num               -- ‚Q‚X“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(30).rslt_vis_e_num               -- ‚R‚O“ú|–K–âÀÑ(—LŒø–K–â)
+        ,lt_visit_tab(31).rslt_vis_e_num               -- ‚R‚P“ú|–K–âÀÑ(—LŒø–K–â)
+        ,cn_created_by                                 -- ì¬Ò
+        ,cd_creation_date                              -- ì¬“ú
+        ,cn_last_updated_by                            -- ÅIXVÒ
+        ,cd_last_update_date                           -- ÅIXV“ú
+        ,cn_last_update_login                          -- ÅIXVƒƒOƒCƒ“
+        ,cn_request_id                                 -- —v‹ID
+        ,cn_program_application_id                     -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+        ,cn_program_id                                 -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+        ,cd_program_update_date                        -- ƒvƒƒOƒ‰ƒ€XV“ú
+      );
+      --
+    END LOOP get_loop;
+    --
+  END sum_visit_sales6;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_ticket6
+   * Description      : ’ •[í•Ê6-‰c‹Æˆõ•Ê (A-14)
+  ***********************************************************************************/
+  PROCEDURE get_ticket6(
+    ov_errbuf         OUT NOCOPY VARCHAR2           -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+   ,ov_retcode        OUT NOCOPY VARCHAR2           -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+   ,ov_errmsg         OUT NOCOPY VARCHAR2           -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+  )
+  IS
+  -- ===============================
+  -- ŒÅ’èƒ[ƒJƒ‹’è”
+  -- ===============================
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_ticket6';     -- ƒvƒƒOƒ‰ƒ€–¼
+--
+--#####################  ŒÅ’èƒ[ƒJƒ‹•Ï”éŒ¾•” START   ########################
+--
+    lv_errbuf  VARCHAR2(4000);  -- ƒGƒ‰[EƒƒbƒZ[ƒW
+    lv_retcode VARCHAR2(1);     -- ƒŠƒ^[ƒ“EƒR[ƒh
+    lv_errmsg  VARCHAR2(4000);  -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW
+--
+--###########################  ŒÅ’è•” END   ####################################
+--
+    -- ƒ[ƒJƒ‹•Ï”
+    lv_report_name             xxcso_rep_visit_sale_plan.report_name%TYPE;   -- ’ •[ƒ^ƒCƒgƒ‹
+--
+    -- ’ •[•Ï”Ši”[—p
+    -- *** ƒ[ƒJƒ‹—áŠO ***
+    error_get_data_expt        EXCEPTION;
+--
+  BEGIN
+--
+--##################  ŒÅ’èƒXƒe[ƒ^ƒX‰Šú‰»•” START   ###################
+--
+      ov_retcode := cv_status_normal;
+--
+--###########################  ŒÅ’è•” END   ############################
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ‰c‹Æˆõî•ñWŒv ŠJn');
+--
+    -- o—Í‘ÎÛƒŠƒ\[ƒXWŒvi‹’“_‰c‹Æˆõæ“¾j (A-3-1)
+    sum_resources(
+      iv_base_code => gv_base_code
+    );
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ‰c‹Æˆõî•ñWŒv I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    IF ( SQL%ROWCOUNT = 0 ) THEN
+      RETURN;
+    END IF;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ŒÚ‹qî•ñWŒv ŠJn');
+--
+    -- ”„ã–K–âŒv‰æWŒv(ŒÚ‹qî•ñæ“¾)F’ •[í•Ê6 (A-12-1)
+    sum_visit_sales6;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ŒÚ‹qî•ñWŒv I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    lv_report_name := 'á'|| SUBSTR(gv_year_month,1,4) ||'”N' ||
+    SUBSTR(gv_year_month,5,2) || 'Œ' || ' –K–â”„ãŒv‰æŠÇ—•\i‰c‹Æˆõ•Êj' || 'â';
+-- Ver 1.10 Add End
+    gv_report_id := cv_report_id6;                    -- ’ •[IDF’ •[í•Ê6
+-- Ver 1.10 Mod Start
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡ƒwƒbƒ_•” < K1_field >
+    -- ‘ÎÛ‹’“_“à‚Ì‘S‰c‹Æˆõ‚ğ
+    -- ƒOƒ‹[ƒv”Ô†i¸‡jAƒOƒ‹[ƒv’·‹æ•ªi~‡ YËNjA
+    -- ƒOƒ‹[ƒv‡ˆÊi¸‡jA]‹Æˆõ”Ô†i¸‡j
+    -- ‚Åæ“¾‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,report_id                                 -- ’ •[‚h‚c
+      ,report_name                               -- ’ •[ƒ^ƒCƒgƒ‹
+      ,output_date                               -- o—Í“ú
+      ,year_month                                -- Šî€”NŒ
+      ,operation_days                            -- ‰Ò“®“ú”
+      ,operation_all_days                        -- ‰Ò“®‰Â”\“ú”
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,ROWNUM                               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind1                        -- ’ •[o—ÍˆÊ’u
+           ,1                                    -- s”Ô
+-- Ver 1.10 Mod Start
+--           ,cv_pkg_name                          -- ’ •[‚h‚c
+           ,gv_report_id                         -- ’ •[‚h‚c
+-- Ver 1.10 Mod End
+           ,lv_report_name                       -- ’ •[ƒ^ƒCƒgƒ‹
+           ,SYSDATE                              -- o—Í“ú
+           ,gd_year_month                        -- Šî€”NŒ
+           ,gn_operation_days                    -- ‰Ò“®“ú”
+           ,gn_operation_all_days                -- ‰Ò“®‰Â”\“ú”
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,(SELECT  xabv.base_name
+             FROM    xxcso_aff_base_v2  xabv
+             WHERE   xabv.base_code = inn_v.base_code
+            )                                    -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+    FROM    (SELECT  xtrvr.base_code
+                    ,xtrvr.employee_number
+                    ,xtrvr.employee_name
+                    ,xtrvr.group_number
+                    ,xtrvr.group_leader_flag
+                    ,xtrvr.group_grade
+             FROM    xxcso_tmp_rep_vsp_rsrcs  xtrvr
+             ORDER BY  TO_NUMBER(group_number)     ASC
+                      ,NVL(group_leader_flag, 'N') DESC
+                      ,TO_NUMBER(group_grade)      ASC
+                      ,employee_number             ASC
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ƒwƒbƒ_•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –¾×•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡–¾×•” < K2_field > ŒJ‚è•Ô‚µƒtƒŒ[ƒ€
+    -- ‰c‹Æˆõ–ˆ‚É’S“–‚·‚éŒÚ‹qî•ñ‚Æ‚»‚Ì”„ã^–K–âŒv‰æi“ú•ÊjA
+    -- ”„ã^–K–âÀÑi“ú•ÊjA”„ãÀÑi‘¼‹’“_”[•i•ªji“ú•ÊjA
+    -- –K–â‹L†i“ú•Êj‚ğæ“¾‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,business_high_type                        -- ‹Æ‘Ôi‘å•ª—Şj
+      ,business_high_name                        -- ‹Æ‘Ôi‘å•ª—Şj–¼
+      ,gvm_type                                  -- ˆê”Ê^©”Ì‹@
+      ,account_number                            -- ŒÚ‹qƒR[ƒh
+      ,customer_name                             -- ŒÚ‹q–¼
+      ,route_no                                  -- ƒ‹[ƒgNo
+      ,last_year_rslt_sales_amt                  -- ‘O”NÀÑ
+      ,last_mon_rslt_sales_amt                   -- æŒÀÑ
+      ,plan_vs_amt_1                             -- ‚P“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_2                             -- ‚Q“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_3                             -- ‚R“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_4                             -- ‚S“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_5                             -- ‚T“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_6                             -- ‚U“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_7                             -- ‚V“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_8                             -- ‚W“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_9                             -- ‚X“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_10                            -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_11                            -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_12                            -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_13                            -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_14                            -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_15                            -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_16                            -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_17                            -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_18                            -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_19                            -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_20                            -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_21                            -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_22                            -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_23                            -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_24                            -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_25                            -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_26                            -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_27                            -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_28                            -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_29                            -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_30                            -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+      ,plan_vs_amt_31                            -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+      ,rslt_vs_amt_1                             -- ‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_2                             -- ‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_3                             -- ‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_4                             -- ‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_5                             -- ‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_6                             -- ‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_7                             -- ‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_8                             -- ‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_9                             -- ‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_10                            -- ‚P‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_11                            -- ‚P‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_12                            -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_13                            -- ‚P‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_14                            -- ‚P‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_15                            -- ‚P‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_16                            -- ‚P‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_17                            -- ‚P‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_18                            -- ‚P‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_19                            -- ‚P‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_20                            -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_21                            -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_22                            -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_23                            -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_24                            -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_25                            -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_26                            -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_27                            -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_28                            -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_29                            -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_30                            -- ‚R‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_31                            -- ‚R‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_1                    -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_2                    -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_3                    -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_4                    -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_5                    -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_6                    -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_7                    -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_8                    -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_9                    -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_10                   -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_11                   -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_12                   -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_13                   -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_14                   -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_15                   -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_16                   -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_17                   -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_18                   -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_19                   -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_20                   -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_21                   -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_22                   -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_23                   -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_24                   -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_25                   -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_26                   -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_27                   -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_28                   -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_29                   -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_30                   -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_31                   -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,visit_sign_1                              -- ‚P“ú|–K–â‹L†
+      ,visit_sign_2                              -- ‚Q“ú|–K–â‹L†
+      ,visit_sign_3                              -- ‚R“ú|–K–â‹L†
+      ,visit_sign_4                              -- ‚S“ú|–K–â‹L†
+      ,visit_sign_5                              -- ‚T“ú|–K–â‹L†
+      ,visit_sign_6                              -- ‚U“ú|–K–â‹L†
+      ,visit_sign_7                              -- ‚V“ú|–K–â‹L†
+      ,visit_sign_8                              -- ‚W“ú|–K–â‹L†
+      ,visit_sign_9                              -- ‚X“ú|–K–â‹L†
+      ,visit_sign_10                             -- ‚P‚O“ú|–K–â‹L†
+      ,visit_sign_11                             -- ‚P‚P“ú|–K–â‹L†
+      ,visit_sign_12                             -- ‚P‚Q“ú|–K–â‹L†
+      ,visit_sign_13                             -- ‚P‚R“ú|–K–â‹L†
+      ,visit_sign_14                             -- ‚P‚S“ú|–K–â‹L†
+      ,visit_sign_15                             -- ‚P‚T“ú|–K–â‹L†
+      ,visit_sign_16                             -- ‚P‚U“ú|–K–â‹L†
+      ,visit_sign_17                             -- ‚P‚V“ú|–K–â‹L†
+      ,visit_sign_18                             -- ‚P‚W“ú|–K–â‹L†
+      ,visit_sign_19                             -- ‚P‚X“ú|–K–â‹L†
+      ,visit_sign_20                             -- ‚Q‚O“ú|–K–â‹L†
+      ,visit_sign_21                             -- ‚Q‚P“ú|–K–â‹L†
+      ,visit_sign_22                             -- ‚Q‚Q“ú|–K–â‹L†
+      ,visit_sign_23                             -- ‚Q‚R“ú|–K–â‹L†
+      ,visit_sign_24                             -- ‚Q‚S“ú|–K–â‹L†
+      ,visit_sign_25                             -- ‚Q‚T“ú|–K–â‹L†
+      ,visit_sign_26                             -- ‚Q‚U“ú|–K–â‹L†
+      ,visit_sign_27                             -- ‚Q‚V“ú|–K–â‹L†
+      ,visit_sign_28                             -- ‚Q‚W“ú|–K–â‹L†
+      ,visit_sign_29                             -- ‚Q‚X“ú|–K–â‹L†
+      ,visit_sign_30                             -- ‚R‚O“ú|–K–â‹L†
+      ,visit_sign_31                             -- ‚R‚P“ú|–K–â‹L†
+      ,num_of_visits                             -- –K–âŠî€‰ñ”
+      ,visits_rank                               -- –K–âƒ‰ƒ“ƒN
+      ,rslt_vis_num_total                        -- –K–âÀÑ‡Œv
+      ,num_of_visits_day_1
+      ,num_of_visits_day_2
+      ,num_of_visits_day_3
+      ,num_of_visits_day_4
+      ,num_of_visits_day_5
+      ,num_of_visits_day_6
+      ,num_of_visits_day_7
+      ,num_of_visits_day_8
+      ,num_of_visits_day_9
+      ,num_of_visits_day_10
+      ,num_of_visits_day_11
+      ,num_of_visits_day_12
+      ,num_of_visits_day_13
+      ,num_of_visits_day_14
+      ,num_of_visits_day_15
+      ,num_of_visits_day_16
+      ,num_of_visits_day_17
+      ,num_of_visits_day_18
+      ,num_of_visits_day_19
+      ,num_of_visits_day_20
+      ,num_of_visits_day_21
+      ,num_of_visits_day_22
+      ,num_of_visits_day_23
+      ,num_of_visits_day_24
+      ,num_of_visits_day_25
+      ,num_of_visits_day_26
+      ,num_of_visits_day_27
+      ,num_of_visits_day_28
+      ,num_of_visits_day_29
+      ,num_of_visits_day_30
+      ,num_of_visits_day_31
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,inn_v.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind2                        -- ’ •[o—ÍˆÊ’u
+           ,ROWNUM                               -- s”Ô†
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,inn_v.hub_name                       -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+           ,inn_v.business_high_type             -- ‹Æ‘Ôi‘å•ª—Şj
+           ,inn_v.business_high_name             -- ‹Æ‘Ôi‘å•ª—Şj–¼
+           ,inn_v.gvm_type                       -- ˆê”Ê^©”Ì‹@
+           ,inn_v.account_number                 -- ŒÚ‹qƒR[ƒh
+           ,inn_v.customer_name                  -- ŒÚ‹q–¼
+           ,inn_v.route_no                       -- ƒ‹[ƒgNo
+           ,inn_v.last_year_rslt_sales_amt       -- ‘O”NÀÑ
+           ,inn_v.last_mon_rslt_sales_amt        -- æŒÀÑ
+           ,inn_v.plan_vs_amt_1                  -- ‚P“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_2                  -- ‚Q“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_3                  -- ‚R“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_4                  -- ‚S“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_5                  -- ‚T“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_6                  -- ‚U“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_7                  -- ‚V“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_8                  -- ‚W“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_9                  -- ‚X“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_10                 -- ‚P‚O“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_11                 -- ‚P‚P“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_12                 -- ‚P‚Q“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_13                 -- ‚P‚R“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_14                 -- ‚P‚S“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_15                 -- ‚P‚T“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_16                 -- ‚P‚U“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_17                 -- ‚P‚V“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_18                 -- ‚P‚W“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_19                 -- ‚P‚X“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_20                 -- ‚Q‚O“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_21                 -- ‚Q‚P“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_22                 -- ‚Q‚Q“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_23                 -- ‚Q‚R“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_24                 -- ‚Q‚S“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_25                 -- ‚Q‚T“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_26                 -- ‚Q‚U“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_27                 -- ‚Q‚V“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_28                 -- ‚Q‚W“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_29                 -- ‚Q‚X“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_30                 -- ‚R‚O“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.plan_vs_amt_31                 -- ‚R‚P“ú|”„ã^–K–âŒv‰æ
+           ,inn_v.rslt_vs_amt_1                  -- ‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_2                  -- ‚Q“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_3                  -- ‚R“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_4                  -- ‚S“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_5                  -- ‚T“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_6                  -- ‚U“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_7                  -- ‚V“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_8                  -- ‚W“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_9                  -- ‚X“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_10                 -- ‚P‚O“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_11                 -- ‚P‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_12                 -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_13                 -- ‚P‚R“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_14                 -- ‚P‚S“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_15                 -- ‚P‚T“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_16                 -- ‚P‚U“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_17                 -- ‚P‚V“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_18                 -- ‚P‚W“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_19                 -- ‚P‚X“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_20                 -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_21                 -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_22                 -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_23                 -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_24                 -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_25                 -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_26                 -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_27                 -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_28                 -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_29                 -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_30                 -- ‚R‚O“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_31                 -- ‚R‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_other_sales_amt_1         -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_2         -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_3         -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_4         -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_5         -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_6         -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_7         -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_8         -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_9         -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_10        -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_11        -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_12        -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_13        -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_14        -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_15        -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_16        -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_17        -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_18        -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_19        -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_20        -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_21        -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_22        -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_23        -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_24        -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_25        -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_26        -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_27        -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_28        -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_29        -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_30        -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_31        -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.visit_sign_1                  -- ‚P“ú|–K–â‹L†
+           ,inn_v.visit_sign_2                  -- ‚Q“ú|–K–â‹L†
+           ,inn_v.visit_sign_3                  -- ‚R“ú|–K–â‹L†
+           ,inn_v.visit_sign_4                  -- ‚S“ú|–K–â‹L†
+           ,inn_v.visit_sign_5                  -- ‚T“ú|–K–â‹L†
+           ,inn_v.visit_sign_6                  -- ‚U“ú|–K–â‹L†
+           ,inn_v.visit_sign_7                  -- ‚V“ú|–K–â‹L†
+           ,inn_v.visit_sign_8                  -- ‚W“ú|–K–â‹L†
+           ,inn_v.visit_sign_9                  -- ‚X“ú|–K–â‹L†
+           ,inn_v.visit_sign_10                 -- ‚P‚O“ú|–K–â‹L†
+           ,inn_v.visit_sign_11                 -- ‚P‚P“ú|–K–â‹L†
+           ,inn_v.visit_sign_12                 -- ‚P‚Q“ú|–K–â‹L†
+           ,inn_v.visit_sign_13                 -- ‚P‚R“ú|–K–â‹L†
+           ,inn_v.visit_sign_14                 -- ‚P‚S“ú|–K–â‹L†
+           ,inn_v.visit_sign_15                 -- ‚P‚T“ú|–K–â‹L†
+           ,inn_v.visit_sign_16                 -- ‚P‚U“ú|–K–â‹L†
+           ,inn_v.visit_sign_17                 -- ‚P‚V“ú|–K–â‹L†
+           ,inn_v.visit_sign_18                 -- ‚P‚W“ú|–K–â‹L†
+           ,inn_v.visit_sign_19                 -- ‚P‚X“ú|–K–â‹L†
+           ,inn_v.visit_sign_20                 -- ‚Q‚O“ú|–K–â‹L†
+           ,inn_v.visit_sign_21                 -- ‚Q‚P“ú|–K–â‹L†
+           ,inn_v.visit_sign_22                 -- ‚Q‚Q“ú|–K–â‹L†
+           ,inn_v.visit_sign_23                 -- ‚Q‚R“ú|–K–â‹L†
+           ,inn_v.visit_sign_24                 -- ‚Q‚S“ú|–K–â‹L†
+           ,inn_v.visit_sign_25                 -- ‚Q‚T“ú|–K–â‹L†
+           ,inn_v.visit_sign_26                 -- ‚Q‚U“ú|–K–â‹L†
+           ,inn_v.visit_sign_27                 -- ‚Q‚V“ú|–K–â‹L†
+           ,inn_v.visit_sign_28                 -- ‚Q‚W“ú|–K–â‹L†
+           ,inn_v.visit_sign_29                 -- ‚Q‚X“ú|–K–â‹L†
+           ,inn_v.visit_sign_30                 -- ‚R‚O“ú|–K–â‹L†
+           ,inn_v.visit_sign_31                 -- ‚R‚P“ú|–K–â‹L†
+           ,inn_v.num_of_visits                 -- –K–âŠî€‰ñ”
+           ,inn_v.visits_rank                   -- –K–âƒ‰ƒ“ƒN
+           ,inn_v.rslt_vis_num_total            -- –K–âÀÑ‡Œv
+           ,inn_v.num_of_visits_day_1
+           ,inn_v.num_of_visits_day_2
+           ,inn_v.num_of_visits_day_3
+           ,inn_v.num_of_visits_day_4
+           ,inn_v.num_of_visits_day_5
+           ,inn_v.num_of_visits_day_6
+           ,inn_v.num_of_visits_day_7
+           ,inn_v.num_of_visits_day_8
+           ,inn_v.num_of_visits_day_9
+           ,inn_v.num_of_visits_day_10
+           ,inn_v.num_of_visits_day_11
+           ,inn_v.num_of_visits_day_12
+           ,inn_v.num_of_visits_day_13
+           ,inn_v.num_of_visits_day_14
+           ,inn_v.num_of_visits_day_15
+           ,inn_v.num_of_visits_day_16
+           ,inn_v.num_of_visits_day_17
+           ,inn_v.num_of_visits_day_18
+           ,inn_v.num_of_visits_day_19
+           ,inn_v.num_of_visits_day_20
+           ,inn_v.num_of_visits_day_21
+           ,inn_v.num_of_visits_day_22
+           ,inn_v.num_of_visits_day_23
+           ,inn_v.num_of_visits_day_24
+           ,inn_v.num_of_visits_day_25
+           ,inn_v.num_of_visits_day_26
+           ,inn_v.num_of_visits_day_27
+           ,inn_v.num_of_visits_day_28
+           ,inn_v.num_of_visits_day_29
+           ,inn_v.num_of_visits_day_30
+           ,inn_v.num_of_visits_day_31
+    FROM    (SELECT  xrvsp.report_output_no
+                    ,xrvsp.base_code
+                    ,xrvsp.hub_name
+                    ,xrvsp.employee_number
+                    ,xrvsp.employee_name
+                    ,xtrvp.business_high_type
+                    ,xtrvp.business_high_name
+                    ,xtrvp.gvm_type
+                    ,xtrvp.account_number
+                    ,xtrvp.customer_name
+                    ,xtrvp.route_no
+                    ,xtrvp.last_year_rslt_sales_amt
+                    ,xtrvp.last_mon_rslt_sales_amt
+                    ,xtrvp.plan_vs_amt_1
+                    ,xtrvp.plan_vs_amt_2
+                    ,xtrvp.plan_vs_amt_3
+                    ,xtrvp.plan_vs_amt_4
+                    ,xtrvp.plan_vs_amt_5
+                    ,xtrvp.plan_vs_amt_6
+                    ,xtrvp.plan_vs_amt_7
+                    ,xtrvp.plan_vs_amt_8
+                    ,xtrvp.plan_vs_amt_9
+                    ,xtrvp.plan_vs_amt_10
+                    ,xtrvp.plan_vs_amt_11
+                    ,xtrvp.plan_vs_amt_12
+                    ,xtrvp.plan_vs_amt_13
+                    ,xtrvp.plan_vs_amt_14
+                    ,xtrvp.plan_vs_amt_15
+                    ,xtrvp.plan_vs_amt_16
+                    ,xtrvp.plan_vs_amt_17
+                    ,xtrvp.plan_vs_amt_18
+                    ,xtrvp.plan_vs_amt_19
+                    ,xtrvp.plan_vs_amt_20
+                    ,xtrvp.plan_vs_amt_21
+                    ,xtrvp.plan_vs_amt_22
+                    ,xtrvp.plan_vs_amt_23
+                    ,xtrvp.plan_vs_amt_24
+                    ,xtrvp.plan_vs_amt_25
+                    ,xtrvp.plan_vs_amt_26
+                    ,xtrvp.plan_vs_amt_27
+                    ,xtrvp.plan_vs_amt_28
+                    ,xtrvp.plan_vs_amt_29
+                    ,xtrvp.plan_vs_amt_30
+                    ,xtrvp.plan_vs_amt_31
+                    ,xtrvp.rslt_vs_amt_1
+                    ,xtrvp.rslt_vs_amt_2
+                    ,xtrvp.rslt_vs_amt_3
+                    ,xtrvp.rslt_vs_amt_4
+                    ,xtrvp.rslt_vs_amt_5
+                    ,xtrvp.rslt_vs_amt_6
+                    ,xtrvp.rslt_vs_amt_7
+                    ,xtrvp.rslt_vs_amt_8
+                    ,xtrvp.rslt_vs_amt_9
+                    ,xtrvp.rslt_vs_amt_10
+                    ,xtrvp.rslt_vs_amt_11
+                    ,xtrvp.rslt_vs_amt_12
+                    ,xtrvp.rslt_vs_amt_13
+                    ,xtrvp.rslt_vs_amt_14
+                    ,xtrvp.rslt_vs_amt_15
+                    ,xtrvp.rslt_vs_amt_16
+                    ,xtrvp.rslt_vs_amt_17
+                    ,xtrvp.rslt_vs_amt_18
+                    ,xtrvp.rslt_vs_amt_19
+                    ,xtrvp.rslt_vs_amt_20
+                    ,xtrvp.rslt_vs_amt_21
+                    ,xtrvp.rslt_vs_amt_22
+                    ,xtrvp.rslt_vs_amt_23
+                    ,xtrvp.rslt_vs_amt_24
+                    ,xtrvp.rslt_vs_amt_25
+                    ,xtrvp.rslt_vs_amt_26
+                    ,xtrvp.rslt_vs_amt_27
+                    ,xtrvp.rslt_vs_amt_28
+                    ,xtrvp.rslt_vs_amt_29
+                    ,xtrvp.rslt_vs_amt_30
+                    ,xtrvp.rslt_vs_amt_31
+                    ,xtrvp.rslt_other_sales_amt_1
+                    ,xtrvp.rslt_other_sales_amt_2
+                    ,xtrvp.rslt_other_sales_amt_3
+                    ,xtrvp.rslt_other_sales_amt_4
+                    ,xtrvp.rslt_other_sales_amt_5
+                    ,xtrvp.rslt_other_sales_amt_6
+                    ,xtrvp.rslt_other_sales_amt_7
+                    ,xtrvp.rslt_other_sales_amt_8
+                    ,xtrvp.rslt_other_sales_amt_9
+                    ,xtrvp.rslt_other_sales_amt_10
+                    ,xtrvp.rslt_other_sales_amt_11
+                    ,xtrvp.rslt_other_sales_amt_12
+                    ,xtrvp.rslt_other_sales_amt_13
+                    ,xtrvp.rslt_other_sales_amt_14
+                    ,xtrvp.rslt_other_sales_amt_15
+                    ,xtrvp.rslt_other_sales_amt_16
+                    ,xtrvp.rslt_other_sales_amt_17
+                    ,xtrvp.rslt_other_sales_amt_18
+                    ,xtrvp.rslt_other_sales_amt_19
+                    ,xtrvp.rslt_other_sales_amt_20
+                    ,xtrvp.rslt_other_sales_amt_21
+                    ,xtrvp.rslt_other_sales_amt_22
+                    ,xtrvp.rslt_other_sales_amt_23
+                    ,xtrvp.rslt_other_sales_amt_24
+                    ,xtrvp.rslt_other_sales_amt_25
+                    ,xtrvp.rslt_other_sales_amt_26
+                    ,xtrvp.rslt_other_sales_amt_27
+                    ,xtrvp.rslt_other_sales_amt_28
+                    ,xtrvp.rslt_other_sales_amt_29
+                    ,xtrvp.rslt_other_sales_amt_30
+                    ,xtrvp.rslt_other_sales_amt_31
+                    ,xtrvp.visit_sign_1
+                    ,xtrvp.visit_sign_2
+                    ,xtrvp.visit_sign_3
+                    ,xtrvp.visit_sign_4
+                    ,xtrvp.visit_sign_5
+                    ,xtrvp.visit_sign_6
+                    ,xtrvp.visit_sign_7
+                    ,xtrvp.visit_sign_8
+                    ,xtrvp.visit_sign_9
+                    ,xtrvp.visit_sign_10
+                    ,xtrvp.visit_sign_11
+                    ,xtrvp.visit_sign_12
+                    ,xtrvp.visit_sign_13
+                    ,xtrvp.visit_sign_14
+                    ,xtrvp.visit_sign_15
+                    ,xtrvp.visit_sign_16
+                    ,xtrvp.visit_sign_17
+                    ,xtrvp.visit_sign_18
+                    ,xtrvp.visit_sign_19
+                    ,xtrvp.visit_sign_20
+                    ,xtrvp.visit_sign_21
+                    ,xtrvp.visit_sign_22
+                    ,xtrvp.visit_sign_23
+                    ,xtrvp.visit_sign_24
+                    ,xtrvp.visit_sign_25
+                    ,xtrvp.visit_sign_26
+                    ,xtrvp.visit_sign_27
+                    ,xtrvp.visit_sign_28
+                    ,xtrvp.visit_sign_29
+                    ,xtrvp.visit_sign_30
+                    ,xtrvp.visit_sign_31
+                    ,xxcso_route_common_pkg.calc_visit_times_f(xtrvp.route_no)     AS num_of_visits   -- –K–âŠî€‰ñ”æ“¾
+                    ,xxcso_route_common_pkg.get_visit_rank_f(xtrvp.route_no)       AS visits_rank     -- –K–âƒ‰ƒ“ƒNæ“¾
+                    ,(CASE                                                                            -- –K–âÀÑ‡Œv
+                        WHEN (xtrvp.gvm_type = cv_gvm_g) THEN
+                          xtrvp.rslt_vis_i_num_total
+                        ELSE
+                          xtrvp.rslt_vis_v_num_total
+                      END
+                    )                                                                                 AS rslt_vis_num_total
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 0)  AS num_of_visits_day_1
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 1)  AS num_of_visits_day_2
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 2)  AS num_of_visits_day_3
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 3)  AS num_of_visits_day_4
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 4)  AS num_of_visits_day_5
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 5)  AS num_of_visits_day_6
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 6)  AS num_of_visits_day_7
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 7)  AS num_of_visits_day_8
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 8)  AS num_of_visits_day_9
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month, 9)  AS num_of_visits_day_10
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,10)  AS num_of_visits_day_11
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,11)  AS num_of_visits_day_12
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,12)  AS num_of_visits_day_13
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,13)  AS num_of_visits_day_14
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,14)  AS num_of_visits_day_15
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,15)  AS num_of_visits_day_16
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,16)  AS num_of_visits_day_17
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,17)  AS num_of_visits_day_18
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,18)  AS num_of_visits_day_19
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,19)  AS num_of_visits_day_20
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,20)  AS num_of_visits_day_21
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,21)  AS num_of_visits_day_22
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,22)  AS num_of_visits_day_23
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,23)  AS num_of_visits_day_24
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,24)  AS num_of_visits_day_25
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,25)  AS num_of_visits_day_26
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,26)  AS num_of_visits_day_27
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,27)  AS num_of_visits_day_28
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,28)  AS num_of_visits_day_29
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,29)  AS num_of_visits_day_30
+                    ,xxcso_route_common_pkg.get_number_of_visits_f(xtrvp.route_no, gd_year_month,30)  AS num_of_visits_day_31
+             FROM    xxcso_rep_visit_sale_plan   xrvsp
+                    ,xxcso_tmp_rep_vs_plan       xtrvp
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   xtrvp.employee_number(+)     = xrvsp.employee_number
+             -- 1.‹Æ‘Ô‚Ìˆê”ÊA©”Ì‹@‡A2.–K–âŠî€‰ñ”(~‡)A3.ƒ‹[ƒgNo(~‡)A4.ŒÚ‹qƒR[ƒh‡‚Éƒ\[ƒg
+             ORDER BY  gvm_type
+                      ,num_of_visits desc
+                      ,route_no      desc
+                      ,account_number
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –¾×•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ”„ã|’†Œv•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡”„ã|’†Œv•” ˆê”ÊŒvF< K3I_field >A©”Ì‹@ŒvF< K3V_field >
+    -- –¾×•”‚Ì“ú•Ê‡Œv‚ğˆê”ÊŒvA©”Ì‹@Œv‚ÅWŒv‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,gvm_type                                  -- ˆê”Ê^©”Ì‹@
+      ,last_year_rslt_sales_amt                  -- ‘O”NÀÑ
+      ,last_mon_rslt_sales_amt                   -- æŒÀÑ
+      ,rslt_vs_amt_1                             -- ‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_2                             -- ‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_3                             -- ‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_4                             -- ‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_5                             -- ‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_6                             -- ‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_7                             -- ‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_8                             -- ‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_9                             -- ‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_10                            -- ‚P‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_11                            -- ‚P‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_12                            -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_13                            -- ‚P‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_14                            -- ‚P‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_15                            -- ‚P‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_16                            -- ‚P‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_17                            -- ‚P‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_18                            -- ‚P‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_19                            -- ‚P‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_20                            -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_21                            -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_22                            -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_23                            -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_24                            -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_25                            -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_26                            -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_27                            -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_28                            -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_29                            -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_30                            -- ‚R‚O“ú|”„ã^–K–âÀÑ
+      ,rslt_vs_amt_31                            -- ‚R‚P“ú|”„ã^–K–âÀÑ
+      ,rslt_other_sales_amt_1                    -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_2                    -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_3                    -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_4                    -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_5                    -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_6                    -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_7                    -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_8                    -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_9                    -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_10                   -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_11                   -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_12                   -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_13                   -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_14                   -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_15                   -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_16                   -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_17                   -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_18                   -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_19                   -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_20                   -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_21                   -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_22                   -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_23                   -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_24                   -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_25                   -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_26                   -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_27                   -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_28                   -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_29                   -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_30                   -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+      ,rslt_other_sales_amt_31                   -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,inn_v.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind3                        -- ’ •[o—ÍˆÊ’u
+           ,ROWNUM                               -- s”Ô†
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,inn_v.hub_name                       -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+           ,inn_v.gvm_type                       -- ˆê”Ê^©”Ì‹@
+           ,inn_v.last_year_rslt_sales_amt       -- ‘O”NÀÑ
+           ,inn_v.last_mon_rslt_sales_amt        -- æŒÀÑ
+           ,inn_v.rslt_vs_amt_1                  -- ‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_2                  -- ‚Q“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_3                  -- ‚R“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_4                  -- ‚S“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_5                  -- ‚T“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_6                  -- ‚U“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_7                  -- ‚V“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_8                  -- ‚W“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_9                  -- ‚X“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_10                 -- ‚P‚O“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_11                 -- ‚P‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_12                 -- ‚P‚Q“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_13                 -- ‚P‚R“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_14                 -- ‚P‚S“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_15                 -- ‚P‚T“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_16                 -- ‚P‚U“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_17                 -- ‚P‚V“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_18                 -- ‚P‚W“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_19                 -- ‚P‚X“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_20                 -- ‚Q‚O“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_21                 -- ‚Q‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_22                 -- ‚Q‚Q“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_23                 -- ‚Q‚R“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_24                 -- ‚Q‚S“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_25                 -- ‚Q‚T“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_26                 -- ‚Q‚U“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_27                 -- ‚Q‚V“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_28                 -- ‚Q‚W“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_29                 -- ‚Q‚X“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_30                 -- ‚R‚O“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_vs_amt_31                 -- ‚R‚P“ú|”„ã^–K–âÀÑ
+           ,inn_v.rslt_other_sales_amt_1         -- ‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_2         -- ‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_3         -- ‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_4         -- ‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_5         -- ‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_6         -- ‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_7         -- ‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_8         -- ‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_9         -- ‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_10        -- ‚P‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_11        -- ‚P‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_12        -- ‚P‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_13        -- ‚P‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_14        -- ‚P‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_15        -- ‚P‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_16        -- ‚P‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_17        -- ‚P‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_18        -- ‚P‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_19        -- ‚P‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_20        -- ‚Q‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_21        -- ‚Q‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_22        -- ‚Q‚Q“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_23        -- ‚Q‚R“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_24        -- ‚Q‚S“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_25        -- ‚Q‚T“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_26        -- ‚Q‚U“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_27        -- ‚Q‚V“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_28        -- ‚Q‚W“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_29        -- ‚Q‚X“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_30        -- ‚R‚O“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+           ,inn_v.rslt_other_sales_amt_31        -- ‚R‚P“ú|”„ãÀÑi‘¼‹’“_”[•i•ªj
+    FROM    (
+             SELECT  xrvsp.report_output_no                report_output_no
+                    ,xrvsp.base_code                       base_code
+                    ,xrvsp.hub_name                        hub_name
+                    ,xrvsp.employee_number                 employee_number
+                    ,xrvsp.employee_name                   employee_name
+                    ,xtrvp.gvm_type                        gvm_type
+                    ,SUM(xtrvp.last_year_rslt_sales_amt)   last_year_rslt_sales_amt
+                    ,SUM(xtrvp.last_mon_rslt_sales_amt)    last_mon_rslt_sales_amt
+                    ,SUM(xtrvp.rslt_vs_amt_1)              rslt_vs_amt_1
+                    ,SUM(xtrvp.rslt_vs_amt_2)              rslt_vs_amt_2
+                    ,SUM(xtrvp.rslt_vs_amt_3)              rslt_vs_amt_3
+                    ,SUM(xtrvp.rslt_vs_amt_4)              rslt_vs_amt_4
+                    ,SUM(xtrvp.rslt_vs_amt_5)              rslt_vs_amt_5
+                    ,SUM(xtrvp.rslt_vs_amt_6)              rslt_vs_amt_6
+                    ,SUM(xtrvp.rslt_vs_amt_7)              rslt_vs_amt_7
+                    ,SUM(xtrvp.rslt_vs_amt_8)              rslt_vs_amt_8
+                    ,SUM(xtrvp.rslt_vs_amt_9)              rslt_vs_amt_9
+                    ,SUM(xtrvp.rslt_vs_amt_10)             rslt_vs_amt_10
+                    ,SUM(xtrvp.rslt_vs_amt_11)             rslt_vs_amt_11
+                    ,SUM(xtrvp.rslt_vs_amt_12)             rslt_vs_amt_12
+                    ,SUM(xtrvp.rslt_vs_amt_13)             rslt_vs_amt_13
+                    ,SUM(xtrvp.rslt_vs_amt_14)             rslt_vs_amt_14
+                    ,SUM(xtrvp.rslt_vs_amt_15)             rslt_vs_amt_15
+                    ,SUM(xtrvp.rslt_vs_amt_16)             rslt_vs_amt_16
+                    ,SUM(xtrvp.rslt_vs_amt_17)             rslt_vs_amt_17
+                    ,SUM(xtrvp.rslt_vs_amt_18)             rslt_vs_amt_18
+                    ,SUM(xtrvp.rslt_vs_amt_19)             rslt_vs_amt_19
+                    ,SUM(xtrvp.rslt_vs_amt_20)             rslt_vs_amt_20
+                    ,SUM(xtrvp.rslt_vs_amt_21)             rslt_vs_amt_21
+                    ,SUM(xtrvp.rslt_vs_amt_22)             rslt_vs_amt_22
+                    ,SUM(xtrvp.rslt_vs_amt_23)             rslt_vs_amt_23
+                    ,SUM(xtrvp.rslt_vs_amt_24)             rslt_vs_amt_24
+                    ,SUM(xtrvp.rslt_vs_amt_25)             rslt_vs_amt_25
+                    ,SUM(xtrvp.rslt_vs_amt_26)             rslt_vs_amt_26
+                    ,SUM(xtrvp.rslt_vs_amt_27)             rslt_vs_amt_27
+                    ,SUM(xtrvp.rslt_vs_amt_28)             rslt_vs_amt_28
+                    ,SUM(xtrvp.rslt_vs_amt_29)             rslt_vs_amt_29
+                    ,SUM(xtrvp.rslt_vs_amt_30)             rslt_vs_amt_30
+                    ,SUM(xtrvp.rslt_vs_amt_31)             rslt_vs_amt_31
+                    ,SUM(xtrvp.rslt_other_sales_amt_1)     rslt_other_sales_amt_1
+                    ,SUM(xtrvp.rslt_other_sales_amt_2)     rslt_other_sales_amt_2
+                    ,SUM(xtrvp.rslt_other_sales_amt_3)     rslt_other_sales_amt_3
+                    ,SUM(xtrvp.rslt_other_sales_amt_4)     rslt_other_sales_amt_4
+                    ,SUM(xtrvp.rslt_other_sales_amt_5)     rslt_other_sales_amt_5
+                    ,SUM(xtrvp.rslt_other_sales_amt_6)     rslt_other_sales_amt_6
+                    ,SUM(xtrvp.rslt_other_sales_amt_7)     rslt_other_sales_amt_7
+                    ,SUM(xtrvp.rslt_other_sales_amt_8)     rslt_other_sales_amt_8
+                    ,SUM(xtrvp.rslt_other_sales_amt_9)     rslt_other_sales_amt_9
+                    ,SUM(xtrvp.rslt_other_sales_amt_10)    rslt_other_sales_amt_10
+                    ,SUM(xtrvp.rslt_other_sales_amt_11)    rslt_other_sales_amt_11
+                    ,SUM(xtrvp.rslt_other_sales_amt_12)    rslt_other_sales_amt_12
+                    ,SUM(xtrvp.rslt_other_sales_amt_13)    rslt_other_sales_amt_13
+                    ,SUM(xtrvp.rslt_other_sales_amt_14)    rslt_other_sales_amt_14
+                    ,SUM(xtrvp.rslt_other_sales_amt_15)    rslt_other_sales_amt_15
+                    ,SUM(xtrvp.rslt_other_sales_amt_16)    rslt_other_sales_amt_16
+                    ,SUM(xtrvp.rslt_other_sales_amt_17)    rslt_other_sales_amt_17
+                    ,SUM(xtrvp.rslt_other_sales_amt_18)    rslt_other_sales_amt_18
+                    ,SUM(xtrvp.rslt_other_sales_amt_19)    rslt_other_sales_amt_19
+                    ,SUM(xtrvp.rslt_other_sales_amt_20)    rslt_other_sales_amt_20
+                    ,SUM(xtrvp.rslt_other_sales_amt_21)    rslt_other_sales_amt_21
+                    ,SUM(xtrvp.rslt_other_sales_amt_22)    rslt_other_sales_amt_22
+                    ,SUM(xtrvp.rslt_other_sales_amt_23)    rslt_other_sales_amt_23
+                    ,SUM(xtrvp.rslt_other_sales_amt_24)    rslt_other_sales_amt_24
+                    ,SUM(xtrvp.rslt_other_sales_amt_25)    rslt_other_sales_amt_25
+                    ,SUM(xtrvp.rslt_other_sales_amt_26)    rslt_other_sales_amt_26
+                    ,SUM(xtrvp.rslt_other_sales_amt_27)    rslt_other_sales_amt_27
+                    ,SUM(xtrvp.rslt_other_sales_amt_28)    rslt_other_sales_amt_28
+                    ,SUM(xtrvp.rslt_other_sales_amt_29)    rslt_other_sales_amt_29
+                    ,SUM(xtrvp.rslt_other_sales_amt_30)    rslt_other_sales_amt_30
+                    ,SUM(xtrvp.rslt_other_sales_amt_31)    rslt_other_sales_amt_31
+             FROM    xxcso_rep_visit_sale_plan      xrvsp
+                    ,xxcso_tmp_rep_vs_plan          xtrvp
+             WHERE   xrvsp.request_id         = cn_request_id
+               AND   xrvsp.line_kind          = cn_line_kind1
+               AND   xtrvp.employee_number(+) = xrvsp.employee_number
+             GROUP BY  xrvsp.report_output_no
+                      ,xrvsp.base_code
+                      ,xrvsp.hub_name
+                      ,xrvsp.employee_number
+                      ,xrvsp.employee_name
+                      ,xtrvp.gvm_type
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ”„ã|’†Œv•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ”„ã|’†Œv•”i•â‘«jæ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡”„ã|’†Œv•”(•â‘«) F< K3I_field >A©”Ì‹@ŒvF< K3V_field >
+    -- ”„ã|’†Œv•”‚Åˆê”ÊŒvA©”Ì‹@Œv‚Å‚OŒ‚¾‚Á‚½‰c‹Æˆõ‚Ì’†Œv•”‚ğì¬‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,gvm_type                                  -- ˆê”Ê^©”Ì‹@
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,inn_v.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind3                        -- ’ •[o—ÍˆÊ’u
+           ,(SELECT  MAX(xrvsp3.line_num)
+             FROM    xxcso_rep_visit_sale_plan  xrvsp3
+             WHERE   xrvsp3.request_id = cn_request_id
+               AND   xrvsp3.line_kind  = cn_line_kind3
+            ) + ROWNUM                           -- s”Ô†
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,inn_v.hub_name                       -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+           ,inn_v.gvm_type                       -- ˆê”Ê^©”Ì‹@
+    FROM    (
+             -- ˆê”ÊŒv‚ª‘¶İ‚µ‚È‚¢‰c‹Æˆõ
+             SELECT  xrvsp.report_output_no                report_output_no
+                    ,xrvsp.base_code                       base_code
+                    ,xrvsp.hub_name                        hub_name
+                    ,xrvsp.employee_number                 employee_number
+                    ,xrvsp.employee_name                   employee_name
+                    ,cv_gvm_g                              gvm_type
+             FROM    xxcso_rep_visit_sale_plan    xrvsp     -- ƒwƒbƒ_•”
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   NOT EXISTS (
+                       SELECT  1
+                       FROM    xxcso_rep_visit_sale_plan  xrvsp3
+                       WHERE   xrvsp3.request_id      = cn_request_id
+                         AND   xrvsp3.line_kind       = cn_line_kind3
+                         AND   xrvsp3.employee_number = xrvsp.employee_number
+                         AND   xrvsp3.gvm_type        = cv_gvm_g
+                     )
+             UNION ALL
+             -- ©”Ì‹@Œv‚ª‘¶İ‚µ‚È‚¢‰c‹Æˆõ
+             SELECT  xrvsp.report_output_no                report_output_no
+                    ,xrvsp.base_code                       base_code
+                    ,xrvsp.hub_name                        hub_name
+                    ,xrvsp.employee_number                 employee_number
+                    ,xrvsp.employee_name                   employee_name
+                    ,cv_gvm_v                              gvm_type
+             FROM    xxcso_rep_visit_sale_plan    xrvsp     -- ƒwƒbƒ_•”
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   NOT EXISTS (
+                       SELECT  1
+                       FROM    xxcso_rep_visit_sale_plan  xrvsp3
+                       WHERE   xrvsp3.request_id      = cn_request_id
+                         AND   xrvsp3.line_kind       = cn_line_kind3
+                         AND   xrvsp3.employee_number = xrvsp.employee_number
+                         AND   xrvsp3.gvm_type        = cv_gvm_v
+                     )
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ”„ã|’†Œv•”i•â‘«jæ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ”„ã|Œv•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡”„ã|Œv•” < K4_field > 
+    -- ‰c‹Æˆõ–ˆ‚É”„ã—\Z‚ğæ“¾‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,plan_sales_amt                            -- ”„ã—\Z
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,xrvsp.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind4                        -- ’ •[o—ÍˆÊ’u
+           ,ROWNUM                               -- s”Ô†
+           ,xrvsp.base_code                      -- ‹’“_ƒR[ƒh
+           ,xrvsp.hub_name                       -- ‹’“_–¼
+           ,xrvsp.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,xrvsp.employee_name                  -- ‰c‹Æˆõ–¼
+           ,(CASE
+               WHEN (xdmp.sales_plan_rel_div = '1') THEN
+                 xspmp.tgt_sales_prsn_total_amt
+               ELSE
+                 xspmp.bsc_sls_prsn_total_amt
+             END
+            )                                    -- ”„ã—\Z
+    FROM    xxcso_rep_visit_sale_plan   xrvsp
+           ,xxcso_dept_monthly_plans    xdmp
+           ,xxcso_sls_prsn_mnthly_plns  xspmp
+    WHERE   xrvsp.request_id         = cn_request_id
+      AND   xrvsp.line_kind          = cn_line_kind1
+      AND   xdmp.base_code(+)        = xrvsp.base_code
+      AND   xdmp.year_month(+)       = gv_year_month
+      AND   xspmp.base_code(+)       = xrvsp.base_code
+      AND   xspmp.employee_number(+) = xrvsp.employee_number
+      AND   xspmp.year_month(+)      = gv_year_month
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' ”„ã|Œv•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –K–â|’†Œv•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡–K–â|’†Œv•” ˆê”ÊŒvF< K5I_field >A©”Ì‹@ŒvF< K5V_field >
+    -- ‰c‹Æˆõ–ˆ‚É–K–âŒv‰æ^–K–âÀÑi“ú•Êj‚ğ
+    -- ˆê”ÊŒvA©”Ì‹@Œv‚Åæ“¾‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,gvm_type                                  -- ˆê”Ê^©”Ì‹@
+      ,plan_vs_amt_1                             -- ‚P“ú|–K–âŒv‰æ
+      ,plan_vs_amt_2                             -- ‚Q“ú|–K–âŒv‰æ
+      ,plan_vs_amt_3                             -- ‚R“ú|–K–âŒv‰æ
+      ,plan_vs_amt_4                             -- ‚S“ú|–K–âŒv‰æ
+      ,plan_vs_amt_5                             -- ‚T“ú|–K–âŒv‰æ
+      ,plan_vs_amt_6                             -- ‚U“ú|–K–âŒv‰æ
+      ,plan_vs_amt_7                             -- ‚V“ú|–K–âŒv‰æ
+      ,plan_vs_amt_8                             -- ‚W“ú|–K–âŒv‰æ
+      ,plan_vs_amt_9                             -- ‚X“ú|–K–âŒv‰æ
+      ,plan_vs_amt_10                            -- ‚P‚O“ú|–K–âŒv‰æ
+      ,plan_vs_amt_11                            -- ‚P‚P“ú|–K–âŒv‰æ
+      ,plan_vs_amt_12                            -- ‚P‚Q“ú|–K–âŒv‰æ
+      ,plan_vs_amt_13                            -- ‚P‚R“ú|–K–âŒv‰æ
+      ,plan_vs_amt_14                            -- ‚P‚S“ú|–K–âŒv‰æ
+      ,plan_vs_amt_15                            -- ‚P‚T“ú|–K–âŒv‰æ
+      ,plan_vs_amt_16                            -- ‚P‚U“ú|–K–âŒv‰æ
+      ,plan_vs_amt_17                            -- ‚P‚V“ú|–K–âŒv‰æ
+      ,plan_vs_amt_18                            -- ‚P‚W“ú|–K–âŒv‰æ
+      ,plan_vs_amt_19                            -- ‚P‚X“ú|–K–âŒv‰æ
+      ,plan_vs_amt_20                            -- ‚Q‚O“ú|–K–âŒv‰æ
+      ,plan_vs_amt_21                            -- ‚Q‚P“ú|–K–âŒv‰æ
+      ,plan_vs_amt_22                            -- ‚Q‚Q“ú|–K–âŒv‰æ
+      ,plan_vs_amt_23                            -- ‚Q‚R“ú|–K–âŒv‰æ
+      ,plan_vs_amt_24                            -- ‚Q‚S“ú|–K–âŒv‰æ
+      ,plan_vs_amt_25                            -- ‚Q‚T“ú|–K–âŒv‰æ
+      ,plan_vs_amt_26                            -- ‚Q‚U“ú|–K–âŒv‰æ
+      ,plan_vs_amt_27                            -- ‚Q‚V“ú|–K–âŒv‰æ
+      ,plan_vs_amt_28                            -- ‚Q‚W“ú|–K–âŒv‰æ
+      ,plan_vs_amt_29                            -- ‚Q‚X“ú|–K–âŒv‰æ
+      ,plan_vs_amt_30                            -- ‚R‚O“ú|–K–âŒv‰æ
+      ,plan_vs_amt_31                            -- ‚R‚P“ú|–K–âŒv‰æ
+      ,rslt_vs_amt_1                             -- ‚P“ú|–K–âÀÑ
+      ,rslt_vs_amt_2                             -- ‚Q“ú|–K–âÀÑ
+      ,rslt_vs_amt_3                             -- ‚R“ú|–K–âÀÑ
+      ,rslt_vs_amt_4                             -- ‚S“ú|–K–âÀÑ
+      ,rslt_vs_amt_5                             -- ‚T“ú|–K–âÀÑ
+      ,rslt_vs_amt_6                             -- ‚U“ú|–K–âÀÑ
+      ,rslt_vs_amt_7                             -- ‚V“ú|–K–âÀÑ
+      ,rslt_vs_amt_8                             -- ‚W“ú|–K–âÀÑ
+      ,rslt_vs_amt_9                             -- ‚X“ú|–K–âÀÑ
+      ,rslt_vs_amt_10                            -- ‚P‚O“ú|–K–âÀÑ
+      ,rslt_vs_amt_11                            -- ‚P‚P“ú|–K–âÀÑ
+      ,rslt_vs_amt_12                            -- ‚P‚Q“ú|–K–âÀÑ
+      ,rslt_vs_amt_13                            -- ‚P‚R“ú|–K–âÀÑ
+      ,rslt_vs_amt_14                            -- ‚P‚S“ú|–K–âÀÑ
+      ,rslt_vs_amt_15                            -- ‚P‚T“ú|–K–âÀÑ
+      ,rslt_vs_amt_16                            -- ‚P‚U“ú|–K–âÀÑ
+      ,rslt_vs_amt_17                            -- ‚P‚V“ú|–K–âÀÑ
+      ,rslt_vs_amt_18                            -- ‚P‚W“ú|–K–âÀÑ
+      ,rslt_vs_amt_19                            -- ‚P‚X“ú|–K–âÀÑ
+      ,rslt_vs_amt_20                            -- ‚Q‚O“ú|–K–âÀÑ
+      ,rslt_vs_amt_21                            -- ‚Q‚P“ú|–K–âÀÑ
+      ,rslt_vs_amt_22                            -- ‚Q‚Q“ú|–K–âÀÑ
+      ,rslt_vs_amt_23                            -- ‚Q‚R“ú|–K–âÀÑ
+      ,rslt_vs_amt_24                            -- ‚Q‚S“ú|–K–âÀÑ
+      ,rslt_vs_amt_25                            -- ‚Q‚T“ú|–K–âÀÑ
+      ,rslt_vs_amt_26                            -- ‚Q‚U“ú|–K–âÀÑ
+      ,rslt_vs_amt_27                            -- ‚Q‚V“ú|–K–âÀÑ
+      ,rslt_vs_amt_28                            -- ‚Q‚W“ú|–K–âÀÑ
+      ,rslt_vs_amt_29                            -- ‚Q‚X“ú|–K–âÀÑ
+      ,rslt_vs_amt_30                            -- ‚R‚O“ú|–K–âÀÑ
+      ,rslt_vs_amt_31                            -- ‚R‚P“ú|–K–âÀÑ
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,inn_v.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind5                        -- ’ •[o—ÍˆÊ’u
+           ,ROWNUM                               -- s”Ô†
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,inn_v.hub_name                       -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+           ,inn_v.gvm_type                       -- ˆê”Ê^©”Ì‹@
+           ,plan_vs_amt_1                        -- ‚P“ú|–K–âŒv‰æ
+           ,plan_vs_amt_2                        -- ‚Q“ú|–K–âŒv‰æ
+           ,plan_vs_amt_3                        -- ‚R“ú|–K–âŒv‰æ
+           ,plan_vs_amt_4                        -- ‚S“ú|–K–âŒv‰æ
+           ,plan_vs_amt_5                        -- ‚T“ú|–K–âŒv‰æ
+           ,plan_vs_amt_6                        -- ‚U“ú|–K–âŒv‰æ
+           ,plan_vs_amt_7                        -- ‚V“ú|–K–âŒv‰æ
+           ,plan_vs_amt_8                        -- ‚W“ú|–K–âŒv‰æ
+           ,plan_vs_amt_9                        -- ‚X“ú|–K–âŒv‰æ
+           ,plan_vs_amt_10                       -- ‚P‚O“ú|–K–âŒv‰æ
+           ,plan_vs_amt_11                       -- ‚P‚P“ú|–K–âŒv‰æ
+           ,plan_vs_amt_12                       -- ‚P‚Q“ú|–K–âŒv‰æ
+           ,plan_vs_amt_13                       -- ‚P‚R“ú|–K–âŒv‰æ
+           ,plan_vs_amt_14                       -- ‚P‚S“ú|–K–âŒv‰æ
+           ,plan_vs_amt_15                       -- ‚P‚T“ú|–K–âŒv‰æ
+           ,plan_vs_amt_16                       -- ‚P‚U“ú|–K–âŒv‰æ
+           ,plan_vs_amt_17                       -- ‚P‚V“ú|–K–âŒv‰æ
+           ,plan_vs_amt_18                       -- ‚P‚W“ú|–K–âŒv‰æ
+           ,plan_vs_amt_19                       -- ‚P‚X“ú|–K–âŒv‰æ
+           ,plan_vs_amt_20                       -- ‚Q‚O“ú|–K–âŒv‰æ
+           ,plan_vs_amt_21                       -- ‚Q‚P“ú|–K–âŒv‰æ
+           ,plan_vs_amt_22                       -- ‚Q‚Q“ú|–K–âŒv‰æ
+           ,plan_vs_amt_23                       -- ‚Q‚R“ú|–K–âŒv‰æ
+           ,plan_vs_amt_24                       -- ‚Q‚S“ú|–K–âŒv‰æ
+           ,plan_vs_amt_25                       -- ‚Q‚T“ú|–K–âŒv‰æ
+           ,plan_vs_amt_26                       -- ‚Q‚U“ú|–K–âŒv‰æ
+           ,plan_vs_amt_27                       -- ‚Q‚V“ú|–K–âŒv‰æ
+           ,plan_vs_amt_28                       -- ‚Q‚W“ú|–K–âŒv‰æ
+           ,plan_vs_amt_29                       -- ‚Q‚X“ú|–K–âŒv‰æ
+           ,plan_vs_amt_30                       -- ‚R‚O“ú|–K–âŒv‰æ
+           ,plan_vs_amt_31                       -- ‚R‚P“ú|–K–âŒv‰æ
+           ,rslt_vs_amt_1                        -- ‚P“ú|–K–âÀÑ
+           ,rslt_vs_amt_2                        -- ‚Q“ú|–K–âÀÑ
+           ,rslt_vs_amt_3                        -- ‚R“ú|–K–âÀÑ
+           ,rslt_vs_amt_4                        -- ‚S“ú|–K–âÀÑ
+           ,rslt_vs_amt_5                        -- ‚T“ú|–K–âÀÑ
+           ,rslt_vs_amt_6                        -- ‚U“ú|–K–âÀÑ
+           ,rslt_vs_amt_7                        -- ‚V“ú|–K–âÀÑ
+           ,rslt_vs_amt_8                        -- ‚W“ú|–K–âÀÑ
+           ,rslt_vs_amt_9                        -- ‚X“ú|–K–âÀÑ
+           ,rslt_vs_amt_10                       -- ‚P‚O“ú|–K–âÀÑ
+           ,rslt_vs_amt_11                       -- ‚P‚P“ú|–K–âÀÑ
+           ,rslt_vs_amt_12                       -- ‚P‚Q“ú|–K–âÀÑ
+           ,rslt_vs_amt_13                       -- ‚P‚R“ú|–K–âÀÑ
+           ,rslt_vs_amt_14                       -- ‚P‚S“ú|–K–âÀÑ
+           ,rslt_vs_amt_15                       -- ‚P‚T“ú|–K–âÀÑ
+           ,rslt_vs_amt_16                       -- ‚P‚U“ú|–K–âÀÑ
+           ,rslt_vs_amt_17                       -- ‚P‚V“ú|–K–âÀÑ
+           ,rslt_vs_amt_18                       -- ‚P‚W“ú|–K–âÀÑ
+           ,rslt_vs_amt_19                       -- ‚P‚X“ú|–K–âÀÑ
+           ,rslt_vs_amt_20                       -- ‚Q‚O“ú|–K–âÀÑ
+           ,rslt_vs_amt_21                       -- ‚Q‚P“ú|–K–âÀÑ
+           ,rslt_vs_amt_22                       -- ‚Q‚Q“ú|–K–âÀÑ
+           ,rslt_vs_amt_23                       -- ‚Q‚R“ú|–K–âÀÑ
+           ,rslt_vs_amt_24                       -- ‚Q‚S“ú|–K–âÀÑ
+           ,rslt_vs_amt_25                       -- ‚Q‚T“ú|–K–âÀÑ
+           ,rslt_vs_amt_26                       -- ‚Q‚U“ú|–K–âÀÑ
+           ,rslt_vs_amt_27                       -- ‚Q‚V“ú|–K–âÀÑ
+           ,rslt_vs_amt_28                       -- ‚Q‚W“ú|–K–âÀÑ
+           ,rslt_vs_amt_29                       -- ‚Q‚X“ú|–K–âÀÑ
+           ,rslt_vs_amt_30                       -- ‚R‚O“ú|–K–âÀÑ
+           ,rslt_vs_amt_31                       -- ‚R‚P“ú|–K–âÀÑ
+    FROM    (
+             -------------------------------------------
+             --ˆê”ÊŒv
+             -------------------------------------------
+             SELECT  xrvsp2.report_output_no                report_output_no
+                    ,xrvsp2.base_code                       base_code
+                    ,xrvsp2.hub_name                        hub_name
+                    ,xrvsp2.employee_number                 employee_number
+                    ,xrvsp2.employee_name                   employee_name
+                    ,cv_gvm_g                               gvm_type
+                    ,SUM(xrvsp2.num_of_visits_day_1)        plan_vs_amt_1
+                    ,SUM(xrvsp2.num_of_visits_day_2)        plan_vs_amt_2
+                    ,SUM(xrvsp2.num_of_visits_day_3)        plan_vs_amt_3
+                    ,SUM(xrvsp2.num_of_visits_day_4)        plan_vs_amt_4
+                    ,SUM(xrvsp2.num_of_visits_day_5)        plan_vs_amt_5
+                    ,SUM(xrvsp2.num_of_visits_day_6)        plan_vs_amt_6
+                    ,SUM(xrvsp2.num_of_visits_day_7)        plan_vs_amt_7
+                    ,SUM(xrvsp2.num_of_visits_day_8)        plan_vs_amt_8
+                    ,SUM(xrvsp2.num_of_visits_day_9)        plan_vs_amt_9
+                    ,SUM(xrvsp2.num_of_visits_day_10)       plan_vs_amt_10
+                    ,SUM(xrvsp2.num_of_visits_day_11)       plan_vs_amt_11
+                    ,SUM(xrvsp2.num_of_visits_day_12)       plan_vs_amt_12
+                    ,SUM(xrvsp2.num_of_visits_day_13)       plan_vs_amt_13
+                    ,SUM(xrvsp2.num_of_visits_day_14)       plan_vs_amt_14
+                    ,SUM(xrvsp2.num_of_visits_day_15)       plan_vs_amt_15
+                    ,SUM(xrvsp2.num_of_visits_day_16)       plan_vs_amt_16
+                    ,SUM(xrvsp2.num_of_visits_day_17)       plan_vs_amt_17
+                    ,SUM(xrvsp2.num_of_visits_day_18)       plan_vs_amt_18
+                    ,SUM(xrvsp2.num_of_visits_day_19)       plan_vs_amt_19
+                    ,SUM(xrvsp2.num_of_visits_day_20)       plan_vs_amt_20
+                    ,SUM(xrvsp2.num_of_visits_day_21)       plan_vs_amt_21
+                    ,SUM(xrvsp2.num_of_visits_day_22)       plan_vs_amt_22
+                    ,SUM(xrvsp2.num_of_visits_day_23)       plan_vs_amt_23
+                    ,SUM(xrvsp2.num_of_visits_day_24)       plan_vs_amt_24
+                    ,SUM(xrvsp2.num_of_visits_day_25)       plan_vs_amt_25
+                    ,SUM(xrvsp2.num_of_visits_day_26)       plan_vs_amt_26
+                    ,SUM(xrvsp2.num_of_visits_day_27)       plan_vs_amt_27
+                    ,SUM(xrvsp2.num_of_visits_day_28)       plan_vs_amt_28
+                    ,SUM(xrvsp2.num_of_visits_day_29)       plan_vs_amt_29
+                    ,SUM(xrvsp2.num_of_visits_day_30)       plan_vs_amt_30
+                    ,SUM(xrvsp2.num_of_visits_day_31)       plan_vs_amt_31
+                    ,SUM(xtrvp.rslt_vis_i_num_1)            rslt_vs_amt_1
+                    ,SUM(xtrvp.rslt_vis_i_num_2)            rslt_vs_amt_2
+                    ,SUM(xtrvp.rslt_vis_i_num_3)            rslt_vs_amt_3
+                    ,SUM(xtrvp.rslt_vis_i_num_4)            rslt_vs_amt_4
+                    ,SUM(xtrvp.rslt_vis_i_num_5)            rslt_vs_amt_5
+                    ,SUM(xtrvp.rslt_vis_i_num_6)            rslt_vs_amt_6
+                    ,SUM(xtrvp.rslt_vis_i_num_7)            rslt_vs_amt_7
+                    ,SUM(xtrvp.rslt_vis_i_num_8)            rslt_vs_amt_8
+                    ,SUM(xtrvp.rslt_vis_i_num_9)            rslt_vs_amt_9
+                    ,SUM(xtrvp.rslt_vis_i_num_10)           rslt_vs_amt_10
+                    ,SUM(xtrvp.rslt_vis_i_num_11)           rslt_vs_amt_11
+                    ,SUM(xtrvp.rslt_vis_i_num_12)           rslt_vs_amt_12
+                    ,SUM(xtrvp.rslt_vis_i_num_13)           rslt_vs_amt_13
+                    ,SUM(xtrvp.rslt_vis_i_num_14)           rslt_vs_amt_14
+                    ,SUM(xtrvp.rslt_vis_i_num_15)           rslt_vs_amt_15
+                    ,SUM(xtrvp.rslt_vis_i_num_16)           rslt_vs_amt_16
+                    ,SUM(xtrvp.rslt_vis_i_num_17)           rslt_vs_amt_17
+                    ,SUM(xtrvp.rslt_vis_i_num_18)           rslt_vs_amt_18
+                    ,SUM(xtrvp.rslt_vis_i_num_19)           rslt_vs_amt_19
+                    ,SUM(xtrvp.rslt_vis_i_num_20)           rslt_vs_amt_20
+                    ,SUM(xtrvp.rslt_vis_i_num_21)           rslt_vs_amt_21
+                    ,SUM(xtrvp.rslt_vis_i_num_22)           rslt_vs_amt_22
+                    ,SUM(xtrvp.rslt_vis_i_num_23)           rslt_vs_amt_23
+                    ,SUM(xtrvp.rslt_vis_i_num_24)           rslt_vs_amt_24
+                    ,SUM(xtrvp.rslt_vis_i_num_25)           rslt_vs_amt_25
+                    ,SUM(xtrvp.rslt_vis_i_num_26)           rslt_vs_amt_26
+                    ,SUM(xtrvp.rslt_vis_i_num_27)           rslt_vs_amt_27
+                    ,SUM(xtrvp.rslt_vis_i_num_28)           rslt_vs_amt_28
+                    ,SUM(xtrvp.rslt_vis_i_num_29)           rslt_vs_amt_29
+                    ,SUM(xtrvp.rslt_vis_i_num_30)           rslt_vs_amt_30
+                    ,SUM(xtrvp.rslt_vis_i_num_31)           rslt_vs_amt_31
+             FROM    xxcso_rep_visit_sale_plan    xrvsp
+                    ,xxcso_rep_visit_sale_plan    xrvsp2
+                    ,xxcso_tmp_rep_vs_plan        xtrvp
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   xrvsp2.request_id            = cn_request_id
+               AND   xrvsp.request_id(+)          = xrvsp2.request_id
+               AND   xrvsp.employee_number(+)     = xrvsp2.employee_number
+               AND   xtrvp.employee_number(+)     = xrvsp2.employee_number
+               AND   xtrvp.request_id(+)          = xrvsp2.request_id
+               AND   xtrvp.gvm_type(+)            = xrvsp2.gvm_type
+               AND   xtrvp.base_code(+)           = xrvsp2.base_code
+               AND   xtrvp.account_number(+)      = xrvsp2.account_number
+               AND   xrvsp2.gvm_type              = cv_gvm_g
+             GROUP BY  xrvsp2.report_output_no
+                      ,xrvsp2.base_code
+                      ,xrvsp2.hub_name
+                      ,xrvsp2.employee_number
+                      ,xrvsp2.employee_name
+             UNION ALL
+             -------------------------------------------
+             -- ©”Ì‹@Œv
+             -------------------------------------------
+             SELECT  xrvsp2.report_output_no                report_output_no
+                    ,xrvsp2.base_code                       base_code
+                    ,xrvsp2.hub_name                        hub_name
+                    ,xrvsp2.employee_number                 employee_number
+                    ,xrvsp2.employee_name                   employee_name
+                    ,cv_gvm_v                               gvm_type
+                    ,SUM(xrvsp2.num_of_visits_day_1)        plan_vs_amt_1
+                    ,SUM(xrvsp2.num_of_visits_day_2)        plan_vs_amt_2
+                    ,SUM(xrvsp2.num_of_visits_day_3)        plan_vs_amt_3
+                    ,SUM(xrvsp2.num_of_visits_day_4)        plan_vs_amt_4
+                    ,SUM(xrvsp2.num_of_visits_day_5)        plan_vs_amt_5
+                    ,SUM(xrvsp2.num_of_visits_day_6)        plan_vs_amt_6
+                    ,SUM(xrvsp2.num_of_visits_day_7)        plan_vs_amt_7
+                    ,SUM(xrvsp2.num_of_visits_day_8)        plan_vs_amt_8
+                    ,SUM(xrvsp2.num_of_visits_day_9)        plan_vs_amt_9
+                    ,SUM(xrvsp2.num_of_visits_day_10)       plan_vs_amt_10
+                    ,SUM(xrvsp2.num_of_visits_day_11)       plan_vs_amt_11
+                    ,SUM(xrvsp2.num_of_visits_day_12)       plan_vs_amt_12
+                    ,SUM(xrvsp2.num_of_visits_day_13)       plan_vs_amt_13
+                    ,SUM(xrvsp2.num_of_visits_day_14)       plan_vs_amt_14
+                    ,SUM(xrvsp2.num_of_visits_day_15)       plan_vs_amt_15
+                    ,SUM(xrvsp2.num_of_visits_day_16)       plan_vs_amt_16
+                    ,SUM(xrvsp2.num_of_visits_day_17)       plan_vs_amt_17
+                    ,SUM(xrvsp2.num_of_visits_day_18)       plan_vs_amt_18
+                    ,SUM(xrvsp2.num_of_visits_day_19)       plan_vs_amt_19
+                    ,SUM(xrvsp2.num_of_visits_day_20)       plan_vs_amt_20
+                    ,SUM(xrvsp2.num_of_visits_day_21)       plan_vs_amt_21
+                    ,SUM(xrvsp2.num_of_visits_day_22)       plan_vs_amt_22
+                    ,SUM(xrvsp2.num_of_visits_day_23)       plan_vs_amt_23
+                    ,SUM(xrvsp2.num_of_visits_day_24)       plan_vs_amt_24
+                    ,SUM(xrvsp2.num_of_visits_day_25)       plan_vs_amt_25
+                    ,SUM(xrvsp2.num_of_visits_day_26)       plan_vs_amt_26
+                    ,SUM(xrvsp2.num_of_visits_day_27)       plan_vs_amt_27
+                    ,SUM(xrvsp2.num_of_visits_day_28)       plan_vs_amt_28
+                    ,SUM(xrvsp2.num_of_visits_day_29)       plan_vs_amt_29
+                    ,SUM(xrvsp2.num_of_visits_day_30)       plan_vs_amt_30
+                    ,SUM(xrvsp2.num_of_visits_day_31)       plan_vs_amt_31
+                    ,SUM(xtrvp.rslt_vis_v_num_1)            rslt_vs_amt_1
+                    ,SUM(xtrvp.rslt_vis_v_num_2)            rslt_vs_amt_2
+                    ,SUM(xtrvp.rslt_vis_v_num_3)            rslt_vs_amt_3
+                    ,SUM(xtrvp.rslt_vis_v_num_4)            rslt_vs_amt_4
+                    ,SUM(xtrvp.rslt_vis_v_num_5)            rslt_vs_amt_5
+                    ,SUM(xtrvp.rslt_vis_v_num_6)            rslt_vs_amt_6
+                    ,SUM(xtrvp.rslt_vis_v_num_7)            rslt_vs_amt_7
+                    ,SUM(xtrvp.rslt_vis_v_num_8)            rslt_vs_amt_8
+                    ,SUM(xtrvp.rslt_vis_v_num_9)            rslt_vs_amt_9
+                    ,SUM(xtrvp.rslt_vis_v_num_10)           rslt_vs_amt_10
+                    ,SUM(xtrvp.rslt_vis_v_num_11)           rslt_vs_amt_11
+                    ,SUM(xtrvp.rslt_vis_v_num_12)           rslt_vs_amt_12
+                    ,SUM(xtrvp.rslt_vis_v_num_13)           rslt_vs_amt_13
+                    ,SUM(xtrvp.rslt_vis_v_num_14)           rslt_vs_amt_14
+                    ,SUM(xtrvp.rslt_vis_v_num_15)           rslt_vs_amt_15
+                    ,SUM(xtrvp.rslt_vis_v_num_16)           rslt_vs_amt_16
+                    ,SUM(xtrvp.rslt_vis_v_num_17)           rslt_vs_amt_17
+                    ,SUM(xtrvp.rslt_vis_v_num_18)           rslt_vs_amt_18
+                    ,SUM(xtrvp.rslt_vis_v_num_19)           rslt_vs_amt_19
+                    ,SUM(xtrvp.rslt_vis_v_num_20)           rslt_vs_amt_20
+                    ,SUM(xtrvp.rslt_vis_v_num_21)           rslt_vs_amt_21
+                    ,SUM(xtrvp.rslt_vis_v_num_22)           rslt_vs_amt_22
+                    ,SUM(xtrvp.rslt_vis_v_num_23)           rslt_vs_amt_23
+                    ,SUM(xtrvp.rslt_vis_v_num_24)           rslt_vs_amt_24
+                    ,SUM(xtrvp.rslt_vis_v_num_25)           rslt_vs_amt_25
+                    ,SUM(xtrvp.rslt_vis_v_num_26)           rslt_vs_amt_26
+                    ,SUM(xtrvp.rslt_vis_v_num_27)           rslt_vs_amt_27
+                    ,SUM(xtrvp.rslt_vis_v_num_28)           rslt_vs_amt_28
+                    ,SUM(xtrvp.rslt_vis_v_num_29)           rslt_vs_amt_29
+                    ,SUM(xtrvp.rslt_vis_v_num_30)           rslt_vs_amt_30
+                    ,SUM(xtrvp.rslt_vis_v_num_31)           rslt_vs_amt_31
+             FROM    xxcso_rep_visit_sale_plan    xrvsp
+                    ,xxcso_rep_visit_sale_plan    xrvsp2
+                    ,xxcso_tmp_rep_vs_plan        xtrvp
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   xrvsp2.request_id            = cn_request_id
+               AND   xrvsp.request_id(+)          = xrvsp2.request_id
+               AND   xrvsp.employee_number(+)     = xrvsp2.employee_number
+               AND   xtrvp.employee_number(+)     = xrvsp2.employee_number
+               AND   xrvsp2.gvm_type              = cv_gvm_v
+               AND   xtrvp.request_id(+)          = xrvsp2.request_id
+               AND   xtrvp.gvm_type(+)            = xrvsp2.gvm_type
+               AND   xtrvp.base_code(+)           = xrvsp2.base_code
+               AND   xtrvp.account_number(+)      = xrvsp2.account_number
+             GROUP BY  xrvsp2.report_output_no
+                      ,xrvsp2.base_code
+                      ,xrvsp2.hub_name
+                      ,xrvsp2.employee_number
+                      ,xrvsp2.employee_name
+             ORDER BY  report_output_no
+                      ,gvm_type
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –K–â|’†Œv•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –K–â|—LŒø–K–â•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡–K–â|—LŒø–K–â•” < K6_field >
+    -- ‰c‹Æˆõ–ˆ‚É—LŒø–K–âi“ú•Êj‚ğæ“¾‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,effective_num_1                           -- ‚P“ú|—LŒøŒ¬”
+      ,effective_num_2                           -- ‚Q“ú|—LŒøŒ¬”
+      ,effective_num_3                           -- ‚R“ú|—LŒøŒ¬”
+      ,effective_num_4                           -- ‚S“ú|—LŒøŒ¬”
+      ,effective_num_5                           -- ‚T“ú|—LŒøŒ¬”
+      ,effective_num_6                           -- ‚U“ú|—LŒøŒ¬”
+      ,effective_num_7                           -- ‚V“ú|—LŒøŒ¬”
+      ,effective_num_8                           -- ‚W“ú|—LŒøŒ¬”
+      ,effective_num_9                           -- ‚X“ú|—LŒøŒ¬”
+      ,effective_num_10                          -- ‚P‚O“ú|—LŒøŒ¬”
+      ,effective_num_11                          -- ‚P‚P“ú|—LŒøŒ¬”
+      ,effective_num_12                          -- ‚P‚Q“ú|—LŒøŒ¬”
+      ,effective_num_13                          -- ‚P‚R“ú|—LŒøŒ¬”
+      ,effective_num_14                          -- ‚P‚S“ú|—LŒøŒ¬”
+      ,effective_num_15                          -- ‚P‚T“ú|—LŒøŒ¬”
+      ,effective_num_16                          -- ‚P‚U“ú|—LŒøŒ¬”
+      ,effective_num_17                          -- ‚P‚V“ú|—LŒøŒ¬”
+      ,effective_num_18                          -- ‚P‚W“ú|—LŒøŒ¬”
+      ,effective_num_19                          -- ‚P‚X“ú|—LŒøŒ¬”
+      ,effective_num_20                          -- ‚Q‚O“ú|—LŒøŒ¬”
+      ,effective_num_21                          -- ‚Q‚P“ú|—LŒøŒ¬”
+      ,effective_num_22                          -- ‚Q‚Q“ú|—LŒøŒ¬”
+      ,effective_num_23                          -- ‚Q‚R“ú|—LŒøŒ¬”
+      ,effective_num_24                          -- ‚Q‚S“ú|—LŒøŒ¬”
+      ,effective_num_25                          -- ‚Q‚T“ú|—LŒøŒ¬”
+      ,effective_num_26                          -- ‚Q‚U“ú|—LŒøŒ¬”
+      ,effective_num_27                          -- ‚Q‚V“ú|—LŒøŒ¬”
+      ,effective_num_28                          -- ‚Q‚W“ú|—LŒøŒ¬”
+      ,effective_num_29                          -- ‚Q‚X“ú|—LŒøŒ¬”
+      ,effective_num_30                          -- ‚R‚O“ú|—LŒøŒ¬”
+      ,effective_num_31                          -- ‚R‚P“ú|—LŒøŒ¬”
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,inn_v.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind6                        -- ’ •[o—ÍˆÊ’u
+           ,ROWNUM                               -- s”Ô†
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,inn_v.hub_name                       -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+           ,inn_v.rslt_vis_e_num_1               -- ‚P“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_2               -- ‚Q“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_3               -- ‚R“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_4               -- ‚S“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_5               -- ‚T“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_6               -- ‚U“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_7               -- ‚V“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_8               -- ‚W“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_9               -- ‚X“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_10              -- ‚P‚O“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_11              -- ‚P‚P“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_12              -- ‚P‚Q“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_13              -- ‚P‚R“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_14              -- ‚P‚S“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_15              -- ‚P‚T“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_16              -- ‚P‚U“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_17              -- ‚P‚V“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_18              -- ‚P‚W“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_19              -- ‚P‚X“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_20              -- ‚Q‚O“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_21              -- ‚Q‚P“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_22              -- ‚Q‚Q“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_23              -- ‚Q‚R“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_24              -- ‚Q‚S“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_25              -- ‚Q‚T“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_26              -- ‚Q‚U“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_27              -- ‚Q‚V“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_28              -- ‚Q‚W“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_29              -- ‚Q‚X“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_30              -- ‚R‚O“ú|—LŒøŒ¬”
+           ,inn_v.rslt_vis_e_num_31              -- ‚R‚P“ú|—LŒøŒ¬”
+    FROM    (SELECT  xrvsp.report_output_no        report_output_no
+                    ,xrvsp.base_code               base_code
+                    ,xrvsp.hub_name                hub_name
+                    ,xrvsp.employee_number         employee_number
+                    ,xrvsp.employee_name           employee_name
+                    ,SUM(xtrvp.rslt_vis_e_num_1)      rslt_vis_e_num_1
+                    ,SUM(xtrvp.rslt_vis_e_num_2)      rslt_vis_e_num_2
+                    ,SUM(xtrvp.rslt_vis_e_num_3)      rslt_vis_e_num_3
+                    ,SUM(xtrvp.rslt_vis_e_num_4)      rslt_vis_e_num_4
+                    ,SUM(xtrvp.rslt_vis_e_num_5)      rslt_vis_e_num_5
+                    ,SUM(xtrvp.rslt_vis_e_num_6)      rslt_vis_e_num_6
+                    ,SUM(xtrvp.rslt_vis_e_num_7)      rslt_vis_e_num_7
+                    ,SUM(xtrvp.rslt_vis_e_num_8)      rslt_vis_e_num_8
+                    ,SUM(xtrvp.rslt_vis_e_num_9)      rslt_vis_e_num_9
+                    ,SUM(xtrvp.rslt_vis_e_num_10)     rslt_vis_e_num_10
+                    ,SUM(xtrvp.rslt_vis_e_num_11)     rslt_vis_e_num_11
+                    ,SUM(xtrvp.rslt_vis_e_num_12)     rslt_vis_e_num_12
+                    ,SUM(xtrvp.rslt_vis_e_num_13)     rslt_vis_e_num_13
+                    ,SUM(xtrvp.rslt_vis_e_num_14)     rslt_vis_e_num_14
+                    ,SUM(xtrvp.rslt_vis_e_num_15)     rslt_vis_e_num_15
+                    ,SUM(xtrvp.rslt_vis_e_num_16)     rslt_vis_e_num_16
+                    ,SUM(xtrvp.rslt_vis_e_num_17)     rslt_vis_e_num_17
+                    ,SUM(xtrvp.rslt_vis_e_num_18)     rslt_vis_e_num_18
+                    ,SUM(xtrvp.rslt_vis_e_num_19)     rslt_vis_e_num_19
+                    ,SUM(xtrvp.rslt_vis_e_num_20)     rslt_vis_e_num_20
+                    ,SUM(xtrvp.rslt_vis_e_num_21)     rslt_vis_e_num_21
+                    ,SUM(xtrvp.rslt_vis_e_num_22)     rslt_vis_e_num_22
+                    ,SUM(xtrvp.rslt_vis_e_num_23)     rslt_vis_e_num_23
+                    ,SUM(xtrvp.rslt_vis_e_num_24)     rslt_vis_e_num_24
+                    ,SUM(xtrvp.rslt_vis_e_num_25)     rslt_vis_e_num_25
+                    ,SUM(xtrvp.rslt_vis_e_num_26)     rslt_vis_e_num_26
+                    ,SUM(xtrvp.rslt_vis_e_num_27)     rslt_vis_e_num_27
+                    ,SUM(xtrvp.rslt_vis_e_num_28)     rslt_vis_e_num_28
+                    ,SUM(xtrvp.rslt_vis_e_num_29)     rslt_vis_e_num_29
+                    ,SUM(xtrvp.rslt_vis_e_num_30)     rslt_vis_e_num_30
+                    ,SUM(xtrvp.rslt_vis_e_num_31)     rslt_vis_e_num_31
+             FROM    xxcso_rep_visit_sale_plan    xrvsp
+                    ,xxcso_tmp_rep_vs_plan        xtrvp
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   xtrvp.employee_number(+)     = xrvsp.employee_number
+             GROUP BY  xrvsp.report_output_no
+                      ,xrvsp.base_code
+                      ,xrvsp.hub_name
+                      ,xrvsp.employee_number
+                      ,xrvsp.employee_name
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –K–â|—LŒø–K–â•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –K–â|–¾×•”æ“¾ ŠJn');
+--
+    ------------------------------------------------------------------------
+    -- ¡–K–â|–¾×•” < K7_field >
+    -- ‰c‹Æˆõ–ˆ‚É–K–â‹L†ŒviŒ•Êj‚ğæ“¾‚·‚é
+    ------------------------------------------------------------------------
+    INSERT INTO xxcso_rep_visit_sale_plan(
+       created_by                                -- ì¬Ò
+      ,creation_date                             -- ì¬“ú
+      ,last_updated_by                           -- ÅIXVÒ
+      ,last_update_date                          -- ÅIXV“ú
+      ,last_update_login                         -- ÅIXVƒƒOƒCƒ“
+      ,request_id                                -- —v‹ID
+      ,program_application_id                    -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+      ,program_id                                -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+      ,program_update_date                       -- ƒvƒƒOƒ‰ƒ€XV“ú
+      ,report_output_no                          -- ’ •[o—ÍƒZƒbƒg”Ô†
+      ,line_kind                                 -- ’ •[o—ÍˆÊ’u
+      ,line_num                                  -- s”Ô†
+      ,base_code                                 -- ‹’“_ƒR[ƒh
+      ,hub_name                                  -- ‹’“_–¼Ì
+      ,employee_number                           -- ‰c‹ÆˆõƒR[ƒh
+      ,employee_name                             -- ‰c‹Æˆõ–¼
+      ,vis_a_num                                 -- –K–â‚`Œ”
+      ,vis_b_num                                 -- –K–â‚aŒ”
+      ,vis_c_num                                 -- –K–â‚bŒ”
+      ,vis_d_num                                 -- –K–â‚cŒ”
+      ,vis_e_num                                 -- –K–â‚dŒ”
+      ,vis_f_num                                 -- –K–â‚eŒ”
+      ,vis_g_num                                 -- –K–â‚fŒ”
+      ,vis_h_num                                 -- –K–â‚gŒ”
+      ,vis_i_num                                 -- –K–â‚hŒ”
+      ,vis_j_num                                 -- –K–â‚iŒ”
+      ,vis_k_num                                 -- –K–â‚jŒ”
+      ,vis_l_num                                 -- –K–â‚kŒ”
+      ,vis_m_num                                 -- –K–â‚lŒ”
+      ,vis_n_num                                 -- –K–â‚mŒ”
+      ,vis_o_num                                 -- –K–â‚nŒ”
+      ,vis_p_num                                 -- –K–â‚oŒ”
+      ,vis_q_num                                 -- –K–â‚pŒ”
+      ,vis_r_num                                 -- –K–â‚qŒ”
+      ,vis_s_num                                 -- –K–â‚rŒ”
+      ,vis_t_num                                 -- –K–â‚sŒ”
+      ,vis_u_num                                 -- –K–â‚tŒ”
+      ,vis_v_num                                 -- –K–â‚uŒ”
+      ,vis_w_num                                 -- –K–â‚vŒ”
+      ,vis_x_num                                 -- –K–â‚wŒ”
+      ,vis_y_num                                 -- –K–â‚xŒ”
+      ,vis_z_num                                 -- –K–â‚yŒ”
+    )
+    SELECT  cn_created_by                        -- ì¬Ò
+           ,cd_creation_date                     -- ì¬“ú
+           ,cn_last_updated_by                   -- ÅIXVÒ
+           ,cd_last_update_date                  -- ÅIXV“ú
+           ,cn_last_update_login                 -- ÅIXVƒƒOƒCƒ“
+           ,cn_request_id                        -- —v‹ID
+           ,cn_program_application_id            -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID
+           ,cn_program_id                        -- ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID
+           ,cd_program_update_date               -- ƒvƒƒOƒ‰ƒ€XV“ú
+           ,inn_v.report_output_no               -- ’ •[o—ÍƒZƒbƒg”Ô†
+           ,cn_line_kind7                        -- ’ •[o—ÍˆÊ’u
+           ,ROWNUM                               -- s”Ô†
+           ,inn_v.base_code                      -- ‹’“_ƒR[ƒh
+           ,inn_v.hub_name                       -- ‹’“_–¼
+           ,inn_v.employee_number                -- ‰c‹ÆˆõƒR[ƒh
+           ,inn_v.employee_name                  -- ‰c‹Æˆõ–¼
+           ,inn_v.vis_a_num                      -- –K–â‚`Œ”
+           ,inn_v.vis_b_num                      -- –K–â‚aŒ”
+           ,inn_v.vis_c_num                      -- –K–â‚bŒ”
+           ,inn_v.vis_d_num                      -- –K–â‚cŒ”
+           ,inn_v.vis_e_num                      -- –K–â‚dŒ”
+           ,inn_v.vis_f_num                      -- –K–â‚eŒ”
+           ,inn_v.vis_g_num                      -- –K–â‚fŒ”
+           ,inn_v.vis_h_num                      -- –K–â‚gŒ”
+           ,inn_v.vis_i_num                      -- –K–â‚hŒ”
+           ,inn_v.vis_j_num                      -- –K–â‚iŒ”
+           ,inn_v.vis_k_num                      -- –K–â‚jŒ”
+           ,inn_v.vis_l_num                      -- –K–â‚kŒ”
+           ,inn_v.vis_m_num                      -- –K–â‚lŒ”
+           ,inn_v.vis_n_num                      -- –K–â‚mŒ”
+           ,inn_v.vis_o_num                      -- –K–â‚nŒ”
+           ,inn_v.vis_p_num                      -- –K–â‚oŒ”
+           ,inn_v.vis_q_num                      -- –K–â‚pŒ”
+           ,inn_v.vis_r_num                      -- –K–â‚qŒ”
+           ,inn_v.vis_s_num                      -- –K–â‚rŒ”
+           ,inn_v.vis_t_num                      -- –K–â‚sŒ”
+           ,inn_v.vis_u_num                      -- –K–â‚tŒ”
+           ,inn_v.vis_v_num                      -- –K–â‚uŒ”
+           ,inn_v.vis_w_num                      -- –K–â‚vŒ”
+           ,inn_v.vis_x_num                      -- –K–â‚wŒ”
+           ,inn_v.vis_y_num                      -- –K–â‚xŒ”
+           ,inn_v.vis_z_num                      -- –K–â‚yŒ”
+    FROM    (SELECT  xrvsp.report_output_no           report_output_no
+                    ,xrvsp.base_code                  base_code
+                    ,xrvsp.hub_name                   hub_name
+                    ,xrvsp.employee_number            employee_number
+                    ,xrvsp.employee_name              employee_name
+                    ,SUM(xsvsr.vis_a_num)             vis_a_num
+                    ,SUM(xsvsr.vis_b_num)             vis_b_num
+                    ,SUM(xsvsr.vis_c_num)             vis_c_num
+                    ,SUM(xsvsr.vis_d_num)             vis_d_num
+                    ,SUM(xsvsr.vis_e_num)             vis_e_num
+                    ,SUM(xsvsr.vis_f_num)             vis_f_num
+                    ,SUM(xsvsr.vis_g_num)             vis_g_num
+                    ,SUM(xsvsr.vis_h_num)             vis_h_num
+                    ,SUM(xsvsr.vis_i_num)             vis_i_num
+                    ,SUM(xsvsr.vis_j_num)             vis_j_num
+                    ,SUM(xsvsr.vis_k_num)             vis_k_num
+                    ,SUM(xsvsr.vis_l_num)             vis_l_num
+                    ,SUM(xsvsr.vis_m_num)             vis_m_num
+                    ,SUM(xsvsr.vis_n_num)             vis_n_num
+                    ,SUM(xsvsr.vis_o_num)             vis_o_num
+                    ,SUM(xsvsr.vis_p_num)             vis_p_num
+                    ,SUM(xsvsr.vis_q_num)             vis_q_num
+                    ,SUM(xsvsr.vis_r_num)             vis_r_num
+                    ,SUM(xsvsr.vis_s_num)             vis_s_num
+                    ,SUM(xsvsr.vis_t_num)             vis_t_num
+                    ,SUM(xsvsr.vis_u_num)             vis_u_num
+                    ,SUM(xsvsr.vis_v_num)             vis_v_num
+                    ,SUM(xsvsr.vis_w_num)             vis_w_num
+                    ,SUM(xsvsr.vis_x_num)             vis_x_num
+                    ,SUM(xsvsr.vis_y_num)             vis_y_num
+                    ,SUM(xsvsr.vis_z_num)             vis_z_num
+             FROM    xxcso_rep_visit_sale_plan    xrvsp
+                    ,xxcso_tmp_rep_vs_plan        xtrvp
+                    ,xxcso_sum_visit_sale_rep     xsvsr
+             WHERE   xrvsp.request_id             = cn_request_id
+               AND   xrvsp.line_kind              = cn_line_kind1
+               AND   xtrvp.employee_number(+)     = xrvsp.employee_number
+               AND   xsvsr.sum_org_type(+)        = cv_sum_org_type1
+               AND   xsvsr.sum_org_code(+)        = xtrvp.account_number
+               AND   xsvsr.group_base_code(+)     = xtrvp.base_code
+               AND   xsvsr.month_date_div(+)      = cv_month_date_div1
+               AND   xsvsr.sales_date(+)          = gv_year_month
+             GROUP BY  xrvsp.report_output_no
+                      ,xrvsp.base_code
+                      ,xrvsp.hub_name
+                      ,xrvsp.employee_number
+                      ,xrvsp.employee_name
+            ) inn_v
+    ;
+--
+    debug(TO_CHAR(SYSDATE, 'YYYY/MM/DD HH24:MI:SS') || ' –K–â|–¾×•”æ“¾ I—¹iŒ”F' || SQL%ROWCOUNT || 'j');
+--
+    -- ’ŠoŒ”‚ğ•Û‘¶
+    gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+  EXCEPTION
+--
+--#################################  ŒÅ’è—áŠOˆ—•” START   ####################################
+--
+    -- *** ‹¤’ÊŠÖ”—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** ‹¤’ÊŠÖ”OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS—áŠOƒnƒ“ƒhƒ‰ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  ŒÅ’è•” END   ##########################################
+--
+  END get_ticket6;
+--
+-- Ver 1.10 Add End
+--
   /**********************************************************************************
    * Procedure Name   : act_svf
    * Description      : SVF‹N“®ˆ— (A-8)
@@ -23483,7 +26281,10 @@ DO_ERROR('A-X-4-3');
 --###########################  ŒÅ’è•” END   ############################
 --
     -- ƒtƒ@ƒCƒ‹–¼‚Ìİ’è
-    lv_svf_file_name := cv_pkg_name
+-- Ver 1.10 Mod Start
+--    lv_svf_file_name := cv_pkg_name
+    lv_svf_file_name := gv_report_id
+-- Ver 1.10 Mod End
                      || TO_CHAR(cd_creation_date, 'YYYYMMDD')
                      || TO_CHAR(cn_request_id);
 --
@@ -23503,7 +26304,10 @@ DO_ERROR('A-X-4-3');
           lv_conc_name := cv_pkg_name;
       END;
 --
-      lv_file_id := cv_pkg_name;
+-- Ver 1.10 Mod Start
+--      lv_file_id := cv_pkg_name;
+      lv_file_id := gv_report_id;
+-- Ver 1.10 Mod End
 --
 -- ’ •[ƒT[ƒo—§ã‚É—LŒø‰»
     xxccp_svfcommon_pkg.submit_svf_request(
@@ -23826,6 +26630,20 @@ DO_ERROR('submain');
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process_expt;
       END IF;
+-- Ver 1.10 Add Start
+    ELSIF (gv_report_type = cv_report_6) THEN
+      -- ======================================
+      -- A-12-1,A-12-2 ’ •[í•Ê6-‰c‹Æˆõ•Ê
+      -- ======================================
+      get_ticket6(
+         ov_errbuf    => lv_errbuf         -- ƒGƒ‰[EƒƒbƒZ[ƒW            --# ŒÅ’è #
+        ,ov_retcode   => lv_retcode        -- ƒŠƒ^[ƒ“EƒR[ƒh              --# ŒÅ’è #
+        ,ov_errmsg    => lv_errmsg         -- ƒ†[ƒU[EƒGƒ‰[EƒƒbƒZ[ƒW  --# ŒÅ’è #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- Ver 1.10 Add End
     END IF;
 --
     -- ˆ—‘ÎÛƒf[ƒ^‚ª0Œ‚Ìê‡

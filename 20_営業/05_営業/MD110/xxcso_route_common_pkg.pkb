@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.xxcso_route_common_pkg  
+CREATE OR REPLACE PACKAGE BODY APPS.xxcso_route_common_pkg
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_ROUTE_COMMON_PKG(body)
  * Description      : ROUTE関連共通関数
  * MD.050           : XXCSO_View・共通関数一覧
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ----------------------  ----  ----  ------------------------------------------------------
@@ -17,7 +17,9 @@ AS
  *  calc_visit_times       P     -     ルートＮｏ訪問回数算出処理
  *  validate_route_no_p    P     -     ルートＮｏ妥当性チェック(プロシージャ)
  *  isCustomerVendor       F     B     ＶＤ業態判定関数
- *  calc_visit_times_f     F     N     ルートＮｏ訪問回数算出処理(ファンクション)
+ *  calc_visit_times_f     F     N     ルートＮｏ訪問回数算出処理
+ *  get_visit_rank_f       F     V     訪問ランク取得
+ *  get_number_of_visits_f F     N     計画訪問回数取得取得
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -30,10 +32,11 @@ AS
  *  2008/12/17    1.0   Noriyuki.Yabuki ルートＮｏ妥当性チェック作成
  *  2009/01/09    1.0   Kazumoto.Tomio  ルートＮｏ妥当性チェック(プロシージャ)作成
  *  2009/01/20    1.0   T.Maruyama      ＶＤ業態判定関数追加
- *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理(ファンクション)追加
+ *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理追加
  *  2009/02/27    1.0   Kazuo.Satomura  売上計画日別配分処理桁溢れ対応
- *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
- *  2009/07/07    1.2   Daisuke.Abe      0000473対応
+ *  2009-05-01    1.1   Tomoko.Mori     T1_0897対応
+ *  2009/07/07    1.2   Daisuke.Abe     0000473対応
+ *  2024-10-23    1.3   Toru.Okuyama    E_本稼動_20170対応：訪問ランク取得、計画訪問回数取得取得の追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1285,7 +1288,7 @@ AS
 --
   /**********************************************************************************
    * Function Name    : calc_visit_times_f
-   * Description      : 訪問回数算出処理(ファンクション)
+   * Description      : 訪問回数算出処理
    ***********************************************************************************/
   FUNCTION calc_visit_times_f(
      it_route_number IN         xxcso_in_route_no.route_no%TYPE -- ルートＮｏ
@@ -1330,6 +1333,225 @@ AS
 --
 --#####################################  固定部 END   ##########################################
   END calc_visit_times_f;
+--
+-- Ver 1.3 Add Start
+  /**********************************************************************************
+   * Function Name    : get_visit_rank_f
+   * Description      : 訪問ランク取得
+   ***********************************************************************************/
+  FUNCTION get_visit_rank_f(
+     it_route_number IN         xxcso_in_route_no.route_no%TYPE -- ルートＮｏ
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name      CONSTANT VARCHAR2(100) := 'get_visit_rank_f';
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- ===============================
+    cv_visit_rank_s  CONSTANT VARCHAR2(1)  := 'S';       -- 訪問ランク
+    cv_visit_rank_a  CONSTANT VARCHAR2(1)  := 'A';       -- 訪問ランク
+    cv_visit_rank_b  CONSTANT VARCHAR2(1)  := 'B';       -- 訪問ランク
+    cv_visit_rank_c  CONSTANT VARCHAR2(1)  := 'C';       -- 訪問ランク
+    cv_visit_rank_d  CONSTANT VARCHAR2(1)  := 'D';       -- 訪問ランク
+    cv_visit_rank_e  CONSTANT VARCHAR2(1)  := 'E';       -- 訪問ランク
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_visit_cnt     NUMBER      := NULL;                -- 訪問回数
+    lv_rank          VARCHAR2(1) := NULL;                -- 戻り値：訪問ランク
+--
+  BEGIN
+    -- 共通関数：ルートＮｏ訪問回数算出より訪問回数を取得
+    ln_visit_cnt := xxcso_route_common_pkg.calc_visit_times_f(it_route_number);
+    --
+    IF ln_visit_cnt IS NOT NULL THEN
+      IF ln_visit_cnt >= 20 THEN             -- 20回以上 ⇒ ランク S
+        lv_rank := cv_visit_rank_s;
+      ELSIF ln_visit_cnt >= 12 THEN          -- 12回以上 ⇒ ランク A （12～19回）
+        lv_rank := cv_visit_rank_a;
+      ELSIF ln_visit_cnt >=  8 THEN          --  8回以上 ⇒ ランク B （ 8～11回）
+        lv_rank := cv_visit_rank_b;
+      ELSIF ln_visit_cnt >=  4 THEN          --  4回以上 ⇒ ランク C （ 4～ 7回）
+        lv_rank := cv_visit_rank_c;
+      ELSIF ln_visit_cnt >=  2 THEN          --  2回以上 ⇒ ランク D （ 2～ 3回）
+        lv_rank := cv_visit_rank_d;
+      ELSIF ln_visit_cnt >=  1 THEN          --  1回     ⇒ ランク E
+        lv_rank := cv_visit_rank_e;
+      ELSE
+        lv_rank := NULL;
+      END IF;
+    END IF;
+    RETURN lv_rank;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt('xxcso_route_common_pkg', cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_visit_rank_f;
+--
+  /**********************************************************************************
+   * Function Name    : get_number_of_visits_f
+   * Description      : 計画訪問回数取得
+   ***********************************************************************************/
+  FUNCTION get_number_of_visits_f(
+     iv_route_number     IN         xxcso_in_route_no.route_no%TYPE, -- ルートＮｏ
+     id_year_month       IN         DATE,                            -- 基準月初日
+     in_day_offset       IN         NUMBER                           -- 月初からのオフセット日数
+  ) RETURN NUMBER
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name      CONSTANT VARCHAR2(100) := 'get_number_of_visits_f';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_visits      NUMBER(1) := 0;        -- 戻り値：計画訪問回数
+    ln_day_offset  NUMBER    := 0;        -- オフセット日数
+    ln_week_no     NUMBER    := NULL;     -- 曜日No.
+    ln_week_no1    NUMBER    := NULL;     -- 曜日No.1（「５-」区分の場合）
+    ln_week_no2    NUMBER    := NULL;     -- 曜日No.2（「５-」区分の場合）
+    ln_visits_1    NUMBER(1) := NULL;     -- 計画訪問週指定1
+    ln_visits_2    NUMBER(1) := NULL;     -- 計画訪問週指定2
+    ld_year_month  DATE      := NULL;     -- 基準月初日
+    ld_begin_year  DATE      := NULL;     -- 基準月の年初
+    ln_month_from  NUMBER    := NULL;     -- 季節取引顧客「６-」区分の取引開始月
+    ln_month_to    NUMBER    := NULL;     -- 季節取引顧客「６-」区分の取引終了月
+    ld_month_from  DATE      := NULL;     -- 取引開始月
+    ld_month_to    DATE      := NULL;     -- 取引終了月
+--
+  BEGIN
+    IF LENGTHB(NVL(iv_route_number,'0')) <> 7 THEN
+      RETURN ln_visits;
+    END IF;
+    ld_year_month := TRUNC(NVL(id_year_month, trunc(SYSDATE,'MM')),'MM');                     -- 基準月初日
+    ln_day_offset := NVL(in_day_offset,0);                                                    -- オフセット日数
+    SELECT TO_NUMBER(TO_CHAR(ld_year_month + ln_day_offset, 'D')) INTO ln_week_no FROM DUAL;  -- 曜日番号取得
+    ln_week_no := ln_week_no - 1;
+    IF ln_week_no = 0 THEN
+      ln_week_no := 7;
+    END IF;
+    IF SUBSTR(iv_route_number, 1, 1) IN ('0', '1', '2', '3') THEN                             -- 【週１回以上訪問「０-」..「３-」区分の場合】
+      IF TRUNC(ld_year_month + ln_day_offset) <= TRUNC(LAST_DAY(ld_year_month)) THEN
+        BEGIN
+          ln_visits := TO_NUMBER(SUBSTR(iv_route_number, ln_week_no, 1));
+        EXCEPTION
+          WHEN OTHERS THEN
+            RETURN 0;
+        END;
+      END IF;
+    ELSIF SUBSTR(iv_route_number, 1, 1) IN ('5') THEN                                         -- 曜日番号取得【週１回以下訪問「５-」区分の場合】
+      IF TRUNC(ld_year_month + in_day_offset) <= TRUNC(LAST_DAY(ld_year_month)) THEN
+        BEGIN
+          ln_visits_1 := TO_NUMBER(SUBSTR(iv_route_number, 3, 1));     -- ルートＮｏ３桁目＝計画訪問週指定1
+          ln_visits_2 := TO_NUMBER(SUBSTR(iv_route_number, 4, 1));     -- ルートＮｏ４桁目＝計画訪問週指定2
+          ln_week_no1 := TO_NUMBER(SUBSTR(iv_route_number, 6, 1));     -- ルートＮｏ６桁目＝曜日No.1番号
+          ln_week_no2 := TO_NUMBER(SUBSTR(iv_route_number, 7, 1));     -- ルートＮｏ７桁目＝曜日No.2番号
+        EXCEPTION
+          WHEN OTHERS THEN
+            RETURN 0;
+        END;
+        IF ln_week_no = ln_week_no1 THEN          -- 訪問No.1曜日の時
+          IF (ln_day_offset+1) <= 7 THEN
+            IF ln_visits_1 = 1 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 14 THEN
+            IF ln_visits_1 = 2 OR ln_visits_2 = 2 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 21 THEN
+            IF ln_visits_1 = 3 OR ln_visits_2 = 3 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 28 THEN
+            IF ln_visits_1 = 4 OR ln_visits_2 = 4 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 31 THEN
+            IF ln_visits_1 = 5 OR ln_visits_2 = 5 THEN
+              ln_visits := 1;
+            END IF;
+          ELSE
+            ln_visits := 0;
+          END IF;
+        ELSIF ln_week_no = ln_week_no2 THEN       -- 訪問No.2曜日の時
+          IF (ln_day_offset+1) <= 7 THEN
+            IF ln_visits_1 = 1 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 14 THEN
+            IF ln_visits_1 = 2 OR ln_visits_2 = 2 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 21 THEN
+            IF ln_visits_1 = 3 OR ln_visits_2 = 3 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 28 THEN
+            IF ln_visits_1 = 4 OR ln_visits_2 = 4 THEN
+              ln_visits := 1;
+            END IF;
+          ELSIF (ln_day_offset+1) <= 31 THEN
+            IF ln_visits_1 = 5 OR ln_visits_2 = 5 THEN
+              ln_visits := 1;
+            END IF;
+          ELSE
+            ln_visits := 0;
+          END IF;
+        END IF;
+      END IF;
+    ELSIF SUBSTR(iv_route_number, 1, 1) IN ('6') THEN                                         -- 【季節取引顧客の場合】
+      IF TRUNC(ld_year_month + ln_day_offset) = TRUNC(LAST_DAY(ld_year_month)) THEN           -- 月末以外は対象外
+        BEGIN
+          ln_month_from := TO_NUMBER(SUBSTR(iv_route_number, 3, 2));                          -- 取引開始月
+          ln_month_to   := TO_NUMBER(SUBSTR(iv_route_number, 6, 2));                          -- 取引終了月
+        EXCEPTION
+          WHEN OTHERS THEN
+            RETURN 0;
+        END;
+        SELECT TRUNC(ld_year_month, 'YEAR') INTO ld_begin_year FROM DUAL;                     -- 基準月の年初
+        IF ln_month_from <= ln_month_to THEN
+          SELECT TRUNC(ADD_MONTHS(ld_begin_year, ln_month_from) -1, 'MONTH') INTO ld_month_from FROM DUAL;      -- 取引開始月
+          SELECT TRUNC(ADD_MONTHS(ld_begin_year, ln_month_to)   -1, 'MONTH') INTO ld_month_to   FROM DUAL;      -- 取引終了月
+          SELECT COUNT(1) INTO ln_visits FROM DUAL WHERE ld_year_month BETWEEN ld_month_from AND ld_month_to;   -- 範囲チェックで有効/無効判別
+        ELSE  -- 終了月の方が小さい場合は、①取引開始月から年末と、②年初から取引終了月
+          SELECT TRUNC(ADD_MONTHS(ld_begin_year, ln_month_from) -1, 'MONTH') INTO ld_month_from FROM DUAL;      -- 取引開始月
+          SELECT TRUNC(ADD_MONTHS(ld_begin_year,            12) -1, 'MONTH') INTO ld_month_to   FROM DUAL;      -- 取引終了月
+          SELECT COUNT(1) INTO ln_visits FROM DUAL WHERE ld_year_month BETWEEN ld_month_from AND ld_month_to;   -- ①取引開始月から年末
+          IF ln_visits = 0 THEN
+            ld_month_from := ld_begin_year;                                                                     -- 基準月の年初
+            SELECT TRUNC(ADD_MONTHS(ld_begin_year, ln_month_to) -1, 'MONTH') INTO ld_month_to   FROM DUAL;      -- 取引終了月
+            SELECT COUNT(1) INTO ln_visits FROM DUAL WHERE ld_year_month BETWEEN ld_month_from AND ld_month_to; -- ②年初から取引終了月
+          END IF;
+        END IF;
+      END IF;
+    ELSIF SUBSTR(iv_route_number, 1, 1) IN ('9') THEN                                         -- 【その他の場合】
+      IF TRUNC(ld_year_month + ln_day_offset) = TRUNC(LAST_DAY(ld_year_month)) THEN           -- 月末以外は対象外
+        ln_visits := 1;                                                                       -- 該当月の末日
+      END IF;
+    ELSE                                                                                      -- 【その他、規格外】
+      ln_visits := 0;
+    END IF;
+    RETURN ln_visits;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt('xxcso_route_common_pkg', cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_number_of_visits_f;
+--
+-- Ver 1.3 Add End
 --
 END xxcso_route_common_pkg;
 /

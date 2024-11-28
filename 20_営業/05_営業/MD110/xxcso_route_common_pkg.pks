@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_ROUTE_COMMON_PKG(spec)
  * Description      : ROUTE関連共通関数（営業）
  * MD.050           : XXCSO_View・共通関数一覧
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ----------------------  ----  ----  ------------------------------------------------------
@@ -17,7 +17,9 @@ AS
  *  calc_visit_times       F     N     ルートＮｏ訪問回数算出処理
  *  validate_route_no_p    P     -     ルートＮｏ妥当性チェック(プロシージャ)
  *  isCustomerVendor       F     B     ＶＤ業態判定関数
- *  calc_visit_times_f     F     N     ルートＮｏ訪問回数算出処理(ファンクション)
+ *  calc_visit_times_f     F     N     ルートＮｏ訪問回数算出処理
+ *  get_visit_rank_f       F     V     訪問ランク取得
+ *  get_number_of_visits_f F     N     計画訪問回数取得取得
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -28,8 +30,9 @@ AS
  *  2008/12/17          Noriyuki.Yabuki ルートＮｏ妥当性チェックの出力項目(エラー理由)追加
  *  2009/01/09          Kazumoto.Tomio  ルートＮｏ妥当性チェック(プロシージャ)追加
  *  2009/01/20          T.Maruyama      ＶＤ業態判定関数追加
- *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理(ファンクション)追加
- *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2009/02/19    1.0   Mio.Maruyama    ルートＮｏ訪問回数算出処理追加
+ *  2009-05-01    1.1   Tomoko.Mori     T1_0897対応
+ *  2024-10-23    1.2   Toru.Okuyama    E_本稼動_20170対応：訪問ランク取得、計画訪問回数取得取得の追加
  *****************************************************************************************/
 --
   -- ===============================
@@ -131,11 +134,31 @@ AS
 --
   /**********************************************************************************
    * Function Name    : calc_visit_times_f
-   * Description      : 訪問回数算出処理(ファンクション)
+   * Description      : 訪問回数算出処理
    ***********************************************************************************/
   FUNCTION calc_visit_times_f(
      it_route_number IN         xxcso_in_route_no.route_no%TYPE -- ルートＮｏ
   ) RETURN NUMBER;
+--
+-- Ver 1.2 Add Start
+  /**********************************************************************************
+   * Function Name    : get_visit_rank_f
+   * Description      : 訪問ランク取得
+   ***********************************************************************************/
+  FUNCTION get_visit_rank_f(
+     it_route_number IN         xxcso_in_route_no.route_no%TYPE -- ルートＮｏ
+  ) RETURN VARCHAR2;
+--
+  /**********************************************************************************
+   * Function Name    : get_number_of_visits_f
+   * Description      : 計画訪問回数取得取得
+   ***********************************************************************************/
+  FUNCTION get_number_of_visits_f(
+     iv_route_number     IN  xxcso_in_route_no.route_no%TYPE, -- ルートＮｏ
+     id_year_month       IN  DATE,                            -- 基準月初日
+     in_day_offset       IN  NUMBER                           -- 月初からのオフセット日数
+  ) RETURN NUMBER;
+-- Ver 1.2 Add End
 --
 END xxcso_route_common_pkg;
 /
