@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  <<営業C/O後>>
  *  2009/12/03    1.33  Marushita        本番276対応
  *  2024/10/21    1.34  R.Oikawa         E_本稼動_20230 LD混載追加対応
+ *  2024/12/06    1.35  R.Oikawa         E_本稼動_20230 LD混載追加対応②
  *
  *****************************************************************************************/
 --
@@ -440,6 +441,12 @@ AS
 -- Ver1.34 ADD START
      ,capacity                  xxwsh_stock_delivery_info_tmp2.capacity%TYPE
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+     ,ship_to_weight            xxwsh_stock_delivery_info_tmp2.ship_to_weight%TYPE
+     ,ship_to_capacity          xxwsh_stock_delivery_info_tmp2.ship_to_capacity%TYPE
+     ,carrier_weight            xxwsh_stock_delivery_info_tmp2.carrier_weight%TYPE
+     ,carrier_capacity          xxwsh_stock_delivery_info_tmp2.carrier_capacity%TYPE
+-- Ver1.35 ADD END
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -1610,10 +1617,53 @@ AS
                NULL
              END  capacity                            -- 46:容積
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+            ,NULL  ship_to_weight                     -- 47:入庫先（重量）
+            ,NULL  ship_to_capacity                   -- 48:入庫先（容積）
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN -- LD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6           = gc_small_method_y THEN               -- 小口
+                            NVL(xoha.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               CASE
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_j
+                 AND  xlv.attribute6              = gc_small_method_y THEN               -- 重量且つ小口
+                         NVL(xoha.sum_weight,0)
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_j
+                 AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN    -- 重量且つ小口以外
+                         NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN               -- 容積
+                         NVL(xoha.sum_capacity,0)
+               END
+             END   carrier_weight                      -- 49:運送業者（LD混載:重量 LD混載以外:重量／容積）
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                   WHEN NVL(xoha.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                                NVL(xoha.sum_capacity,0) - (NVL(xoha.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xoha.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xoha.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END  carrier_capacity                    -- 50:運送業者（容積）
+-- Ver1.35 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
           ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
+-- Ver1.35 ADD START
+          ,xxcmn_item_locations_v     xil2      -- OPM保管場所情報VIEW（運送業者）
+-- Ver1.35 ADD END
           ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
           --,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）-- 2008/09/10 参照View変更 Del
           ,xxcmn_cust_acct_sites2_v   xcas      -- 顧客サイト情報VIEW2                -- 2008/09/10 参照View変更 Add
@@ -1692,6 +1742,9 @@ AS
       AND   gd_effective_date BETWEEN xc.start_date_active(+)
                               AND     NVL( xc.end_date_active(+), gd_effective_date )
       AND   xoha.career_id    = xc.party_id(+)
+-- Ver1.35 ADD START
+      AND   xoha.freight_carrier_code = xil2.segment1(+)
+-- Ver1.35 ADD END
       ----------------------------------------------------------------------------------------------
       -- 保管場所
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
@@ -1815,6 +1868,12 @@ AS
 -- Ver1.34 ADD START
             ,NULL
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+            ,NULL ship_to_weight                      -- 47:入庫先（重量）
+            ,NULL ship_to_capacity                    -- 48:入庫先（容積）
+            ,NULL carrier_weight                      -- 49:運送業者（重量）
+            ,NULL carrier_capacity                    -- 50:運送業者（容積）
+-- Ver1.35 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -2041,10 +2100,87 @@ AS
                NULL
              END  capacity                            -- 46:容積
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN -- 入庫先がLD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xmrih.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+                 CASE
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  xlv.attribute6               = gc_small_method_y THEN            -- 重量且つ小口
+                          NVL(xmrih.sum_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN  -- 重量且つ小口以外
+                          NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN                -- 容積
+                          NVL(xmrih.sum_capacity,0)
+                 END
+             END     ship_to_weight                   -- 47:入庫先（LD混載:重量 LD混載以外:重量／容積）
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN -- 入庫先がLD混載倉庫
+                 CASE
+                   WHEN NVL(xmrih.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6               = gc_small_method_y THEN            -- 小口
+                                NVL(xmrih.sum_capacity,0) - (NVL(xmrih.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN  -- 小口以外
+                                NVL(xmrih.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xmrih.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END     ship_to_capacity                 -- 48:入庫先（容積）
+            ,CASE
+               WHEN xil3.whse_spare1 IS NOT NULL THEN -- 運送業者がLD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xmrih.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+                 CASE
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  xlv.attribute6               = gc_small_method_y THEN            -- 重量且つ小口
+                          NVL(xmrih.sum_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN  -- 重量且つ小口以外
+                          NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN                -- 容積
+                          NVL(xmrih.sum_capacity,0)
+                 END
+             END     carrier_weight                   -- 49:運送業者（LD混載:重量 LD混載以外:重量／容積）
+            ,CASE
+               WHEN xil3.whse_spare1 IS NOT NULL THEN -- 運送業者がLD混載倉庫
+                 CASE
+                   WHEN NVL(xmrih.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6               = gc_small_method_y THEN            -- 小口
+                                NVL(xmrih.sum_capacity,0) - (NVL(xmrih.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN  -- 小口以外
+                                NVL(xmrih.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xmrih.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END     carrier_capacity                 -- 50:運送業者（容積）
+-- Ver1.35 ADD END
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
           ,xxcmn_item_locations_v         xil2      -- OPM保管場所情報VIEW（配送先）
+-- Ver1.35 ADD START
+          ,xxcmn_item_locations_v         xil3      -- OPM保管場所情報VIEW（運送業者）
+-- Ver1.35 ADD END
           ,xxcmn_carriers2_v              xc        -- 運送業者情報VIEW2
           ,xxwsh_carriers_schedule        xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v         xlv       -- クイックコード情報VIEW2
@@ -2092,6 +2228,9 @@ AS
       AND   gd_effective_date BETWEEN xc.start_date_active(+)
                               AND     NVL( xc.end_date_active(+), gd_effective_date )
       AND   xmrih.career_id    = xc.party_id(+)
+-- Ver1.35 ADD START
+      AND   xmrih.freight_carrier_code = xil3.segment1(+)
+-- Ver1.35 ADD END
       ----------------------------------------------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
 /***
@@ -2269,10 +2408,53 @@ AS
                NULL
              END  capacity                            -- 46:容積
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+            ,NULL                                     -- 47:入庫先（重量）
+            ,NULL                                     -- 48:入庫先（容積）
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN -- LD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6           = gc_small_method_y THEN               -- 小口
+                            NVL(xoha.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               CASE
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_j
+                 AND  xlv.attribute6              = gc_small_method_y THEN               -- 重量且つ小口
+                         NVL(xoha.sum_weight,0)
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_j
+                 AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN    -- 重量且つ小口以外
+                         NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN               -- 容積
+                         NVL(xoha.sum_capacity,0)
+               END
+             END   carrier_weight                      -- 49:運送業者（LD混載:重量 LD混載以外:重量／容積）
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN  -- LD混載倉庫
+                 CASE
+                   WHEN NVL(xoha.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                                NVL(xoha.sum_capacity,0) - (NVL(xoha.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xoha.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xoha.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END  carrier_capacity                    -- 50:運送業者（容積）
+-- Ver1.35 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
           ,xxcmn_item_locations_v     xil       -- OPM保管場所情報VIEW
+-- Ver1.35 ADD START
+          ,xxcmn_item_locations_v     xil2      -- OPM保管場所情報VIEW（運送業者）
+-- Ver1.35 ADD END
           ,xxcmn_carriers2_v          xc        -- 運送業者情報VIEW2
           --,xxcmn_party_sites2_v       xps       -- パーティサイト情報VIEW2（配送先）-- 2008/09/10 参照View変更 Del
           ,xxcmn_cust_acct_sites2_v   xcas      -- 顧客サイト情報VIEW2                -- 2008/09/10 参照View変更 Add
@@ -2346,6 +2528,9 @@ AS
       AND   gd_effective_date BETWEEN xc.start_date_active(+)
                               AND     NVL( xc.end_date_active(+), gd_effective_date )
       AND   xoha.career_id    = xc.party_id(+)
+-- Ver1.35 ADD START
+      AND   xoha.freight_carrier_code = xil2.segment1(+)
+-- Ver1.35 ADD END
       ----------------------------------------------------------------------------------------------
       -- 保管場所
 -- ##### 20080919 Ver.1.18 T_S_453 460 468対応 START #####
@@ -2467,6 +2652,12 @@ AS
 -- Ver1.34 ADD START
             ,NULL
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+            ,NULL ship_to_weight                      -- 47:入庫先（重量）
+            ,NULL ship_to_capacity                    -- 48:入庫先（容積）
+            ,NULL carrier_weight                      -- 49:運送業者（重量）
+            ,NULL carrier_capacity                    -- 50:運送業者（容積）
+-- Ver1.35 ADD END
       FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -2688,10 +2879,87 @@ AS
                NULL
              END  capacity                            -- 46:容積
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN -- 入庫先がLD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xmrih.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+                 CASE
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  xlv.attribute6               = gc_small_method_y THEN
+                          NVL(xmrih.sum_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN
+                          NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN
+                          NVL(xmrih.sum_capacity,0)
+                 END
+             END     ship_to_weight                   -- 47:入庫先（LD混載:重量 LD混載以外:重量／容積）
+            ,CASE
+               WHEN xil2.whse_spare1 IS NOT NULL THEN -- 入庫先がLD混載倉庫
+                 CASE
+                   WHEN NVL(xmrih.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6               = gc_small_method_y THEN            -- 小口
+                                NVL(xmrih.sum_capacity,0) - (NVL(xmrih.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                                NVL(xmrih.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xmrih.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END     ship_to_capacity                 -- 48:入庫先（容積）
+            ,CASE
+               WHEN xil3.whse_spare1 IS NOT NULL THEN -- 運送業者がLD混載倉庫
+                 CASE
+                    WHEN xlv.attribute6              = gc_small_method_y THEN            -- 小口
+                            NVL(xmrih.sum_weight,0)
+                    WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN -- 小口以外
+                            NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+                 CASE
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  xlv.attribute6               = gc_small_method_y THEN            -- 重量且つ小口
+                          NVL(xmrih.sum_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_j
+                   AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN  -- 重量且つ小口以外
+                          NVL(xmrih.sum_weight,0) + NVL(xmrih.sum_pallet_weight,0)
+                   WHEN xmrih.weight_capacity_class  = gc_wc_class_y THEN                -- 容積
+                          NVL(xmrih.sum_capacity,0)
+                 END
+             END     carrier_weight                   -- 49:運送業者（LD混載:重量 LD混載以外:重量／容積）
+            ,CASE
+               WHEN xil3.whse_spare1 IS NOT NULL THEN -- 運送業者がLD混載倉庫
+                 CASE
+                   WHEN NVL(xmrih.sum_capacity,0) > 0 THEN    -- 容積あり
+                     CASE
+                        WHEN xlv.attribute6               = gc_small_method_y THEN            -- 小口
+                                NVL(xmrih.sum_capacity,0) - (NVL(xmrih.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                        WHEN NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN  -- 小口以外
+                                NVL(xmrih.sum_capacity,0)
+                     END
+                 ELSE
+                   NVL(xmrih.sum_capacity,0)
+                 END
+             ELSE                                     -- LD混載倉庫以外
+               NULL
+             END     carrier_capacity                 -- 50:運送業者（容積）
+-- Ver1.35 ADD END
       FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
           ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
           ,xxcmn_item_locations_v         xil2      -- OPM保管場所情報VIEW（配送先）
+-- Ver1.35 ADD START
+          ,xxcmn_item_locations_v         xil3      -- OPM保管場所情報VIEW（運送業者）
+-- Ver1.35 ADD END
           ,xxcmn_carriers2_v              xc        -- 運送業者情報VIEW2
           ,xxwsh_carriers_schedule        xcs       -- 配車配送計画アドオン
           ,xxcmn_lookup_values2_v         xlv       -- クイックコード情報VIEW2
@@ -2739,6 +3007,9 @@ AS
       AND   gd_effective_date BETWEEN xc.start_date_active(+)
                               AND     NVL( xc.end_date_active(+), gd_effective_date )
       AND   xmrih.career_id    = xc.party_id(+)
+-- Ver1.35 ADD START
+      AND   xmrih.freight_carrier_code = xil3.segment1(+)
+-- Ver1.35 ADD END
       ----------------------------------------------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
 /***
@@ -2917,6 +3188,12 @@ AS
 -- Ver1.34 ADD START
               ||    ',wsdit2.capacity'                  -- 容積
 -- Ver1.34 ADD END
+-- Ver1.35 ADD START
+              ||    ',wsdit2.ship_to_weight'            -- 入庫先（重量）
+              ||    ',wsdit2.ship_to_capacity'          -- 入庫先（容積）
+              ||    ',wsdit2.carrier_weight'            -- 運送業者（重量）
+              ||    ',wsdit2.carrier_capacity'          -- 運送業者（容積）
+-- Ver1.35 ADD END
               ;
     -- ====================================================
     -- ＦＲＯＭ句
@@ -3714,7 +3991,16 @@ AS
     gt_schedule_ship_date(gn_cre_idx)     := ir_main_data.schedule_ship_date ;    -- 発日
     gt_schedule_arrival_date(gn_cre_idx)  := ir_main_data.schedule_arrival_date ; -- 着日
     gt_shipping_method_code(gn_cre_idx)   := ir_main_data.shipping_method_code ;  -- 配送区分
-    gt_weight(gn_cre_idx)                 := ir_main_data.weight ;                -- 重量/容積
+-- Ver1.35 MOD START
+--    gt_weight(gn_cre_idx)                 := ir_main_data.weight ;                -- 重量/容積
+    IF ( iv_data_class = gc_data_class_mov_n ) THEN                                 -- 移動：移動入庫
+      gt_weight(gn_cre_idx)                 := ir_main_data.ship_to_weight ;        -- 入庫先（重量）
+    ELSIF ( iv_data_class IN (gc_data_class_syu_h,gc_data_class_mov_h) ) THEN       -- 配送依頼
+      gt_weight(gn_cre_idx)                 := ir_main_data.carrier_weight ;        -- 運送業者（重量）
+    ELSE
+      gt_weight(gn_cre_idx)                 := ir_main_data.weight ;                -- 重量/容積
+    END IF;
+-- Ver1.35 MOD END
     gt_mixed_no(gn_cre_idx)               := ir_main_data.mixed_no ;              -- 混載元依頼No
     gt_collected_pallet_qty(gn_cre_idx)   := ir_main_data.collected_pallet_qty ;  -- ﾊﾟﾚｯﾄ回収枚数
     gt_arrival_time_from(gn_cre_idx)      := ir_main_data.arrival_time_from ;     -- 着荷時間From
@@ -3732,10 +4018,19 @@ AS
     gt_freight_charge_class(gn_cre_idx)   := ir_main_data.freight_charge_class ;-- 運賃区分
     gt_pallet_sum_quantity(gn_cre_idx)    := iv_pallet_sum_quantity ;           -- ﾊﾟﾚｯﾄ使用枚数
     gt_reserve1(gn_cre_idx)               := NULL ;                             -- 予備１
+-- Ver1.35 MOD START
+    IF ( iv_data_class = gc_data_class_mov_n ) THEN                             -- 移動：移動入庫
+      gt_reserve2(gn_cre_idx)             := ir_main_data.ship_to_capacity ;    -- 入庫先（容積）
+    ELSIF ( iv_data_class IN (gc_data_class_syu_h,gc_data_class_mov_h) ) THEN   -- 配送依頼
+      gt_reserve2(gn_cre_idx)             := ir_main_data.carrier_capacity ;    -- 運送業者（容積）
+    ELSE
 -- Ver1.34 MOD START
---    gt_reserve2(gn_cre_idx)               := NULL ;                             -- 予備２
-    gt_reserve2(gn_cre_idx)               := ir_main_data.capacity ;            -- 容積
+----    gt_reserve2(gn_cre_idx)               := NULL ;                             -- 予備２
+--    gt_reserve2(gn_cre_idx)               := ir_main_data.capacity ;            -- 容積
 -- Ver1.34 MOD END
+      gt_reserve2(gn_cre_idx)             := ir_main_data.capacity ;            -- 容積
+    END IF;
+-- Ver1.35 MOD END
     gt_reserve3(gn_cre_idx)               := NULL ;                             -- 予備３
     gt_reserve4(gn_cre_idx)               := NULL ;                             -- 予備４
     gt_report_dept(gn_cre_idx)            := ir_main_data.report_dept ;         -- 報告部署
