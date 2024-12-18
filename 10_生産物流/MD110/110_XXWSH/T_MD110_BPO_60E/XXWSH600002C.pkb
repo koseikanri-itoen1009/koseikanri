@@ -78,7 +78,7 @@ AS
  *  <<営業C/O後>>
  *  2009/12/03    1.33  Marushita        本番276対応
  *  2024/10/21    1.34  R.Oikawa         E_本稼動_20230 LD混載追加対応
- *  2024/12/06    1.35  R.Oikawa         E_本稼動_20230 LD混載追加対応②
+ *  2024/12/17    1.35  R.Oikawa         E_本稼動_20230 LD混載追加対応②
  *
  *****************************************************************************************/
 --
@@ -1636,7 +1636,11 @@ AS
                  WHEN xoha.weight_capacity_class  = gc_wc_class_j
                  AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN    -- 重量且つ小口以外
                          NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
-                 WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN               -- 容積
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y
+                 AND  xlv.attribute6              = gc_small_method_y THEN               -- 容積且つ小口
+                         NVL(xoha.sum_capacity,0) - (NVL(xoha.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y
+                 AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN    -- 容積且つ小口以外
                          NVL(xoha.sum_capacity,0)
                END
              END   carrier_weight                      -- 49:運送業者（LD混載:重量 LD混載以外:重量／容積）
@@ -2427,7 +2431,11 @@ AS
                  WHEN xoha.weight_capacity_class  = gc_wc_class_j
                  AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN    -- 重量且つ小口以外
                          NVL(xoha.sum_weight,0) + NVL(xoha.sum_pallet_weight,0)
-                 WHEN xoha.weight_capacity_class  = gc_wc_class_y     THEN               -- 容積
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y
+                 AND  xlv.attribute6              = gc_small_method_y THEN               -- 容積且つ小口
+                         NVL(xoha.sum_capacity,0) - (NVL(xoha.pallet_sum_quantity,0) * TO_NUMBER( gv_prof_pallet_capacity )) -- パレット容積を減算
+                 WHEN xoha.weight_capacity_class  = gc_wc_class_y
+                 AND  NVL(xlv.attribute6,gc_small_method_n) <> gc_small_method_y THEN    -- 容積且つ小口以外
                          NVL(xoha.sum_capacity,0)
                END
              END   carrier_weight                      -- 49:運送業者（LD混載:重量 LD混載以外:重量／容積）
