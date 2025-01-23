@@ -1,0 +1,59 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * Table Name      : XXCOS_SHIP_INFO_PAAS_LINK
+ * Description     : 出荷依頼情報PaaS連携情報
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2024/06/11    1.0   A.igimi        初回作成
+ *****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_SHIP_INFO_PAAS_LINK (
+     packing_instructions           VARCHAR2(30)  NOT NULL
+    ,ordered_quantity               NUMBER
+    ,reason_code                    VARCHAR2(30)
+    ,order_number                   NUMBER        NOT NULL
+    ,order_line_number              NUMBER        NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcos.xxcos_ship_info_paas_link IS '出荷依頼情報PaaS連携情報'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.packing_instructions                 IS '出荷依頼番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.ordered_quantity                     IS '数量'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.reason_code                          IS '事由'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.order_number                         IS 'アドオン受注番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.order_line_number                    IS 'アドオン受注明細番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcos.xxcos_ship_info_paas_link.program_update_date                  IS 'プログラム更新日'
+/

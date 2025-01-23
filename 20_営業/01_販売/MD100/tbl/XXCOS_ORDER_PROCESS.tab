@@ -1,0 +1,61 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * Table Name      : XXCOS_ORDER_PROCESS
+ * Description     : EBS受注処理情報
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2024/06/19    1.0   Y.Ooyama       初回作成
+ *****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_ORDER_PROCESS (
+     order_process_id               NUMBER        NOT NULL
+    ,paas_order_number              NUMBER        NOT NULL
+    ,order_source_id                NUMBER        NOT NULL
+    ,orig_sys_document_ref          VARCHAR2(50)  NOT NULL
+    ,process_flag                   VARCHAR2(1)   NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcos_order_process_pk PRIMARY KEY (order_process_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcos.xxcos_order_process IS 'EBS受注処理情報'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.order_process_id                           IS 'EBS受注処理ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.paas_order_number                          IS 'アドオン受注番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.order_source_id                            IS '受注ソースID'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.orig_sys_document_ref                      IS '受注関連番号(EDI)'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.process_flag                               IS '処理フラグ'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.created_by                                 IS '作成者'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.creation_date                              IS '作成日'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.last_updated_by                            IS '最終更新者'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.last_update_date                           IS '最終更新日'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.last_update_login                          IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.request_id                                 IS '要求ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.program_id                                 IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcos.xxcos_order_process.program_update_date                        IS 'プログラム更新日'
+/

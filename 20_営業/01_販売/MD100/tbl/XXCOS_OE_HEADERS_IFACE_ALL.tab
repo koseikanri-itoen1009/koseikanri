@@ -1,0 +1,143 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * Table Name      : XXCOS_OE_HEADERS_IFACE_ALL
+ * Description     : アドオン受注ヘッダIF
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2024/07/02    1.0   Y.Ryu          初回作成
+ *****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_OE_HEADERS_IFACE_ALL (
+     order_source_id                NUMBER        NOT NULL
+    ,orig_sys_document_ref          VARCHAR2(50)  NOT NULL
+    ,header_id                      NUMBER
+    ,order_number                   NUMBER
+    ,org_id                         NUMBER
+    ,order_type_id                  NUMBER
+    ,order_type                     VARCHAR2(40)
+    ,ordered_date                   DATE
+    ,customer_number                VARCHAR2(9)
+    ,customer_po_number             VARCHAR2(50)
+    ,request_date                   DATE
+    ,price_list_id                  NUMBER
+    ,salesrep_id                    NUMBER
+    ,shipping_instructions          VARCHAR2(2000)
+    ,payment_term_id                NUMBER
+    ,context                        VARCHAR2(30)
+    ,attribute5                     VARCHAR2(240)
+    ,attribute12                    VARCHAR2(240)
+    ,attribute13                    VARCHAR2(240)
+    ,attribute14                    VARCHAR2(240)
+    ,attribute15                    VARCHAR2(240)
+    ,attribute16                    VARCHAR2(240)
+    ,attribute17                    VARCHAR2(240)
+    ,attribute18                    VARCHAR2(240)
+    ,attribute19                    VARCHAR2(240)
+    ,attribute20                    VARCHAR2(240)
+    ,global_attribute1              VARCHAR2(240)
+    ,global_attribute3              VARCHAR2(240)
+    ,global_attribute4              VARCHAR2(240)
+    ,global_attribute5              VARCHAR2(240)
+    ,return_reason_code             VARCHAR2(30)
+    ,error_flag                     VARCHAR2(1)
+    ,created_by                     NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcos_oe_headers_iface_all_u1 PRIMARY KEY (order_source_id, orig_sys_document_ref)
+  USING INDEX TABLESPACE xxidx2)
+ TABLESPACE XXDATA2 PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcos.xxcos_oe_headers_iface_all IS 'アドオン受注ヘッダIF'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.order_source_id                     IS '受注ソースID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.orig_sys_document_ref               IS '受注ソース参照'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.header_id                           IS 'ヘッダID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.order_number                        IS '受注番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.org_id                              IS '組織ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.order_type_id                       IS '受注タイプID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.order_type                          IS '受注タイプ'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.ordered_date                        IS '受注日'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.customer_number                     IS '顧客コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.customer_po_number                  IS '顧客発注番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.request_date                        IS '要求日'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.price_list_id                       IS '価格表ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.salesrep_id                         IS '営業担当ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.shipping_instructions               IS '出荷指示'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.payment_term_id                     IS '支払条件ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.context                             IS 'コンテキスト'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute5                          IS '伝票区分'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute12                         IS '検索用拠点'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute13                         IS '時間指定(From)'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute14                         IS '時間指定(To)'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute15                         IS '伝票No'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute16                         IS '枝番'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute17                         IS '小口数(伊藤園)※ｶﾝﾏ区切'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute18                         IS '小口数(橋場　)※ｶﾝﾏ区切'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute19                         IS 'オーダーNo'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.attribute20                         IS '分類区分'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.global_attribute1                   IS '共通帳票様式用納品書発行フラグエリア'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.global_attribute3                   IS '情報区分'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.global_attribute4                   IS '受注No.(HHT)'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.global_attribute5                   IS '発生元区分'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.return_reason_code                  IS '取消事由コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.error_flag                          IS 'エラーフラグ'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.request_id                          IS '要求ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.program_application_id              IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.program_id                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcos.xxcos_oe_headers_iface_all.program_update_date                 IS 'プログラム更新日'
+/

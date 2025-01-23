@@ -1,0 +1,206 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * Table Name      : XXCOS_LINE_INFO_PAAS_LINK
+ * Description     : 分割受注明細情報PaaS連携情報
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2024/06/11    1.0   A.igimi        初回作成
+ *****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_LINE_INFO_PAAS_LINK (
+     order_number                   NUMBER        NOT NULL
+    ,order_line_number              NUMBER        NOT NULL
+    ,org_id                         NUMBER
+    ,line_number                    NUMBER        NOT NULL
+    ,ordered_item                   VARCHAR2(2000)
+    ,ordered_quantity               NUMBER
+    ,order_quantity_uom             VARCHAR2(3)
+    ,unit_list_price                NUMBER
+    ,unit_selling_price             NUMBER
+    ,subinventory                   VARCHAR2(10)
+    ,packing_instructions           VARCHAR2(2000)
+    ,calculate_price_flag           VARCHAR2(1)
+    ,schedule_ship_date             DATE
+    ,context                        VARCHAR2(30)
+    ,attribute1                     VARCHAR2(240)
+    ,attribute2                     VARCHAR2(240)
+    ,attribute3                     VARCHAR2(240)
+    ,attribute4                     VARCHAR2(240)
+    ,attribute5                     VARCHAR2(240)
+    ,attribute6                     VARCHAR2(240)
+    ,attribute7                     VARCHAR2(240)
+    ,attribute8                     VARCHAR2(240)
+    ,attribute9                     VARCHAR2(240)
+    ,attribute10                    VARCHAR2(240)
+    ,attribute11                    VARCHAR2(240)
+    ,attribute12                    VARCHAR2(240)
+    ,attribute13                    VARCHAR2(240)
+    ,attribute14                    VARCHAR2(240)
+    ,attribute15                    VARCHAR2(240)
+    ,attribute16                    VARCHAR2(240)
+    ,attribute17                    VARCHAR2(240)
+    ,attribute18                    VARCHAR2(240)
+    ,attribute19                    VARCHAR2(240)
+    ,attribute20                    VARCHAR2(240)
+    ,global_attribute1              VARCHAR2(240)
+    ,global_attribute2              VARCHAR2(240)
+    ,global_attribute3              VARCHAR2(240)
+    ,global_attribute4              VARCHAR2(240)
+    ,global_attribute5              VARCHAR2(240)
+    ,global_attribute6              VARCHAR2(240)
+    ,global_attribute7              VARCHAR2(240)
+    ,global_attribute8              VARCHAR2(240)
+    ,global_attribute9              VARCHAR2(240)
+    ,global_attribute10             VARCHAR2(240)
+    ,global_attribute11             VARCHAR2(240)
+    ,global_attribute12             VARCHAR2(240)
+    ,global_attribute13             VARCHAR2(240)
+    ,global_attribute14             VARCHAR2(240)
+    ,global_attribute15             VARCHAR2(240)
+    ,global_attribute16             VARCHAR2(240)
+    ,global_attribute17             VARCHAR2(240)
+    ,global_attribute18             VARCHAR2(240)
+    ,global_attribute19             VARCHAR2(240)
+    ,global_attribute20             VARCHAR2(240)
+    ,created_by                     NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER        NOT NULL
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcos.xxcos_line_info_paas_link IS '分割受注明細情報PaaS連携情報'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.order_number                         IS 'アドオン受注番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.order_line_number                    IS 'アドオン受注明細番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.org_id                               IS '組織ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.line_number                          IS '明細番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.ordered_item                         IS '品目コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.ordered_quantity                     IS '数量'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.order_quantity_uom                   IS '単位'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.unit_list_price                      IS '単価'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.unit_selling_price                   IS '販売単価'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.subinventory                         IS '保管場所'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.packing_instructions                 IS '出荷依頼番号'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.calculate_price_flag                 IS '価格の計算フラグ'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.schedule_ship_date                   IS '出荷予定日'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.context                              IS 'コンテキスト'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute1                           IS 'ATTRIBUTE1'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute2                           IS 'ATTRIBUTE2'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute3                           IS 'ATTRIBUTE3'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute4                           IS 'ATTRIBUTE4'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute5                           IS 'ATTRIBUTE5'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute6                           IS 'ATTRIBUTE6'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute7                           IS 'ATTRIBUTE7'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute8                           IS 'ATTRIBUTE8'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute9                           IS 'ATTRIBUTE9'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute10                          IS 'ATTRIBUTE10'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute11                          IS 'ATTRIBUTE11'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute12                          IS 'ATTRIBUTE12'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute13                          IS 'ATTRIBUTE13'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute14                          IS 'ATTRIBUTE14'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute15                          IS 'ATTRIBUTE15'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute16                          IS 'ATTRIBUTE16'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute17                          IS 'ATTRIBUTE17'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute18                          IS 'ATTRIBUTE18'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute19                          IS 'ATTRIBUTE19'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.attribute20                          IS 'ATTRIBUTE20'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute1                    IS 'GLOBAL_ATTRIBUTE1'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute2                    IS 'GLOBAL_ATTRIBUTE2'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute3                    IS 'GLOBAL_ATTRIBUTE3'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute4                    IS 'GLOBAL_ATTRIBUTE4'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute5                    IS 'GLOBAL_ATTRIBUTE5'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute6                    IS 'GLOBAL_ATTRIBUTE6'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute7                    IS 'GLOBAL_ATTRIBUTE7'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute8                    IS 'GLOBAL_ATTRIBUTE8'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute9                    IS 'GLOBAL_ATTRIBUTE9'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute10                   IS 'GLOBAL_ATTRIBUTE10'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute11                   IS 'GLOBAL_ATTRIBUTE11'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute12                   IS 'GLOBAL_ATTRIBUTE12'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute13                   IS 'GLOBAL_ATTRIBUTE13'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute14                   IS 'GLOBAL_ATTRIBUTE14'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute15                   IS 'GLOBAL_ATTRIBUTE15'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute16                   IS 'GLOBAL_ATTRIBUTE16'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute17                   IS 'GLOBAL_ATTRIBUTE17'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute18                   IS 'GLOBAL_ATTRIBUTE18'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute19                   IS 'GLOBAL_ATTRIBUTE19'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.global_attribute20                   IS 'GLOBAL_ATTRIBUTE20'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcos.xxcos_line_info_paas_link.program_update_date                  IS 'プログラム更新日'
+/
