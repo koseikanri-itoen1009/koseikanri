@@ -1,0 +1,27 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * View Name       : xxcos_oe_order_headers_mv
+ * Description     : アドオン受注ヘッダマテライズドビュー
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2024/07/23    1.0   A.Igimi        初回作成
+ ************************************************************************/
+CREATE MATERIALIZED VIEW apps.xxcos_oe_order_headers_mv
+  USING NO INDEX
+  REFRESH COMPLETE
+  ON DEMAND
+AS
+  SELECT xooh.* 
+  FROM   oicuser.xxcos_oe_order_headers@ebs_paas3.itoen.master  xooh
+  WHERE  EXISTS(
+           SELECT 'X'
+           FROM xxcos_oe_order_to_ebs@ebs_paas3.itoen.master  xoote
+           WHERE xoote.header_id        = xooh.header_id
+           AND   xoote.transferred_flag = '0'
+         )
+  ;

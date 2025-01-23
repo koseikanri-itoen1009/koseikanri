@@ -1,0 +1,27 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * View Name       : xxcos_oe_order_lines_mv
+ * Description     : アドオン受注明細マテライズドビュー
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor         Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2024/07/23    1.0   A.Igimi        初回作成
+ ************************************************************************/
+CREATE MATERIALIZED VIEW apps.xxcos_oe_order_lines_mv
+  USING NO INDEX
+  REFRESH COMPLETE
+  ON DEMAND
+AS
+  SELECT xool.* 
+  FROM   oicuser.xxcos_oe_order_lines@ebs_paas3.itoen.master  xool
+  WHERE  EXISTS(
+           SELECT 'X'
+           FROM xxcos_oe_order_to_ebs@ebs_paas3.itoen.master  xoote
+           WHERE xoote.line_id          = xool.line_id
+           AND   xoote.transferred_flag = '0'
+         )
+  ;
