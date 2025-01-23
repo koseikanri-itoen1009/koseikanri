@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.25
+ * Version          : 2.0
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2011/04/19    1.23  M.Hirose         [E_本稼動_02070]受注日と出荷日から導出した受注日の妥当性チェック処理を削除
  *  2012/07/26    1.24  K.Onotsuka       [E_本稼動_09616]受注明細登録時に項目追加(unit_list_price(単価))
  *  2013/10/04    1.25  K.Kiriu          [E_本稼動_11135]PT対応
+ *  2024/07/10    2.0   A.Igimi          受注EDIクラウド化
  *
  *****************************************************************************************/
 --
@@ -350,6 +351,9 @@ AS
   gd_get_data_from_date         DATE;                                                     -- 取得開始日
   gd_get_data_to_date           DATE;                                                     -- 取得終了日
 -- 2013/10/04 Ver.1.25 Mod End
+-- ************** Ver2.0 A.Igimi ADD START ************** --
+  gv_inventory_item_code        mtl_system_items_b.segment1%TYPE;                         -- 品目コード
+-- ************** Ver2.0 A.Igimi ADD  END  ************** --
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -527,6 +531,9 @@ AS
 /* 2012/07/26 Ver.1.24 Add Start */
           ,oola.unit_list_price                      unit_list_price                         -- 単価
 /* 2012/07/26 Ver.1.24 Add End */
+-- ************** Ver2.0 A.Igimi ADD START ************** --
+          ,ooha.global_attribute6                    headers_global_attribute6    -- グローバルDFF6    A-11で設定
+-- ************** Ver2.0 A.Igimi ADD  END  ************** --
     FROM   oe_order_headers_all                   ooha             -- 受注ヘッダ
           ,oe_order_lines_all                     oola             -- 受注明細
           ,hz_cust_accounts                       hca              -- 顧客マスタ
@@ -816,6 +823,9 @@ AS
           ,0                                         total_conv_case         -- ケース
           ,xca.sale_base_code                        sale_base_code          -- 売上拠点コード
           ,oola.unit_list_price                      unit_list_price         -- 単価
+-- ************** Ver2.0 A.Igimi ADD START ************** --
+          ,ooha.global_attribute6                    headers_global_attribute6    -- グローバルDFF6    A-11で設定
+-- ************** Ver2.0 A.Igimi ADD  END  ************** --
     FROM   oe_order_headers_all                   ooha             -- 受注ヘッダ
           ,oe_order_lines_all                     oola             -- 受注明細
           ,hz_cust_accounts                       hca              -- 顧客マスタ
@@ -4506,6 +4516,44 @@ AS
         );
         RAISE order_line_update_expt;
       END IF;
+--
+-- ************** Ver2.0 A.Igimi ADD START ************** --
+    -- ===================================
+    -- 出荷依頼情報PaaS連携情報の登録
+    -- ===================================
+      INSERT INTO xxcos_ship_info_paas_link (                      -- 出荷依頼情報PaaS連携情報テーブル
+          packing_instructions                                     -- 出荷依頼番号
+        , ordered_quantity                                         -- 数量
+        , reason_code                                              -- 事由
+        , order_number                                             -- アドオン受注番号
+        , order_line_number                                        -- アドオン受注明細番号
+        , created_by                                               -- 作成者
+        , creation_date                                            -- 作成日
+        , last_updated_by                                          -- 最終更新者
+        , last_update_date                                         -- 最終更新日
+        , last_update_login                                        -- 最終更新ログイン
+        , request_id                                               -- 要求ID
+        , program_application_id                                   -- コンカレント・プログラム・アプリケーションID
+        , program_id                                               -- コンカレント・プログラムID
+        , program_update_date                                      -- プログラム更新日
+      ) VALUES (
+          lt_line_tbl(cn_index).packing_instructions               -- 出荷依頼番号
+        , lt_line_tbl(cn_index).ordered_quantity                   -- 数量
+        , lt_line_tbl(cn_index).change_reason                      -- 事由
+        , gt_order_upd_tbl(ln_idx).headers_global_attribute6       -- アドオン受注番号
+        , gt_order_upd_tbl(ln_idx).global_attribute8               -- アドオン受注明細番号
+        , cn_created_by                                            -- 作成者
+        , cd_creation_date                                         -- 作成日
+        , cn_last_updated_by                                       -- 最終更新者
+        , cd_last_update_date                                      -- 最終更新日
+        , cn_last_update_login                                     -- 最終更新ログイン
+        , cn_request_id                                            -- 要求ID
+        , cn_program_application_id                                -- コンカレント・プログラム・アプリケーションID
+        , cn_program_id                                            -- コンカレント・プログラムID
+        , cd_program_update_date                                   -- プログラム更新日
+      );
+-- ************** Ver2.0 A.Igimi ADD  END  ************** --
+--
     END LOOP update_line_data;
 --
   EXCEPTION
@@ -6224,8 +6272,14 @@ AS
       WHERE   oola.header_id   = gt_order_ins_tbl(ln_idx).header_id
       GROUP BY oola.header_id;
 /* 2009/12/07 Ver1.19 Add Start */
-      SELECT msib.inventory_item_id
+-- ************** Ver2.0 A.Igimi MOD START ************** --
+--      SELECT msib.inventory_item_id
+--      INTO   gt_order_ins_tbl(ln_idx).inventory_item_id
+      SELECT msib.inventory_item_id      -- 品目ID
+           , msib.segment1               -- 品目コード
       INTO   gt_order_ins_tbl(ln_idx).inventory_item_id
+           , gv_inventory_item_code
+-- ************** Ver2.0 A.Igimi MOD  END  ************** --
       FROM   mtl_system_items_b  msib
       WHERE  msib.segment1          = gt_order_ins_tbl(ln_idx).parent_item_code
       AND    msib.organization_id   = gn_organization_id;
@@ -6415,6 +6469,140 @@ AS
         RAISE global_api_expt;
       END IF;
       --
+-- ************** Ver2.0 A.Igimi ADD START ************** --
+      -- ===========================================
+      -- 分割受注明細情報PaaS連携情報の登録
+      -- ===========================================
+      INSERT INTO xxcos_line_info_paas_link (                     -- 分割受注明細情報PaaS連携情報テーブル
+          order_number                                            -- アドオン受注番号
+        , order_line_number                                       -- アドオン受注明細番号
+        , org_id                                                  -- 組織ID
+        , line_number                                             -- 明細番号
+        , ordered_item                                            -- 品目コード
+        , ordered_quantity                                        -- 数量
+        , order_quantity_uom                                      -- 単位
+        , unit_list_price                                         -- 単価
+        , unit_selling_price                                      -- 販売単価
+        , subinventory                                            -- 保管場所
+        , packing_instructions                                    -- 出荷依頼番号
+        , calculate_price_flag                                    -- 価格の計算フラグ
+        , schedule_ship_date                                      -- 出荷予定日
+        , context                                                 -- コンテキスト
+        , attribute1                                              -- attribute1
+        , attribute2                                              -- attribute2
+        , attribute3                                              -- attribute3
+        , attribute4                                              -- attribute4
+        , attribute5                                              -- attribute5
+        , attribute6                                              -- attribute6
+        , attribute7                                              -- attribute7
+        , attribute8                                              -- attribute8
+        , attribute9                                              -- attribute9
+        , attribute10                                             -- attribute10
+        , attribute11                                             -- attribute11
+        , attribute12                                             -- attribute12
+        , attribute13                                             -- attribute13
+        , attribute14                                             -- attribute14
+        , attribute15                                             -- attribute15
+        , attribute16                                             -- attribute16
+        , attribute17                                             -- attribute17
+        , attribute18                                             -- attribute18
+        , attribute19                                             -- attribute19
+        , attribute20                                             -- attribute20
+        , global_attribute1                                       -- global_attribute1
+        , global_attribute2                                       -- global_attribute2
+        , global_attribute3                                       -- global_attribute3
+        , global_attribute4                                       -- global_attribute4
+        , global_attribute5                                       -- global_attribute5
+        , global_attribute6                                       -- global_attribute6
+        , global_attribute7                                       -- global_attribute7
+        , global_attribute8                                       -- global_attribute8
+        , global_attribute9                                       -- global_attribute9
+        , global_attribute10                                      -- global_attribute10
+        , global_attribute11                                      -- global_attribute11
+        , global_attribute12                                      -- global_attribute12
+        , global_attribute13                                      -- global_attribute13
+        , global_attribute14                                      -- global_attribute14
+        , global_attribute15                                      -- global_attribute15
+        , global_attribute16                                      -- global_attribute16
+        , global_attribute17                                      -- global_attribute17
+        , global_attribute18                                      -- global_attribute18
+        , global_attribute19                                      -- global_attribute19
+        , global_attribute20                                      -- global_attribute20
+        , created_by                                              -- 作成者
+        , creation_date                                           -- 作成日
+        , last_updated_by                                         -- 最終更新者
+        , last_update_date                                        -- 最終更新日
+        , last_update_login                                       -- 最終更新ログイン
+        , request_id                                              -- 要求ID
+        , program_application_id                                  -- コンカレント・プログラム・アプリケーションID
+        , program_id                                              -- コンカレント・プログラムID
+        , program_update_date                                     -- プログラム更新日
+      ) VALUES (
+          gt_order_ins_tbl(ln_idx).headers_global_attribute6      -- アドオン受注番号
+        , lt_line_tbl(cn_index).line_number                       -- アドオン受注明細番号
+        , lt_line_tbl(cn_index).ship_to_org_id                    -- 組織ID(出荷先組織ID)
+        , lt_line_tbl(cn_index).line_number                       -- 明細番号(最大明細番号)
+        , gv_inventory_item_code                                  -- 品目コード
+        , lt_line_tbl(cn_index).ordered_quantity                  -- 数量
+        , lt_line_tbl(cn_index).order_quantity_uom                -- 単位
+        , lt_line_tbl(cn_index).unit_list_price                   -- 単価
+        , lt_line_tbl(cn_index).unit_selling_price                -- 販売単価
+        , lt_line_tbl(cn_index).subinventory                      -- 保管場所
+        , lt_line_tbl(cn_index).packing_instructions              -- 出荷依頼番号
+        , lt_line_tbl(cn_index).calculate_price_flag              -- 価格の計算フラグ
+        , lt_line_tbl(cn_index).schedule_ship_date                -- 出荷予定日
+        , lt_line_tbl(cn_index).context                           -- コンテキスト
+        , lt_line_tbl(cn_index).attribute1                        -- attribute1
+        , lt_line_tbl(cn_index).attribute2                        -- attribute2
+        , lt_line_tbl(cn_index).attribute3                        -- attribute3
+        , lt_line_tbl(cn_index).attribute4                        -- attribute4
+        , lt_line_tbl(cn_index).attribute5                        -- attribute5
+        , lt_line_tbl(cn_index).attribute6                        -- attribute6
+        , lt_line_tbl(cn_index).attribute7                        -- attribute7
+        , lt_line_tbl(cn_index).attribute8                        -- attribute8
+        , lt_line_tbl(cn_index).attribute9                        -- attribute9
+        , lt_line_tbl(cn_index).attribute10                       -- attribute10
+        , lt_line_tbl(cn_index).attribute11                       -- attribute11
+        , lt_line_tbl(cn_index).attribute12                       -- attribute12
+        , lt_line_tbl(cn_index).attribute13                       -- attribute13
+        , lt_line_tbl(cn_index).attribute14                       -- attribute14
+        , lt_line_tbl(cn_index).attribute15                       -- attribute15
+        , lt_line_tbl(cn_index).attribute16                       -- attribute16
+        , lt_line_tbl(cn_index).attribute17                       -- attribute17
+        , lt_line_tbl(cn_index).attribute18                       -- attribute18
+        , lt_line_tbl(cn_index).attribute19                       -- attribute19
+        , lt_line_tbl(cn_index).attribute20                       -- attribute20
+        , lt_line_tbl(cn_index).global_attribute1                 -- global_attribute1
+        , lt_line_tbl(cn_index).global_attribute2                 -- global_attribute2
+        , lt_line_tbl(cn_index).global_attribute3                 -- global_attribute3(分割元の明細ID)
+        , lt_line_tbl(cn_index).global_attribute4                 -- global_attribute4(分割元の受注ソース参照)
+        , lt_line_tbl(cn_index).global_attribute5                 -- global_attribute5
+        , lt_line_tbl(cn_index).global_attribute6                 -- global_attribute6
+        , lt_line_tbl(cn_index).global_attribute7                 -- global_attribute7
+        , NULL                                                    -- global_attribute8
+        , lt_line_tbl(cn_index).global_attribute8                 -- global_attribute9
+        , lt_line_tbl(cn_index).global_attribute10                -- global_attribute10
+        , lt_line_tbl(cn_index).global_attribute11                -- global_attribute11
+        , lt_line_tbl(cn_index).global_attribute12                -- global_attribute12
+        , lt_line_tbl(cn_index).global_attribute13                -- global_attribute13
+        , lt_line_tbl(cn_index).global_attribute14                -- global_attribute14
+        , lt_line_tbl(cn_index).global_attribute15                -- global_attribute15
+        , lt_line_tbl(cn_index).global_attribute16                -- global_attribute16
+        , lt_line_tbl(cn_index).global_attribute17                -- global_attribute17
+        , lt_line_tbl(cn_index).global_attribute18                -- global_attribute18
+        , lt_line_tbl(cn_index).global_attribute19                -- global_attribute19
+        , lt_line_tbl(cn_index).global_attribute20                -- global_attribute20
+        , cn_created_by                                           -- 作成者
+        , cd_creation_date                                        -- 作成日
+        , cn_last_updated_by                                      -- 最終更新者
+        , cd_last_update_date                                     -- 最終更新日
+        , cn_last_update_login                                    -- 最終更新ログイン
+        , cn_request_id                                           -- 要求ID
+        , cn_program_application_id                               -- コンカレント・プログラム・アプリケーションID
+        , cn_program_id                                           -- コンカレント・プログラムID
+        , cd_program_update_date                                  -- プログラム更新日
+      );
+-- ************** Ver2.0 A.Igimi ADD  END  ************** --
       --
     END LOOP line_ins_loop;
 --

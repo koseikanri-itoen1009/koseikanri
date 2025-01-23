@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A06C(body)
  * Description      : 出荷依頼実績からの受注作成
  * MD.050           : 出荷依頼実績からの受注作成 MD050_COS_008_A06
- * Version          : 1.2
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,10 +23,10 @@ AS
  *  get_data               対象データ取得                  (A-4)
  *  chk_line               明細単位チェック                (A-5)
  *  chk_hdr                ヘッダ単位チェック              (A-6)
- *  set_hdr_oif            受注ヘッダOIF登録データ編集     (A-7)
- *  set_line_oif           受注明細OIF登録データ編集       (A-8)
+ *  set_hdr_oif            アドオン受注ヘッダIF登録データ編集      (A-7)
+ *  set_line_oif           アドオン受注明細IF登録データ編集        (A-8)
  *  ins_oif                受注データ登録                  (A-9)
- *  call_imp_data          受注インポートエラー検知起動処理(A-10)
+ *  call_imp_data          受注インポートエラー検知起動処理(A-10) (廃止)
  *  target_data_loop       対象データLOOP
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
@@ -39,6 +39,7 @@ AS
  *  2010/05/10    1.1   H.Itou           E_本稼動_02532,E_本稼動_02595
  *  2012/06/25    1.2   D.Sugahara       [E_本稼動_09744]受注OIF取りこぼし対応（呼出コンカレントを
  *                                                       受注インポートエラー検知(Online用）に変更）
+ *  2024/06/26    2.0   Y.Ooyama         受注EDIクラウド化（本機能はEBS配置のまま）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -181,15 +182,19 @@ AS
   cv_tkn_cust_po_no_t        CONSTANT VARCHAR2(100) := 'CUST_PO_NUMBER_T';                -- 顧客発注番号(編集後)
 --
   -- プロファイルオプション
-  cv_prof_interval           CONSTANT VARCHAR2(100) := 'XXCOS1_INTERVAL';                 -- XXCOS:待機間隔
-  cv_prof_max_wait           CONSTANT VARCHAR2(100) := 'XXCOS1_MAX_WAIT';                 -- XXCOS:最大待機時間
+-- Ver2.0 DEL START
+--  cv_prof_interval           CONSTANT VARCHAR2(100) := 'XXCOS1_INTERVAL';                 -- XXCOS:待機間隔
+--  cv_prof_max_wait           CONSTANT VARCHAR2(100) := 'XXCOS1_MAX_WAIT';                 -- XXCOS:最大待機時間
+-- Ver2.0 DEL END
   cv_prof_prod_ou            CONSTANT VARCHAR2(100) := 'XXCOS1_ITOE_OU_MFG';              -- XXCOS:生産営業単位取得名称
   cv_prof_org_id             CONSTANT VARCHAR2(100) := 'ORG_ID';                          -- 営業単位
   cv_inv_org_code            CONSTANT VARCHAR2(100) := 'XXCOI1_ORGANIZATION_CODE';        -- XXCOI:在庫組織コード
 --
   -- プロファイルオプション名
-  cv_prof_interval_name      CONSTANT VARCHAR2(100) := 'XXCOS:待機間隔';
-  cv_prof_max_wait_name      CONSTANT VARCHAR2(100) := 'XXCOS:最大待機時間';
+-- Ver2.0 DEL START
+--  cv_prof_interval_name      CONSTANT VARCHAR2(100) := 'XXCOS:待機間隔';
+--  cv_prof_max_wait_name      CONSTANT VARCHAR2(100) := 'XXCOS:最大待機時間';
+-- Ver2.0 DEL END
   cv_prof_prod_ou_name       CONSTANT VARCHAR2(100) := 'XXCOS:生産営業単位取得名称';
   cv_prof_org_id_name        CONSTANT VARCHAR2(100) := '営業単位';
   cv_prof_inv_org_name       CONSTANT VARCHAR2(100) := 'XXCOI:在庫組織コード';
@@ -202,8 +207,12 @@ AS
   cv_order_source_tbl_name   CONSTANT VARCHAR2(100) := '受注ソース';
   cv_order_type_tbl_name     CONSTANT VARCHAR2(100) := '受注タイプ';
   cv_lookup_values_tbl_name  CONSTANT VARCHAR2(100) := 'クイックコード';
-  cv_hdr_oif_tbl_name        CONSTANT VARCHAR2(100) := '受注ヘッダーOIF';
-  cv_line_oif_tbl_name       CONSTANT VARCHAR2(100) := '受注明細OIF';
+-- Ver2.0 MOD START
+--  cv_hdr_oif_tbl_name        CONSTANT VARCHAR2(100) := '受注ヘッダーOIF';
+--  cv_line_oif_tbl_name       CONSTANT VARCHAR2(100) := '受注明細OIF';
+  cv_hdr_oif_tbl_name        CONSTANT VARCHAR2(100) := 'アドオン受注ヘッダIF';
+  cv_line_oif_tbl_name       CONSTANT VARCHAR2(100) := 'アドオン受注明細IF';
+-- Ver2.0 MOD END
 --
   -- 項目名
   cv_order_source_name       CONSTANT VARCHAR2(100) := '受注ソース名';
@@ -350,8 +359,12 @@ AS
    ,order_line_number        xxwsh_order_lines_all.order_line_number            %TYPE    -- 明細番号
    ,quantity                 xxwsh_order_lines_all.quantity                     %TYPE    -- 数量
    ,conv_quantity            xxwsh_order_lines_all.quantity                     %TYPE    -- 換算後数量
-   ,unit_price               oe_lines_iface_all.unit_list_price                 %TYPE    -- 単価
-   ,calc_unit_price_flg      oe_lines_iface_all.calculate_price_flag            %TYPE    -- 価格計算フラグ
+-- Ver2.0 MOD START
+--   ,unit_price               oe_lines_iface_all.unit_list_price                 %TYPE    -- 単価
+--   ,calc_unit_price_flg      oe_lines_iface_all.calculate_price_flag            %TYPE    -- 価格計算フラグ
+   ,unit_price               xxcos_oe_lines_iface_all.unit_list_price           %TYPE    -- 単価
+   ,calc_unit_price_flg      xxcos_oe_lines_iface_all.calculate_price_flag      %TYPE    -- 価格計算フラグ
+-- Ver2.0 MOD END
    ,child_item_no            ic_item_mst_b.item_no                              %TYPE    -- 子品目コード
    ,parent_item_no           ic_item_mst_b.item_no                              %TYPE    -- 親品目コード
    ,parent_num_of_cases      NUMBER                                                      -- 親品目ケース入数
@@ -363,11 +376,17 @@ AS
   -- 対象データ格納配列型
   TYPE g_target_data_ttype IS TABLE OF g_target_data_rtype          INDEX BY BINARY_INTEGER;
 --
-  -- 受注ヘッダOIF格納配列型
-  TYPE g_hdr_oif_ttype     IS TABLE OF oe_headers_iface_all%ROWTYPE INDEX BY BINARY_INTEGER;
+  -- アドオン受注ヘッダIF格納配列型
+-- Ver2.0 MOD START
+--  TYPE g_hdr_oif_ttype     IS TABLE OF oe_headers_iface_all%ROWTYPE INDEX BY BINARY_INTEGER;
+  TYPE g_hdr_oif_ttype     IS TABLE OF xxcos_oe_headers_iface_all%ROWTYPE INDEX BY BINARY_INTEGER;
+-- Ver2.0 MOD END
 --
-  -- 受注明細OIF格納配列型
-  TYPE g_line_oif_ttype    IS TABLE OF oe_lines_iface_all  %ROWTYPE INDEX BY BINARY_INTEGER;
+  -- アドオン受注明細IF格納配列型
+-- Ver2.0 MOD START
+--  TYPE g_line_oif_ttype    IS TABLE OF oe_lines_iface_all  %ROWTYPE INDEX BY BINARY_INTEGER;
+  TYPE g_line_oif_ttype    IS TABLE OF xxcos_oe_lines_iface_all  %ROWTYPE INDEX BY BINARY_INTEGER;
+-- Ver2.0 MOD END
 --
   -- 警告メッセージ配列型
   TYPE g_message_ttype     IS TABLE OF VARCHAR2(5000)               INDEX BY BINARY_INTEGER;
@@ -379,20 +398,22 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   g_param_rec                       g_param_rtype;                                                   -- 入力パラメータ格納レコード変数
-  g_hdr_oif_tab                     g_hdr_oif_ttype;                                                 -- 受注ヘッダOIF格納配列型
-  g_line_oif_tab                    g_line_oif_ttype;                                                -- 受注明細OIF格納配列型
+  g_hdr_oif_tab                     g_hdr_oif_ttype;                                                 -- アドオン受注ヘッダIF格納配列型
+  g_line_oif_tab                    g_line_oif_ttype;                                                -- アドオン受注明細IF格納配列型
   g_warn_msg_tab                    g_message_ttype;                                                 -- 警告メッセージ配列型
   g_err_msg_tab                     g_message_ttype;                                                 -- 登録エラーメッセージ配列型
   g_cust_po_no_msg_tab              g_message_ttype;                                                 -- 顧客発注番号編集警告メッセージ配列型
 --
-  gn_hdr_oif_cnt                    NUMBER;                                                          -- 受注ヘッダOIF格納配列型INDEX
-  gn_line_oif_cnt                   NUMBER;                                                          -- 受注明細OIF格納配列型INDEX
+  gn_hdr_oif_cnt                    NUMBER;                                                          -- アドオン受注ヘッダIF格納配列型INDEX
+  gn_line_oif_cnt                   NUMBER;                                                          -- アドオン受注明細IF格納配列型INDEX
   gn_warn_msg_cnt                   NUMBER;                                                          -- 警告メッセージ配列型INDEX
   gn_err_msg_cnt                    NUMBER;                                                          -- 登録エラーメッセージ配列型INDEX
   gn_cust_po_no_msg_cnt             NUMBER;                                                          -- 顧客発注番号編集警告メッセージ配列型INDEX
 --
-  gn_interval                       NUMBER;                                                          -- 待機間隔
-  gn_max_wait                       NUMBER;                                                          -- 最大待機時間
+-- Ver2.0 DEL START
+--  gn_interval                       NUMBER;                                                          -- 待機間隔
+--  gn_max_wait                       NUMBER;                                                          -- 最大待機時間
+-- Ver2.0 DEL END
   gv_prod_ou_nm                     VARCHAR2(128);                                                   -- 生産営業単位名
   gn_org_id                         NUMBER;                                                          -- 営業単位
   gv_inv_org_code                   VARCHAR2(128);                                                   -- 在庫組織コード
@@ -1359,33 +1380,37 @@ AS
     -- ========================================
     -- プロファイルオプション取得
     -- ========================================
-    gn_interval     := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_interval ) );    -- XXCOS:待機間隔
-    gn_max_wait     := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_max_wait ) );    -- XXCOS:最大待機時間
+-- Ver2.0 DEL START
+--    gn_interval     := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_interval ) );    -- XXCOS:待機間隔
+--    gn_max_wait     := TO_NUMBER( FND_PROFILE.VALUE( cv_prof_max_wait ) );    -- XXCOS:最大待機時間
+-- Ver2.0 DEL END
     gv_prod_ou_nm   := FND_PROFILE.VALUE( cv_prof_prod_ou );                  -- XXCOS:生産営業単位取得名称
     gn_org_id       := FND_PROFILE.VALUE( cv_prof_org_id );                   -- 営業単位
     gv_inv_org_code := FND_PROFILE.VALUE( cv_inv_org_code );                  -- XXCOI:在庫組織コード
 --
-    -- XXCOS:待機間隔の取得ができない場合、エラー終了
-    IF ( gn_interval IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg( -- プロファイル取得エラー
-                     iv_application  => cv_xxcos_appl_short_name
-                    ,iv_name         => cv_msg_get_profile_err
-                    ,iv_token_name1  => cv_tkn_profile
-                    ,iv_token_value1 => cv_prof_interval_name
-                   );
-      RAISE global_api_expt;
-    END IF;
---
-    -- XXCOS:最大待機時間の取得ができない場合、エラー終了
-    IF ( gn_max_wait IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg( -- プロファイル取得エラー
-                     iv_application  => cv_xxcos_appl_short_name
-                    ,iv_name         => cv_msg_get_profile_err
-                    ,iv_token_name1  => cv_tkn_profile
-                    ,iv_token_value1 => cv_prof_max_wait_name
-                   );
-      RAISE global_api_expt;
-    END IF;
+-- Ver2.0 DEL START
+--    -- XXCOS:待機間隔の取得ができない場合、エラー終了
+--    IF ( gn_interval IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg( -- プロファイル取得エラー
+--                     iv_application  => cv_xxcos_appl_short_name
+--                    ,iv_name         => cv_msg_get_profile_err
+--                    ,iv_token_name1  => cv_tkn_profile
+--                    ,iv_token_value1 => cv_prof_interval_name
+--                   );
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- XXCOS:最大待機時間の取得ができない場合、エラー終了
+--    IF ( gn_max_wait IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg( -- プロファイル取得エラー
+--                     iv_application  => cv_xxcos_appl_short_name
+--                    ,iv_name         => cv_msg_get_profile_err
+--                    ,iv_token_name1  => cv_tkn_profile
+--                    ,iv_token_value1 => cv_prof_max_wait_name
+--                   );
+--      RAISE global_api_expt;
+--    END IF;
+-- Ver2.0 DEL END
 --
     -- XXCOS:生産営業単位取得名称の取得ができない場合、エラー終了
     IF ( gv_prod_ou_nm IS NULL ) THEN
@@ -1837,6 +1862,27 @@ AS
                           AND    flv.language                = :lang_ja                   -- 言語「JA」
                         )
                )
+-- Ver2.0 ADD START
+       AND     NOT EXISTS( -- 以下のアドオン受注明細IFが存在しない
+                 SELECT 1
+                 FROM   xxcos_oe_lines_iface_all   xolia                                 -- アドオン受注明細IF
+                       ,mtl_secondary_inventories  mtsi                                  -- 保管場所マスタ
+                 WHERE  xolia.subinventory         = mtsi.secondary_inventory_name       -- アドオン受注明細IF.保管場所＝保管場所マスタ.保管場所コード
+                 AND    mtsi.attribute13           = :kbn_direct                         -- 保管場所マスタ.保管場所分類＝「11:直送」
+                 AND    xolia.packing_instructions = xoha.request_no                     -- アドオン受注明細IF.出荷依頼No.＝受注ヘッダアドオン.依頼No
+                 AND    NOT EXISTS ( -- 子品目か親品目が非在庫品目の場合、除く
+                          SELECT 1
+                          FROM   fnd_lookup_values  flv
+                          WHERE  NVL(xolia.attribute6, xolia.inventory_item)
+                                                             = flv.lookup_code            -- 子品目か親品目が非在庫品
+                          AND    flv.lookup_type             = :no_inv_item_type          -- XXCOS1_NO_INV_ITEM_CODE：非在庫品目コード
+                          AND    NVL(flv.start_date_active, :open_date) <= :open_date
+                          AND    NVL(flv.end_date_active, :open_date)   >= :open_date
+                          AND    flv.enabled_flag            = :enabled_flag_y            -- 有効フラグ「Y」
+                          AND    flv.language                = :lang_ja                   -- 言語「JA」
+                        )
+               )
+-- Ver2.0 ADD END
       ';
 --
     -- ===================================================
@@ -2228,6 +2274,16 @@ AS
          ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要終了日
          ,cv_enabled_flag_y                    -- WHERE句(共通)  有効フラグ「Y」
          ,cv_lang_ja                           -- WHERE句(共通)  言語「JA」
+-- Ver2.0 ADD START
+         ,cv_kbn_direct                        -- WHERE句(共通)  保管場所マスタ.保管場所分類＝「11:直送」
+         ,cv_no_inv_item_type                  -- WHERE句(共通)  XXCOS1_NO_INV_ITEM_CODE：非在庫品目コード
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要開始日
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要開始日
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要終了日
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要終了日
+         ,cv_enabled_flag_y                    -- WHERE句(共通)  有効フラグ「Y」
+         ,cv_lang_ja                           -- WHERE句(共通)  言語「JA」
+-- Ver2.0 ADD END
          ,cv_req_status_04                     -- WHERE句(着荷実績日に値がある場合(実績ベース))  ステータスが04か
          ,cv_req_status_03                     -- WHERE句(着荷実績日に値がある場合(実績ベース))  ステータスが03で着荷予定日に値がある
          ,gd_open_date_from                    -- WHERE句(着荷実績日に値がある場合(実績ベース))  着荷日が在庫会計期間(FROM)以降
@@ -2287,6 +2343,16 @@ AS
          ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要終了日
          ,cv_enabled_flag_y                    -- WHERE句(共通)  有効フラグ「Y」
          ,cv_lang_ja                           -- WHERE句(共通)  言語「JA」
+-- Ver2.0 ADD START
+         ,cv_kbn_direct                        -- WHERE句(共通)  保管場所マスタ.保管場所分類＝「11:直送」
+         ,cv_no_inv_item_type                  -- WHERE句(共通)  XXCOS1_NO_INV_ITEM_CODE：非在庫品目コード
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要開始日
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要開始日
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要終了日
+         ,gd_open_date_from                    -- WHERE句(共通)  クイックコード.摘要終了日
+         ,cv_enabled_flag_y                    -- WHERE句(共通)  有効フラグ「Y」
+         ,cv_lang_ja                           -- WHERE句(共通)  言語「JA」
+-- Ver2.0 ADD END
          ,cv_req_status_03                     -- WHERE句(着荷実績日に値がない場合(指示ベース))  ステータスが03か
          ,cv_req_status_02                     -- WHERE句(着荷実績日に値がない場合(指示ベース))  ステータスが02か
          ,cv_req_status_01                     -- WHERE句(着荷実績日に値がない場合(指示ベース))  ステータスが01
@@ -2588,7 +2654,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : set_hdr_oif
-   * Description      : 受注ヘッダOIF登録データ編集(A-7)
+   * Description      : アドオン受注ヘッダIF登録データ編集(A-7)
    ***********************************************************************************/
   PROCEDURE set_hdr_oif(
     i_data_rec               IN   g_target_data_rtype  -- 対象データ格納レコード型
@@ -2629,7 +2695,7 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    gn_hdr_oif_cnt := gn_hdr_oif_cnt + 1; -- ヘッダOIF配列INDEX
+    gn_hdr_oif_cnt := gn_hdr_oif_cnt + 1; -- ヘッダIF配列INDEX
 --
     g_hdr_oif_tab(gn_hdr_oif_cnt).order_source_id       := gt_order_source_id; --  受注ソースID
 --
@@ -2714,7 +2780,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : set_line_oif
-   * Description      : 受注明細OIF登録データ編集(A-8)
+   * Description      : アドオン受注明細IF登録データ編集(A-8)
    ***********************************************************************************/
   PROCEDURE set_line_oif(
     i_data_tab               IN   g_target_data_ttype   -- 対象データ格納配列型
@@ -2766,7 +2832,7 @@ AS
     <<request_loop>>
     FOR ln_loop_cnt IN in_start_cnt..in_end_cnt LOOP
 --
-      gn_line_oif_cnt := gn_line_oif_cnt + 1; -- 明細OIF配列INDEX
+      gn_line_oif_cnt := gn_line_oif_cnt + 1; -- 明細IF配列INDEX
 --
       ln_line_number := ln_line_number + 1; -- 依頼Noごとの連番
 --
@@ -2788,6 +2854,9 @@ AS
       g_line_oif_tab(gn_line_oif_cnt).calculate_price_flag  := i_data_tab(ln_loop_cnt).calc_unit_price_flg;          -- 価格計算フラグ
       g_line_oif_tab(gn_line_oif_cnt).subinventory          := cv_location_code_direct;                              -- 保管場所＝直送倉庫
       g_line_oif_tab(gn_line_oif_cnt).attribute5            := cv_sales_kbn_normal;                                  -- 売上区分＝「1:通常」
+-- Ver2.0 ADD START
+      g_line_oif_tab(gn_line_oif_cnt).line_number           := ln_line_number;                                       -- 明細番号
+-- Ver2.0 ADD END
 --
       -- 親品目コードと子品目コードが違う場合、子コード＝子品目コード
       IF (i_data_tab(ln_loop_cnt).parent_item_no <> i_data_tab(ln_loop_cnt).child_item_no) THEN
@@ -2867,11 +2936,14 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ========================================
-    -- 受注ヘッダOIF登録
+    -- アドオン受注ヘッダIF登録
     -- ========================================
     BEGIN
       FORALL ln_loop_cnt IN 1..g_hdr_oif_tab.COUNT
-        INSERT INTO oe_headers_iface_all VALUES g_hdr_oif_tab(ln_loop_cnt);
+-- Ver2.0 MOD START
+--        INSERT INTO oe_headers_iface_all VALUES g_hdr_oif_tab(ln_loop_cnt);
+        INSERT INTO xxcos_oe_headers_iface_all VALUES g_hdr_oif_tab(ln_loop_cnt);
+-- Ver2.0 MOD END
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -2890,11 +2962,14 @@ AS
     END;
 --
     -- ========================================
-    -- 受注明細OIF登録
+    -- アドオン受注明細IF登録
     -- ========================================
     BEGIN
       FORALL ln_loop_cnt IN 1..g_line_oif_tab.COUNT
-        INSERT INTO oe_lines_iface_all VALUES g_line_oif_tab(ln_loop_cnt);
+-- Ver2.0 MOD START
+--        INSERT INTO oe_lines_iface_all VALUES g_line_oif_tab(ln_loop_cnt);
+        INSERT INTO xxcos_oe_lines_iface_all VALUES g_line_oif_tab(ln_loop_cnt);
+-- Ver2.0 MOD END
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -2931,163 +3006,165 @@ AS
 --
   END ins_oif;
 --
-  /**********************************************************************************
-   * Procedure Name   : call_imp_data
-   * Description      : 受注インポートエラー検知起動処理(A-10)
-   ***********************************************************************************/
-  PROCEDURE call_imp_data(
-    ov_errbuf                OUT  VARCHAR2        --   エラー・メッセージ           --# 固定 #
-   ,ov_retcode               OUT  VARCHAR2        --   リターン・コード             --# 固定 #
-   ,ov_errmsg                OUT  VARCHAR2)       --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'call_imp_data'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    --コンカレント定数
-    cv_application            CONSTANT VARCHAR2(5)   := 'XXCOS';         -- Application
---2012/06/25 Ver.1.2 Mod Start 
---  受注インポートエラー検知(CSV受注取込用）を呼び出すようにに変更
---    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
-    cv_program                CONSTANT VARCHAR2(13)  := 'XXCOS010A062C';  -- Program
---2012/06/25 Ver.1.2 Mod End 
-    cv_description            CONSTANT VARCHAR2(9)   := NULL;            -- Description
-    cv_start_time             CONSTANT VARCHAR2(10)  := NULL;            -- Start_time
-    cb_sub_request            CONSTANT BOOLEAN       := FALSE;           -- Sub_request
---    -- *** ローカル変数 ***
-    ln_process_set            NUMBER;          -- 処理セット
-    ln_request_id             NUMBER;          -- 要求ID
-    lb_wait_result            BOOLEAN;         -- コンカレント待機成否
-    lv_phase                  VARCHAR2(50);
-    lv_status                 VARCHAR2(50);
-    lv_dev_phase              VARCHAR2(50);
-    lv_dev_status             VARCHAR2(50);
-    lv_message                VARCHAR2(5000);
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- =====================================================
-    -- 受注インポートエラー検知起動
-    -- =====================================================
-    ln_request_id := fnd_request.submit_request(
-                       application  => cv_application
-                      ,program      => cv_program
-                      ,description  => cv_description
-                      ,start_time   => cv_start_time
-                      ,sub_request  => cb_sub_request
-                      ,argument1    => gt_order_source_name     --受注ソース名
-                     );
---
-    -- 要求IDを取得できなかったとき、エラー
-    IF ( ln_request_id = 0 ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_xxcos_appl_short_name
-                    ,iv_name         => cv_msg_imp_err
-                    ,iv_token_name1  => cv_tkn_request_id
-                    ,iv_token_value1 => TO_CHAR( ln_request_id )
-                    ,iv_token_name2  => cv_tkn_dev_status
-                    ,iv_token_value2 => NULL
-                    ,iv_token_name3  => cv_tkn_message
-                    ,iv_token_value3 => NULL
-                   );
-      RAISE global_api_expt;
-    END IF;
---
-    -- =====================================================
-    --コンカレント起動のためコミット
-    -- =====================================================
-    COMMIT;
---
-    -- =====================================================
-    --コンカレントの終了待機
-    -- =====================================================
-    lb_wait_result := fnd_concurrent.wait_for_request(
-                        request_id   => ln_request_id
-                       ,interval     => gn_interval
-                       ,max_wait     => gn_max_wait
-                       ,phase        => lv_phase
-                       ,status       => lv_status
-                       ,dev_phase    => lv_dev_phase
-                       ,dev_status   => lv_dev_status
-                       ,message      => lv_message
-                      );
---
-    -- コンカレントの終了結果がエラーか待機時間内に終わらなかった場合
-    IF ( ( lb_wait_result = FALSE ) 
-      OR ( lv_dev_status = cv_con_status_error ) ) THEN
---
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_xxcos_appl_short_name
-                    ,iv_name         => cv_msg_imp_err
-                    ,iv_token_name1  => cv_tkn_request_id
-                    ,iv_token_value1 => TO_CHAR( ln_request_id )
-                    ,iv_token_name2  => cv_tkn_dev_status
-                    ,iv_token_value2 => lv_dev_status
-                    ,iv_token_name3  => cv_tkn_message
-                    ,iv_token_value3 => lv_message
-                   );
-      RAISE global_api_expt;
---
-    -- コンカレントの終了結果が警告の場合
-    ELSIF ( lv_dev_status = cv_con_status_warning ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_xxcos_appl_short_name
-                    ,iv_name         => cv_msg_imp_warn
-                    ,iv_token_name1  => cv_tkn_request_id
-                    ,iv_token_value1 => TO_CHAR( ln_request_id )
-                    ,iv_token_name2  => cv_tkn_dev_status
-                    ,iv_token_value2 => lv_dev_status
-                    ,iv_token_name3  => cv_tkn_message
-                    ,iv_token_value3 => lv_message
-                   );
---
-      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);
---
-      ov_retcode := cv_status_warn;
---
-    END IF;
---
-  EXCEPTION
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END call_imp_data;
+-- Ver2.0 DEL START
+--  /**********************************************************************************
+--   * Procedure Name   : call_imp_data
+--   * Description      : 受注インポートエラー検知起動処理(A-10)
+--   ***********************************************************************************/
+--  PROCEDURE call_imp_data(
+--    ov_errbuf                OUT  VARCHAR2        --   エラー・メッセージ           --# 固定 #
+--   ,ov_retcode               OUT  VARCHAR2        --   リターン・コード             --# 固定 #
+--   ,ov_errmsg                OUT  VARCHAR2)       --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'call_imp_data'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+--    --コンカレント定数
+--    cv_application            CONSTANT VARCHAR2(5)   := 'XXCOS';         -- Application
+----2012/06/25 Ver.1.2 Mod Start 
+----  受注インポートエラー検知(CSV受注取込用）を呼び出すようにに変更
+----    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
+--    cv_program                CONSTANT VARCHAR2(13)  := 'XXCOS010A062C';  -- Program
+----2012/06/25 Ver.1.2 Mod End 
+--    cv_description            CONSTANT VARCHAR2(9)   := NULL;            -- Description
+--    cv_start_time             CONSTANT VARCHAR2(10)  := NULL;            -- Start_time
+--    cb_sub_request            CONSTANT BOOLEAN       := FALSE;           -- Sub_request
+----    -- *** ローカル変数 ***
+--    ln_process_set            NUMBER;          -- 処理セット
+--    ln_request_id             NUMBER;          -- 要求ID
+--    lb_wait_result            BOOLEAN;         -- コンカレント待機成否
+--    lv_phase                  VARCHAR2(50);
+--    lv_status                 VARCHAR2(50);
+--    lv_dev_phase              VARCHAR2(50);
+--    lv_dev_status             VARCHAR2(50);
+--    lv_message                VARCHAR2(5000);
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- =====================================================
+--    -- 受注インポートエラー検知起動
+--    -- =====================================================
+--    ln_request_id := fnd_request.submit_request(
+--                       application  => cv_application
+--                      ,program      => cv_program
+--                      ,description  => cv_description
+--                      ,start_time   => cv_start_time
+--                      ,sub_request  => cb_sub_request
+--                      ,argument1    => gt_order_source_name     --受注ソース名
+--                     );
+----
+--    -- 要求IDを取得できなかったとき、エラー
+--    IF ( ln_request_id = 0 ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_xxcos_appl_short_name
+--                    ,iv_name         => cv_msg_imp_err
+--                    ,iv_token_name1  => cv_tkn_request_id
+--                    ,iv_token_value1 => TO_CHAR( ln_request_id )
+--                    ,iv_token_name2  => cv_tkn_dev_status
+--                    ,iv_token_value2 => NULL
+--                    ,iv_token_name3  => cv_tkn_message
+--                    ,iv_token_value3 => NULL
+--                   );
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- =====================================================
+--    --コンカレント起動のためコミット
+--    -- =====================================================
+--    COMMIT;
+----
+--    -- =====================================================
+--    --コンカレントの終了待機
+--    -- =====================================================
+--    lb_wait_result := fnd_concurrent.wait_for_request(
+--                        request_id   => ln_request_id
+--                       ,interval     => gn_interval
+--                       ,max_wait     => gn_max_wait
+--                       ,phase        => lv_phase
+--                       ,status       => lv_status
+--                       ,dev_phase    => lv_dev_phase
+--                       ,dev_status   => lv_dev_status
+--                       ,message      => lv_message
+--                      );
+----
+--    -- コンカレントの終了結果がエラーか待機時間内に終わらなかった場合
+--    IF ( ( lb_wait_result = FALSE ) 
+--      OR ( lv_dev_status = cv_con_status_error ) ) THEN
+----
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_xxcos_appl_short_name
+--                    ,iv_name         => cv_msg_imp_err
+--                    ,iv_token_name1  => cv_tkn_request_id
+--                    ,iv_token_value1 => TO_CHAR( ln_request_id )
+--                    ,iv_token_name2  => cv_tkn_dev_status
+--                    ,iv_token_value2 => lv_dev_status
+--                    ,iv_token_name3  => cv_tkn_message
+--                    ,iv_token_value3 => lv_message
+--                   );
+--      RAISE global_api_expt;
+----
+--    -- コンカレントの終了結果が警告の場合
+--    ELSIF ( lv_dev_status = cv_con_status_warning ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_xxcos_appl_short_name
+--                    ,iv_name         => cv_msg_imp_warn
+--                    ,iv_token_name1  => cv_tkn_request_id
+--                    ,iv_token_value1 => TO_CHAR( ln_request_id )
+--                    ,iv_token_name2  => cv_tkn_dev_status
+--                    ,iv_token_value2 => lv_dev_status
+--                    ,iv_token_name3  => cv_tkn_message
+--                    ,iv_token_value3 => lv_message
+--                   );
+----
+--      FND_FILE.PUT_LINE(FND_FILE.OUTPUT, lv_errmsg);
+----
+--      ov_retcode := cv_status_warn;
+----
+--    END IF;
+----
+--  EXCEPTION
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END call_imp_data;
+-- Ver2.0 DEL END
 --
   /**********************************************************************************
    * Procedure Name   : target_data_loop
@@ -3185,7 +3262,7 @@ AS
         -- 依頼No単位登録フラグが「Y:登録する」の場合、登録する分岐 START
         IF (lv_input_oif_flg = cv_input_oif_y) THEN
           -- ================================================
-          -- A-7.受注ヘッダOIF登録データ編集
+          -- A-7.アドオン受注ヘッダIF登録データ編集
           -- ================================================
           set_hdr_oif(
             i_data_rec              => i_data_tab(ln_loop_cnt)     -- 対象データ格納レコード型
@@ -3199,7 +3276,7 @@ AS
           END IF;
 --
           -- ================================================
-          -- A-8.受注明細OIF登録データ編集
+          -- A-8.アドオン受注明細IF登録データ編集
           -- ================================================
           set_line_oif(
             i_data_tab              => i_data_tab                  -- 対象データ格納レコード型配列
@@ -3318,8 +3395,8 @@ AS
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
 --
-    gn_hdr_oif_cnt         := 0;  -- 受注ヘッダOIF格納配列型INDEX
-    gn_line_oif_cnt        := 0;  -- 受注明細OIF格納配列型INDEX
+    gn_hdr_oif_cnt         := 0;  -- アドオン受注ヘッダIF格納配列型INDEX
+    gn_line_oif_cnt        := 0;  -- アドオン受注明細IF格納配列型INDEX
     gn_warn_msg_cnt        := 0;  -- 警告メッセージ配列型INDEX
     gn_err_msg_cnt         := 0;  -- 登録エラーメッセージ配列型INDEX
     gn_cust_po_no_msg_cnt  := 0;  -- 顧客発注番号編集警告メッセージ配列型INDEX
@@ -3333,8 +3410,8 @@ AS
     gn_price_1yen_hdr_cnt  := 0;  -- 販売単価１円件数（ヘッダ）
     gn_price_1yen_line_cnt := 0;  -- 販売単価１円件数（明細）
 --
-    g_hdr_oif_tab.       DELETE;  -- 受注ヘッダOIF格納配列型
-    g_line_oif_tab.      DELETE;  -- 受注明細OIF格納配列型
+    g_hdr_oif_tab.       DELETE;  -- アドオン受注ヘッダIF格納配列型
+    g_line_oif_tab.      DELETE;  -- アドオン受注明細IF格納配列型
     g_warn_msg_tab.      DELETE;  -- 警告メッセージ配列型
     g_err_msg_tab.       DELETE;  -- 登録エラーメッセージ配列型
     g_cust_po_no_msg_tab.DELETE;  -- 顧客発注番号警告メッセージ
@@ -3445,21 +3522,24 @@ AS
        RAISE global_process_expt;
       END IF;
 --
-      -- ===============================================
-      -- A-10.受注インポートエラー検知起動処理
-      -- ===============================================
-      call_imp_data(
-       ov_errbuf               => lv_errbuf                   -- エラー・メッセージ           --# 固定 #
-      ,ov_retcode              => lv_retcode                  -- リターン・コード             --# 固定 #
-      ,ov_errmsg               => lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
-      );
+-- Ver2.0 DEL START
+--      -- ===============================================
+--      -- A-10.受注インポートエラー検知起動処理
+--      -- ===============================================
+--      call_imp_data(
+--       ov_errbuf               => lv_errbuf                   -- エラー・メッセージ           --# 固定 #
+--      ,ov_retcode              => lv_retcode                  -- リターン・コード             --# 固定 #
+--      ,ov_errmsg               => lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+----
+--      IF (lv_retcode = cv_status_error) THEN
+--       RAISE global_process_expt;
+----
+--      ELSIF ( lv_retcode = cv_status_warn ) THEN
+--       ov_retcode := cv_status_warn;
+--      END IF;
+-- Ver2.0 DEL END
 --
-      IF (lv_retcode = cv_status_error) THEN
-       RAISE global_process_expt;
---
-      ELSIF ( lv_retcode = cv_status_warn ) THEN
-       ov_retcode := cv_status_warn;
-      END IF;
     END IF;
 --
   EXCEPTION
@@ -3618,7 +3698,7 @@ AS
 --
       <<err_msg_loop>>
       FOR ln_loop_cnt IN 1..g_err_msg_tab.COUNT LOOP
-        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, g_err_msg_tab(ln_loop_cnt)); -- OIF登録エラーメッセージ
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT, g_err_msg_tab(ln_loop_cnt)); -- IF登録エラーメッセージ
       END LOOP err_msg_loop;
     END IF;
 --
@@ -3664,7 +3744,7 @@ AS
                    );
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_out_msg);
 --
-    -- 成功件数（ヘッダ）受注ヘッダOIFに作成した件数
+    -- 成功件数（ヘッダ）アドオン受注ヘッダIFに作成した件数
     gv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_xxcos_appl_short_name
                    ,iv_name         => cv_msg_normal_hdr_cnt
@@ -3673,7 +3753,7 @@ AS
                    );
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_out_msg);
 --
-    -- 成功件数（明細）受注明細OIFに作成した件数
+    -- 成功件数（明細）アドオン受注明細IFに作成した件数
     gv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_xxcos_appl_short_name
                    ,iv_name         => cv_msg_normal_line_cnt
@@ -3682,7 +3762,7 @@ AS
                    );
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_out_msg);
 --
-    -- エラー件数（ヘッダ）対象依頼件数（ヘッダ)－受注ヘッダOIFに作成した件数
+    -- エラー件数（ヘッダ）対象依頼件数（ヘッダ)－アドオン受注ヘッダIFに作成した件数
     gv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_xxcos_appl_short_name
                    ,iv_name         => cv_msg_err_hdr_cnt
@@ -3691,7 +3771,7 @@ AS
                    );
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_out_msg);
 --
-    -- エラー件数（明細）対象出荷依頼件数（明細）－受注明細OIFに作成した件数
+    -- エラー件数（明細）対象出荷依頼件数（明細）－アドオン受注明細IFに作成した件数
     gv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application  => cv_xxcos_appl_short_name
                    ,iv_name         => cv_msg_err_line_cnt

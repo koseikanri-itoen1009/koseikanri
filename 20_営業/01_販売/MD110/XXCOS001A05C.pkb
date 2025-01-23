@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.42
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -105,6 +105,7 @@ AS
  *  2019/09/26    1.40  S.Kuwako         [E_本稼動_15941] 軽減税率対応(T4障害対応)
  *  2019/10/03    1.41  S.Kuwako         [E_本稼動_15974] 軽減税率対応(本番障害対応)
  *  2019/10/07    1.42  S.Kuwako         [E_本稼動_15952] 軽減税率対応(本番障害追加対応)
+ *  2024/07/01    2.0   Y.Mochizuki      受注EDIクラウド化
  *
  *****************************************************************************************/
 --
@@ -239,6 +240,9 @@ AS
 --******************************* 2010/09/02 K.Kiriu Var1.27 ADD START *************************************
   cv_msg_tab_xxcos_gen_err_list CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00213';    -- 汎用エラーリスト
 --******************************* 2010/09/02 K.Kiriu Var1.27 ADD END ***************************************
+/* Ver2.0 Add Start */
+  cv_msg_order_close          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00224';     -- 受注クローズ対象情報
+/* Ver2.0 Add End */
   -- 文字列取得用コード(カラム名)
   cv_msg_cus_type             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00074';     -- 顧客区分
   cv_msg_cus_code             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00053';     -- 顧客コード
@@ -319,6 +323,9 @@ AS
 --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
   cv_msg_discnt_item          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00222';
   cv_msg_discnt_item_err      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10262';  -- 売上値引品目取得エラー
+/* Ver2.0 Add Start */
+  cv_msg_data_insert_err      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00010';  --データ登録エラーメッセージ
+/* Ver2.0 Add End */
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
   -- トークン
   cv_tkn_profile              CONSTANT VARCHAR2(20)  := 'PROFILE';              -- プロファイル名
@@ -491,6 +498,10 @@ AS
 --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
   cv_discnt_tax_class         CONSTANT  VARCHAR2(4) := '01'; -- 値引税区分（01：食品／軽減税率（8％）)
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+/* Ver2.0 Add Start */
+  --処理ステータス
+  cv_status_y                 CONSTANT VARCHAR2(1)  := 'Y';  -- 'Y'(処理済)
+/* Ver2.0 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1955,6 +1966,42 @@ AS
                                           cv_line_number, lt_line_id );
 -- ************ 2009/10/13 1.22 N.Maeda MOD  END  *********** --
       END;
+/* Ver2.0 Add Start */
+      --受注を出荷済にしたことをPaaSへ連携するための情報を登録
+      BEGIN
+        INSERT INTO xxcos_order_close(
+           order_line_id                   --受注明細ID
+          ,process_status                  --処理ステータス
+          ,process_date                    --処理日
+          ,created_by                      --作成者
+          ,creation_date                   --作成日
+          ,last_updated_by                 --最終更新者
+          ,last_update_date                --最終更新日
+          ,last_update_login               --最終更新ログイン
+          ,request_id                      --要求ID
+          ,program_application_id          --コンカレント・プログラム・アプリケーションID
+          ,program_id                      --コンカレント・プログラムID
+          ,program_update_date             --プログラム更新日
+        ) VALUES(
+           lt_line_id                      --受注明細ID
+          ,cv_status_y                     --'Y'(処理済)
+          ,gd_process_date                 --業務日付
+          ,cn_created_by                   --ログインユーザーID
+          ,cd_creation_date                --システム日時
+          ,cn_last_updated_by              --ログインユーザーID
+          ,cd_last_update_date             --システム日時
+          ,cn_last_update_login            --ログインID
+          ,cn_request_id                   --コンカレント要求ID
+          ,cn_program_application_id       --コンカレント・プログラム・アプリケーションID
+          ,cn_program_id                   --コンカレント・プログラムID
+          ,cd_program_update_date          --プログラム更新日
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := SQLERRM;
+          RAISE insert_err_expt;
+      END;
+/* Ver2.0 Add End */
 --
     END LOOP om_close_loop;
 --
@@ -1972,6 +2019,24 @@ AS
 --      ov_retcode := cv_status_error;                                            --# 任意 #
 -- ************ 2009/10/13 1.22 N.Maeda DEL  END  *********** --
 --
+/* Ver2.0 Add Start */
+    WHEN insert_err_expt THEN
+      --*** データ登録例外ハンドラ ***
+      gv_tkn1   := xxccp_common_pkg.get_msg( 
+                   iv_application => cv_application,
+                   iv_name        => cv_msg_order_close
+                   );
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application   => cv_application,          --アプリケーション短縮名i
+                   iv_name          => cv_msg_data_insert_err,  --メッセージコード
+                   iv_token_name1   => cv_tkn_table_name,
+                   iv_token_value1  => gv_tkn1,                 --テーブル名：受注クローズ対象情報
+                   iv_token_name2   => cv_key_data,
+                   iv_token_value2  => NULL
+                  );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+/* Ver2.0 Add End */
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***

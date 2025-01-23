@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.35
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2014/01/20    1.33  K.Kiriu          [E_本稼動_11449]消費税増税対応
  *  2018/12/19    1.34  S.Kuwako         [E_本稼動_15472]軽減税率対応
  *  2019/06/20    1.35  S.Kuwako         [E_本稼動_15472]軽減税率対応_販売実績税額計算修正
+ *  2024/07/02    2.0   Y.Mochizuki      受注EDIクラウド化
  *
  *****************************************************************************************/
 --
@@ -279,6 +280,9 @@ AS
   ct_msg_xxcos_00213        CONSTANT  fnd_new_messages.message_name%TYPE  :=  'APP-XXCOS1-00213';     --  汎用エラーリスト
   ct_msg_xxcos_00214        CONSTANT  fnd_new_messages.message_name%TYPE  :=  'APP-XXCOS1-00214';     --  ユーザマスタ
 -- == 2010/08/23 V1.26 Added END   ===============================================================
+/* Ver2.0 Add Start */
+  ct_msg_xxcos_00224        CONSTANT  fnd_new_messages.message_name%TYPE  :=  'APP-XXCOS1-00224';     -- 受注クローズ対象情報
+/* Ver2.0 Add End */
 -- ************ 2011/02/10 1.30 Y.Nishino ADD START ************ --
   -- 単価0円チェック エラー
   ct_price0_line_type_err   CONSTANT  fnd_new_messages.message_name%TYPE  :=  'APP-XXCOS1-11542';
@@ -478,6 +482,10 @@ AS
   cv_exec_1                     CONSTANT VARCHAR2(1)  :=  '1';      --  定期随時区分:1（定期）
   cv_status_error_ins           CONSTANT VARCHAR2(1)  :=  '3';      --  INSERT時エラー
 -- == 2010/08/23 V1.26 Added END   ===============================================================
+/* Ver2.0 Add Start */
+  --処理ステータス
+  cv_status_y                   CONSTANT VARCHAR2(1)  :=  'Y';      -- 'Y'(処理済)
+/* Ver2.0 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -5836,6 +5844,9 @@ AS
     ln_now_index   PLS_INTEGER;
     lt_line_number oe_order_lines_all.line_number%TYPE;
 /* 2009/07/09 Ver1.11 Mod End   */
+/* Ver2.0 Add Start */
+    lv_table_name  VARCHAR2(100);
+/* Ver2.0 Add End */
 --
     -- *** ローカル・カーソル ***
 --
@@ -5885,6 +5896,42 @@ AS
           RAISE global_api_err_expt;
       END;
 --
+/* Ver2.0 Add Start */
+      --受注を出荷済にしたことをPaaSへ連携するための情報を登録
+      BEGIN
+        INSERT INTO xxcos_order_close(
+           order_line_id                   --受注明細ID
+          ,process_status                  --処理ステータス
+          ,process_date                    --処理日
+          ,created_by                      --作成者
+          ,creation_date                   --作成日
+          ,last_updated_by                 --最終更新者
+          ,last_update_date                --最終更新日
+          ,last_update_login               --最終更新ログイン
+          ,request_id                      --要求ID
+          ,program_application_id          --コンカレント・プログラム・アプリケーションID
+          ,program_id                      --コンカレント・プログラムID
+          ,program_update_date             --プログラム更新日
+        ) VALUES(
+           g_line_id_tab(ln_now_index).line_id                      --受注明細ID
+          ,cv_status_y                          --'Y'(処理済)
+          ,gd_process_date                 --業務日付
+          ,cn_created_by                   --ログインユーザーID
+          ,cd_creation_date                --システム日時
+          ,cn_last_updated_by              --ログインユーザーID
+          ,cd_last_update_date             --システム日時
+          ,cn_last_update_login            --ログインID
+          ,cn_request_id                   --コンカレント要求ID
+          ,cn_program_application_id       --コンカレント・プログラム・アプリケーションID
+          ,cn_program_id                   --コンカレント・プログラムID
+          ,cd_program_update_date          --プログラム更新日
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := SQLERRM;
+          RAISE global_insert_data_expt;
+      END;
+/* Ver2.0 Add End */
 /* 2009/07/09 Ver1.11 Mod Start */
 --    END LOOP;
     END LOOP loop_line_update;
@@ -5897,6 +5944,24 @@ AS
 /* 2009/07/09 Ver1.11 Add End   */
   EXCEPTION
 --
+/* Ver2.0 Add Start */
+    --*** データ登録例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      lv_table_name := xxccp_common_pkg.get_msg(
+                   iv_application => cv_xxcos_appl_short_nm,
+                   iv_name        => ct_msg_xxcos_00224
+                  );
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application => cv_xxcos_appl_short_nm,
+                   iv_name        => ct_msg_insert_data_err,
+                   iv_token_name1 => cv_tkn_table_name,
+                   iv_token_value1=> lv_table_name,
+                   iv_token_name2 => cv_tkn_key_data,
+                   iv_token_value2=> NULL
+                  );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+/* Ver2.0 Add End */
     --*** API呼び出し例外ハンドラ ***
     WHEN global_api_err_expt THEN
       lv_api_name := xxccp_common_pkg.get_msg(

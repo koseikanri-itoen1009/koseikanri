@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.11
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2010/04/16    1.9  M.Sano           [E_本稼動_02322]・顧客品目の抽出条件を訂正
  *  2011/10/07    1.10 K.Kiriu          [E_本稼動_07906]・流通ＢＭＳ対応
  *  2013/07/11    1.11 T.Shimoji        [E_本稼動_10904]・消費税増税対応
+ *  2024/11/28    2.0  Y.Ryu            受注EDIクラウド化
  *
  *****************************************************************************************/
 --
@@ -1750,8 +1751,12 @@ AS
 --********************  2009/04/06    1.3  T.Kitajima ADD Start ********************
                        ,mci.attribute1              attribute1
 --********************  2009/04/06    1.3  T.Kitajima ADD  End  ********************
-                FROM    mtl_customer_item_xrefs  mcix   --顧客品目相互参照
-                       ,mtl_customer_items       mci    --顧客品目
+/* Ver2.0 Mod Start */
+--                FROM    mtl_customer_item_xrefs  mcix   --顧客品目相互参照
+--                       ,mtl_customer_items       mci    --顧客品目
+                FROM    xxcos_mtl_customer_item_xrefs@ebs_paas3.itoen.master  mcix   --顧客品目相互参照
+                       ,xxcos_mtl_customer_items@ebs_paas3.itoen.master       mci    --顧客品目
+/* Ver2.0 Mod End */
                        ,mtl_parameters           mp     --在庫組織
                 WHERE  mcix.customer_item_id        = mci.customer_item_id        --結合(顧客品目相 = 顧客品目)
                 AND    mp.master_organization_id    = mcix.master_organization_id --結合(在庫組織   = 顧客品目相)
@@ -1764,8 +1769,12 @@ AS
 -- ************* 2009/09/25 1.7 N.Maeda ADD START ************
                 AND    mcix.preference_number       = (
                          SELECT MIN(mcix_min.preference_number)
-                         FROM    mtl_customer_item_xrefs  mcix_min
-                                ,mtl_customer_items       mci_min
+/* Ver2.0 Mod Start */
+--                         FROM    mtl_customer_item_xrefs  mcix_min
+--                                ,mtl_customer_items       mci_min
+                         FROM    xxcos_mtl_customer_item_xrefs@ebs_paas3.itoen.master  mcix_min
+                                ,xxcos_mtl_customer_items@ebs_paas3.itoen.master       mci_min
+/* Ver2.0 Mod End */
                                 ,mtl_parameters           mp_min
                          WHERE  mcix_min.inventory_item_id      = mcix.inventory_item_id
                          AND    mcix_min.master_organization_id = mcix.master_organization_id
@@ -2268,8 +2277,12 @@ AS
         -- 顧客品目の件数を取得
         SELECT COUNT(1)           cust_item_cnt
         INTO   ln_cust_item_cnt
-        FROM   mtl_customer_items        mcis -- 顧客品目
-              ,mtl_customer_item_xrefs   mcix -- 顧客品目相互参照
+/* Ver2.0 Mod Start */
+--        FROM   mtl_customer_items        mcis -- 顧客品目
+--              ,mtl_customer_item_xrefs   mcix -- 顧客品目相互参照
+        FROM   xxcos_mtl_customer_items@ebs_paas3.itoen.master        mcis -- 顧客品目
+              ,xxcos_mtl_customer_item_xrefs@ebs_paas3.itoen.master   mcix -- 顧客品目相互参照
+/* Ver2.0 Mod End */
               ,mtl_parameters            mpar -- 在庫組織
         WHERE  mcis.customer_id       = gt_chain_cust_acct_id       -- 条件：顧客ID
         AND    mcis.attribute1        = gt_edi_stc_date(i).unit     -- 条件：単位
@@ -2284,8 +2297,12 @@ AS
         AND    mpar.organization_id   = gn_organization_id          -- 条件：在庫組織ID(入庫･プロファイル)
         AND    mcix.preference_number = (
                 SELECT MIN(mcix_min.preference_number)
-                FROM   mtl_customer_item_xrefs  mcix_min -- 顧客品目
-                      ,mtl_customer_items       mcis_min -- 顧客品目相互参照
+/* Ver2.0 Mod Start */
+--                FROM   mtl_customer_item_xrefs  mcix_min -- 顧客品目
+--                      ,mtl_customer_items       mcis_min -- 顧客品目相互参照
+                FROM   xxcos_mtl_customer_item_xrefs@ebs_paas3.itoen.master  mcix_min -- 顧客品目
+                      ,xxcos_mtl_customer_items@ebs_paas3.itoen.master       mcis_min -- 顧客品目相互参照
+/* Ver2.0 Mod End */
                 WHERE  mcis_min.customer_id       = gt_chain_cust_acct_id       -- 条件：顧客コード
                 AND    mcis_min.attribute1        = gt_edi_stc_date(i).unit     -- 条件：単位
                 AND    mcis_min.inactive_flag     = cv_n                        -- 条件：無効フラグ(有効)

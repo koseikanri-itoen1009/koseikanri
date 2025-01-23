@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.20
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2014/01/28    1.18  S.Niki           [E_本稼動_11449] 消費税率取得基準日を検収日⇒オリジナル検収日に変更
  *  2019/02/19    1.19  S.Kuwako         [E_本稼動_15472] 軽減税率対応
  *  2019/06/20    1.20  S.Kuwako         [E_本稼動_15472] 軽減税率対応_販売実績税額計算修正
+ *  2024/07/02    2.0   S.Taguchi        受注EDIクラウド化
  *
  *****************************************************************************************/
 --
@@ -314,6 +315,9 @@ AS
   cv_fnd_user                      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00214';  -- ユーザマスタ
   cv_gen_err_list                  CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00213';  -- 汎用エラーリスト
 -- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+-- Ver2.0 Add Start
+  cv_order_close_table             CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00224';  --受注クローズ対象情報
+-- Ver2.0 Add End
 --
   --プロファイル名称
   --MO:営業単位
@@ -4304,6 +4308,42 @@ AS
 --
     WHILE ln_now_index IS NOT NULL LOOP
 --
+-- Ver2.0 Add Start
+      BEGIN
+        INSERT INTO xxcos_order_close(
+           order_line_id          -- 受注明細ID
+          ,process_status         -- 処理ステータス
+          ,process_date           -- 処理日
+          ,created_by             -- 作成者
+          ,creation_date          -- 作成日
+          ,last_updated_by        -- 最終更新者
+          ,last_update_date       -- 最終更新日
+          ,last_update_login      -- 最終更新ログイン
+          ,request_id             -- 要求ID
+          ,program_application_id -- コンカレントプログラムアプリケーションID
+          ,program_id             -- コンカレントプログラムID
+          ,program_update_date    -- プログラム更新日
+         ) VALUES (
+           g_order_cls_data_tab(ln_now_index).line_id -- 受注明細.受注明細ID
+          ,ct_yes_flg                                 -- 'Y'(処理済)
+          ,gd_process_date                            -- 業務日付
+          ,cn_created_by                              -- ログインユーザーID
+          ,cd_creation_date                           -- システム日時
+          ,cn_last_updated_by                         -- ログインユーザーID
+          ,cd_last_update_date                        -- システム日時
+          ,cn_last_update_login                       -- ログインユーザーID
+          ,cn_request_id                              -- コンカレント要求ID
+          ,cn_program_application_id                  -- コンカレントプログラムアプリケーションID
+          ,cn_program_id                              -- コンカレントプログラムID
+          ,cd_program_update_date                     -- システム日時
+           )
+           ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE global_insert_data_expt;
+      END;
+-- Ver2.0 Add End
+--
       BEGIN
 --
         WF_ENGINE.COMPLETEACTIVITY(
@@ -4354,6 +4394,24 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
 --
+-- Ver2.0 Add Start
+    --*** 登録失敗例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application => cv_xxcos_appl_short_nm,
+                   iv_name        => cv_order_close_table
+                  );
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application => cv_xxcos_appl_short_nm,
+                   iv_name        => ct_msg_insert_data_err,
+                   iv_token_name1 => cv_tkn_table_name,
+                   iv_token_value1=> lv_errmsg,
+                   iv_token_name2 => cv_tkn_key_data,
+                   iv_token_value2=> NULL
+                  );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+-- Ver2.0 Add End
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
