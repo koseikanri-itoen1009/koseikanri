@@ -1,0 +1,65 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ *
+ * Table Name  : xxscp_item_org_mst
+ * Description : 生産計画品目組織マスタ
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2024/10/30    1.0   SCSK M.Sato      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxscp.xxscp_item_org_mst(
+  item_org_mst_id         NUMBER         NOT NULL
+ ,item_code               VARCHAR2(7)    NOT NULL
+ ,vendor_code             VARCHAR2(30)   NOT NULL   -- PO_VENDORS.SEGMENT1
+ ,factory_code            VARCHAR2(15)   NOT NULL   -- XXPO_RCV_AND_RTN_TXNS.FACTORY_CODE
+ ,line_code               VARCHAR2(5)    NOT NULL
+ ,vendor_name             VARCHAR2(240)  NOT NULL   -- PO_VENDORS.VENDOR_NAME
+ ,sum_flag_by_fact        VARCHAR2(1)    NOT NULL
+ ,rep_org_code            VARCHAR2(13)   NOT NULL   -- VENDOR_CODE + FACTORY_CODE + LINE_CODE
+ ,org_code                VARCHAR2(13)   NOT NULL   -- VENDOR_CODE + FACTORY_CODE + LINE_CODE
+ ,rcv_manu_date_flag      VARCHAR2(1)    NOT NULL
+ ,created_by              NUMBER(15,0)   NOT NULL
+ ,creation_date           DATE           NOT NULL
+ ,last_updated_by         NUMBER(15,0)   NOT NULL
+ ,last_update_date        DATE           NOT NULL
+ ,last_update_login       NUMBER(15,0)
+ ,request_id              NUMBER(15,0)
+ ,program_application_id  NUMBER(15,0)
+ ,program_id              NUMBER(15,0)
+ ,program_update_date     DATE
+  ,CONSTRAINT XXSCP_ITEM_ORG_MST_PK PRIMARY KEY (item_org_mst_id)
+   USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE xxidx)
+  PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING 
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+  TABLESPACE xxdata;
+--
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.item_org_mst_id         IS  '生産計画品目組織ID';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.item_code               IS  '品目コード';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.vendor_code             IS  'パッカーコード';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.factory_code            IS  '工場コード';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.line_code               IS  'ラインコード';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.vendor_name             IS  '略称';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.sum_flag_by_fact        IS  '工場別集計フラグ';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.rep_org_code            IS  '代表組織';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.org_code                IS  '組織';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.rcv_manu_date_flag      IS  '受入/製造日フラグ';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.created_by              IS  '作成者';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.creation_date           IS  '作成日';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.last_updated_by         IS  '最終更新者';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.last_update_date        IS  '最終更新日';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.last_update_login       IS  '最終更新ログイン';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.request_id              IS  '要求ID';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.program_application_id  IS  'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.program_id              IS  'コンカレント・プログラムID';
+COMMENT ON COLUMN xxscp.xxscp_item_org_mst.program_update_date     IS  'プログラム更新日';
+--
+COMMENT ON TABLE  xxscp.xxscp_item_org_mst                            IS  '生産計画品目組織マスタ';

@@ -1,0 +1,63 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ *
+ * Table Name  : xxscp_his_on_hand
+ * Description : 前日在庫履歴テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2024/12/27    1.0   SCSK M.Sato      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxscp.xxscp_his_on_hand(
+  his_on_hand_id                 NUMBER         NOT NULL
+ ,version                        NUMBER         NOT NULL
+ ,item_name                      VARCHAR2(250)  NOT NULL   -- 品目コード
+ ,organization_code              VARCHAR2(13)   NOT NULL   -- 代表組織コード
+ ,sr_instance_code               VARCHAR2(30)   NOT NULL   -- ソース・システム・コード
+ ,new_order_quantity             NUMBER         NOT NULL   -- 在庫数量
+ ,subinventory_code              VARCHAR2(10)   NOT NULL   -- 固定値「S」
+ ,deleted_flag                   VARCHAR2(30)              -- 削除フラグ
+ ,end_value                      VARCHAR2(3)    NOT NULL   -- 終端記号
+ ,created_by                     NUMBER(15,0)   NOT NULL
+ ,creation_date                  DATE           NOT NULL
+ ,last_updated_by                NUMBER(15,0)   NOT NULL
+ ,last_update_date               DATE           NOT NULL
+ ,last_update_login              NUMBER(15,0)
+ ,request_id                     NUMBER(15,0)
+ ,program_application_id         NUMBER(15,0)
+ ,program_id                     NUMBER(15,0)
+ ,program_update_date            DATE
+  ,CONSTRAINT XXSCP_HIS_ON_HAND_PK PRIMARY KEY (his_on_hand_id)
+   USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
+   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+   PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+   TABLESPACE xxidx)
+  PCTFREE 10 PCTUSED 40 INITRANS 10 MAXTRANS 255 NOCOMPRESS LOGGING 
+  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 4 FREELIST GROUPS 4 BUFFER_POOL DEFAULT)
+  TABLESPACE xxdata;
+--
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.his_on_hand_id                IS  '前日在庫履歴テーブルID';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.version                       IS  'バージョン';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.item_name                     IS  '品目コード';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.organization_code             IS  '代表組織コード';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.sr_instance_code              IS  'ソース・システム・コード';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.new_order_quantity            IS  '在庫数量';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.subinventory_code             IS  '固定値「S」';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.deleted_flag                  IS  '削除フラグ';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.end_value                     IS  '終端記号';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.created_by                    IS  '作成者';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.creation_date                 IS  '作成日';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.last_updated_by               IS  '最終更新者';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.last_update_date              IS  '最終更新日';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.last_update_login             IS  '最終更新ログイン';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.request_id                    IS  '要求ID';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.program_application_id        IS  'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.program_id                    IS  'コンカレント・プログラムID';
+COMMENT ON COLUMN xxscp.xxscp_his_on_hand.program_update_date           IS  'プログラム更新日';
+--
+COMMENT ON TABLE  xxscp.xxscp_his_on_hand                               IS  '前日在庫履歴テーブル';
