@@ -1,0 +1,15 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * SYNONYM Name    : xxcos_line_info_paas_link
+ * Description     : •ªŠ„ó’–¾×î•ñPaaS˜AŒgî•ñ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2024/06/11    1.0   A.Igimi      V‹Kì¬
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxcos_line_info_paas_link FOR xxcos.xxcos_line_info_paas_link;

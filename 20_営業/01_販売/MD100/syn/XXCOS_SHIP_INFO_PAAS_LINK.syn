@@ -1,0 +1,15 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ * 
+ * SYNONYM Name    : xxcos_ship_info_paas_link
+ * Description     : èoâ◊àÀóäèÓïÒPaaSòAågèÓïÒ
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2024/06/11    1.0   A.Igimi      êVãKçÏê¨
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxcos_ship_info_paas_link FOR xxcos.xxcos_ship_info_paas_link;
