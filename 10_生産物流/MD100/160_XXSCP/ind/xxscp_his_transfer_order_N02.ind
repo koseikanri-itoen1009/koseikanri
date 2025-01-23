@@ -1,0 +1,16 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2024. All rights reserved.
+ *
+ * Index Name  : xxscp_his_transfer_order_N02
+ * Description : 転送オーダー履歴テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2024/12/12    1.0   SCSK M.Sato      新規作成
+ *
+ ****************************************************************************************/
+CREATE INDEX xxscp.xxscp_his_transfer_order_n02 ON xxscp.xxscp_his_transfer_order( version ) TABLESPACE xxidx;
+
