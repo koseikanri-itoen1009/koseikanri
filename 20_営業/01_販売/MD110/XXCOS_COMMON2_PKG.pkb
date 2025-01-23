@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(Body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.12
+ * Version                : 2.0
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *                                      [E_本稼動_07218]納品予定プルーフリスト作成処理遅延対応
  *  2011/09/07    1.11 K.kiriu          [E_本稼動_07906]流通ＢＭＳ対応
  *  2018/07/04    1.12 N.Koyama         [E_本稼動_15141]顧客品目コード全角・禁則文字チェック追加
+ *  2024/11/28    2.0  Y.Ryu            受注EDIクラウド化
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -659,8 +660,12 @@ AS
           INTO
             ov_product_code2
           FROM
-            mtl_customer_items       mci,                                       --顧客品目
-            mtl_customer_item_xrefs  mcix,                                      --顧客品目相互参照
+/* Ver2.0 Mod Start */
+--            mtl_customer_items       mci,                                       --顧客品目
+--            mtl_customer_item_xrefs  mcix,                                      --顧客品目相互参照
+            xxcos_mtl_customer_items@ebs_paas3.itoen.master       mci,          --顧客品目
+            xxcos_mtl_customer_item_xrefs@ebs_paas3.itoen.master  mcix,         --顧客品目相互参照
+/* Ver2.0 Mod End */
             mtl_system_items_b       msib                                       --DISC品目
           WHERE mci.customer_id          = ln_customer_id                       --顧客ID
             AND mci.attribute1           = NVL(iv_uom_code, mci.attribute1 )    --単位コード(発注単位)
@@ -672,8 +677,12 @@ AS
             AND mcix.inactive_flag       = gv_char_n                            --有効フラグ
             AND mcix.preference_number   = (
                   SELECT MIN(mcix_ck.preference_number) min_preference_number
-                  FROM   mtl_customer_item_xrefs        mcix_ck
-                        ,mtl_customer_items             mci_ck
+/* Ver2.0 Mod Start */
+--                  FROM   mtl_customer_item_xrefs        mcix_ck
+--                        ,mtl_customer_items             mci_ck
+                  FROM   xxcos_mtl_customer_item_xrefs@ebs_paas3.itoen.master        mcix_ck
+                        ,xxcos_mtl_customer_items@ebs_paas3.itoen.master             mci_ck
+/* Ver2.0 Mod End */
                   WHERE  mcix_ck.inventory_item_id = mcix.inventory_item_id
                   AND    mcix_ck.inactive_flag     = gv_char_n
                   AND    mci_ck.customer_item_id   = mcix_ck.customer_item_id
