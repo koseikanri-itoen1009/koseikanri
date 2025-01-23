@@ -1,15 +1,15 @@
 /*****************************************************************************************
  * Copyright(c)SCSK Corporation, 2024. All rights reserved.
  * 
- * Index Name      : XXCOS_EDI_HEADERS_N03
- * Description     : EDIヘッダ情報マテリアライズドビュー索引
+ * Index Name      : XXCOS_ORDER_LINE_NUMBER_IF_N02
+ * Description     : 受注明細番号連携マテライズドビュー索引
  * Version         : 1.0
  * 
  * Change Record
  * ------------- ----- ------------   -------------------------------------
  *  Date          Ver.  Editor         Description
  * ------------- ----- ------------   -------------------------------------
- *  2024/07/31    1.0  N.Koyama        初回作成
+ *  2024/10/08    1.0   Y.Ooyama       初回作成
  *****************************************************************************************/
-CREATE INDEX apps.xxcos_edi_headers_n03 ON apps.xxcos_edi_headers_mv (order_connection_number) TABLESPACE xxidx2
+CREATE INDEX apps.xxcos_order_line_number_if_n02 ON apps.xxcos_order_line_number_if_mv (order_number_ebs) TABLESPACE xxidx2
 /
