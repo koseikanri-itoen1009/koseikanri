@@ -27,3 +27,4 @@ OUTPUT_FILEPATH_CFO010A17,/paasif/inbound/cc_iffile/cc/CFO010A15/03
 CSV_FILENAME_CFO010A12,TaxTransferJournalImport.csv
 CSV_FILENAME_CFO010A14,ExmTransferJournalImport.csv
 CSV_FILENAME_CFO010A17,BankChargeTransferJournalImport.csv
+FBDI_FILENAME_SCP001A01,TDNDNT_SCPDIALY.zip
