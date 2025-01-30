@@ -7,7 +7,7 @@ AS
  * Description      : 積込指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 積込指示書 T_MD070_BPO_62J
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/01/19    1.6   Yasuhisa Yamamoto  本番障害#1039対応
  *  2009/02/04    1.7   Yukari Kanami      本番障害#41対応
  *  2009/04/24    1.8   Hitomi Itou        本番障害#1398対応
+ *  2025/01/23    1.9   Manabu Akachi      E_本稼動_20494対応
  *
  *****************************************************************************************/
 --
@@ -689,7 +690,10 @@ AS
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xoha.sum_capacity
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
-                    xoha.sum_capacity + xoha.sum_pallet_weight
+-- v1.9 MOD Start
+--                    xoha.sum_capacity + xoha.sum_pallet_weight
+                    xoha.sum_capacity
+-- v1.9 MOD End
                   ELSE
                     NULL
                 END                               AS sum_capacity   -- 合計容積(明細単位)
@@ -705,7 +709,10 @@ AS
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN   
                     xoha.sum_capacity
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
-                    xoha.sum_capacity + xoha.sum_pallet_weight
+-- v1.9 MOD Start
+--                    xoha.sum_capacity + xoha.sum_pallet_weight
+                    xoha.sum_capacity
+-- v1.9 MOD End
                   ELSE
                     NULL
                 END                               AS sum_capacity   -- 依頼容積(依頼合計単位)
@@ -1042,7 +1049,10 @@ AS
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xmrih.sum_capacity
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
-                    xmrih.sum_capacity + xmrih.sum_pallet_weight
+-- v1.9 MOD Start
+--                    xmrih.sum_capacity + xmrih.sum_pallet_weight
+                    xmrih.sum_capacity
+-- v1.9 MOD End
                   ELSE
                     NULL
                 END                               AS sum_capacity   -- 合計容積(明細単位)
@@ -1058,7 +1068,10 @@ AS
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xmrih.sum_capacity
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
-                    xmrih.sum_capacity + xmrih.sum_pallet_weight
+-- v1.9 MOD Start
+--                    xmrih.sum_capacity + xmrih.sum_pallet_weight
+                    xmrih.sum_capacity
+-- v1.9 MOD End
                   ELSE
                     NULL
                 END                               AS sum_capacity   -- 依頼容積(依頼合計単位)
