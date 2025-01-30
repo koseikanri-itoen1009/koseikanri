@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/10/31    1.7   Hitomi Itou      課題#32対応(単位条件にケース入数 > 0を追加)
  *  2008/11/26    1.8   Naoki Fukuda     本番障害#141対応(確定通知済は出力しないようにする)
  *  2009/05/28    1.9   Hitomi Itou      本番障害#1398対応(配送先IDをコードで参照する)
+ *  2025/01/23    1.10  Manabu Akachi    E_本稼動_20494対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -619,7 +620,10 @@ AS
           WHEN xsmv.small_amount_class = gc_small_kbn_obj THEN
             xoha.sum_capacity
           WHEN xsmv.small_amount_class = gc_small_kbn_not_obj THEN
-            xoha.sum_capacity + xoha.sum_pallet_weight
+-- v1.10 MOD Start
+--            xoha.sum_capacity + xoha.sum_pallet_weight
+            xoha.sum_capacity
+-- v1.10 MOD End
           WHEN xsmv.small_amount_class IS NULL THEN
             NULL
          END                               AS  req_sum_capacity      -- 積載容積合計(依頼No単位)
@@ -904,7 +908,10 @@ AS
             xmrih.sum_capacity
           -- 小口区分が対象外の場合
           WHEN xsmv.small_amount_class = gc_small_kbn_not_obj THEN
-            xmrih.sum_capacity + xmrih.sum_pallet_weight
+-- v1.10 MOD Start
+--            xmrih.sum_capacity + xmrih.sum_pallet_weight
+            xmrih.sum_capacity
+-- v1.10 MOD End
           -- 小口区分がNULLの場合
           WHEN xsmv.small_amount_class IS NULL THEN   -- 6/20追加
             NULL
