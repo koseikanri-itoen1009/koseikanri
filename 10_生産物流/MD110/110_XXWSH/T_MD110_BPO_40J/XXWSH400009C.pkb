@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2018/12/04    1.15  佐々木  大和     E_本稼動_15274追加対応
  *  2019/01/17    1.16  小路  恭弘       E_本稼動_15274PT対応
  *  2019/02/26    1.17  佐々木  大和     E_本稼動_15274追加対応②
+ *  2025/01/23    1.18  赤地  学         E_本稼動_20494対応
  *
  *****************************************************************************************/
 --
@@ -714,7 +715,10 @@ AS
                                 WHEN xoha.weight_capacity_class = '1'
                                  THEN xola.pallet_weight + xola.weight
                                 WHEN xoha.weight_capacity_class = '2'
-                                 THEN xola.pallet_weight + xola.capacity
+-- v1.18 MOD Start
+--                                 THEN xola.pallet_weight + xola.capacity
+                                 THEN xola.capacity
+-- v1.18 MOD End
                               END
              END                                                        -- 合計重量/合計容積
             ,CASE 
@@ -750,7 +754,10 @@ AS
 --                                 THEN xola.pallet_weight + xoha.sum_capacity
 -- v1.10 Update Start
 --                                 THEN xoha.sum_pallet_weight + xoha.sum_capacity
-                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))
+-- v1.18 MOD Start
+--                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))
+                                 THEN CEIL(TRUNC(xoha.sum_capacity,1))
+-- v1.18 MOD End
 -- v1.10 Update End
 -- 2008/07/31 Y.Kawano mod end
                               END
@@ -1054,7 +1061,10 @@ AS
                                 WHEN xoha.weight_capacity_class = '1'
                                  THEN xola.pallet_weight + xola.weight
                                 WHEN xoha.weight_capacity_class = '2'
-                                 THEN xola.pallet_weight + xola.capacity
+-- v1.18 MOD Start
+--                                 THEN xola.pallet_weight + xola.capacity
+                                 THEN xola.capacity
+-- v1.18 MOD End
                               END
              END                                                        -- 合計重量/合計容積
             ,CASE 
@@ -1073,7 +1083,10 @@ AS
                                 WHEN xoha.weight_capacity_class = '1'
                                  THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_weight,1))
                                 WHEN xoha.weight_capacity_class = '2'
-                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))
+-- v1.18 MOD Start
+--                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))
+                                 THEN CEIL(TRUNC(xoha.sum_capacity,1))
+-- v1.18 MOD End
                               END
              END                                                        -- 総重量/総容積
             ,CASE 
