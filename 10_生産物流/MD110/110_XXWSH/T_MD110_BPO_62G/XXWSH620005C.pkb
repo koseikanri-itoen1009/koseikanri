@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/05/28    1.10  Hitomi Itou           本番障害#1398
  *  2009/09/14    1.11  Hitomi Itou           本番障害#1632
  *  2017/01/27    1.12  Shigeto Niki          E_本稼動_14014
+ *  2025/01/23    1.13  Manabu Akachi         E_本稼動_20494対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1404,7 +1405,10 @@ AS
       || '        WHEN xoha.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''' THEN'
 -- 2008/08/05 Y.Yamamoto v1.7 Update Start
 --      || '          xoha.sum_pallet_weight + xoha.sum_capacity'
-      || '          CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))'
+-- v1.13 MOD Start
+--      || '          CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))'
+      || '          CEIL(TRUNC(xoha.sum_capacity,1))'
+-- v1.13 MOD End
 -- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '      END'
       || '    WHEN xsm2v.small_amount_class IS NULL THEN'
@@ -1852,7 +1856,10 @@ AS
       || '        WHEN xmrih.weight_capacity_class = ''' || gv_wei_cap_kbn_c || ''' THEN'
 -- 2008/08/05 Y.Yamamoto v1.7 Update Start
 --      || '          xmrih.sum_pallet_weight + xmrih.sum_capacity'
-      || '          CEIL(TRUNC(xmrih.sum_pallet_weight + xmrih.sum_capacity,1))'
+-- v1.13 MOD Start
+--      || '          CEIL(TRUNC(xmrih.sum_pallet_weight + xmrih.sum_capacity,1))'
+      || '          CEIL(TRUNC(xmrih.sum_capacity,1))'
+-- v1.13 MOD End
 -- 2008/08/05 Y.Yamamoto v1.7 Update End
       || '      END'
       || '    WHEN xsm2v.small_amount_class IS NULL THEN'
