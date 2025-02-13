@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP110A01C(body)
  * Description      : 出荷重量差異チェック
  * MD.070           : 出荷重量差異チェック(MD070_IPO_CCP_110_A01)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/11/09    1.0   K.Nara           [E_本稼動_14476]新規作成
+ *  2025/01/23    1.1   R.Oikawa         [E_本稼動_20487]重量容積区分を条件から外す
  *
  *****************************************************************************************/
 --
@@ -143,7 +144,9 @@ AS
       AND    flvv.lookup_type           = 'XXWSH_TRANSACTION_STATUS' --出荷のみ
       AND    flvv.lookup_code           = xoha.req_status
       AND    xoha.latest_external_flag  = 'Y'   --最新
-      AND    xoha.weight_capacity_class = '1'   --重量容積区分が「重量」
+-- Ver1.1 DEL START
+--      AND    xoha.weight_capacity_class = '1'   --重量容積区分が「重量」
+-- Ver1.1 DEL END
       AND    xola.delete_flag           = 'N'   --削除されていない明細
       AND    xoha.req_status            <> '99' --出荷依頼の「取消済」以外
       GROUP BY
