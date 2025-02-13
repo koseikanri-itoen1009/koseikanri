@@ -6,7 +6,7 @@ AS
  * Package Name     : XXSCP001A02C(body)
  * Description      : 転送オーダーメジャー生産計画FBDI連携
  *                    移動予定数量をCSV出力する。
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,7 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2024/12/13     1.0  SCSK M.Sato      [E_本稼動_20298]新規作成
- *
+ *  2025/02/06     1.1  SCSK M.Sato      [E_本稼動_20298]性能対応 + 連携値の仕様を一部変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -134,6 +134,9 @@ AS
     ln_transaction_count           NUMBER; 
     ln_transaction_value           NUMBER(10,3);
     ln_transaction_version         NUMBER;
+-- 2025/02/06 add start
+    lv_delete_flg                  VARCHAR2(3);
+-- 2025/02/06 add end
     lv_no_data_flg                 VARCHAR2(1);
     lv_csv_text_h                  VARCHAR2(3000);
     lv_csv_text_l                  VARCHAR2(3000);
@@ -301,6 +304,9 @@ AS
 --
           -- 初期化
           lv_no_data_flg := 'N';
+          -- 2025/02/06 add start
+          lv_delete_flg  := '';
+          -- 2025/02/06 add end
 --
           BEGIN
           -- 転送オーダーのトランザクションを取得
@@ -309,7 +315,11 @@ AS
           FROM
               (-- xmrih.status = '03''04''05''06'をそれぞれ取得し結合
                -- xmrih.status = '03'開始
-               SELECT xmril.item_code               AS ITEM_CODE
+               SELECT 
+                /*+
+                      INDEX(xmrih XXINV_MRIH_N09)
+                */
+                      xmril.item_code               AS ITEM_CODE
                      ,xmrih.schedule_arrival_date   AS WAREHOUSING_DATE
                      ,xwm1.rep_org_code             AS REP_ORG_FROM
                      ,xwm2.rep_org_code             AS REP_ORG_TO
@@ -336,6 +346,9 @@ AS
                AND    xmrih.ship_to_locat_code            = xwm2.whse_code
                AND    xmril.item_code                     = xwm2.item_code
                AND    NVL( xmril.delete_flg, 'N' )       <> 'Y'
+-- 2025/02/06 add start
+               AND    xmril.instruct_qty                 <> 0
+-- 2025/02/06 add end
                -- ループ条件
                AND    xwm1.item_code                      = warehouse_mst_from_record.item_code
                AND    xwm1.rep_org_code                   = warehouse_mst_from_record.rep_org_code
@@ -343,11 +356,15 @@ AS
                -- xmrih.status = '03'終了
                UNION ALL
                -- xmrih.status = '04'開始
-               SELECT xmril.item_code               AS ITEM_CODE
+               SELECT 
+                /*+
+                      INDEX(xmrih XXINV_MRIH_N09)
+                */
+                      xmril.item_code               AS ITEM_CODE
                      ,xmrih.schedule_arrival_date   AS WAREHOUSING_DATE
                      ,xwm1.rep_org_code             AS REP_ORG_FROM
                      ,xwm2.rep_org_code             AS REP_ORG_TO
-                     ,XMRIL.shipped_quantity        AS CASE_NUM
+                     ,xmril.shipped_quantity        AS CASE_NUM
                      ,iimb.attribute11              AS CASE_UOM
                FROM   xxinv_mov_req_instr_headers  xmrih
                      ,xxinv_mov_req_instr_lines    xmril
@@ -370,6 +387,9 @@ AS
                AND    xmrih.ship_to_locat_code           = xwm2.whse_code
                AND    xmril.item_code                    = xwm2.item_code
                AND    NVL( xmril.delete_flg, 'N' )      <> 'Y'
+-- 2025/02/06 add start
+               AND    xmril.shipped_quantity            <> 0
+-- 2025/02/06 add end
                -- ループ条件
                AND    xwm1.item_code                     = warehouse_mst_from_record.item_code
                AND    xwm1.rep_org_code                  = warehouse_mst_from_record.rep_org_code
@@ -377,11 +397,15 @@ AS
                -- xmrih.status = '04'終了
                UNION ALL
                -- xmrih.status = '05'開始
-               SELECT xmril.item_code               AS ITEM_CODE
+               SELECT 
+                /*+
+                      INDEX(xmrih XXINV_MRIH_N14)
+                */
+                      xmril.item_code               AS ITEM_CODE
                      ,xmrih.actual_arrival_date     AS WAREHOUSING_DATE
                      ,xwm1.rep_org_code             AS REP_ORG_FROM
                      ,xwm2.rep_org_code             AS REP_ORG_TO
-                     ,XMRIL.ship_to_quantity        AS CASE_NUM
+                     ,xmril.ship_to_quantity        AS CASE_NUM
                      ,iimb.attribute11              AS CASE_UOM
                FROM   xxinv_mov_req_instr_headers  xmrih
                      ,xxinv_mov_req_instr_lines    xmril
@@ -404,6 +428,9 @@ AS
                AND   xmrih.ship_to_locat_code            = xwm2.whse_code
                AND   xmril.item_code                     = xwm2.item_code
                AND   NVL( xmril.delete_flg, 'N' )       <> 'Y'
+-- 2025/02/06 add start
+               AND   xmril.ship_to_quantity            <> 0
+-- 2025/02/06 add end
                -- ループ条件
                AND   xwm1.item_code                      = warehouse_mst_from_record.item_code
                AND   xwm1.rep_org_code                   = warehouse_mst_from_record.rep_org_code
@@ -411,11 +438,15 @@ AS
                -- xmrih.status = '05'終了
                UNION ALL
                -- xmrih.status = '06'開始
-               SELECT xmril.item_code               AS ITEM_CODE
+               SELECT 
+                /*+
+                      INDEX(xmrih XXINV_MRIH_N13)
+                */
+                      xmril.item_code               AS ITEM_CODE
                      ,xmrih.actual_arrival_date     AS WAREHOUSING_DATE
                      ,xwm1.rep_org_code             AS REP_ORG_FROM
                      ,xwm2.rep_org_code             AS REP_ORG_TO
-                     ,XMRIL.ship_to_quantity        AS CASE_NUM
+                     ,xmril.ship_to_quantity        AS CASE_NUM
                      ,iimb.attribute11              AS CASE_UOM
                FROM   xxinv_mov_req_instr_headers   xmrih
                      ,xxinv_mov_req_instr_lines     xmril
@@ -437,6 +468,9 @@ AS
                AND    xmrih.ship_to_locat_code            = xwm2.whse_code
                AND    xmril.item_code                     = xwm2.item_code
                AND    NVL( xmril.delete_flg, 'N' )       <> 'Y'
+-- 2025/02/06 add start
+               AND    xmril.ship_to_quantity             <> 0
+-- 2025/02/06 add end
                -- ループ条件
                AND    xwm1.item_code                      = warehouse_mst_from_record.item_code
                AND    xwm1.rep_org_code                   = warehouse_mst_from_record.rep_org_code
@@ -461,12 +495,26 @@ AS
               AND    xhto.to_line_number              = warehouse_mst_from_record.item_code
               AND    xhto.organization_code           = warehouse_mst_to_record.rep_org_code
               AND    xhto.from_organization_code      = warehouse_mst_from_record.rep_org_code
+              -- 2025/02/06 mod start
+              AND    xhto.version                     IN (SELECT MAX(xhto.version) AS version
+                                                          FROM   xxscp_his_transfer_order xhto
+                                                          WHERE  xhto.need_by_date                = gd_process_date + ln_day_offset -- 業務日付+0D~+6Dの日付を指定
+                                                          AND    xhto.to_line_number              = warehouse_mst_from_record.item_code
+                                                          AND    xhto.organization_code           = warehouse_mst_to_record.rep_org_code
+                                                          AND    xhto.from_organization_code      = warehouse_mst_from_record.rep_org_code)
+              AND    xhto.deleted_flag                IS NULL                           -- 既に削除フラグが立っている場合は対象外
+              -- 2025/02/06 mod end
               ;
 --
               -- 履歴テーブルにトランザクションが存在する場合
               IF ln_transaction_count <> 0 THEN
-                -- 値を0で最新化する
-                ln_transaction_value := 0;
+                -- 2025/02/06 mod start
+                -- 更新前データの削除用にダミー数量と削除フラグを履歴テーブルに登録しERP側に連携を行う
+                -- 削除用ダミー数量の更新
+                ln_transaction_value := 9999999;
+                -- 削除フラグの更新
+                lv_delete_flg := 'Yes';
+                -- 2025/02/06 mod end
               ELSE
                 lv_no_data_flg := 'Y';
               END IF;
@@ -512,7 +560,9 @@ AS
                           ,to_char(gd_process_date + ln_day_offset, 'YYYYMMDD')  ||  '_'  ||  warehouse_mst_from_record.rep_org_code  ||  '_'  ||  warehouse_mst_to_record.rep_org_code
                           ,'Yes'
                           ,gd_process_date + ln_day_offset
-                          ,''
+                          -- 2025/02/06 mod start
+                          ,lv_delete_flg
+                          -- 2025/02/06 mod end
                           ,'END'
                           ,cn_created_by
                           ,cd_creation_date
