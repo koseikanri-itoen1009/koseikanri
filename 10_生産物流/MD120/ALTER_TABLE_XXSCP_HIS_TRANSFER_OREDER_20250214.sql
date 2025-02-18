@@ -1,0 +1,1 @@
+ALTER TABLE xxscp.xxscp_his_transfer_order MODIFY NEW_ORDER_QUANTITY NUMBER;
