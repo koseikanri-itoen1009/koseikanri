@@ -11,5 +11,5 @@
  * ------------- ----- ------------   -------------------------------------
  *  2024/06/11    1.0   A.igimi        èââÒçÏê¨
  *****************************************************************************************/
-CREATE INDEX XXCOS.XXCOS_SHIP_INFO_PAAS_LINK_N1 ON XXCOS.XXCOS_SHIP_INFO_PAAS_LINK (CREATION_DATE) TABLESPACE XXIDX2;
+CREATE INDEX XXCOS.XXCOS_SHIP_INFO_PAAS_LINK_N1 ON XXCOS.XXCOS_SHIP_INFO_PAAS_LINK (CREATION_DATE) TABLESPACE XXIDX2
 /

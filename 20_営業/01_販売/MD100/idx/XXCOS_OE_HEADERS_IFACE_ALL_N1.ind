@@ -11,5 +11,5 @@
  * ------------- ----- ------------ -------------------------------------
  *  2024/07/30    1.0   Y.Ryu        êVãKçÏê¨
  ************************************************************************/
-CREATE INDEX XXCOS.XXCOS_OE_HEADERS_IFACE_ALL_N1 ON XXCOS.XXCOS_OE_HEADERS_IFACE_ALL (CREATION_DATE) TABLESPACE XXIDX2;
+CREATE INDEX XXCOS.XXCOS_OE_HEADERS_IFACE_ALL_N1 ON XXCOS.XXCOS_OE_HEADERS_IFACE_ALL (CREATION_DATE) TABLESPACE XXIDX2
 /
