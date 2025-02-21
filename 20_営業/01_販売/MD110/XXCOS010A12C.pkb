@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A12C(body)
  * Description      : 最新状態のアドオン受注マテビューを参照し、標準受注OIFを作成します。
  * MD.050           : PaaSからの受注取込(MD050_COS_010_A12)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2024/06/20    1.0   Y.Ryu            新規作成
  *  2024/12/16    1.1   A.Igimi          [ST0017]EBS受注処理情報登録と更新方法の修正
  *  2024/01/15    1.2   A.Igimi          [ST0017]受注インポートエラー対応
+ *  2025/02/14    1.3   Y.Ooyama         STEP3システム統合テスト不具合対応(No.25)
  *
  *****************************************************************************************/
 --
@@ -138,6 +139,9 @@ AS
   cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                            -- 'N'
   cv_flg_1                  CONSTANT VARCHAR2(1)   := '1';                            -- 1：登録
   cv_flg_2                  CONSTANT VARCHAR2(1)   := '2';                            -- 2：更新
+-- Ver1.3 Add Start
+  cv_flg_3                  CONSTANT VARCHAR2(1)   := '3';                            -- 3：ヘッダ取消
+-- Ver1.3 Add End
   cv_stand_date             CONSTANT VARCHAR(25)   := 'YYYY/MM/DD HH24:MI:SS';
 --
   -- ===============================
@@ -628,7 +632,9 @@ AS
       );
       -- 受注スキップフラグを設定
       gv_skip_flg := cv_flg_y;
-      gn_warn_cnt := gn_warn_cnt + 1;
+-- Ver1.3 Del Start
+--      gn_warn_cnt := gn_warn_cnt + 1;
+-- Ver1.3 Del End
       RETURN;
     END IF;
 --
@@ -1114,7 +1120,15 @@ AS
       BEGIN
         -- EBS受注処理情報更新
         UPDATE  xxcos_order_process  xop
-        SET     xop.process_flag             =  cv_flg_2,                          -- 処理フラグ「2：更新」
+-- Ver1.3 Mod Start
+--        SET     xop.process_flag             =  cv_flg_2,                          -- 処理フラグ「2：更新」
+        SET     xop.process_flag             =  CASE
+                                                  WHEN gt_order_headers(in_h_idx).flow_status_code = cv_sts_cancelled THEN
+                                                    cv_flg_3                       -- 処理フラグ「3：ヘッダ取消」
+                                                  ELSE
+                                                    cv_flg_2                       -- 処理フラグ「2：更新」
+                                                END,
+-- Ver1.3 Mod End
                 xop.last_updated_by          =  cn_last_updated_by,                -- 最終更新者
                 xop.last_update_date         =  cd_last_update_date,               -- 最終更新日
                 xop.last_update_login        =  cn_last_update_login,              -- 最終更新ﾛｸﾞｲﾝ
@@ -1435,7 +1449,9 @@ AS
            which  => fnd_file.log
           ,buff   => lv_errmsg
       );
-      gn_warn_cnt := gn_warn_cnt + 1;
+-- Ver1.3 Del Start
+--      gn_warn_cnt := gn_warn_cnt + 1;
+-- Ver1.3 Del End
       RETURN;
     END IF;
 --
