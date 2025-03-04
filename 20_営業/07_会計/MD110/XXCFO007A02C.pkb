@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO007A02C (body)
  * Description      : EBS APオープンインタフェースの登録されたデータを抽出、ERP CloudのAP標準テーブルに登録する。
  * MD.050           : T_MD050_CFO_007_A02_承認済仕入先請求書抽出_EBSコンカレント
- * Version          : 1.4
+ * Version          : 1.5
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -25,7 +25,7 @@ AS
  *  2023-01-16    1.2   Yamato.Fuku      E133対応
  *  2023-01-16    1.3   Yamato.Fuku      E134対応
  *  2023-03-13    1.4   Y.Ooyama         シナリオテスト不具合No.0065対応
- *
+ *  2025-01-30    1.5   T.Okuyama        E_本稼動_20247対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -111,6 +111,10 @@ AS
   cv_mfg_account_short      CONSTANT VARCHAR2(7)    := 'MFG_ACT';          -- 工場会計_短縮名
   cv_bm_system_short        CONSTANT VARCHAR2(7)    := 'BM_SYS';           -- 問屋支払_短縮名
   cv_sales_deduction_short  CONSTANT VARCHAR2(7)    := 'SL_DDC';           -- 販売控除_短縮名
+-- Ver1.5 Add Start
+  cv_sales_deduction_ap       CONSTANT VARCHAR2(20) := 'SALES_DEDUCTION_AP'; -- AP控除支払
+  cv_sales_deduction_ap_short CONSTANT VARCHAR2(20) := 'SL_DDC_AP';          -- AP控除支払_短縮名
+-- Ver1.5 Add End
   cv_lf_str                 CONSTANT VARCHAR2(2)    := '\n';               -- LF置換単語
   cv_status                 CONSTANT VARCHAR2(9)    := 'PROCESSED';        -- ステータスPROCESSED
   cv_lookup_code_tax        CONSTANT VARCHAR2(3)    := 'TAX';              -- lookup_code:TAX
@@ -179,7 +183,10 @@ AS
   gv_desc_trim_flag     VARCHAR2(1000);
 -- Ver1.1(E132) Add Start
   gt_directory_path all_directories.directory_path%TYPE;       -- ディレクトリパス
-  gv_source_short_name  VARCHAR2(7);                           -- 短縮名
+-- Ver1.5 Mod Start
+--  gv_source_short_name  VARCHAR2(7);                           -- 短縮名
+  gv_source_short_name  VARCHAR2(20);                          -- 短縮名
+-- Ver1.5 Mod End
   gn_head_cnt           NUMBER;                                -- HEAD出力件数
   gn_line_cnt           NUMBER;                                -- LINE出力件数
 -- Ver1.1(E132) Add Start
@@ -486,6 +493,10 @@ AS
            gv_source_short_name := cv_xx03_entry_short;
          WHEN cv_sales_deduction = iv_source THEN
            gv_source_short_name := cv_sales_deduction_short;
+-- Ver1.5 Add Start
+         WHEN cv_sales_deduction_ap = iv_source THEN
+           gv_source_short_name := cv_sales_deduction_ap_short;
+-- Ver1.5 Add End
          ELSE
            NULL;
     END CASE;
@@ -612,6 +623,9 @@ AS
           , aii.attribute2
           , aii.attribute3
           , aii.attribute4
+-- Ver1.5 Add Start
+          , DECODE(aii.source, cv_sales_deduction_ap, aii.attribute4, NULL) AS dff4_employee_num
+-- Ver1.5 Add End
           , aii.attribute5
           , aii.attribute6
           , aii.attribute7
@@ -1056,7 +1070,11 @@ AS
         lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 39:VOUCHER_NUM
         lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 40:REQUESTER_FIRST_NAME
         lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 41:REQUESTER_LAST_NAME
-        lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 42:REQUESTER_EMPLOYEE_NUM
+-- Ver1.5 Mod Start
+--        lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 42:REQUESTER_EMPLOYEE_NUM
+        lv_csv_text := lv_csv_text || xxccp_oiccommon_pkg.to_csv_string( ap_head_rec.dff4_employee_num , cv_lf_str )  
+               || cv_delim_comma;                                                                 -- 42:REQUESTER_EMPLOYEE_NUM
+-- Ver1.5 Mod End
         lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 43:DELIVERY_CHANNEL_CODE
         lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 44:BANK_CHARGE_BEARER
         lv_csv_text := lv_csv_text || NULL                                    || cv_delim_comma;  -- 45:REMIT_TO_SUPPLIER_NAME
