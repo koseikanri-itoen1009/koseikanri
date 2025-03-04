@@ -1,0 +1,7 @@
+[
+{
+  'jobPackage' : '/oracle/apps/ess/financials/payables/invoices/transactions/',
+  'jobName' : 'APXIAWRE',
+  'singleJobParam' : ',,,,${10004},,'
+}
+]
