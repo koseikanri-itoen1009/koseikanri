@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_DEDUCTION_RECON_HEAD
  * Description : 控除消込ヘッダー情報
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2020/07/08    1.0   SCSK Y.Koh       新規作成
  *  2020/07/27    1.1   SCSK K.Yoshikawa E_本稼動_17382
  *  2022/09/06    1.2   SCSK Y.Koh       E_本稼動_18172  控除支払伝票取消時の差額
+ *  2025/01/30    1.3   SCSK R.Oikawa    E_本稼動_20247 基幹システムバージョンアップ（会計領域　AP部門入力）
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
@@ -42,6 +43,10 @@ CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
     ,gl_if_flag                     VARCHAR2(1)
     ,terms_name                     VARCHAR2(500)
     ,invoice_date                   DATE
+-- 2025/01/30 Ver1.3 ADD Start
+    ,invoice_ele_data               VARCHAR2(1)
+    ,invoice_t_num                  VARCHAR2(1)
+-- 2025/01/30 Ver1.3 ADD End
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -108,6 +113,12 @@ COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.terms_name                   
 /
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.invoice_date                        IS '請求書日付'
 /
+-- 2025/01/30 Ver1.3 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.invoice_ele_data                    IS '電子データ受領'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.invoice_t_num                       IS '適格請求書'
+/
+-- 2025/01/30 Ver1.3 ADD End
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.created_by                          IS '作成者'
 /
 COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.creation_date                       IS '作成日'
